@@ -4,7 +4,6 @@ use cosmwasm_std::{
     QueryRequest, SystemError, SystemResult,
 };
 use sg721::msg::CreatorResponse;
-use sg721::state::Extension;
 use std::{collections::HashMap, marker::PhantomData};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
