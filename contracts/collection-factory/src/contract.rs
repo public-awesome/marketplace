@@ -1,7 +1,7 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Api, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply, Response,
+    to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply, Response,
     StdResult, SubMsg, WasmMsg, WasmQuery,
 };
 use cw0::parse_reply_instantiate_data;
