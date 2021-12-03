@@ -22,6 +22,7 @@ pub fn mock_dependencies(
     }
 }
 
+#[allow(dead_code)]
 pub struct WasmMockQuerier {
     base: MockQuerier<Empty>,
     creator_querier: CreatorQuerier,
