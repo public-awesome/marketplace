@@ -4,7 +4,6 @@ use cosmwasm_std::{
     QueryRequest, SystemError, SystemResult,
 };
 use sg721::msg::CreatorResponse;
-use sg721::state::Extension;
 use std::{collections::HashMap, marker::PhantomData};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
@@ -23,6 +22,7 @@ pub fn mock_dependencies(
     }
 }
 
+#[allow(dead_code)]
 pub struct WasmMockQuerier {
     base: MockQuerier<Empty>,
     creator_querier: CreatorQuerier,
@@ -67,7 +67,7 @@ impl Querier for WasmMockQuerier {
 }
 
 impl WasmMockQuerier {
-    pub fn handle_query(&self, request: &QueryRequest<Empty>) -> QuerierResult {
+    pub fn handle_query(&self, _request: &QueryRequest<Empty>) -> QuerierResult {
         SystemResult::Ok(ContractResult::from(to_binary(&CreatorResponse {
             creator: Addr::unchecked("creator"),
         })))
