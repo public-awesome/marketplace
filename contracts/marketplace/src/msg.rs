@@ -4,17 +4,31 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {
-    pub count: i32,
+pub struct InstantiateMsg {}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMsg {
+    /// Returns the current asking price for a token
+    CurrentAsk { collection: Addr, token_id: String },
+    /// Returns the bid for a token / bidder
+    Bid {
+        collection: Addr,
+        token_id: String,
+        bidder: Addr,
+    },
+    /// Returns list of bids for token
+    Bids {
+        collection: Addr,
+        token_id: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    Increment {},
-    Reset {
-        count: i32,
-    },
     SetBid {
         collection: Addr,
         token_id: String,
@@ -39,37 +53,6 @@ pub enum ExecuteMsg {
         token_id: String,
         bid: Bid,
     },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
-    // GetCount returns the current count as a json-encoded number
-    GetCount {},
-    /// Returns the current asking price for a token
-    CurrentAsk {
-        collection: Addr,
-        token_id: String,
-    },
-    /// Returns the bid for a token / bidder
-    Bid {
-        collection: Addr,
-        token_id: String,
-        bidder: Addr,
-    },
-    /// Returns list of bids for token
-    Bids {
-        collection: Addr,
-        token_id: String,
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
-}
-
-// We define a custom struct for each query response
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CountResponse {
-    pub count: i32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

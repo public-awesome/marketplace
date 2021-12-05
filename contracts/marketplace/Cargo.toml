@@ -1,8 +1,9 @@
 [package]
-name = "secondary"
+name = "sg-marketplace"
 version = "0.1.0"
-authors = ["Shane Vitarana <s@publicawesome.com>"]
+authors = ["Shane Vitarana <s@publicawesome.com>", "Jake Hartnell <jake@publicawesome.com>"]
 edition = "2018"
+repository = "https://github.com/public-awesome/contracts"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -29,14 +30,19 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0-beta" }
-cosmwasm-storage = { version = "1.0.0-beta" }
-cw-storage-plus = "0.10"
-cw2 = "0.10"
+cosmwasm-std = { version = "1.0.0-beta2" }
+cosmwasm-storage = { version = "1.0.0-beta2" }
+cw-storage-plus = "0.10.3"
+cw0 = "0.10.3"
+cw2 = "0.10.3"
+cw20 = "0.10.3"
+cw721 = "0.10.0"
+schemars = "0.8.6"
+serde = { version = "1.0.130", default-features = false, features = ["derive"] }
+thiserror = { version = "1.0.30" }
 cw721-base = "0.10.0"
-schemars = "0.8.3"
-serde = { version = "1.0.127", default-features = false, features = ["derive"] }
-thiserror = { version = "1.0.26" }
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0-beta" }
+cosmwasm-schema = { version = "1.0.0-beta2" }
+cw-multi-test = { version = "0.10.3"}
+cw721-metadata-onchain = "0.10.0"
