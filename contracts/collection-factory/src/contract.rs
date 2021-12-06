@@ -19,7 +19,7 @@ const CONTRACT_NAME: &str = "crates.io:collection-factory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // id for sub-message reply
-const INIT_COLLECTION_ID: u64 = 1;
+const REPLY_INIT_COLLECTION_ID: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -85,13 +85,13 @@ pub fn execute_init_collection(
 
     Ok(Response::new()
         .add_attribute("method", "init_collection")
-        .add_submessage(SubMsg::reply_on_success(msg, INIT_COLLECTION_ID)))
+        .add_submessage(SubMsg::reply_on_success(msg, REPLY_INIT_COLLECTION_ID)))
 }
 
 /// Handles the reply from the VM after a new collection contract has been created
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, ContractError> {
-    if reply.id != INIT_COLLECTION_ID {
+    if reply.id != REPLY_INIT_COLLECTION_ID {
         return Err(ContractError::UnknownReplyId { id: reply.id });
     }
 
@@ -179,7 +179,7 @@ mod tests {
         assert_eq!(res.messages.len(), 1);
 
         let reply_msg = Reply {
-            id: INIT_COLLECTION_ID,
+            id: REPLY_INIT_COLLECTION_ID,
             result: ContractResult::Ok(SubMsgExecutionResponse {
                 events: vec![],
                 // "collection0" in binary
