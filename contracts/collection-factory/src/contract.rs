@@ -54,6 +54,10 @@ pub fn execute(
             symbol,
             collection_info,
         } => execute_init_collection(deps, info, env, code_id, name, symbol, collection_info),
+        ExecuteMsg::Mint {
+            collection,
+            token_uri,
+        } => execute_mint(deps, info, env, collection, token_uri),
     }
 }
 
@@ -87,6 +91,42 @@ pub fn execute_init_collection(
     Ok(Response::new()
         .add_attribute("method", "init_collection")
         .add_submessage(SubMsg::reply_on_success(msg, REPLY_INIT_COLLECTION_ID)))
+}
+
+/// Mints a new token with the token id incremented by one
+pub fn execute_mint(
+    deps: DepsMut,
+    info: MessageInfo,
+    _env: Env,
+    collection: String,
+    token_uri: String,
+) -> Result<Response, ContractError> {
+    let state = STATE.load(deps.storage)?;
+    if info.sender != state.owner {
+        return Err(ContractError::Unauthorized {});
+    }
+    // TODO: validate funds against a mint fee
+
+    let contract_addr = deps.api.addr_validate(collection.as_str())?;
+    let token_id =
+        (Cw721Contract(contract_addr.clone()).num_tokens(&deps.querier)? + 1).to_string();
+    let mint_msg = MintMsg {
+        token_id,
+        owner: info.sender.to_string(),
+        token_uri: Some(token_uri),
+        extension: Empty {},
+    };
+
+    // send mint msg
+    let msg = WasmMsg::Execute {
+        contract_addr: contract_addr.to_string(),
+        msg: to_binary(&mint_msg)?,
+        funds: info.funds,
+    };
+
+    Ok(Response::new()
+        .add_attribute("method", "mint")
+        .add_message(msg))
 }
 
 /// Handles the reply from the VM after a new collection contract has been created
@@ -197,5 +237,15 @@ mod tests {
 
         let res = query_collections(deps.as_ref(), Addr::unchecked("creator")).unwrap();
         assert_eq!(res.collections.len(), 1);
+    }
+
+    #[test]
+    fn exec_mint() {
+        let mut deps = mock_dependencies(&[]);
+        let creator = String::from("creator");
+        let collection = String::from("collection0");
+        setup_contract(deps.as_mut());
+
+        // TODO: finish me
     }
 }

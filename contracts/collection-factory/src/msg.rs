@@ -9,12 +9,17 @@ pub struct InstantiateMsg {}
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    // Create a new NFT collection
+    /// Create a new collection
     InitCollection {
         code_id: u64,
         name: String,
         symbol: String,
         collection_info: CollectionInfo,
+    },
+    /// Mint into an existing collection
+    Mint {
+        collection: String,
+        token_uri: String,
     },
 }
 
