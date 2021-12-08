@@ -3,18 +3,6 @@
   "title": "QueryMsg",
   "oneOf": [
     {
-      "type": "object",
-      "required": [
-        "get_count"
-      ],
-      "properties": {
-        "get_count": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
       "description": "Returns the current asking price for a token",
       "type": "object",
       "required": [
