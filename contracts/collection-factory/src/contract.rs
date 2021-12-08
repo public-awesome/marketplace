@@ -166,6 +166,7 @@ mod tests {
             name: collection.to_string(),
             symbol: "SYM".to_string(),
             extension: Extension {
+                contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
                 creator: Addr::unchecked(creator),
                 royalties: None,
             },
