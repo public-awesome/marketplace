@@ -107,7 +107,7 @@ pub fn execute_mint(
     }
     // TODO: validate funds against a mint fee
 
-    let contract_addr = deps.api.addr_validate(collection.as_str())?;
+    let contract_addr = deps.api.addr_validate(&collection)?;
     let token_id =
         (Cw721Contract(contract_addr.clone()).num_tokens(&deps.querier)? + 1).to_string();
     let mint_msg = MintMsg {
