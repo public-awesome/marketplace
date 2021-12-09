@@ -238,14 +238,4 @@ mod tests {
         let res = query_collections(deps.as_ref(), Addr::unchecked("creator")).unwrap();
         assert_eq!(res.collections.len(), 1);
     }
-
-    #[test]
-    fn exec_mint() {
-        let mut deps = mock_dependencies(&[]);
-        let creator = String::from("creator");
-        let collection = String::from("collection0");
-        setup_contract(deps.as_mut());
-
-        // TODO: finish me
-    }
 }
