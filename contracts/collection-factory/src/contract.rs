@@ -106,6 +106,7 @@ pub fn execute_mint(
         return Err(ContractError::Unauthorized {});
     }
     // TODO: validate funds against a mint fee
+    // TODO: validate token_uri
 
     let contract_addr = deps.api.addr_validate(&collection)?;
     let token_id =
