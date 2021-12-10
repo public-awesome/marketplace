@@ -43,3 +43,4 @@ cw4-group = "0.10.3"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta" }
+cw-multi-test = { version = "0.10.3"}

@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply, Response,
-    StdResult, SubMsg, WasmMsg, WasmQuery,
+    StdResult, SubMsg, WasmMsg,
 };
 use cw0::parse_reply_instantiate_data;
 use cw2::set_contract_version;
@@ -11,7 +11,8 @@ use sg721::state::Extension;
 use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, COLLECTIONS, STATE};
-use sg721::msg::{CreatorResponse, ExtendedQueryMsg, InstantiateMsg as SG721InstantiateMsg};
+use sg721::msg::QueryMsg as Sg721QueryMsg;
+use sg721::msg::{CreatorResponse, InstantiateMsg as SG721InstantiateMsg};
 use std::str;
 
 // version info for migration info
@@ -102,14 +103,9 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
     };
     let contract_addr = deps.api.addr_validate(&contract_address)?;
 
-    // query the newly created contract for the creator
-    let query = WasmQuery::Smart {
-        contract_addr: contract_address.to_string(),
-        msg: to_binary(&ExtendedQueryMsg::Creator {})?,
-    };
     let res: CreatorResponse = deps
         .querier
-        .query_wasm_smart(contract_address.to_string(), &query)?;
+        .query_wasm_smart(contract_address.to_string(), &Sg721QueryMsg::Creator {})?;
 
     // save creator <> contract in storage
     COLLECTIONS.save(deps.storage, (&res.creator, &contract_addr), &Empty {})?;
