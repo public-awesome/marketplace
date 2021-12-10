@@ -51,7 +51,7 @@ mod tests {
             .instantiate_contract(factory_id, creator.clone(), &msg, &[], "Factory", None)
             .unwrap();
 
-        return Ok(factory_addr);
+        Ok(factory_addr)
     }
 
     // Add a creator account with initial balances
@@ -97,12 +97,7 @@ mod tests {
         // Query collections for creator
         let res: CollectionsResponse = router
             .wrap()
-            .query_wasm_smart(
-                factory_addr,
-                &QueryMsg::Collections {
-                    creator: creator.clone(),
-                },
-            )
+            .query_wasm_smart(factory_addr, &QueryMsg::Collections { creator })
             .unwrap();
         assert_eq!(res.collections.len(), 1);
     }
