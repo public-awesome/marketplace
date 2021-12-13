@@ -4,6 +4,7 @@ use crate::msg::{ExecuteMsg, QueryMsg};
 
 use cosmwasm_std::Empty;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use sg721::msg::InstantiateMsg;
 
 fn mock_app() -> App {
     App::default()
@@ -42,7 +43,6 @@ mod tests {
     // Upload contract code and instantiate factory contract
     fn setup_factory_contract(router: &mut App, creator: &Addr) -> Result<Addr, ContractError> {
         // Upload contract code
-        let _cw721_id = router.store_code(contract_cw721());
         let factory_id = router.store_code(contract_factory());
 
         // Instantiate factory contract
@@ -101,5 +101,37 @@ mod tests {
             .query_wasm_smart(factory_addr, &QueryMsg::Collections { creator })
             .unwrap();
         assert_eq!(res.collections.len(), 1);
+    }
+
+    #[test]
+    fn mint() {
+        let mut router = mock_app();
+        let creator = setup_creator_account(&mut router).unwrap();
+        let factory_addr = setup_factory_contract(&mut router, &creator).unwrap();
+        let collection = String::from("collection");
+        let cw721_id = router.store_code(contract_cw721());
+
+        // Instantiate factory contract
+        let msg = InstantiateMsg {
+            name: collection.clone(),
+            symbol: "SYM".to_string(),
+            minter: factory_addr.to_string(),
+            extension: Extension {
+                creator: creator.clone(),
+                royalties: None,
+            },
+        };
+        let sg721_addr = router
+            .instantiate_contract(cw721_id, creator.clone(), &msg, &[], "sg721", None)
+            .unwrap();
+
+        // Create a mint msg
+        let msg = ExecuteMsg::Mint {
+            collection: sg721_addr.to_string(),
+            token_uri: String::from("http://token_uri"),
+        };
+        let res = router.execute_contract(creator.clone(), factory_addr.clone(), &msg, &[]);
+        println!("{:?}", res);
+        assert!(res.is_ok());
     }
 }

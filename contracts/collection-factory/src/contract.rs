@@ -11,6 +11,8 @@ use sg721::state::CollectionInfo;
 use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, COLLECTIONS, STATE};
+use cw721::Cw721Contract;
+use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
 use sg721::msg::QueryMsg as Sg721QueryMsg;
 use sg721::msg::{CreatorResponse, InstantiateMsg as SG721InstantiateMsg};
 use std::str;
@@ -109,14 +111,15 @@ pub fn execute_mint(
     // TODO: validate token_uri
 
     let contract_addr = deps.api.addr_validate(&collection)?;
-    let token_id =
-        (Cw721Contract(contract_addr.clone()).num_tokens(&deps.querier)? + 1).to_string();
-    let mint_msg = MintMsg {
-        token_id,
+    let sg721 = Cw721Contract(contract_addr.clone());
+    let token_id = sg721.num_tokens(&deps.querier)? + 1;
+
+    let mint_msg = Cw721ExecuteMsg::Mint(MintMsg {
+        token_id: token_id.to_string(),
         owner: info.sender.to_string(),
         token_uri: Some(token_uri),
         extension: Empty {},
-    };
+    });
 
     // send mint msg
     let msg = WasmMsg::Execute {
@@ -127,6 +130,7 @@ pub fn execute_mint(
 
     Ok(Response::new()
         .add_attribute("method", "mint")
+        .add_attribute("token_id", token_id.to_string())
         .add_message(msg))
 }
 
