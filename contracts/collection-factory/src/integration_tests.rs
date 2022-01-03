@@ -1,7 +1,6 @@
 #![cfg(test)]
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, QueryMsg};
-use sg721::state::Extension;
 
 use cosmwasm_std::Empty;
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
@@ -35,6 +34,7 @@ mod tests {
 
     use super::*;
     use cosmwasm_std::{coins, Addr, Coin};
+    use sg721::state::CollectionInfo;
 
     const NATIVE_TOKEN_DENOM: &str = "ustars";
     const INITIAL_BALANCE: u128 = 2000;
@@ -86,7 +86,7 @@ mod tests {
             code_id: 1,
             name: "Collection".to_string(),
             symbol: "SYM".to_string(),
-            extension: Extension {
+            collection_info: CollectionInfo {
                 contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
                 creator: creator.clone(),
                 royalties: None,
