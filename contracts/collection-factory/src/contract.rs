@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw0::parse_reply_instantiate_data;
 use cw2::set_contract_version;
-use sg721::state::Extension;
+use sg721::state::CollectionInfo;
 
 use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -52,8 +52,8 @@ pub fn execute(
             code_id,
             name,
             symbol,
-            extension,
-        } => execute_init_collection(deps, info, env, code_id, name, symbol, extension),
+            collection_info,
+        } => execute_init_collection(deps, info, env, code_id, name, symbol, collection_info),
     }
 }
 
@@ -64,7 +64,7 @@ pub fn execute_init_collection(
     code_id: u64,
     name: String,
     symbol: String,
-    extension: Extension,
+    collection_info: CollectionInfo,
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
     if info.sender != state.owner {
@@ -79,7 +79,7 @@ pub fn execute_init_collection(
             name: name.to_owned(),
             symbol: symbol.to_owned(),
             minter: info.sender.to_string(),
-            extension,
+            collection_info,
         })?,
         label: format!("{}-{}-{}", symbol, name, code_id),
     };
@@ -165,7 +165,7 @@ mod tests {
             code_id: 1,
             name: collection.to_string(),
             symbol: "SYM".to_string(),
-            extension: Extension {
+            collection_info: CollectionInfo {
                 contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
                 creator: Addr::unchecked(creator),
                 royalties: None,

@@ -1,7 +1,7 @@
 use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sg721::state::Extension;
+use sg721::state::CollectionInfo;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {}
@@ -14,7 +14,7 @@ pub enum ExecuteMsg {
         code_id: u64,
         name: String,
         symbol: String,
-        extension: Extension,
+        collection_info: CollectionInfo,
     },
 }
 
