@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw0::parse_reply_instantiate_data;
 use cw2::set_contract_version;
-use sg721::state::Extension;
+use sg721::state::State as Sg721State;
 
 use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -52,8 +52,8 @@ pub fn execute(
             code_id,
             name,
             symbol,
-            extension,
-        } => execute_init_collection(deps, info, env, code_id, name, symbol, extension),
+            state,
+        } => execute_init_collection(deps, info, env, code_id, name, symbol, state),
     }
 }
 
@@ -64,7 +64,7 @@ pub fn execute_init_collection(
     code_id: u64,
     name: String,
     symbol: String,
-    extension: Extension,
+    state: Sg721State,
 ) -> Result<Response, ContractError> {
     let state = STATE.load(deps.storage)?;
     if info.sender != state.owner {
@@ -79,7 +79,7 @@ pub fn execute_init_collection(
             name: name.to_owned(),
             symbol: symbol.to_owned(),
             minter: info.sender.to_string(),
-            extension,
+            state,
         })?,
         label: format!("{}-{}-{}", symbol, name, code_id),
     };
