@@ -4,8 +4,8 @@ use cosmwasm_std::{
     to_binary, Addr, Binary, Deps, DepsMut, Empty, Env, MessageInfo, Order, Reply, Response,
     StdResult, SubMsg, WasmMsg,
 };
-use cw0::parse_reply_instantiate_data;
 use cw2::set_contract_version;
+use cw_utils::parse_reply_instantiate_data;
 use sg721::state::CollectionInfo;
 
 use crate::error::ContractError;
@@ -123,7 +123,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 fn query_collections(deps: Deps, creator: Addr) -> StdResult<CollectionsResponse> {
     let collections = COLLECTIONS
         .prefix(&creator)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range_raw(deps.storage, None, None, Order::Ascending)
         .filter_map(|item| item.map(|k| String::from_utf8(k.0)).ok())
         // unwrap and unchecked are safe here because the addresses have already been validated
         .map(|s| Addr::unchecked(s.unwrap()))
