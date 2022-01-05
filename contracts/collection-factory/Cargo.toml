@@ -36,6 +36,8 @@ cw-utils = "0.11"
 cw2 = "0.11"
 cw4 = "0.11"
 cw4-group = "0.11"
+cw721 = "0.11.0"
+cw721-base = "0.11.0"
 schemars = "0.8.8"
 serde = {version = "1.0.133", default-features = false, features = ["derive"]}
 sg721 = {path = "../sg721", features = ["library"]}

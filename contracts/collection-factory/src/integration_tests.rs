@@ -93,6 +93,7 @@ mod tests {
             },
         };
         let res = router.execute_contract(creator.clone(), factory_addr.clone(), &msg, &[]);
+        println!("{:?}", res);
         assert!(res.is_ok());
 
         // Query collections for creator
@@ -116,7 +117,8 @@ mod tests {
             name: collection.clone(),
             symbol: "SYM".to_string(),
             minter: factory_addr.to_string(),
-            extension: Extension {
+            collection_info: CollectionInfo {
+                contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
                 creator: creator.clone(),
                 royalties: None,
             },

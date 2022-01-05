@@ -11,7 +11,7 @@ use sg721::state::CollectionInfo;
 use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, COLLECTIONS, STATE};
-use cw721::Cw721Contract;
+use cw721_base::helpers::Cw721Contract;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
 use sg721::msg::QueryMsg as Sg721QueryMsg;
 use sg721::msg::{CreatorResponse, InstantiateMsg as SG721InstantiateMsg};
@@ -147,10 +147,12 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
         Err(_) => return Err(ContractError::InvalidReplyData {}),
     };
     let contract_addr = deps.api.addr_validate(&contract_address)?;
+    println!("contract address {:?}", contract_addr.to_string());
 
     let res: CreatorResponse = deps
         .querier
         .query_wasm_smart(contract_address.to_string(), &Sg721QueryMsg::Creator {})?;
+    // .query_wasm_smart(contract_address.to_string(), &QueryMsg::Collections {})?;
 
     // save creator <> contract in storage
     COLLECTIONS.save(deps.storage, (&res.creator, &contract_addr), &Empty {})?;
