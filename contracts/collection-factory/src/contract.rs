@@ -13,6 +13,7 @@ use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, COLLECTIONS, STATE};
 use cw721_base::helpers::Cw721Contract;
 use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
+use http::Uri;
 use sg721::msg::QueryMsg as Sg721QueryMsg;
 use sg721::msg::{CreatorResponse, InstantiateMsg as SG721InstantiateMsg};
 use std::str;
@@ -108,7 +109,9 @@ pub fn execute_mint(
         return Err(ContractError::Unauthorized {});
     }
     // TODO: validate funds against a mint fee
-    // TODO: validate token_uri
+    // https://github.com/public-awesome/contracts/issues/50
+
+    token_uri.parse::<Uri>()?;
 
     let contract_addr = deps.api.addr_validate(&collection)?;
     let sg721 = Cw721Contract(contract_addr.clone());
