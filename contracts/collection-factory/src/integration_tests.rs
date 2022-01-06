@@ -133,7 +133,7 @@ mod tests {
             collection: sg721_addr.to_string(),
             token_uri: String::from("http://token_uri"),
         };
-        let res = router.execute_contract(creator.clone(), factory_addr, &msg, &[]);
+        let res = router.execute_contract(creator, factory_addr, &msg, &[]);
         println!("{:?}", res);
         assert!(res.is_ok());
     }
