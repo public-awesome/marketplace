@@ -43,6 +43,7 @@ mod tests {
     // Upload contract code and instantiate factory contract
     fn setup_factory_contract(router: &mut App, creator: &Addr) -> Result<Addr, ContractError> {
         // Upload contract code
+        let _cw721_id = router.store_code(contract_cw721());
         let factory_id = router.store_code(contract_factory());
 
         // Instantiate factory contract
