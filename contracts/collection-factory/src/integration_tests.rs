@@ -135,4 +135,36 @@ mod tests {
         let res = router.execute_contract(creator, factory_addr, &msg, &[]);
         assert!(res.is_ok());
     }
+
+    #[test]
+    fn mint_invalid_token_uri() {
+        let mut router = mock_app();
+        let creator = setup_creator_account(&mut router).unwrap();
+        let factory_addr = setup_factory_contract(&mut router, &creator).unwrap();
+        let collection = String::from("collection");
+        let cw721_id = router.store_code(contract_cw721());
+
+        // Instantiate factory contract
+        let msg = InstantiateMsg {
+            name: collection,
+            symbol: "SYM".to_string(),
+            minter: factory_addr.to_string(),
+            collection_info: CollectionInfo {
+                contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
+                creator: creator.clone(),
+                royalties: None,
+            },
+        };
+        let sg721_addr = router
+            .instantiate_contract(cw721_id, creator.clone(), &msg, &[], "sg721", None)
+            .unwrap();
+
+        // Create a mint msg
+        let msg = ExecuteMsg::Mint {
+            collection: sg721_addr.to_string(),
+            token_uri: String::from(""),
+        };
+        let res = router.execute_contract(creator, factory_addr, &msg, &[]);
+        assert!(res.is_err());
+    }
 }
