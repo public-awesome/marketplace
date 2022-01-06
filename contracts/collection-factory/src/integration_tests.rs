@@ -115,7 +115,7 @@ mod tests {
 
         // Instantiate factory contract
         let msg = InstantiateMsg {
-            name: collection.clone(),
+            name: collection,
             symbol: "SYM".to_string(),
             minter: factory_addr.to_string(),
             collection_info: CollectionInfo {
@@ -133,7 +133,7 @@ mod tests {
             collection: sg721_addr.to_string(),
             token_uri: String::from("http://token_uri"),
         };
-        let res = router.execute_contract(creator.clone(), factory_addr.clone(), &msg, &[]);
+        let res = router.execute_contract(creator.clone(), factory_addr, &msg, &[]);
         println!("{:?}", res);
         assert!(res.is_ok());
     }
