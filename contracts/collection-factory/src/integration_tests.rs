@@ -94,7 +94,6 @@ mod tests {
             },
         };
         let res = router.execute_contract(creator.clone(), factory_addr.clone(), &msg, &[]);
-        println!("{:?}", res);
         assert!(res.is_ok());
 
         // Query collections for creator
@@ -134,7 +133,6 @@ mod tests {
             token_uri: String::from("http://token_uri"),
         };
         let res = router.execute_contract(creator, factory_addr, &msg, &[]);
-        println!("{:?}", res);
         assert!(res.is_ok());
     }
 }

@@ -147,12 +147,10 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
         Err(_) => return Err(ContractError::InvalidReplyData {}),
     };
     let contract_addr = deps.api.addr_validate(&contract_address)?;
-    println!("contract address {:?}", contract_addr.to_string());
 
     let res: CreatorResponse = deps
         .querier
         .query_wasm_smart(contract_address.to_string(), &Sg721QueryMsg::Creator {})?;
-    // .query_wasm_smart(contract_address.to_string(), &QueryMsg::Collections {})?;
 
     // save creator <> contract in storage
     COLLECTIONS.save(deps.storage, (&res.creator, &contract_addr), &Empty {})?;
