@@ -10,7 +10,10 @@ use sg721::state::CollectionInfo;
 
 use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, COLLECTIONS, STATE};
+use crate::state::{Config, COLLECTIONS, CONFIG};
+use cw721_base::helpers::Cw721Contract;
+use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
+use http::Uri;
 use sg721::msg::QueryMsg as Sg721QueryMsg;
 use sg721::msg::{CreatorResponse, InstantiateMsg as SG721InstantiateMsg};
 use std::str;
@@ -29,11 +32,11 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let state = State {
+    let config = Config {
         owner: info.sender.clone(),
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    STATE.save(deps.storage, &state)?;
+    CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -54,6 +57,10 @@ pub fn execute(
             symbol,
             collection_info,
         } => execute_init_collection(deps, info, env, code_id, name, symbol, collection_info),
+        ExecuteMsg::Mint {
+            collection,
+            token_uri,
+        } => execute_mint(deps, info, env, collection, token_uri),
     }
 }
 
@@ -66,13 +73,13 @@ pub fn execute_init_collection(
     symbol: String,
     collection_info: CollectionInfo,
 ) -> Result<Response, ContractError> {
-    let state = STATE.load(deps.storage)?;
-    if info.sender != state.owner {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
     let msg = WasmMsg::Instantiate {
-        admin: Some(state.owner.into_string()),
+        admin: Some(config.owner.into_string()),
         code_id,
         funds: info.funds,
         msg: to_binary(&SG721InstantiateMsg {
@@ -87,6 +94,51 @@ pub fn execute_init_collection(
     Ok(Response::new()
         .add_attribute("method", "init_collection")
         .add_submessage(SubMsg::reply_on_success(msg, REPLY_INIT_COLLECTION_ID)))
+}
+
+/// Mints a new token with the token id incremented by one
+pub fn execute_mint(
+    deps: DepsMut,
+    info: MessageInfo,
+    _env: Env,
+    collection: String,
+    token_uri: String,
+) -> Result<Response, ContractError> {
+    // TODO: validate funds against a mint fee
+    // https://github.com/public-awesome/contracts/issues/50
+
+    token_uri.parse::<Uri>()?;
+
+    let contract_addr = deps.api.addr_validate(&collection)?;
+    let sg721 = Cw721Contract(contract_addr.clone());
+
+    let res: CreatorResponse = deps
+        .querier
+        .query_wasm_smart(contract_addr.to_string(), &Sg721QueryMsg::Creator {})?;
+    if info.sender != res.creator {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let token_id = sg721.num_tokens(&deps.querier)? + 1;
+
+    let mint_msg = Cw721ExecuteMsg::Mint(MintMsg {
+        token_id: token_id.to_string(),
+        owner: info.sender.to_string(),
+        token_uri: Some(token_uri),
+        extension: Empty {},
+    });
+
+    // send mint msg
+    let msg = WasmMsg::Execute {
+        contract_addr: contract_addr.to_string(),
+        msg: to_binary(&mint_msg)?,
+        funds: info.funds,
+    };
+
+    Ok(Response::new()
+        .add_attribute("method", "mint")
+        .add_attribute("token_id", token_id.to_string())
+        .add_message(msg))
 }
 
 /// Handles the reply from the VM after a new collection contract has been created

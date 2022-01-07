@@ -3,6 +3,7 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
+      "description": "Create a new collection",
       "type": "object",
       "required": [
         "init_collection"
@@ -29,6 +30,31 @@
               "type": "string"
             },
             "symbol": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Mint into an existing collection",
+      "type": "object",
+      "required": [
+        "mint"
+      ],
+      "properties": {
+        "mint": {
+          "type": "object",
+          "required": [
+            "collection",
+            "token_uri"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "token_uri": {
               "type": "string"
             }
           }
