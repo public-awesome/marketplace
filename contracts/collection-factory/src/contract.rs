@@ -114,10 +114,10 @@ pub fn execute_mint(
     let contract_addr = deps.api.addr_validate(&collection)?;
     let sg721 = Cw721Contract(contract_addr.clone());
 
-    // TODO: need to get creator of collection
-    // whats the difference between creator vs. minter? can we get rid of creator?
-    let res: MinterResponse = sg721.query(&deps.querier, Cw721QueryMsg::Minter {})?;
-    if info.sender != res.minter {
+    let res: CreatorResponse = deps
+        .querier
+        .query_wasm_smart(contract_addr.to_string(), &Sg721QueryMsg::Creator {})?;
+    if info.sender != res.creator {
         return Err(ContractError::Unauthorized {});
     }
 
