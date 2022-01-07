@@ -10,11 +10,9 @@ use sg721::state::CollectionInfo;
 
 use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
-use crate::state::{State, COLLECTIONS, STATE};
+use crate::state::{Config, COLLECTIONS, CONFIG};
 use cw721_base::helpers::Cw721Contract;
-use cw721_base::{
-    ExecuteMsg as Cw721ExecuteMsg, MintMsg, MinterResponse, QueryMsg as Cw721QueryMsg,
-};
+use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
 use http::Uri;
 use sg721::msg::QueryMsg as Sg721QueryMsg;
 use sg721::msg::{CreatorResponse, InstantiateMsg as SG721InstantiateMsg};
@@ -34,11 +32,11 @@ pub fn instantiate(
     info: MessageInfo,
     _msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    let state = State {
+    let config = Config {
         owner: info.sender.clone(),
     };
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    STATE.save(deps.storage, &state)?;
+    CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
         .add_attribute("method", "instantiate")
@@ -75,13 +73,13 @@ pub fn execute_init_collection(
     symbol: String,
     collection_info: CollectionInfo,
 ) -> Result<Response, ContractError> {
-    let state = STATE.load(deps.storage)?;
-    if info.sender != state.owner {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
     let msg = WasmMsg::Instantiate {
-        admin: Some(state.owner.into_string()),
+        admin: Some(config.owner.into_string()),
         code_id,
         funds: info.funds,
         msg: to_binary(&SG721InstantiateMsg {

@@ -108,7 +108,8 @@ mod tests {
     fn mint() {
         let mut router = mock_app();
         let creator = setup_creator_account(&mut router).unwrap();
-        let factory_addr = setup_factory_contract(&mut router, &creator).unwrap();
+        let admin = Addr::unchecked("admin");
+        let factory_addr = setup_factory_contract(&mut router, &admin).unwrap();
         let collection = String::from("collection");
         let cw721_id = router.store_code(contract_cw721());
 
