@@ -12,7 +12,9 @@ use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::state::{State, COLLECTIONS, STATE};
 use cw721_base::helpers::Cw721Contract;
-use cw721_base::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
+use cw721_base::{
+    ExecuteMsg as Cw721ExecuteMsg, MintMsg, MinterResponse, QueryMsg as Cw721QueryMsg,
+};
 use http::Uri;
 use sg721::msg::QueryMsg as Sg721QueryMsg;
 use sg721::msg::{CreatorResponse, InstantiateMsg as SG721InstantiateMsg};
@@ -104,10 +106,6 @@ pub fn execute_mint(
     collection: String,
     token_uri: String,
 ) -> Result<Response, ContractError> {
-    let state = STATE.load(deps.storage)?;
-    if info.sender != state.owner {
-        return Err(ContractError::Unauthorized {});
-    }
     // TODO: validate funds against a mint fee
     // https://github.com/public-awesome/contracts/issues/50
 
@@ -115,6 +113,14 @@ pub fn execute_mint(
 
     let contract_addr = deps.api.addr_validate(&collection)?;
     let sg721 = Cw721Contract(contract_addr.clone());
+
+    // TODO: need to get creator of collection
+    // whats the difference between creator vs. minter? can we get rid of creator?
+    let res: MinterResponse = sg721.query(&deps.querier, Cw721QueryMsg::Minter {})?;
+    if info.sender != res.minter {
+        return Err(ContractError::Unauthorized {});
+    }
+
     let token_id = sg721.num_tokens(&deps.querier)? + 1;
 
     let mint_msg = Cw721ExecuteMsg::Mint(MintMsg {
