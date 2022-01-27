@@ -74,9 +74,6 @@ pub fn execute_init_collection(
     collection_info: CollectionInfo,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
-    if info.sender != config.owner {
-        return Err(ContractError::Unauthorized {});
-    }
 
     let msg = WasmMsg::Instantiate {
         admin: Some(config.owner.into_string()),
@@ -193,7 +190,7 @@ mod tests {
 
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {};
-        let info = mock_info("creator", &[]);
+        let info = mock_info("admin", &[]);
         let res = instantiate(deps, mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
     }
