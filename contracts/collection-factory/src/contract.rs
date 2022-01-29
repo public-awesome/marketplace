@@ -184,9 +184,8 @@ fn query_collections(deps: Deps, creator: Addr) -> StdResult<CollectionsResponse
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::mock_querier::mock_dependencies;
-    use cosmwasm_std::testing::{mock_env, mock_info};
-    use cosmwasm_std::{Addr, ContractResult, Reply, SubMsgExecutionResponse};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
+    use cosmwasm_std::Addr;
 
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {};
@@ -197,13 +196,13 @@ mod tests {
 
     #[test]
     fn proper_initialization() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         setup_contract(deps.as_mut());
     }
 
     #[test]
     fn exec_init_collection() {
-        let mut deps = mock_dependencies(&[]);
+        let mut deps = mock_dependencies();
         let creator = String::from("creator");
         let collection = String::from("collection0");
         setup_contract(deps.as_mut());
@@ -212,7 +211,7 @@ mod tests {
 
         let msg = ExecuteMsg::InitCollection {
             code_id: 1,
-            name: collection.to_string(),
+            name: collection,
             symbol: "SYM".to_string(),
             collection_info: CollectionInfo {
                 contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
@@ -223,28 +222,5 @@ mod tests {
 
         let res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
         assert_eq!(res.messages.len(), 1);
-
-        let reply_msg = Reply {
-            id: REPLY_INIT_COLLECTION_ID,
-            result: ContractResult::Ok(SubMsgExecutionResponse {
-                events: vec![],
-                // "collection0" in binary
-                data: Some(vec![10, 11, 99, 111, 108, 108, 101, 99, 116, 105, 111, 110, 48].into()),
-            }),
-        };
-
-        // register mock creator info querier
-        deps.querier.with_creator(&[(
-            &collection,
-            &CreatorResponse {
-                creator: Addr::unchecked("creator"),
-            },
-        )]);
-
-        // simulate a reply coming in from the VM
-        let _res = reply(deps.as_mut(), mock_env(), reply_msg).unwrap();
-
-        let res = query_collections(deps.as_ref(), Addr::unchecked("creator")).unwrap();
-        assert_eq!(res.collections.len(), 1);
     }
 }
