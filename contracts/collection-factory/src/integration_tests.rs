@@ -20,7 +20,7 @@ pub fn contract_factory() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn contract_cw721() -> Box<dyn Contract<Empty>> {
+pub fn contract_sg721() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
         sg721::contract::execute,
         sg721::contract::instantiate,
@@ -43,7 +43,7 @@ mod tests {
     // Upload contract code and instantiate factory contract
     fn setup_factory_contract(router: &mut App, creator: &Addr) -> Result<Addr, ContractError> {
         // Upload contract code
-        let _cw721_id = router.store_code(contract_cw721());
+        let _sg721_id = router.store_code(contract_sg721());
         let factory_id = router.store_code(contract_factory());
 
         // Instantiate factory contract
@@ -111,7 +111,7 @@ mod tests {
         let admin = Addr::unchecked("admin");
         let factory_addr = setup_factory_contract(&mut router, &admin).unwrap();
         let collection = String::from("collection");
-        let cw721_id = router.store_code(contract_cw721());
+        let sg721_id = router.store_code(contract_sg721());
 
         // Instantiate factory contract
         let msg = InstantiateMsg {
@@ -125,7 +125,7 @@ mod tests {
             },
         };
         let sg721_addr = router
-            .instantiate_contract(cw721_id, creator.clone(), &msg, &[], "sg721", None)
+            .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "sg721", None)
             .unwrap();
 
         // Create a mint msg
@@ -143,7 +143,7 @@ mod tests {
         let creator = setup_creator_account(&mut router).unwrap();
         let factory_addr = setup_factory_contract(&mut router, &creator).unwrap();
         let collection = String::from("collection");
-        let cw721_id = router.store_code(contract_cw721());
+        let sg721_id = router.store_code(contract_sg721());
 
         // Instantiate factory contract
         let msg = InstantiateMsg {
@@ -157,7 +157,7 @@ mod tests {
             },
         };
         let sg721_addr = router
-            .instantiate_contract(cw721_id, creator.clone(), &msg, &[], "sg721", None)
+            .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "sg721", None)
             .unwrap();
 
         // Create a mint msg
