@@ -115,7 +115,6 @@ pub fn execute_mint(
     if Some(info.sender.clone()) != res.creator {
         return Err(ContractError::Unauthorized {});
     }
-    // if let creator = res.creator {}
 
     let token_id = sg721.num_tokens(&deps.querier)? + 1;
 
@@ -159,7 +158,7 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
 
     if let Some(ref creator) = res.creator {
         // save creator <> contract in storage
-        COLLECTIONS.save(deps.storage, (&creator, &contract_addr), &Empty {})?;
+        COLLECTIONS.save(deps.storage, (creator, &contract_addr), &Empty {})?;
     }
 
     Ok(Response::default().add_attribute("contract_address", contract_address))
