@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
-use sg721::state::CollectionInfo;
+use sg721::state::Config as Sg721Config;
 
 use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -71,7 +71,7 @@ pub fn execute_init_collection(
     code_id: u64,
     name: String,
     symbol: String,
-    collection_info: CollectionInfo,
+    collection_info: Sg721Config,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -213,7 +213,7 @@ mod tests {
             code_id: 1,
             name: collection,
             symbol: "SYM".to_string(),
-            collection_info: CollectionInfo {
+            collection_info: Sg721Config {
                 contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
                 creator: Addr::unchecked(creator),
                 royalties: None,
