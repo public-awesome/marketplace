@@ -118,11 +118,11 @@ mod tests {
             name: collection,
             symbol: "SYM".to_string(),
             minter: factory_addr.to_string(),
-            config: Config {
+            config: Some(Config {
                 contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
                 creator: creator.clone(),
                 royalties: None,
-            },
+            }),
         };
         let sg721_addr = router
             .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "sg721", None)
@@ -150,11 +150,11 @@ mod tests {
             name: collection,
             symbol: "SYM".to_string(),
             minter: factory_addr.to_string(),
-            config: Config {
+            config: Some(Config {
                 contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
                 creator: creator.clone(),
                 royalties: None,
-            },
+            }),
         };
         let sg721_addr = router
             .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "sg721", None)

@@ -71,7 +71,7 @@ pub fn execute_init_collection(
     code_id: u64,
     name: String,
     symbol: String,
-    collection_info: Sg721Config,
+    collection_config: Sg721Config,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -83,7 +83,7 @@ pub fn execute_init_collection(
             name: name.to_owned(),
             symbol: symbol.to_owned(),
             minter: info.sender.to_string(),
-            config: collection_info,
+            config: Some(collection_config),
         })?,
         label: format!("{}-{}-{}", symbol, name, code_id),
     };
