@@ -112,9 +112,10 @@ pub fn execute_mint(
     let res: CreatorResponse = deps
         .querier
         .query_wasm_smart(contract_addr.to_string(), &Sg721QueryMsg::Creator {})?;
-    if info.sender != res.creator {
+    if Some(info.sender.clone()) != res.creator {
         return Err(ContractError::Unauthorized {});
     }
+    // if let creator = res.creator {}
 
     let token_id = sg721.num_tokens(&deps.querier)? + 1;
 
@@ -156,8 +157,10 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
         .querier
         .query_wasm_smart(contract_address.to_string(), &Sg721QueryMsg::Creator {})?;
 
-    // save creator <> contract in storage
-    COLLECTIONS.save(deps.storage, (&res.creator, &contract_addr), &Empty {})?;
+    if let Some(ref creator) = res.creator {
+        // save creator <> contract in storage
+        COLLECTIONS.save(deps.storage, (&creator, &contract_addr), &Empty {})?;
+    }
 
     Ok(Response::default().add_attribute("contract_address", contract_address))
 }
@@ -215,7 +218,7 @@ mod tests {
             symbol: "SYM".to_string(),
             collection_info: Sg721Config {
                 contract_uri: Some(String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json")),
-                creator: Addr::unchecked(creator),
+                creator: Some(Addr::unchecked(creator)),
                 royalties: None,
             },
         };
