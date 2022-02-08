@@ -6,7 +6,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
-use sg721::state::CollectionInfo;
+use sg721::state::Config as Sg721Config;
 
 use crate::error::ContractError;
 use crate::msg::{CollectionsResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
@@ -71,7 +71,7 @@ pub fn execute_init_collection(
     code_id: u64,
     name: String,
     symbol: String,
-    collection_info: CollectionInfo,
+    collection_config: Sg721Config,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
@@ -83,7 +83,7 @@ pub fn execute_init_collection(
             name: name.to_owned(),
             symbol: symbol.to_owned(),
             minter: info.sender.to_string(),
-            collection_info,
+            config: Some(collection_config),
         })?,
         label: format!("{}-{}-{}", symbol, name, code_id),
     };
@@ -112,7 +112,7 @@ pub fn execute_mint(
     let res: CreatorResponse = deps
         .querier
         .query_wasm_smart(contract_addr.to_string(), &Sg721QueryMsg::Creator {})?;
-    if info.sender != res.creator {
+    if Some(info.sender.clone()) != res.creator {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -156,8 +156,10 @@ pub fn reply(deps: DepsMut, _env: Env, reply: Reply) -> Result<Response, Contrac
         .querier
         .query_wasm_smart(contract_address.to_string(), &Sg721QueryMsg::Creator {})?;
 
-    // save creator <> contract in storage
-    COLLECTIONS.save(deps.storage, (&res.creator, &contract_addr), &Empty {})?;
+    if let Some(ref creator) = res.creator {
+        // save creator <> contract in storage
+        COLLECTIONS.save(deps.storage, (creator, &contract_addr), &Empty {})?;
+    }
 
     Ok(Response::default().add_attribute("contract_address", contract_address))
 }
@@ -213,9 +215,9 @@ mod tests {
             code_id: 1,
             name: collection,
             symbol: "SYM".to_string(),
-            collection_info: CollectionInfo {
-                contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
-                creator: Addr::unchecked(creator),
+            collection_info: Sg721Config {
+                contract_uri: Some(String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json")),
+                creator: Some(Addr::unchecked(creator)),
                 royalties: None,
             },
         };
