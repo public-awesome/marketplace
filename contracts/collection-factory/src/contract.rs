@@ -83,7 +83,7 @@ pub fn execute_init_collection(
             name: name.to_owned(),
             symbol: symbol.to_owned(),
             minter: info.sender.to_string(),
-            collection_info,
+            config: collection_info,
         })?,
         label: format!("{}-{}-{}", symbol, name, code_id),
     };
