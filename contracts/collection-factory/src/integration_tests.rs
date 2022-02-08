@@ -88,7 +88,7 @@ mod tests {
             name: "Collection".to_string(),
             symbol: "SYM".to_string(),
             collection_info: Config {
-                contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
+                contract_uri: Some(String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json")),
                 creator: creator.clone(),
                 royalties: None,
             },
@@ -119,7 +119,7 @@ mod tests {
             symbol: "SYM".to_string(),
             minter: factory_addr.to_string(),
             config: Some(Config {
-                contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
+                contract_uri: Some(String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json")),
                 creator: creator.clone(),
                 royalties: None,
             }),
@@ -151,7 +151,7 @@ mod tests {
             symbol: "SYM".to_string(),
             minter: factory_addr.to_string(),
             config: Some(Config {
-                contract_uri: String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json"),
+                contract_uri: Some(String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json")),
                 creator: creator.clone(),
                 royalties: None,
             }),
