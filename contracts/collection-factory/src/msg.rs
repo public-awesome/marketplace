@@ -1,7 +1,7 @@
 use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sg721::state::CollectionInfo;
+use sg721::state::Config;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {}
@@ -14,7 +14,7 @@ pub enum ExecuteMsg {
         code_id: u64,
         name: String,
         symbol: String,
-        collection_info: CollectionInfo,
+        collection_info: Config,
     },
     /// Mint into an existing collection
     Mint {
