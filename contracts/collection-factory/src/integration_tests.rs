@@ -38,7 +38,8 @@ mod tests {
     use sg721::state::Config;
 
     const NATIVE_TOKEN_DENOM: &str = "ustars";
-    const INITIAL_BALANCE: u128 = 2000;
+    const CREATION_FEE: u128 = 1_000_000_000;
+    const INITIAL_BALANCE: u128 = 2000 + CREATION_FEE;
 
     // Upload contract code and instantiate factory contract
     fn setup_factory_contract(router: &mut App, creator: &Addr) -> Result<Addr, ContractError> {
@@ -81,6 +82,7 @@ mod tests {
         let mut router = mock_app();
         let creator = setup_creator_account(&mut router).unwrap();
         let factory_addr = setup_factory_contract(&mut router, &creator).unwrap();
+        let creation_fee = coins(1_000_000_000, NATIVE_TOKEN_DENOM);
 
         // Init a new collection
         let msg = ExecuteMsg::InitCollection {
@@ -93,7 +95,8 @@ mod tests {
                 royalties: None,
             },
         };
-        let res = router.execute_contract(creator.clone(), factory_addr.clone(), &msg, &[]);
+        let res =
+            router.execute_contract(creator.clone(), factory_addr.clone(), &msg, &creation_fee);
         assert!(res.is_ok());
 
         // Query collections for creator
@@ -112,6 +115,7 @@ mod tests {
         let factory_addr = setup_factory_contract(&mut router, &admin).unwrap();
         let collection = String::from("collection");
         let sg721_id = router.store_code(contract_sg721());
+        let creation_fee = coins(1_000_000_000, NATIVE_TOKEN_DENOM);
 
         // Instantiate factory contract
         let msg = InstantiateMsg {
@@ -125,7 +129,14 @@ mod tests {
             }),
         };
         let sg721_addr = router
-            .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "sg721", None)
+            .instantiate_contract(
+                sg721_id,
+                creator.clone(),
+                &msg,
+                &creation_fee,
+                "sg721",
+                None,
+            )
             .unwrap();
 
         // Create a mint msg
@@ -144,6 +155,7 @@ mod tests {
         let factory_addr = setup_factory_contract(&mut router, &creator).unwrap();
         let collection = String::from("collection");
         let sg721_id = router.store_code(contract_sg721());
+        let creation_fee = coins(1_000_000_000, NATIVE_TOKEN_DENOM);
 
         // Instantiate factory contract
         let msg = InstantiateMsg {
@@ -157,7 +169,14 @@ mod tests {
             }),
         };
         let sg721_addr = router
-            .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "sg721", None)
+            .instantiate_contract(
+                sg721_id,
+                creator.clone(),
+                &msg,
+                &creation_fee,
+                "sg721",
+                None,
+            )
             .unwrap();
 
         // Create a mint msg
