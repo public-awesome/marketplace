@@ -39,7 +39,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new()
-        .add_attribute("method", "instantiate")
+        .add_attribute("action", "instantiate")
         .add_attribute("owner", info.sender))
 }
 
@@ -89,7 +89,7 @@ pub fn execute_init_collection(
     };
 
     Ok(Response::new()
-        .add_attribute("method", "init_collection")
+        .add_attribute("action", "init_collection")
         .add_submessage(SubMsg::reply_on_success(msg, REPLY_INIT_COLLECTION_ID)))
 }
 
@@ -133,7 +133,7 @@ pub fn execute_mint(
     };
 
     Ok(Response::new()
-        .add_attribute("method", "mint")
+        .add_attribute("action", "mint")
         .add_attribute("token_id", token_id.to_string())
         .add_message(msg))
 }
