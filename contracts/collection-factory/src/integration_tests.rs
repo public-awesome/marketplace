@@ -36,8 +36,8 @@ mod tests {
     use super::*;
     use cosmwasm_std::{coins, Addr, Coin};
     use sg721::state::Config;
+    use sg_std::NATIVE_DENOM;
 
-    const NATIVE_TOKEN_DENOM: &str = "ustars";
     const CREATION_FEE: u128 = 1_000_000_000;
     const INITIAL_BALANCE: u128 = 2000 + CREATION_FEE;
 
@@ -59,7 +59,7 @@ mod tests {
     // Add a creator account with initial balances
     fn setup_creator_account(router: &mut App) -> Result<Addr, ContractError> {
         let creator: Addr = Addr::unchecked("creator");
-        let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_TOKEN_DENOM);
+        let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
         router
             .sudo(SudoMsg::Bank({
                 BankSudo::Mint {
@@ -82,7 +82,7 @@ mod tests {
         let mut router = mock_app();
         let creator = setup_creator_account(&mut router).unwrap();
         let factory_addr = setup_factory_contract(&mut router, &creator).unwrap();
-        let creation_fee = coins(1_000_000_000, NATIVE_TOKEN_DENOM);
+        let creation_fee = coins(1_000_000_000, NATIVE_DENOM);
 
         // Init a new collection
         let msg = ExecuteMsg::InitCollection {
@@ -115,7 +115,7 @@ mod tests {
         let factory_addr = setup_factory_contract(&mut router, &admin).unwrap();
         let collection = String::from("collection");
         let sg721_id = router.store_code(contract_sg721());
-        let creation_fee = coins(1_000_000_000, NATIVE_TOKEN_DENOM);
+        let creation_fee = coins(1_000_000_000, NATIVE_DENOM);
 
         // Instantiate factory contract
         let msg = InstantiateMsg {
@@ -155,7 +155,7 @@ mod tests {
         let factory_addr = setup_factory_contract(&mut router, &creator).unwrap();
         let collection = String::from("collection");
         let sg721_id = router.store_code(contract_sg721());
-        let creation_fee = coins(1_000_000_000, NATIVE_TOKEN_DENOM);
+        let creation_fee = coins(1_000_000_000, NATIVE_DENOM);
 
         // Instantiate factory contract
         let msg = InstantiateMsg {
