@@ -1,6 +1,6 @@
 # NFT Market
 
-The Stargaze NFT auction happens as a perpetual option. Currently, there are no enforced time limits.
+The Stargaze NFT auction happens as a perpetual auction. Currently, there are no enforced time limits.
 
 Anyone can call the `SetBid` method and make an offer on _any_ NFT, the funds are sent to the marketplace contract which serves as an escrow.
 
