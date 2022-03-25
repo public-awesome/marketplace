@@ -20,7 +20,7 @@ pub fn contract_nft_marketplace() -> Box<dyn Contract<Empty>> {
     Box::new(contract)
 }
 
-pub fn contract_sg721() -> Box<dyn Contract<Empty>> {
+pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
     let contract = ContractWrapper::new(
         sg721::contract::execute,
         sg721::contract::instantiate,
