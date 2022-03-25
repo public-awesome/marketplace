@@ -10,6 +10,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw_storage_plus::Bound;
+use cw_utils::maybe_addr;
 use sg721::msg::QueryMsg as Sg721QueryMsg;
 
 // Version info for migration info
@@ -426,7 +427,8 @@ pub fn query_bids(
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
+    let start_addr = maybe_addr(deps.api, start_after)?;
+    let start = start_addr.as_ref().map(Bound::exclusive);
 
     let bids: StdResult<Vec<Bid>> = TOKEN_BIDS
         .prefix((collection, token_id))

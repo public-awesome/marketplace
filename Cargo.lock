@@ -709,6 +709,7 @@ dependencies = [
  "cosmwasm-storage",
  "cw-multi-test",
  "cw-storage-plus 0.12.1",
+ "cw-utils 0.12.1",
  "cw2 0.12.1",
  "cw20",
  "cw721 0.12.0",

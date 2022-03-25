@@ -45,6 +45,7 @@ serde = { version = "1.0.133", default-features = false, features = ["derive"] }
 sg721 = "0.8.1"
 thiserror = { version = "1.0.30" }
 sg-std = "0.8.0"
+cw-utils = "0.12.1"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta5" }
