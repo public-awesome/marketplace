@@ -11,7 +11,7 @@ use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw_storage_plus::Bound;
 use cw_utils::maybe_addr;
-use sg721::msg::QueryMsg as Sg721QueryMsg;
+use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -328,44 +328,39 @@ pub fn payout(
     )?;
 
     // Check if token supports Royalties
-    let royalty: Result<sg721::msg::RoyaltyResponse, StdError> = deps
+    let collection_info: CollectionInfoResponse = deps
         .querier
-        .query_wasm_smart(collection, &Sg721QueryMsg::Royalties {});
+        .query_wasm_smart(collection, &Sg721QueryMsg::CollectionInfo {})?;
 
-    match royalty {
-        Ok(royalty) => {
-            // If token supports royalities, payout shares
-            if let Some(royalty) = royalty.royalty {
-                let royalty_share_msg = BankMsg::Send {
-                    to_address: royalty.payment_address.to_string(),
-                    amount: vec![Coin {
-                        amount: amount.amount * royalty.share,
-                        denom: amount.denom.clone(),
-                    }],
-                };
-                msgs.append(&mut vec![royalty_share_msg.into()]);
+    // If token supports royalities, payout shares
+    if let Some(royalty) = collection_info.royalty_info {
+        let royalty_share_msg = BankMsg::Send {
+            to_address: royalty.payment_address.to_string(),
+            amount: vec![Coin {
+                amount: amount.amount * royalty.share,
+                denom: amount.denom.clone(),
+            }],
+        };
+        msgs.append(&mut vec![royalty_share_msg.into()]);
 
-                let owner_share_msg = BankMsg::Send {
-                    to_address: owner.owner,
-                    amount: vec![Coin {
-                        amount: amount.amount * (Decimal::one() - royalty.share),
-                        denom: amount.denom.clone(),
-                    }],
-                };
-                msgs.append(&mut vec![owner_share_msg.into()]);
-            }
-        }
-        Err(_) => {
-            // If token doesn't support royalties, pay owner in full
-            let owner_share_msg = BankMsg::Send {
-                to_address: owner.owner,
-                amount: vec![Coin {
-                    amount: amount.amount,
-                    denom: amount.denom.clone(),
-                }],
-            };
-            msgs.append(&mut vec![owner_share_msg.into()]);
-        }
+        let owner_share_msg = BankMsg::Send {
+            to_address: owner.owner,
+            amount: vec![Coin {
+                amount: amount.amount * (Decimal::one() - royalty.share),
+                denom: amount.denom.clone(),
+            }],
+        };
+        msgs.append(&mut vec![owner_share_msg.into()]);
+    } else {
+        // If token doesn't support royalties, pay owner in full
+        let owner_share_msg = BankMsg::Send {
+            to_address: owner.owner,
+            amount: vec![Coin {
+                amount: amount.amount,
+                denom: amount.denom.clone(),
+            }],
+        };
+        msgs.append(&mut vec![owner_share_msg.into()]);
     }
 
     Ok(msgs)

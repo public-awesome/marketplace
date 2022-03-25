@@ -6,6 +6,7 @@ use cosmwasm_std::{Addr, Empty};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
 use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use sg_std::StargazeMsgWrapper;
 
 fn mock_app() -> App {
     App::default()
