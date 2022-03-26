@@ -29,25 +29,22 @@ pub enum ExecuteMsg {
     AcceptBid {
         collection: String,
         token_id: String,
-        bid: Bid,
+        bidder: String,
     },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    /// Returns the current asking price for a token
     CurrentAsk {
         collection: String,
         token_id: String,
     },
-    /// Returns the bid for a token / bidder
     Bid {
         collection: String,
         token_id: String,
         bidder: String,
     },
-    /// Returns list of bids for token
     Bids {
         collection: String,
         token_id: String,

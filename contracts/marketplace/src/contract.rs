@@ -70,8 +70,14 @@ pub fn execute(
         ExecuteMsg::AcceptBid {
             collection,
             token_id,
-            bid,
-        } => execute_accept_bid(deps, info, api.addr_validate(&collection)?, &token_id, bid),
+            bidder,
+        } => execute_accept_bid(
+            deps,
+            info,
+            api.addr_validate(&collection)?,
+            &token_id,
+            api.addr_validate(&bidder)?,
+        ),
     }
 }
 
@@ -99,7 +105,7 @@ pub fn execute_set_bid(
         TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &info.sender));
         let exec_refund_bidder = BankMsg::Send {
             to_address: existing_bid.bidder.to_string(),
-            amount: vec![existing_bid.amount],
+            amount: vec![existing_bid.price],
         };
         res = res.add_message(exec_refund_bidder)
     }
@@ -107,7 +113,7 @@ pub fn execute_set_bid(
     match query_current_ask(deps.as_ref(), collection.clone(), token_id)?.ask {
         Some(ask) => {
             // Check if bid meets ask criteria and finalize sale if so
-            if ask.amount.amount == bid_amount {
+            if ask.price.amount == bid_amount {
                 TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
                 // Include messages needed to finalize nft transfer and payout
                 let msgs: Vec<CosmosMsg> = finalize_sale(
@@ -115,7 +121,7 @@ pub fn execute_set_bid(
                     collection.clone(),
                     token_id,
                     info.sender.clone(),
-                    ask.amount,
+                    ask.price,
                 )?;
 
                 res = res
@@ -128,7 +134,7 @@ pub fn execute_set_bid(
                 deps.storage,
                 (&collection, token_id, &info.sender),
                 &Bid {
-                    amount: coin(bid_amount.u128(), NATIVE_DENOM),
+                    price: coin(bid_amount.u128(), NATIVE_DENOM),
                     bidder: info.sender.clone(),
                 },
             )?;
@@ -167,7 +173,7 @@ pub fn execute_remove_bid(
     // Refund bidder
     let exec_refund_bidder = BankMsg::Send {
         to_address: info.sender.to_string(),
-        amount: vec![bid.amount],
+        amount: vec![bid.price],
     };
 
     Ok(Response::new()
@@ -203,7 +209,7 @@ pub fn execute_set_ask(
         deps.storage,
         (&collection, &token_id),
         &Ask {
-            amount: amount.clone(),
+            price: amount.clone(),
         },
     )?;
     Ok(Response::new()
@@ -229,22 +235,32 @@ pub fn execute_remove_ask(
         .add_attribute("token_id", token_id))
 }
 
-/// Owner can accept a bid which transfers funds as well as the media
+/// Owner can accept a bid which transfers funds as well as the token
 pub fn execute_accept_bid(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
     token_id: &str,
-    bid: Bid,
+    bidder: Addr,
 ) -> Result<Response, ContractError> {
     // Only the media onwer can call this
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+
+    // Query accepted bid
+    let bid = query_bid(
+        deps.as_ref(),
+        collection.clone(),
+        token_id,
+        info.sender.clone(),
+    )?
+    .bid
+    .ok_or(ContractError::BidNotFound {})?;
 
     // Remove ask
     TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
 
     // Remove accepted bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bid.bidder));
+    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
 
     // Transfer funds and NFT
     let msgs = finalize_sale(
@@ -252,7 +268,7 @@ pub fn execute_accept_bid(
         collection.clone(),
         token_id,
         info.sender,
-        bid.amount.clone(),
+        bid.price.clone(),
     )?;
 
     Ok(Response::new()
@@ -443,7 +459,7 @@ pub fn query_bids(
         .map(|item| {
             let (_k, v) = item?;
             Ok(Bid {
-                amount: v.amount,
+                price: v.price,
                 bidder: v.bidder,
             })
         })
@@ -494,7 +510,7 @@ mod tests {
 
         // Ensure funds bidder has funds
         let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
             bidder: broke.sender.clone(),
         };
         let set_bid_msg = ExecuteMsg::SetBid {
@@ -508,7 +524,7 @@ mod tests {
 
         // Set bid
         let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
             bidder: bidder.sender.clone(),
         };
         let set_bid_msg = ExecuteMsg::SetBid {

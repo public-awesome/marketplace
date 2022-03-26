@@ -189,7 +189,7 @@ mod tests {
 
         // An asking price is made by the creator
         let ask = Ask {
-            amount: coin(110, NATIVE_DENOM),
+            price: coin(110, NATIVE_DENOM),
         };
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.clone(),
@@ -202,7 +202,7 @@ mod tests {
 
         // Bidder makes bid
         let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
             recipient: creator.clone(),
         };
@@ -277,7 +277,7 @@ mod tests {
 
         // An ask is made by the creator, but fails because NFT is not authorized
         let ask = Ask {
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
         };
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.clone(),
@@ -318,7 +318,7 @@ mod tests {
             .map_err(|err| println!("{:?}", err))
             .ok();
         let bid = Bid {
-            amount: coin(100, "random"),
+            price: coin(100, "random"),
             bidder: bidder.clone(),
             recipient: creator.clone(),
         };
@@ -341,7 +341,7 @@ mod tests {
 
         // Bidder makes bid that meets the ask criteria
         let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
             recipient: creator.clone(),
         };
@@ -402,7 +402,7 @@ mod tests {
 
         // Bidder makes bid
         let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
             recipient: creator,
         };
@@ -465,7 +465,7 @@ mod tests {
 
         // Bidder makes bid
         let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
             recipient: creator.clone(),
         };
@@ -498,7 +498,7 @@ mod tests {
 
         // Bidder makes higher bid
         let bid = Bid {
-            amount: coin(150, NATIVE_DENOM),
+            price: coin(150, NATIVE_DENOM),
             bidder: bidder.clone(),
             recipient: creator,
         };
@@ -623,7 +623,7 @@ mod tests {
 
         // An ask is made by the creator
         let ask = Ask {
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
         };
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.clone(),
@@ -636,7 +636,7 @@ mod tests {
 
         // Bidder makes bid
         let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
             recipient: creator.clone(),
         };
