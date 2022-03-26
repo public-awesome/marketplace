@@ -85,8 +85,9 @@ pub fn execute_set_bid(
     bid.is_valid()?;
 
     // Check sent amount matches bid
-    if !has_coins(&info.funds, &bid.amount) {
-        return Err(ContractError::InsufficientBidFunds {});
+    let payment = must_pay(&info, NATIVE_DENOM)?;
+    if payment != bid.amount.amount {
+        return Err(ContractError::IncorrectBidFunds {});
     }
 
     let mut res = Response::new();
@@ -497,7 +498,7 @@ mod tests {
 
         // Bidder calls Set Bid successfully
         let res = execute(deps.as_mut(), mock_env(), broke, set_bid_msg);
-        assert_eq!(res, Err(ContractError::InsufficientBidFunds {}));
+        assert_eq!(res, Err(ContractError::IncorrectBidFunds {}));
 
         // Set bid
         let bid = Bid {

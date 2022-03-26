@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use cw_utils::PaymentError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -22,11 +23,14 @@ pub enum ContractError {
     InvalidBidTooLow {},
 
     #[error("Funds sent don't match bid amount")]
-    InsufficientBidFunds {},
+    IncorrectBidFunds {},
 
     #[error("Bid not found")]
     BidNotFound {},
 
     #[error("Contract needs approval")]
     NeedsApproval {},
+
+    #[error("{0}")]
+    PaymentError(#[from] PaymentError),
 }
