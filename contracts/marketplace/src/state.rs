@@ -15,7 +15,7 @@ pub struct Ask {
 }
 
 // Mapping from (collection, token_id, bidder) to bid
-pub const TOKEN_BIDS: Map<(&Addr, &str, &Addr), Bid> = Map::new("token_bidders");
+pub const TOKEN_BIDS: Map<(&Addr, &str, &Addr), Bid> = Map::new("b");
 
 // Mapping from (collection, token_id) to the current ask for the token
-pub const TOKEN_ASKS: Map<(&Addr, &str), Ask> = Map::new("token_asks");
+pub const TOKEN_ASKS: Map<(&Addr, &str), Ask> = Map::new("a");
