@@ -54,14 +54,14 @@ pub fn execute(
         ExecuteMsg::SetAsk {
             collection,
             token_id,
-            ask,
+            amount,
         } => execute_set_ask(
             deps,
             env,
             info,
             api.addr_validate(&collection)?,
             token_id,
-            ask,
+            amount,
         ),
         ExecuteMsg::RemoveAsk {
             collection,
@@ -185,7 +185,7 @@ pub fn execute_set_ask(
     info: MessageInfo,
     collection: Addr,
     token_id: String,
-    ask: Ask,
+    amount: Coin,
 ) -> Result<Response, ContractError> {
     // Only the media onwer can call this
     let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), &token_id)?;
@@ -199,12 +199,18 @@ pub fn execute_set_ask(
     {
         return Err(ContractError::NeedsApproval {});
     }
-    TOKEN_ASKS.save(deps.storage, (&collection, &token_id), &ask)?;
+    TOKEN_ASKS.save(
+        deps.storage,
+        (&collection, &token_id),
+        &Ask {
+            amount: amount.clone(),
+        },
+    )?;
     Ok(Response::new()
         .add_attribute("action", "set_ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id)
-        .add_attribute("amount", ask.amount.to_string()))
+        .add_attribute("amount", amount.to_string()))
 }
 
 /// Removes the ask on a particular media
@@ -563,13 +569,10 @@ mod tests {
         let mut deps = mock_dependencies();
         setup_contract(deps.as_mut());
 
-        let ask = Ask {
-            amount: coin(100, NATIVE_DENOM),
-        };
         let set_ask = ExecuteMsg::SetAsk {
             collection: Addr::unchecked(COLLECTION),
-            ask,
             token_id: TOKEN_ID.to_string(),
+            amount: coin(100, NATIVE_DENOM),
         };
 
         // Reject if not called by the media owner

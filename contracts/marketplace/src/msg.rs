@@ -1,4 +1,5 @@
 use crate::state::{Ask, Bid};
+use cosmwasm_std::Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -19,7 +20,7 @@ pub enum ExecuteMsg {
     SetAsk {
         collection: String,
         token_id: String,
-        ask: Ask,
+        amount: Coin,
     },
     RemoveAsk {
         collection: String,
