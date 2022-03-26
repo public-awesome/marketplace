@@ -1,5 +1,4 @@
 use crate::state::{Ask, Bid};
-use cosmwasm_std::Addr;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -14,21 +13,21 @@ pub enum ExecuteMsg {
         token_id: String,
     },
     RemoveBid {
-        collection: Addr,
+        collection: String,
         token_id: String,
-        bidder: Addr,
+        bidder: String,
     },
     SetAsk {
-        collection: Addr,
+        collection: String,
         token_id: String,
         ask: Ask,
     },
     RemoveAsk {
-        collection: Addr,
+        collection: String,
         token_id: String,
     },
     AcceptBid {
-        collection: Addr,
+        collection: String,
         token_id: String,
         bid: Bid,
     },
@@ -38,16 +37,19 @@ pub enum ExecuteMsg {
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     /// Returns the current asking price for a token
-    CurrentAsk { collection: Addr, token_id: String },
+    CurrentAsk {
+        collection: String,
+        token_id: String,
+    },
     /// Returns the bid for a token / bidder
     Bid {
-        collection: Addr,
+        collection: String,
         token_id: String,
-        bidder: Addr,
+        bidder: String,
     },
     /// Returns list of bids for token
     Bids {
-        collection: Addr,
+        collection: String,
         token_id: String,
         start_after: Option<String>,
         limit: Option<u32>,
