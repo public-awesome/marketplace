@@ -8,73 +8,72 @@ use serde::{Deserialize, Serialize};
 pub struct Bid {
     pub amount: Coin,
     pub bidder: Addr,
-    pub recipient: Addr,
 }
 
-impl Bid {
-    /// Checks if a bid is valid
-    pub fn is_valid(&self) -> Result<bool, ContractError> {
-        let bid_amount = &self.amount;
+// impl Bid {
+//     /// Checks if a bid is valid
+//     pub fn is_valid(&self) -> Result<bool, ContractError> {
+//         let bid_amount = &self.amount;
 
-        // Check amount is not zero
-        if bid_amount.amount.is_zero() {
-            return Err(ContractError::InvalidBidTooLow {});
-        }
+//         // Check amount is not zero
+//         if bid_amount.amount.is_zero() {
+//             return Err(ContractError::InvalidBidTooLow {});
+//         }
 
-        Ok(true)
-    }
-}
+//         Ok(true)
+//     }
+// }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Ask {
     pub amount: Coin,
 }
 
-// Mapping from (media_contract, token_id, bidder) to bid
+// Mapping from (collection, token_id, bidder) to bid
 pub const TOKEN_BIDS: Map<(&Addr, &str, &Addr), Bid> = Map::new("token_bidders");
 
-// Mapping from  (media_contract, token_id) to the current ask for the token
+// Mapping from (collection, token_id) to the current ask for the token
 pub const TOKEN_ASKS: Map<(&Addr, &str), Ask> = Map::new("token_asks");
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::{coin, Addr};
-    use sg_std::NATIVE_DENOM;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//     use cosmwasm_std::{coin, Addr};
+//     use sg_std::NATIVE_DENOM;
 
-    #[test]
-    fn valid_bids() {
-        let bidder: Addr = Addr::unchecked("bidder");
-        let creator: Addr = Addr::unchecked("creator");
+//     #[test]
+//     fn valid_bids() {
+//         let bidder: Addr = Addr::unchecked("bidder");
+//         let creator: Addr = Addr::unchecked("creator");
 
-        // Normal bid
-        let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
-            bidder: bidder.clone(),
-            recipient: creator.clone(),
-        };
-        assert!(bid.is_valid().is_ok());
+//         // Normal bid
+//         let bid = Bid {
+//             amount: coin(100, NATIVE_DENOM),
+//             bidder: bidder.clone(),
+//             recipient: creator.clone(),
+//         };
+//         assert!(bid.is_valid().is_ok());
 
-        // High number
-        let bid = Bid {
-            amount: coin(1000000000000, NATIVE_DENOM),
-            bidder,
-            recipient: creator,
-        };
-        assert!(bid.is_valid().is_ok());
-    }
+//         // High number
+//         let bid = Bid {
+//             amount: coin(1000000000000, NATIVE_DENOM),
+//             bidder,
+//             recipient: creator,
+//         };
+//         assert!(bid.is_valid().is_ok());
+//     }
 
-    #[test]
-    fn invalid_bids() {
-        let bidder: Addr = Addr::unchecked("bidder");
-        let creator: Addr = Addr::unchecked("creator");
+//     #[test]
+//     fn invalid_bids() {
+//         let bidder: Addr = Addr::unchecked("bidder");
+//         let creator: Addr = Addr::unchecked("creator");
 
-        // Low number
-        let bid = Bid {
-            amount: coin(0, NATIVE_DENOM),
-            bidder,
-            recipient: creator,
-        };
-        assert!(bid.is_valid().is_err());
-    }
-}
+//         // Low number
+//         let bid = Bid {
+//             amount: coin(0, NATIVE_DENOM),
+//             bidder,
+//             recipient: creator,
+//         };
+//         assert!(bid.is_valid().is_err());
+//     }
+// }
