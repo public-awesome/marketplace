@@ -50,15 +50,7 @@ pub fn execute(
         ExecuteMsg::RemoveBid {
             collection,
             token_id,
-            bidder,
-        } => execute_remove_bid(
-            deps,
-            env,
-            info,
-            api.addr_validate(&collection)?,
-            token_id,
-            api.addr_validate(&bidder)?,
-        ),
+        } => execute_remove_bid(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::SetAsk {
             collection,
             token_id,
@@ -158,24 +150,23 @@ pub fn execute_remove_bid(
     info: MessageInfo,
     collection: Addr,
     token_id: String,
-    bidder: Addr,
 ) -> Result<Response, ContractError> {
     // Check bid exists for bidder
-    let bid = query_bid(deps.as_ref(), collection.clone(), &token_id, bidder.clone())?
-        .bid
-        .ok_or(ContractError::BidNotFound {})?;
-
-    // Check sender is the bidder
-    if info.sender != bid.bidder {
-        return Err(ContractError::Unauthorized {});
-    }
+    let bid = query_bid(
+        deps.as_ref(),
+        collection.clone(),
+        &token_id,
+        info.sender.clone(),
+    )?
+    .bid
+    .ok_or(ContractError::BidNotFound {})?;
 
     // Remove bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, &token_id, &bidder));
+    TOKEN_BIDS.remove(deps.storage, (&collection, &token_id, &info.sender));
 
     // Refund bidder
     let exec_refund_bidder = BankMsg::Send {
-        to_address: bidder.to_string(),
+        to_address: info.sender.to_string(),
         amount: vec![bid.amount],
     };
 
@@ -183,7 +174,7 @@ pub fn execute_remove_bid(
         .add_attribute("action", "remove_bid")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id)
-        .add_attribute("bidder", bidder)
+        .add_attribute("bidder", info.sender.to_string())
         .add_message(exec_refund_bidder))
 }
 
@@ -549,7 +540,6 @@ mod tests {
         let remove_bid_msg = ExecuteMsg::RemoveBid {
             collection: Addr::unchecked(COLLECTION),
             token_id: TOKEN_ID.to_string(),
-            bidder: bidder.sender.clone(),
         };
 
         // Random address can't remove bid

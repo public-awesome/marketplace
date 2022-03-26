@@ -15,7 +15,6 @@ pub enum ExecuteMsg {
     RemoveBid {
         collection: String,
         token_id: String,
-        bidder: String,
     },
     SetAsk {
         collection: String,
