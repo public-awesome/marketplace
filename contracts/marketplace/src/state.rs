@@ -6,11 +6,8 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Bid {
-    // Amount of the currency being bid
     pub amount: Coin,
-    // Address to the cw20 token being used to bid
     pub bidder: Addr,
-    // Address of the recipient
     pub recipient: Addr,
 }
 
@@ -30,7 +27,6 @@ impl Bid {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Ask {
-    // Amount of the currency being asked
     pub amount: Coin,
 }
 

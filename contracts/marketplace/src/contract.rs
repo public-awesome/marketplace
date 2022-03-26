@@ -44,8 +44,7 @@ pub fn execute(
         ExecuteMsg::SetBid {
             collection,
             token_id,
-            bid,
-        } => execute_set_bid(deps, env, info, collection, token_id, bid),
+        } => execute_set_bid(deps, env, info, &collection, token_id),
         ExecuteMsg::RemoveBid {
             collection,
             token_id,
@@ -73,37 +72,24 @@ pub fn execute_set_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    collection: Addr,
+    collection: &str,
     token_id: String,
-    bid: Bid,
 ) -> Result<Response, ContractError> {
-    if info.sender != bid.bidder {
-        return Err(ContractError::Unauthorized {});
-    }
+    let collection = deps.api.addr_validate(collection)?;
 
-    // Check bid is valid
-    bid.is_valid()?;
-
-    // Check sent amount matches bid
-    let payment = must_pay(&info, NATIVE_DENOM)?;
-    if payment != bid.amount.amount {
-        return Err(ContractError::IncorrectBidFunds {});
-    }
+    // Make sure a bid amount was sent
+    let bid_amount = must_pay(&info, NATIVE_DENOM)?;
 
     let mut res = Response::new();
 
     // Check bidder has existing bid, if so remove existing bid
-    if let Some(existing_bid) = query_bid(deps.as_ref(), &collection, &token_id, &bid.bidder)?.bid {
-        // Remove bid
-        TOKEN_BIDS.remove(deps.storage, (&collection, &token_id, &bid.bidder));
-
-        // Refund bidder msg
+    if let Some(existing_bid) = query_bid(deps.as_ref(), &collection, &token_id, &info.sender)?.bid
+    {
+        TOKEN_BIDS.remove(deps.storage, (&collection, &token_id, &info.sender));
         let exec_refund_bidder = BankMsg::Send {
             to_address: existing_bid.bidder.to_string(),
             amount: vec![existing_bid.amount],
         };
-
-        // Add refund bidder msg to response
         res = res.add_message(exec_refund_bidder)
     }
 
