@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msg::{
-    BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    BidInfo, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use crate::state::{Ask, Bid, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
@@ -100,11 +100,11 @@ pub fn execute_set_bid(
         token_id,
         info.sender.clone(),
     )?
-    .bid
+    .bid_info
     {
         TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &info.sender));
         let exec_refund_bidder = BankMsg::Send {
-            to_address: existing_bid.bidder.to_string(),
+            to_address: existing_bid.bidder,
             amount: vec![existing_bid.price],
         };
         res = res.add_message(exec_refund_bidder)
@@ -164,7 +164,7 @@ pub fn execute_remove_bid(
         &token_id,
         info.sender.clone(),
     )?
-    .bid
+    .bid_info
     .ok_or(ContractError::BidNotFound {})?;
 
     // Remove bid
@@ -253,7 +253,7 @@ pub fn execute_accept_bid(
         token_id,
         info.sender.clone(),
     )?
-    .bid
+    .bid_info
     .ok_or(ContractError::BidNotFound {})?;
 
     // Remove ask
@@ -437,8 +437,14 @@ pub fn query_bid(
     token_id: &str,
     bidder: Addr,
 ) -> StdResult<BidResponse> {
-    let bid = TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?;
-    Ok(BidResponse { bid })
+    let bid_info = TOKEN_BIDS
+        .may_load(deps.storage, (&collection, token_id, &bidder))?
+        .map(|b| BidInfo {
+            price: b.price,
+            bidder: b.bidder.to_string(),
+        });
+
+    Ok(BidResponse { bid_info })
 }
 
 pub fn query_bids(
@@ -452,20 +458,22 @@ pub fn query_bids(
     let start_addr = maybe_addr(deps.api, start_after)?;
     let start = start_addr.as_ref().map(Bound::exclusive);
 
-    let bids: StdResult<Vec<Bid>> = TOKEN_BIDS
+    let bid_infos: StdResult<Vec<BidInfo>> = TOKEN_BIDS
         .prefix((&collection, token_id))
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
             let (_k, v) = item?;
-            Ok(Bid {
+            Ok(BidInfo {
                 price: v.price,
-                bidder: v.bidder,
+                bidder: v.bidder.to_string(),
             })
         })
         .collect();
 
-    Ok(BidsResponse { bids: bids? })
+    Ok(BidsResponse {
+        bid_infos: bid_infos?,
+    })
 }
 
 #[cfg(test)]
@@ -545,7 +553,12 @@ mod tests {
 
         let q = query(deps.as_ref(), mock_env(), query_bid_msg).unwrap();
         let value: BidResponse = from_binary(&q).unwrap();
-        assert_eq!(value, BidResponse { bid: Some(bid) });
+        assert_eq!(
+            value,
+            BidResponse {
+                bid_info: Some(bid)
+            }
+        );
 
         // Query for list of bids
         let bids_query_msg = QueryMsg::Bids {
@@ -556,7 +569,7 @@ mod tests {
         };
         let q = query(deps.as_ref(), mock_env(), bids_query_msg).unwrap();
         let value: BidsResponse = from_binary(&q).unwrap();
-        assert_eq!(value.bids.len(), 1);
+        assert_eq!(value.bid_infos.len(), 1);
 
         // Remove bid
         let remove_bid_msg = ExecuteMsg::RemoveBid {

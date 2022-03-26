@@ -60,10 +60,16 @@ pub struct CurrentAskResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidResponse {
-    pub bid: Option<Bid>,
+    pub bid_info: Option<BidInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidsResponse {
-    pub bids: Vec<Bid>,
+    pub bid_infos: Vec<BidInfo>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct BidInfo {
+    pub price: Coin,
+    pub bidder: String,
 }
