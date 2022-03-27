@@ -4,8 +4,8 @@ use crate::msg::{
 };
 use crate::state::{Ask, Bid, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
-    entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env, MessageInfo,
-    Order, StdResult, WasmMsg,
+    entry_point, has_coins, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Order, StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -441,16 +441,6 @@ pub fn query_bids(
         .collect();
 
     Ok(BidsResponse { bids: bids? })
-}
-
-// NOTE: Copied from CosmWasm since it's export is broken.
-/// has_coins returns true if the list of coins has at least the required amount
-pub fn has_coins(coins: &[Coin], required: &Coin) -> bool {
-    coins
-        .iter()
-        .find(|c| c.denom == required.denom)
-        .map(|m| m.amount >= required.amount)
-        .unwrap_or(false)
 }
 
 #[cfg(test)]
