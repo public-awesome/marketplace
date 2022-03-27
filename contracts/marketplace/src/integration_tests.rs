@@ -1,7 +1,6 @@
 #![cfg(test)]
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, QueryMsg};
-use crate::state::{Ask, Bid};
 use cosmwasm_std::{Addr, Empty};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
@@ -33,7 +32,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::BidResponse;
+    use crate::msg::{BidInfo, BidResponse};
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal};
@@ -188,11 +187,8 @@ mod tests {
         assert!(res.is_ok());
 
         // An asking price is made by the creator
-        let ask = Ask {
-            price: coin(110, NATIVE_DENOM),
-        };
         let set_ask = ExecuteMsg::SetAsk {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
             amount: coin(110, NATIVE_DENOM),
         };
@@ -201,12 +197,8 @@ mod tests {
         assert!(res.is_ok());
 
         // Bidder makes bid
-        let bid = Bid {
-            price: coin(100, NATIVE_DENOM),
-            bidder: bidder.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
         let res = router.execute_contract(
@@ -230,12 +222,13 @@ mod tests {
 
         // Creator accepts bid
         let accept_bid_msg = ExecuteMsg::AcceptBid {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
-            bidder: bidder.clone(),
+            bidder: bidder.to_string(),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr, &accept_bid_msg, &[]);
+        println!("{:?}", res);
         assert!(res.is_ok());
 
         // Check money is transfered
@@ -274,11 +267,8 @@ mod tests {
         mint_nft_for_creator(&mut router, &creator, &nft_contract_addr);
 
         // An ask is made by the creator, but fails because NFT is not authorized
-        let ask = Ask {
-            price: coin(100, NATIVE_DENOM),
-        };
         let set_ask = ExecuteMsg::SetAsk {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
             amount: coin(100, NATIVE_DENOM),
         };
@@ -315,33 +305,22 @@ mod tests {
             }))
             .map_err(|err| println!("{:?}", err))
             .ok();
-        let bid = Bid {
-            price: coin(100, "random"),
-            bidder: bidder.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
-        let res = router
+        router
             .execute_contract(
                 bidder.clone(),
                 nft_marketplace_addr.clone(),
                 &set_bid_msg,
                 &coins(100, "random"),
             )
-            .unwrap();
-
-        // A new bid is set, bid is not auto accepted
-        assert_eq!("set_bid", res.events[1].attributes[1].value);
+            .unwrap_err();
 
         // Bidder makes bid that meets the ask criteria
-        let bid = Bid {
-            price: coin(100, NATIVE_DENOM),
-            bidder: bidder.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
         let res = router
@@ -395,12 +374,8 @@ mod tests {
         mint_nft_for_creator(&mut router, &creator, &nft_contract_addr);
 
         // Bidder makes bid
-        let bid = Bid {
-            price: coin(100, NATIVE_DENOM),
-            bidder: bidder.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
 
@@ -428,7 +403,7 @@ mod tests {
 
         // Bidder removes bid
         let remove_bid_msg = ExecuteMsg::RemoveBid {
-            collection: nft_contract_addr,
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
         let res =
@@ -455,12 +430,8 @@ mod tests {
         mint_nft_for_creator(&mut router, &creator, &nft_contract_addr);
 
         // Bidder makes bid
-        let bid = Bid {
-            price: coin(100, NATIVE_DENOM),
-            bidder: bidder.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
         let res = router.execute_contract(
@@ -486,12 +457,8 @@ mod tests {
         assert_eq!(contract_balances, coins(100, NATIVE_DENOM));
 
         // Bidder makes higher bid
-        let bid = Bid {
-            price: coin(150, NATIVE_DENOM),
-            bidder: bidder.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
         let res = router.execute_contract(
@@ -518,15 +485,20 @@ mod tests {
 
         // Check new bid has been saved
         let query_bid_msg = QueryMsg::Bid {
-            collection: nft_contract_addr,
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
-            bidder,
+            bidder: bidder.to_string(),
         };
+        let bid_info = BidInfo {
+            price: coin(150, NATIVE_DENOM),
+            bidder: bidder.to_string(),
+        };
+
         let res: BidResponse = router
             .wrap()
             .query_wasm_smart(nft_marketplace_addr, &query_bid_msg)
             .unwrap();
-        assert_eq!(Some(bid), res.bid_info);
+        assert_eq!(Some(bid_info), res.bid_info);
     }
 
     #[test]
@@ -609,11 +581,8 @@ mod tests {
         assert!(res.is_ok());
 
         // An ask is made by the creator
-        let ask = Ask {
-            price: coin(100, NATIVE_DENOM),
-        };
         let set_ask = ExecuteMsg::SetAsk {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
             amount: coin(100, NATIVE_DENOM),
         };
@@ -622,12 +591,8 @@ mod tests {
         assert!(res.is_ok());
 
         // Bidder makes bid
-        let bid = Bid {
-            price: coin(100, NATIVE_DENOM),
-            bidder: bidder.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: nft_contract_addr.clone(),
+            collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
         let res = router.execute_contract(

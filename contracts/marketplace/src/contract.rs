@@ -4,7 +4,7 @@ use crate::msg::{
 };
 use crate::state::{Ask, Bid, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
-    entry_point, has_coins, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
+    coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -513,30 +513,22 @@ mod tests {
 
         let broke = mock_info("broke", &[]);
         let bidder = mock_info("bidder", &coins(1000, NATIVE_DENOM));
-        let recipient = mock_info("recipient", &coins(1000, NATIVE_DENOM));
         let random_addr = mock_info("random", &coins(1000, NATIVE_DENOM));
 
-        // Ensure funds bidder has funds
-        let bid = Bid {
-            price: coin(100, NATIVE_DENOM),
-            bidder: broke.sender.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: Addr::unchecked(COLLECTION),
+            collection: COLLECTION.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
 
-        // Bidder calls Set Bid successfully
-        let res = execute(deps.as_mut(), mock_env(), broke, set_bid_msg);
-        assert_eq!(res, Err(ContractError::IncorrectBidFunds {}));
+        // Broke bidder calls Set Bid and gets an error
+        let err = execute(deps.as_mut(), mock_env(), broke, set_bid_msg).unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::BidPaymentError(cw_utils::PaymentError::NoFunds {})
+        );
 
-        // Set bid
-        let bid = Bid {
-            price: coin(100, NATIVE_DENOM),
-            bidder: bidder.sender.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: Addr::unchecked(COLLECTION),
+            collection: COLLECTION.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
 
@@ -546,23 +538,27 @@ mod tests {
 
         // Query for bid
         let query_bid_msg = QueryMsg::Bid {
-            collection: Addr::unchecked(COLLECTION),
+            collection: COLLECTION.to_string(),
             token_id: TOKEN_ID.to_string(),
-            bidder: bidder.sender.clone(),
+            bidder: bidder.sender.to_string(),
         };
 
         let q = query(deps.as_ref(), mock_env(), query_bid_msg).unwrap();
         let value: BidResponse = from_binary(&q).unwrap();
+        let bid_info = BidInfo {
+            price: coin(1000, NATIVE_DENOM),
+            bidder: bidder.sender.to_string(),
+        };
         assert_eq!(
             value,
             BidResponse {
-                bid_info: Some(bid)
+                bid_info: Some(bid_info)
             }
         );
 
         // Query for list of bids
         let bids_query_msg = QueryMsg::Bids {
-            collection: Addr::unchecked(COLLECTION),
+            collection: COLLECTION.to_string(),
             token_id: TOKEN_ID.to_string(),
             start_after: None,
             limit: None,
@@ -573,7 +569,7 @@ mod tests {
 
         // Remove bid
         let remove_bid_msg = ExecuteMsg::RemoveBid {
-            collection: Addr::unchecked(COLLECTION),
+            collection: COLLECTION.to_string(),
             token_id: TOKEN_ID.to_string(),
         };
 
@@ -599,7 +595,7 @@ mod tests {
         setup_contract(deps.as_mut());
 
         let set_ask = ExecuteMsg::SetAsk {
-            collection: Addr::unchecked(COLLECTION),
+            collection: COLLECTION.to_string(),
             token_id: TOKEN_ID.to_string(),
             amount: coin(100, NATIVE_DENOM),
         };

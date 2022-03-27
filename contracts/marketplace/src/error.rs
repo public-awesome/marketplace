@@ -32,5 +32,5 @@ pub enum ContractError {
     NeedsApproval {},
 
     #[error("{0}")]
-    PaymentError(#[from] PaymentError),
+    BidPaymentError(#[from] PaymentError),
 }
