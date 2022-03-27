@@ -194,7 +194,7 @@ mod tests {
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            ask,
+            amount: coin(110, NATIVE_DENOM),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -204,12 +204,10 @@ mod tests {
         let bid = Bid {
             price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
-            recipient: creator.clone(),
         };
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            bid: bid.clone(),
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -234,7 +232,7 @@ mod tests {
         let accept_bid_msg = ExecuteMsg::AcceptBid {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            bid,
+            bidder: bidder.clone(),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr, &accept_bid_msg, &[]);
@@ -282,7 +280,7 @@ mod tests {
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            ask,
+            amount: coin(100, NATIVE_DENOM),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -320,12 +318,10 @@ mod tests {
         let bid = Bid {
             price: coin(100, "random"),
             bidder: bidder.clone(),
-            recipient: creator.clone(),
         };
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            bid,
         };
         let res = router
             .execute_contract(
@@ -343,12 +339,10 @@ mod tests {
         let bid = Bid {
             price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
-            recipient: creator.clone(),
         };
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            bid,
         };
         let res = router
             .execute_contract(
@@ -404,12 +398,10 @@ mod tests {
         let bid = Bid {
             price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
-            recipient: creator,
         };
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            bid,
         };
 
         let res = router.execute_contract(
@@ -438,7 +430,6 @@ mod tests {
         let remove_bid_msg = ExecuteMsg::RemoveBid {
             collection: nft_contract_addr,
             token_id: TOKEN_ID.to_string(),
-            bidder: bidder.clone(),
         };
         let res =
             router.execute_contract(bidder.clone(), nft_marketplace_addr, &remove_bid_msg, &[]);
@@ -467,12 +458,10 @@ mod tests {
         let bid = Bid {
             price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
-            recipient: creator.clone(),
         };
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            bid,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -500,12 +489,10 @@ mod tests {
         let bid = Bid {
             price: coin(150, NATIVE_DENOM),
             bidder: bidder.clone(),
-            recipient: creator,
         };
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            bid: bid.clone(),
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -539,7 +526,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(nft_marketplace_addr, &query_bid_msg)
             .unwrap();
-        assert_eq!(Some(bid), res.bid);
+        assert_eq!(Some(bid), res.bid_info);
     }
 
     #[test]
@@ -628,7 +615,7 @@ mod tests {
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            ask,
+            amount: coin(100, NATIVE_DENOM),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -638,12 +625,10 @@ mod tests {
         let bid = Bid {
             price: coin(100, NATIVE_DENOM),
             bidder: bidder.clone(),
-            recipient: creator.clone(),
         };
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.clone(),
             token_id: TOKEN_ID.to_string(),
-            bid,
         };
         let res = router.execute_contract(
             bidder.clone(),

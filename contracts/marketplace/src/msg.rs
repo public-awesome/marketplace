@@ -1,4 +1,4 @@
-use crate::state::{Ask, Bid};
+use crate::state::Ask;
 use cosmwasm_std::Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
