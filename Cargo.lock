@@ -498,7 +498,8 @@ dependencies = ["itoa", "ryu", "serde"]
 name = "sg-marketplace"
 version = "0.1.1"
 dependencies = [
-    "cosmwasm-schema",
+    HEAD,
+    ,
     "cosmwasm-std",
     "cosmwasm-storage",
     "cw-multi-test",
@@ -528,6 +529,32 @@ dependencies = [
     "schemars",
     "serde",
     "sg-std",
+    ,
+    ,
+    ,
+    ,
+    ,
+    ,
+    ,
+    ,
+    ,
+    "cosmwasm-std",
+    "cosmwasm-storage",
+    "cw-multi-test",
+    "cw-storage-plus",
+    "cw-utils 0.11.1",
+    "cw2",
+    "cw20",
+    "cw721",
+    "cw721-base",
+    "cw721-metadata-onchain",
+    "schemars",
+    "serde",
+    "sg-std",
+    "sg721",
+    "thiserror",
+    (,
+    ),
 ]
 
 [[package]]
