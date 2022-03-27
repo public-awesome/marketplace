@@ -54,14 +54,16 @@ pub fn execute(
         ExecuteMsg::SetAsk {
             collection,
             token_id,
-            amount,
+            price,
+            funds_recipient,
         } => execute_set_ask(
             deps,
             env,
             info,
             api.addr_validate(&collection)?,
             token_id,
-            amount,
+            price,
+            funds_recipient.map(|addr| api.addr_validate(&addr).unwrap()),
         ),
         ExecuteMsg::RemoveAsk {
             collection,
@@ -121,6 +123,7 @@ pub fn execute_set_bid(
                     collection.clone(),
                     token_id,
                     info.sender.clone(),
+                    ask.funds_recipient.unwrap_or(info.sender.clone()),
                     ask.price,
                 )?;
 
@@ -191,7 +194,8 @@ pub fn execute_set_ask(
     info: MessageInfo,
     collection: Addr,
     token_id: String,
-    amount: Coin,
+    price: Coin,
+    funds_recipient: Option<Addr>,
 ) -> Result<Response, ContractError> {
     // Only the media onwer can call this
     let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), &token_id)?;
@@ -209,14 +213,15 @@ pub fn execute_set_ask(
         deps.storage,
         (&collection, &token_id),
         &Ask {
-            price: amount.clone(),
+            price: price.clone(),
+            funds_recipient,
         },
     )?;
     Ok(Response::new()
         .add_attribute("action", "set_ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id)
-        .add_attribute("amount", amount.to_string()))
+        .add_attribute("price", price.to_string()))
 }
 
 /// Removes the ask on a particular media
@@ -246,19 +251,13 @@ pub fn execute_accept_bid(
     // Only the media onwer can call this
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
-    // Query accepted bid
-    let bid = query_bid(
-        deps.as_ref(),
-        collection.clone(),
-        token_id,
-        info.sender.clone(),
-    )?
-    .bid_info
-    .ok_or(ContractError::BidNotFound {})?;
-
+    // Query current ask
+    let ask = TOKEN_ASKS.load(deps.storage, (&collection, token_id))?;
     // Remove ask
     TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
 
+    // Query accepted bid
+    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
     // Remove accepted bid
     TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
 
@@ -268,6 +267,7 @@ pub fn execute_accept_bid(
         collection.clone(),
         token_id,
         info.sender,
+        ask.funds_recipient.unwrap_or(info.sender),
         bid.price.clone(),
     )?;
 
@@ -305,10 +305,11 @@ pub fn finalize_sale(
     collection: Addr,
     token_id: &str,
     recipient: Addr,
-    amount: Coin,
+    funds_recipient: Addr,
+    price: Coin,
 ) -> StdResult<Vec<CosmosMsg>> {
     // Payout bid
-    let mut msgs: Vec<CosmosMsg> = payout(deps.as_ref(), &collection, token_id, &amount)?;
+    let mut msgs: Vec<CosmosMsg> = payout(deps.as_ref(), &collection, token_id, &price)?;
 
     // Create transfer cw721 msg
     let cw721_transfer_msg = Cw721ExecuteMsg::TransferNft {
@@ -597,7 +598,8 @@ mod tests {
         let set_ask = ExecuteMsg::SetAsk {
             collection: COLLECTION.to_string(),
             token_id: TOKEN_ID.to_string(),
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
+            funds_recipient: None,
         };
 
         // Reject if not called by the media owner

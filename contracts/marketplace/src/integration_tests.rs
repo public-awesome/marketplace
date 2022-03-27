@@ -190,7 +190,7 @@ mod tests {
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
-            amount: coin(110, NATIVE_DENOM),
+            price: coin(110, NATIVE_DENOM),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -270,7 +270,7 @@ mod tests {
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -584,7 +584,7 @@ mod tests {
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
-            amount: coin(100, NATIVE_DENOM),
+            price: coin(100, NATIVE_DENOM),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);

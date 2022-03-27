@@ -5,13 +5,14 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Bid {
-    pub price: Coin,
     pub bidder: Addr,
+    pub price: Coin,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Ask {
     pub price: Coin,
+    pub funds_recipient: Option<Addr>,
 }
 
 // Mapping from (collection, token_id, bidder) to bid

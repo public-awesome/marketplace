@@ -20,7 +20,8 @@ pub enum ExecuteMsg {
     SetAsk {
         collection: String,
         token_id: String,
-        amount: Coin,
+        price: Coin,
+        funds_recipient: Option<String>,
     },
     RemoveAsk {
         collection: String,
