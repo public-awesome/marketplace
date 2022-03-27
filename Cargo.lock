@@ -633,7 +633,7 @@ dependencies = [
 
 [[package]]
 name = "sg-marketplace"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -655,8 +655,9 @@ dependencies = [
 
 [[package]]
 name = "sg-multi-test"
-version = "0.8.0"
-source = "git+https://github.com/public-awesome/stargaze-contracts#c90d66e27f4ae2cbfee84e7b7d73991fafc2c606"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "06fe4cebfd8401398031136436076383e1f98f6484ad1dc634d1e3cfbe59d75d"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
@@ -669,7 +670,8 @@ dependencies = [
 [[package]]
 name = "sg-std"
 version = "0.9.1"
-source = "git+https://github.com/public-awesome/stargaze-contracts#c90d66e27f4ae2cbfee84e7b7d73991fafc2c606"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2e4dab81e38da9061bc643a23e97b39bf7a0176989d17420905e642b71b65445"
 dependencies = [
  "cosmwasm-std",
  "cw-utils",
@@ -682,8 +684,9 @@ dependencies = [
 
 [[package]]
 name = "sg721"
-version = "0.8.0"
-source = "git+https://github.com/public-awesome/stargaze-contracts#c90d66e27f4ae2cbfee84e7b7d73991fafc2c606"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0d1b153bbb772e24640eb945a5f26469090a02cd7c2189eb91ca1b0442dc30c1"
 dependencies = [
  "cosmwasm-std",
  "cosmwasm-storage",

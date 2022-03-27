@@ -1,6 +1,6 @@
 [package]
 name = "sg-marketplace"
-version = "0.1.0"
+version = "0.1.1"
 authors = [
   "Shane Vitarana <s@noreply.publicawesome.com>",
   "Jake Hartnell <jake@publicawesome.com>",
@@ -42,12 +42,12 @@ cw721 = "0.13.1"
 cw721-base = { version = "0.13.1", features = ["library"] }
 schemars = "0.8.8"
 serde = { version = "1.0.133", default-features = false, features = ["derive"] }
-sg721 = { git = "https://github.com/public-awesome/stargaze-contracts" }
+sg721 = "0.9.1"
 thiserror = { version = "1.0.30" }
-sg-std = { git = "https://github.com/public-awesome/stargaze-contracts" }
+sg-std = "0.9.1"
 cw-utils = "0.13.1"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta7" }
 cw-multi-test = { version = "0.13.1" }
-sg-multi-test = { git = "https://github.com/public-awesome/stargaze-contracts" }
+sg-multi-test = "0.9.1"
