@@ -2,7 +2,7 @@
 name = "sg-marketplace"
 version = "0.1.0"
 authors = [
-  "Shane Vitarana <s@publicawesome.com>",
+  "Shane Vitarana <s@noreply.publicawesome.com>",
   "Jake Hartnell <jake@publicawesome.com>",
 ]
 edition = "2018"
@@ -33,21 +33,20 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
-cosmwasm-std = { version = "1.0.0-beta5" }
-cosmwasm-storage = { version = "1.0.0-beta5" }
-cw-storage-plus = "0.12"
-cw2 = "0.12"
-cw20 = "0.12"
-cw721 = "0.12.0"
-cw721-base = { version = "0.12.0", features = ["library"] }
+cosmwasm-std = { version = "1.0.0-beta7" }
+cosmwasm-storage = { version = "1.0.0-beta7" }
+cw-storage-plus = "0.13.1"
+cw2 = "0.13.1"
+cw20 = "0.13.1"
+cw721 = "0.13.1"
+cw721-base = { version = "0.13.1", features = ["library"] }
 schemars = "0.8.8"
 serde = { version = "1.0.133", default-features = false, features = ["derive"] }
-sg721 = "0.8.1"
+sg721 = { git = "https://github.com/public-awesome/stargaze-contracts" }
 thiserror = { version = "1.0.30" }
-sg-std = "0.8.0"
-cw-utils = "0.12.1"
+sg-std = { git = "https://github.com/public-awesome/stargaze-contracts" }
+cw-utils = "0.13.1"
 
 [dev-dependencies]
-cosmwasm-schema = { version = "1.0.0-beta5" }
-cw-multi-test = { version = "0.12.1" }
-cw721-metadata-onchain = "0.11"
+cosmwasm-schema = { version = "1.0.0-beta7" }
+cw-multi-test = { version = "0.13.1" }
