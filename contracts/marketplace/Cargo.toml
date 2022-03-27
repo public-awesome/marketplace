@@ -6,7 +6,7 @@ authors = [
   "Jake Hartnell <jake@publicawesome.com>",
 ]
 edition = "2018"
-repository = "https://github.com/public-awesome/contracts"
+repository = "https://github.com/public-awesome/marketplace"
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -50,3 +50,5 @@ cw-utils = "0.13.1"
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta7" }
 cw-multi-test = { version = "0.13.1" }
+cw721-metadata-onchain = "0.11"
+sg-multi-test = { git = "https://github.com/public-awesome/stargaze-contracts" }

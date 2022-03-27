@@ -5,14 +5,15 @@ use crate::state::{Ask, Bid};
 use cosmwasm_std::{Addr, Empty};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
-use cw_multi_test::{App, BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use cw_multi_test::{BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use sg_multi_test::StargazeApp;
 use sg_std::StargazeMsgWrapper;
 
-fn mock_app() -> App {
-    App::default()
+fn custom_mock_app() -> StargazeApp {
+    StargazeApp::default()
 }
 
-pub fn contract_nft_marketplace() -> Box<dyn Contract<Empty>> {
+pub fn contract_nft_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
     let contract = ContractWrapper::new(
         crate::contract::execute,
         crate::contract::instantiate,
@@ -45,7 +46,9 @@ mod tests {
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal};
-    use sg721::state::{Config, RoyaltyInfo};
+    use sg721::msg::{InstantiateMsg as Sg721InstantiateMsg, RoyaltyInfoResponse};
+    use sg721::state::CollectionInfo;
+    use sg_multi_test::StargazeApp;
     use sg_std::NATIVE_DENOM;
 
     const TOKEN_ID: &str = "123";
@@ -53,7 +56,10 @@ mod tests {
     const INITIAL_BALANCE: u128 = 2000;
 
     // Instantiates all needed contracts for testing
-    fn setup_contracts(router: &mut App, creator: &Addr) -> Result<(Addr, Addr), ContractError> {
+    fn setup_contracts(
+        router: &mut StargazeApp,
+        creator: &Addr,
+    ) -> Result<(Addr, Addr), ContractError> {
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {};
@@ -70,18 +76,20 @@ mod tests {
 
         // Setup media contract
         let sg721_id = router.store_code(contract_sg721());
-        let msg = sg721::msg::InstantiateMsg {
+        let msg = Sg721InstantiateMsg {
             name: String::from("Test Coin"),
             symbol: String::from("TEST"),
             minter: creator.to_string(),
-            config: Some(Config {
-                contract_uri: Some(String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json")),
-                creator: Some(creator.clone()),
-                royalties: Some(RoyaltyInfo {
-                    payment_address: creator.clone(),
+            collection_info: CollectionInfo {
+                creator: creator.to_string(),
+                description: String::from("Stargaze Monkeys"),
+                image: "https://example.com/image.png".to_string(),
+                external_link: Some("https://example.com/external.html".to_string()),
+                royalty_info: Some(RoyaltyInfoResponse {
+                    payment_address: creator.to_string(),
                     share: Decimal::percent(10),
                 }),
-            }),
+            },
         };
         let nft_contract_addr = router
             .instantiate_contract(
@@ -98,7 +106,7 @@ mod tests {
     }
 
     // Intializes accounts with balances
-    fn setup_accounts(router: &mut App) -> Result<(Addr, Addr, Addr), ContractError> {
+    fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), ContractError> {
         let owner: Addr = Addr::unchecked("owner");
         let bidder: Addr = Addr::unchecked("bidder");
         let creator: Addr = Addr::unchecked("creator");
@@ -144,7 +152,7 @@ mod tests {
     }
 
     // Mints an NFT for a creator
-    fn mint_nft_for_creator(router: &mut App, creator: &Addr, nft_contract_addr: &Addr) {
+    fn mint_nft_for_creator(router: &mut StargazeApp, creator: &Addr, nft_contract_addr: &Addr) {
         let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
             token_id: TOKEN_ID.to_string(),
             owner: creator.clone().to_string(),
@@ -162,7 +170,7 @@ mod tests {
 
     #[test]
     fn happy_path() {
-        let mut router = mock_app();
+        let mut router = custom_mock_app();
 
         // Setup intial accounts
         let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
@@ -264,7 +272,7 @@ mod tests {
 
     #[test]
     fn alternative_cw721_happy_path() {
-        let mut router = mock_app();
+        let mut router = custom_mock_app();
 
         // Setup intial accounts, marketplace contract
         let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
@@ -387,7 +395,7 @@ mod tests {
 
     #[test]
     fn auto_accept_bid() {
-        let mut router = mock_app();
+        let mut router = custom_mock_app();
 
         // Setup intial accounts
         let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
@@ -512,7 +520,7 @@ mod tests {
 
     #[test]
     fn remove_bid_refund() {
-        let mut router = mock_app();
+        let mut router = custom_mock_app();
 
         // Setup intial accounts
         let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
@@ -575,7 +583,7 @@ mod tests {
 
     #[test]
     fn new_bid_refund() {
-        let mut router = mock_app();
+        let mut router = custom_mock_app();
 
         // Setup intial accounts
         let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
@@ -668,7 +676,7 @@ mod tests {
 
     #[test]
     fn royalties() {
-        let mut router = mock_app();
+        let mut router = custom_mock_app();
 
         // Setup intial accounts
         let (curator, bidder, creator) = setup_accounts(&mut router).unwrap();
@@ -693,14 +701,16 @@ mod tests {
             name: String::from("Test Coin"),
             symbol: String::from("TEST"),
             minter: creator.to_string(),
-            config: Some(Config {
-                contract_uri: Some(String::from("https://bafyreibvxty5gjyeedk7or7tahyrzgbrwjkolpairjap3bmegvcjdipt74.ipfs.dweb.link/metadata.json")),
-                creator: Some(creator.clone()),
-                royalties: Some(RoyaltyInfo {
-                    payment_address: curator.clone(),
+            collection_info: CollectionInfo {
+                creator: creator.to_string(),
+                description: String::from("Stargaze Monkeys"),
+                image: "https://example.com/image.png".to_string(),
+                external_link: Some("https://example.com/external.html".to_string()),
+                royalty_info: Some(RoyaltyInfoResponse {
+                    payment_address: curator.to_string(),
                     share: Decimal::percent(10),
                 }),
-            }),
+            },
         };
         let nft_contract_addr = router
             .instantiate_contract(
