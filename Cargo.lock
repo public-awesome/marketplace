@@ -499,7 +499,6 @@ name = "sg-marketplace"
 version = "0.1.1"
 dependencies = [
     HEAD,
-    ,
     "cosmwasm-std",
     "cosmwasm-storage",
     "cw-multi-test",
@@ -529,15 +528,6 @@ dependencies = [
     "schemars",
     "serde",
     "sg-std",
-    ,
-    ,
-    ,
-    ,
-    ,
-    ,
-    ,
-    ,
-    ,
     "cosmwasm-std",
     "cosmwasm-storage",
     "cw-multi-test",
@@ -553,8 +543,6 @@ dependencies = [
     "sg-std",
     "sg721",
     "thiserror",
-    (,
-    ),
 ]
 
 [[package]]
