@@ -477,7 +477,7 @@ pub fn query_bids(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coin, coins, from_binary};
+    use cosmwasm_std::{coin, coins};
     use sg_std::NATIVE_DENOM;
 
     const CREATOR: &str = "creator";
@@ -504,13 +504,12 @@ mod tests {
     }
 
     #[test]
-    fn set_and_remove_bid() {
+    fn try_set_bid() {
         let mut deps = mock_dependencies();
         setup_contract(deps.as_mut());
 
         let broke = mock_info("broke", &[]);
         let bidder = mock_info("bidder", &coins(1000, NATIVE_DENOM));
-        let random_addr = mock_info("random", &coins(1000, NATIVE_DENOM));
 
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
@@ -529,63 +528,13 @@ mod tests {
             token_id: TOKEN_ID.to_string(),
         };
 
-        // Bidder calls Set Bid successfully
-        let res = execute(deps.as_mut(), mock_env(), bidder.clone(), set_bid_msg);
-        println!("{:?}", res);
-        assert!(res.is_ok());
-
-        // Query for bid
-        let query_bid_msg = QueryMsg::Bid {
-            collection: COLLECTION.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            bidder: bidder.sender.to_string(),
-        };
-
-        let q = query(deps.as_ref(), mock_env(), query_bid_msg).unwrap();
-        let value: BidResponse = from_binary(&q).unwrap();
-        let bid = coin(1000, NATIVE_DENOM);
-        assert_eq!(
-            value,
-            BidResponse {
-                bid: Some(Bid { price: bid })
-            }
-        );
-
-        // Query for list of bids
-        let bids_query_msg = QueryMsg::Bids {
-            collection: COLLECTION.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            start_after: None,
-            limit: None,
-        };
-        let q = query(deps.as_ref(), mock_env(), bids_query_msg).unwrap();
-        let value: BidsResponse = from_binary(&q).unwrap();
-        assert_eq!(value.bids.len(), 1);
-
-        // Remove bid
-        let remove_bid_msg = ExecuteMsg::RemoveBid {
-            collection: COLLECTION.to_string(),
-            token_id: TOKEN_ID.to_string(),
-        };
-
-        // Random address can't remove bid
-        let res = execute(
-            deps.as_mut(),
-            mock_env(),
-            random_addr,
-            remove_bid_msg.clone(),
-        );
-        assert!(res.is_err());
-
-        // Bidder can remove bid
-        let res = execute(deps.as_mut(), mock_env(), bidder, remove_bid_msg).unwrap();
-
-        // Check Bank msg was added for refund
-        assert_eq!(1, res.messages.len());
+        // Bidder calls SetBid before an Ask is set, so it should fail
+        let err = execute(deps.as_mut(), mock_env(), bidder, set_bid_msg).unwrap_err();
+        assert_eq!(err, ContractError::AskDoesNotExist {});
     }
 
     #[test]
-    fn set_ask() {
+    fn try_set_ask() {
         let mut deps = mock_dependencies();
         setup_contract(deps.as_mut());
 
