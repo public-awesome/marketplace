@@ -4,8 +4,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Bid {
-    pub bidder: Addr,
+pub struct Bid<T = Addr> {
+    pub bidder: T,
     pub price: Coin,
 }
 

@@ -1,4 +1,4 @@
-use crate::state::Ask;
+use crate::state::{Ask, Bid};
 use cosmwasm_std::Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -61,16 +61,10 @@ pub struct CurrentAskResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidResponse {
-    pub bid_info: Option<BidInfo>,
+    pub bid_info: Option<Bid<String>>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidsResponse {
-    pub bid_infos: Vec<BidInfo>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct BidInfo {
-    pub price: Coin,
-    pub bidder: String,
+    pub bid_infos: Vec<Bid<String>>,
 }

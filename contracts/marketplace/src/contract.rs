@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msg::{
-    BidInfo, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use crate::state::{Ask, Bid, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
@@ -207,7 +207,7 @@ pub fn execute_set_ask(
     funds_recipient: Option<Addr>,
 ) -> Result<Response, ContractError> {
     // Only the media onwer can call this
-    let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), &token_id)?;
+    let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
     // Check that approval has been set for marketplace contract
     if owner_of_response
         .approvals
@@ -441,7 +441,7 @@ pub fn query_bid(
 ) -> StdResult<BidResponse> {
     let bid_info = TOKEN_BIDS
         .may_load(deps.storage, (&collection, token_id, &bidder))?
-        .map(|b| BidInfo {
+        .map(|b| Bid {
             price: b.price,
             bidder: b.bidder.to_string(),
         });
@@ -460,13 +460,13 @@ pub fn query_bids(
     let start_addr = maybe_addr(deps.api, start_after)?;
     let start = start_addr.as_ref().map(Bound::exclusive);
 
-    let bid_infos: StdResult<Vec<BidInfo>> = TOKEN_BIDS
+    let bid_infos: StdResult<Vec<Bid<String>>> = TOKEN_BIDS
         .prefix((&collection, token_id))
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
             let (_k, v) = item?;
-            Ok(BidInfo {
+            Ok(Bid {
                 price: v.price,
                 bidder: v.bidder.to_string(),
             })
@@ -547,7 +547,7 @@ mod tests {
 
         let q = query(deps.as_ref(), mock_env(), query_bid_msg).unwrap();
         let value: BidResponse = from_binary(&q).unwrap();
-        let bid_info = BidInfo {
+        let bid_info = Bid {
             price: coin(1000, NATIVE_DENOM),
             bidder: bidder.sender.to_string(),
         };
