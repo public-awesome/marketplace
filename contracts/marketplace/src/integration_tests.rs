@@ -229,7 +229,7 @@ mod tests {
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr, &accept_bid_msg, &[]);
-        println!("{:?}", res);
+        // println!("{:?}", res);
         assert!(res.is_ok());
 
         // Check money is transfered

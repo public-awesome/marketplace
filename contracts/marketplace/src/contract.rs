@@ -121,11 +121,27 @@ pub fn execute_set_bid(
                     ask.funds_recipient.unwrap_or_else(|| info.sender.clone()),
                     ask.price,
                 )?;
-
                 res = res.add_messages(msgs);
+            } else {
+                // println!("{:?}", collection);
+                // println!("{:?}", token_id);
+                // println!("{:?}", info.sender);
+                // If bid does not meet ask criteria, store bid
+                TOKEN_BIDS.save(
+                    deps.storage,
+                    (&collection, token_id, &info.sender),
+                    &Bid {
+                        price: coin(bid_price.u128(), NATIVE_DENOM),
+                        bidder: info.sender.clone(),
+                    },
+                )?;
             }
         }
         None => {
+            // println!("{:?}", collection);
+            // println!("{:?}", token_id);
+            // println!("{:?}", info.sender);
+
             TOKEN_BIDS.save(
                 deps.storage,
                 (&collection, token_id, &info.sender),
@@ -243,6 +259,9 @@ pub fn execute_accept_bid(
     TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
 
     // Query accepted bid
+    // println!("{:?}", collection);
+    // println!("{:?}", token_id);
+    // println!("{:?}", bidder);
     let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
     // Remove accepted bid
     TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
@@ -252,7 +271,7 @@ pub fn execute_accept_bid(
         deps,
         collection.clone(),
         token_id,
-        info.sender.clone(),
+        bidder.clone(),
         ask.funds_recipient.unwrap_or(info.sender),
         bid.price.clone(),
     )?;
