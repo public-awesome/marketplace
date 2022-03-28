@@ -50,7 +50,7 @@ pub fn execute(
         ExecuteMsg::RemoveBid {
             collection,
             token_id,
-        } => execute_remove_bid(deps, env, info, api.addr_validate(&collection)?, token_id),
+        } => execute_remove_bid(deps, env, info, api.addr_validate(&collection)?, &token_id),
         ExecuteMsg::SetAsk {
             collection,
             token_id,
@@ -61,14 +61,14 @@ pub fn execute(
             env,
             info,
             api.addr_validate(&collection)?,
-            token_id,
+            &token_id,
             price,
             funds_recipient.map(|addr| api.addr_validate(&addr).unwrap()),
         ),
         ExecuteMsg::RemoveAsk {
             collection,
             token_id,
-        } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, token_id),
+        } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, &token_id),
         ExecuteMsg::AcceptBid {
             collection,
             token_id,
@@ -153,20 +153,13 @@ pub fn execute_remove_bid(
     _env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: String,
+    token_id: &str,
 ) -> Result<Response, ContractError> {
     // Check bid exists for bidder
-    let bid = query_bid(
-        deps.as_ref(),
-        collection.clone(),
-        &token_id,
-        info.sender.clone(),
-    )?
-    .bid_info
-    .ok_or(ContractError::BidNotFound {})?;
+    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &info.sender))?;
 
     // Remove bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, &token_id, &info.sender));
+    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &info.sender));
 
     // Refund bidder
     let exec_refund_bidder = BankMsg::Send {
@@ -188,7 +181,7 @@ pub fn execute_set_ask(
     env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: String,
+    token_id: &str,
     price: Coin,
     funds_recipient: Option<Addr>,
 ) -> Result<Response, ContractError> {
@@ -206,7 +199,7 @@ pub fn execute_set_ask(
     }
     TOKEN_ASKS.save(
         deps.storage,
-        (&collection, &token_id),
+        (&collection, token_id),
         &Ask {
             price: price.clone(),
             funds_recipient,
@@ -224,11 +217,12 @@ pub fn execute_remove_ask(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
-    token_id: String,
+    token_id: &str,
 ) -> Result<Response, ContractError> {
-    // Only the media onwer can call this
-    check_only_owner(deps.as_ref(), &info, collection.clone(), &token_id)?;
-    TOKEN_ASKS.remove(deps.storage, (&collection, &token_id));
+    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+
+    TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+
     Ok(Response::new()
         .add_attribute("action", "remove_ask")
         .add_attribute("collection", collection)
@@ -243,7 +237,6 @@ pub fn execute_accept_bid(
     token_id: &str,
     bidder: Addr,
 ) -> Result<Response, ContractError> {
-    // Only the media onwer can call this
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     // Query current ask
@@ -304,7 +297,8 @@ pub fn finalize_sale(
     price: Coin,
 ) -> StdResult<Vec<CosmosMsg>> {
     // Payout bid
-    let mut msgs: Vec<CosmosMsg> = payout(deps.as_ref(), &collection, token_id, &price)?;
+    let mut msgs: Vec<CosmosMsg> =
+        payout(deps.as_ref(), collection.clone(), price, funds_recipient)?;
 
     // Create transfer cw721 msg
     let cw721_transfer_msg = Cw721ExecuteMsg::TransferNft {
@@ -325,21 +319,12 @@ pub fn finalize_sale(
 /// Payout a bid
 pub fn payout(
     deps: Deps,
-    collection: &Addr,
-    token_id: &str,
-    amount: &Coin,
+    collection: Addr,
+    payment: Coin,
+    payment_recipient: Addr,
 ) -> StdResult<Vec<CosmosMsg>> {
     // Will hold payment msgs
     let mut msgs: Vec<CosmosMsg> = vec![];
-
-    // Get current token owner
-    let owner: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
-        collection,
-        &cw721::Cw721QueryMsg::OwnerOf {
-            token_id: token_id.to_string(),
-            include_expired: None,
-        },
-    )?;
 
     // Check if token supports Royalties
     let collection_info: CollectionInfoResponse = deps
@@ -351,27 +336,27 @@ pub fn payout(
         let royalty_share_msg = BankMsg::Send {
             to_address: royalty.payment_address.to_string(),
             amount: vec![Coin {
-                amount: amount.amount * royalty.share,
-                denom: amount.denom.clone(),
+                amount: payment.amount * royalty.share,
+                denom: payment.denom.clone(),
             }],
         };
         msgs.append(&mut vec![royalty_share_msg.into()]);
 
         let owner_share_msg = BankMsg::Send {
-            to_address: owner.owner,
+            to_address: payment_recipient.to_string(),
             amount: vec![Coin {
-                amount: amount.amount * (Decimal::one() - royalty.share),
-                denom: amount.denom.clone(),
+                amount: payment.amount * (Decimal::one() - royalty.share),
+                denom: payment.denom,
             }],
         };
         msgs.append(&mut vec![owner_share_msg.into()]);
     } else {
         // If token doesn't support royalties, pay owner in full
         let owner_share_msg = BankMsg::Send {
-            to_address: owner.owner,
+            to_address: payment_recipient.to_string(),
             amount: vec![Coin {
-                amount: amount.amount,
-                denom: amount.denom.clone(),
+                amount: payment.amount,
+                denom: payment.denom,
             }],
         };
         msgs.append(&mut vec![owner_share_msg.into()]);
