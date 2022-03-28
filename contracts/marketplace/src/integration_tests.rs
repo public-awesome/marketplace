@@ -74,7 +74,7 @@ mod tests {
             collection_info: CollectionInfo {
                 creator: creator.to_string(),
                 description: String::from("Stargaze Monkeys"),
-                image: "https://example.com/image.png".to_string(),
+                image: "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png".to_string(),
                 external_link: Some("https://example.com/external.html".to_string()),
                 royalty_info: Some(RoyaltyInfoResponse {
                     payment_address: creator.to_string(),
