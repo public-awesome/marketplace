@@ -275,7 +275,7 @@ pub fn execute_accept_bid(
 }
 
 /// Checks to enfore only nft owner can call
-pub fn check_only_owner(
+fn check_only_owner(
     deps: Deps,
     info: &MessageInfo,
     collection: Addr,
@@ -295,7 +295,7 @@ pub fn check_only_owner(
 }
 
 /// Transfers funds and NFT, updates bid
-pub fn finalize_sale(
+fn finalize_sale(
     deps: DepsMut,
     collection: Addr,
     token_id: &str,
@@ -324,7 +324,7 @@ pub fn finalize_sale(
 }
 
 /// Payout a bid
-pub fn payout(
+fn payout(
     deps: Deps,
     collection: Addr,
     payment: Coin,
