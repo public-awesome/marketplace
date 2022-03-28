@@ -92,15 +92,16 @@ pub fn execute_set_bid(
 ) -> Result<Response, ContractError> {
     // Make sure a bid amount was sent
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
-
+    let bidder = info.sender;
     let mut res = Response::new();
+
     // Check bidder has existing bid, if so remove existing bid
     if let Some(existing_bid) =
-        TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &info.sender))?
+        TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?
     {
-        TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &info.sender));
+        TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
         let exec_refund_bidder = BankMsg::Send {
-            to_address: info.sender.to_string(),
+            to_address: bidder.to_string(),
             amount: vec![coin(existing_bid.u128(), NATIVE_DENOM)],
         };
         res = res.add_message(exec_refund_bidder)
@@ -115,7 +116,13 @@ pub fn execute_set_bid(
 
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
-        store_bid(deps, info.clone(), collection.clone(), token_id, bid_price)?;
+        store_bid(
+            deps,
+            bidder.clone(),
+            collection.clone(),
+            token_id,
+            bid_price,
+        )?;
     } else {
         // Bid meets ask criteriam so finalize sale
         TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
@@ -134,7 +141,7 @@ pub fn execute_set_bid(
             deps,
             collection.clone(),
             token_id,
-            info.sender.clone(),
+            bidder.clone(),
             ask.funds_recipient.unwrap_or(owner),
             coin(ask.price.u128(), NATIVE_DENOM),
         )?;
@@ -148,7 +155,7 @@ pub fn execute_set_bid(
         .add_attribute("action", "set_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id)
-        .add_attribute("bidder", info.sender)
+        .add_attribute("bidder", bidder)
         .add_attribute("bid_price", bid_price.to_string()))
 }
 
@@ -160,15 +167,17 @@ pub fn execute_remove_bid(
     collection: Addr,
     token_id: &str,
 ) -> Result<Response, ContractError> {
+    let bidder = info.sender;
+
     // Check bid exists for bidder
-    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &info.sender))?;
+    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
 
     // Remove bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &info.sender));
+    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
 
     // Refund bidder
     let exec_refund_bidder = BankMsg::Send {
-        to_address: info.sender.to_string(),
+        to_address: bidder.to_string(),
         amount: vec![coin(bid.u128(), NATIVE_DENOM)],
     };
 
@@ -176,7 +185,7 @@ pub fn execute_remove_bid(
         .add_attribute("action", "remove_bid")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id)
-        .add_attribute("bidder", info.sender.to_string())
+        .add_attribute("bidder", bidder)
         .add_message(exec_refund_bidder))
 }
 
@@ -372,16 +381,12 @@ fn payout(
 
 fn store_bid(
     deps: DepsMut,
-    info: MessageInfo,
+    bidder: Addr,
     collection: Addr,
     token_id: &str,
     bid_price: Uint128,
 ) -> StdResult<()> {
-    TOKEN_BIDS.save(
-        deps.storage,
-        (&collection, token_id, &info.sender),
-        &bid_price,
-    )
+    TOKEN_BIDS.save(deps.storage, (&collection, token_id, &bidder), &bid_price)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
