@@ -124,7 +124,7 @@ pub fn execute_set_bid(
             bid_price,
         )?;
     } else {
-        // Bid meets ask criteriam so finalize sale
+        // Bid meets ask criteria so finalize sale
         TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
 
         let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
