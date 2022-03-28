@@ -375,6 +375,31 @@ mod tests {
         // Mint NFT for creator
         mint_nft_for_creator(&mut router, &creator, &nft_contract_addr);
 
+        // Creator Authorizes NFT
+        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+            spender: nft_marketplace_addr.to_string(),
+            token_id: TOKEN_ID.to_string(),
+            expires: None,
+        };
+        let res = router.execute_contract(
+            creator.clone(),
+            nft_contract_addr.clone(),
+            &approve_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // An asking price is made by the creator
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: nft_contract_addr.to_string(),
+            token_id: TOKEN_ID.to_string(),
+            price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
+        };
+        let res =
+            router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
+        assert!(res.is_ok());
+
         // Bidder makes bid
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
@@ -449,7 +474,7 @@ mod tests {
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
-            price: coin(100, NATIVE_DENOM),
+            price: coin(200, NATIVE_DENOM),
             funds_recipient: None,
         };
         let res =
@@ -467,7 +492,6 @@ mod tests {
             &set_bid_msg,
             &coins(100, NATIVE_DENOM),
         );
-        println!("{:?}", res);
         assert!(res.is_ok());
 
         // Bidder sent bid money

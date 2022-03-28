@@ -127,14 +127,14 @@ pub fn execute_set_bid(
         // Bid meets ask criteriam so finalize sale
         TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
 
-        let res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
+        let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
             collection.clone(),
             &Cw721QueryMsg::OwnerOf {
                 token_id: token_id.to_string(),
                 include_expired: None,
             },
         )?;
-        let owner = deps.api.addr_validate(&res.owner)?;
+        let owner = deps.api.addr_validate(&cw721_res.owner)?;
 
         // Include messages needed to finalize nft transfer and payout
         let msgs = finalize_sale(
