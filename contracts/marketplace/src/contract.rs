@@ -5,7 +5,7 @@ use crate::msg::{
 use crate::state::{Ask, Bid, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, WasmMsg,
+    MessageInfo, Order, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -138,19 +138,11 @@ pub fn execute_set_bid(
                     .add_messages(msgs);
             } else {
                 // If bid does not meet ask criteria, store bid
-                TOKEN_BIDS.save(
-                    deps.storage,
-                    (&collection, token_id, &info.sender),
-                    &coin(bid_price.u128(), NATIVE_DENOM),
-                )?;
+                store_bid(deps, info.clone(), collection.clone(), token_id, bid_price)?;
             }
         }
         None => {
-            TOKEN_BIDS.save(
-                deps.storage,
-                (&collection, token_id, &info.sender),
-                &coin(bid_price.u128(), NATIVE_DENOM),
-            )?;
+            store_bid(deps, info.clone(), collection.clone(), token_id, bid_price)?;
         }
     }
 
@@ -378,6 +370,20 @@ pub fn payout(
     }
 
     Ok(msgs)
+}
+
+fn store_bid(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: &str,
+    bid_price: Uint128,
+) -> StdResult<()> {
+    TOKEN_BIDS.save(
+        deps.storage,
+        (&collection, token_id, &info.sender),
+        &coin(bid_price.u128(), NATIVE_DENOM),
+    )
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
