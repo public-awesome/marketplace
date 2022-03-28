@@ -110,7 +110,7 @@ pub fn execute_set_bid(
     match TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))? {
         Some(ask) => {
             // Check if bid meets ask criteria and finalize sale if so
-            if ask.price.amount == bid_price {
+            if ask.price == bid_price {
                 TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
                 println!("gets here");
 
@@ -130,7 +130,7 @@ pub fn execute_set_bid(
                     token_id,
                     info.sender.clone(),
                     ask.funds_recipient.unwrap_or(owner),
-                    ask.price,
+                    coin(ask.price.u128(), NATIVE_DENOM),
                 )?;
 
                 res = res
@@ -208,7 +208,7 @@ pub fn execute_set_ask(
         deps.storage,
         (&collection, token_id),
         &Ask {
-            price: price.clone(),
+            price: price.amount,
             funds_recipient,
         },
     )?;
