@@ -4,13 +4,15 @@ use crate::msg::{
 };
 use crate::state::{Ask, Bid, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
-    entry_point, has_coins, to_binary, Addr, BankMsg, Binary, Coin, CosmosMsg, Decimal, Deps,
-    DepsMut, Env, MessageInfo, Order, Response, StdError, StdResult, WasmMsg,
+    entry_point, has_coins, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Order, StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw_storage_plus::Bound;
-use sg721::msg::QueryMsg as Sg721QueryMsg;
+use cw_utils::maybe_addr;
+use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
+use sg_std::{CosmosMsg, Response};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -327,44 +329,39 @@ pub fn payout(
     )?;
 
     // Check if token supports Royalties
-    let royalty: Result<sg721::msg::RoyaltyResponse, StdError> = deps
+    let collection_info: CollectionInfoResponse = deps
         .querier
-        .query_wasm_smart(collection, &Sg721QueryMsg::Royalties {});
+        .query_wasm_smart(collection, &Sg721QueryMsg::CollectionInfo {})?;
 
-    match royalty {
-        Ok(royalty) => {
-            // If token supports royalities, payout shares
-            if let Some(royalty) = royalty.royalty {
-                let royalty_share_msg = BankMsg::Send {
-                    to_address: royalty.payment_address.to_string(),
-                    amount: vec![Coin {
-                        amount: amount.amount * royalty.share,
-                        denom: amount.denom.clone(),
-                    }],
-                };
-                msgs.append(&mut vec![royalty_share_msg.into()]);
+    // If token supports royalities, payout shares
+    if let Some(royalty) = collection_info.royalty_info {
+        let royalty_share_msg = BankMsg::Send {
+            to_address: royalty.payment_address.to_string(),
+            amount: vec![Coin {
+                amount: amount.amount * royalty.share,
+                denom: amount.denom.clone(),
+            }],
+        };
+        msgs.append(&mut vec![royalty_share_msg.into()]);
 
-                let owner_share_msg = BankMsg::Send {
-                    to_address: owner.owner,
-                    amount: vec![Coin {
-                        amount: amount.amount * (Decimal::one() - royalty.share),
-                        denom: amount.denom.clone(),
-                    }],
-                };
-                msgs.append(&mut vec![owner_share_msg.into()]);
-            }
-        }
-        Err(_) => {
-            // If token doesn't support royalties, pay owner in full
-            let owner_share_msg = BankMsg::Send {
-                to_address: owner.owner,
-                amount: vec![Coin {
-                    amount: amount.amount,
-                    denom: amount.denom.clone(),
-                }],
-            };
-            msgs.append(&mut vec![owner_share_msg.into()]);
-        }
+        let owner_share_msg = BankMsg::Send {
+            to_address: owner.owner,
+            amount: vec![Coin {
+                amount: amount.amount * (Decimal::one() - royalty.share),
+                denom: amount.denom.clone(),
+            }],
+        };
+        msgs.append(&mut vec![owner_share_msg.into()]);
+    } else {
+        // If token doesn't support royalties, pay owner in full
+        let owner_share_msg = BankMsg::Send {
+            to_address: owner.owner,
+            amount: vec![Coin {
+                amount: amount.amount,
+                denom: amount.denom.clone(),
+            }],
+        };
+        msgs.append(&mut vec![owner_share_msg.into()]);
     }
 
     Ok(msgs)
@@ -426,7 +423,8 @@ pub fn query_bids(
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
+    let start_addr = maybe_addr(deps.api, start_after)?;
+    let start = start_addr.as_ref().map(Bound::exclusive);
 
     let bids: StdResult<Vec<Bid>> = TOKEN_BIDS
         .prefix((collection, token_id))
