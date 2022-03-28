@@ -112,16 +112,27 @@ pub fn execute_set_bid(
             // Check if bid meets ask criteria and finalize sale if so
             if ask.price.amount == bid_price {
                 TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+
+                let owner = deps.querier.query_wasm_smart(
+                    collection.clone(),
+                    &Cw721QueryMsg::OwnerOf {
+                        token_id: token_id.to_string(),
+                        include_expired: None,
+                    },
+                )?;
+
                 // Include messages needed to finalize nft transfer and payout
-                let msgs: Vec<CosmosMsg> = finalize_sale(
+                let msgs = finalize_sale(
                     deps,
                     collection.clone(),
                     token_id,
                     info.sender.clone(),
-                    ask.funds_recipient.unwrap_or_else(|| info.sender.clone()),
+                    ask.funds_recipient.unwrap_or(owner),
                     ask.price,
                 )?;
-                res = res.add_messages(msgs);
+                res = res
+                    .add_attribute("action", "sale_finalized")
+                    .add_messages(msgs);
             } else {
                 // println!("{:?}", collection);
                 // println!("{:?}", token_id);
