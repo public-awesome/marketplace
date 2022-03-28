@@ -429,7 +429,12 @@ pub fn query_current_ask(
     collection: Addr,
     token_id: &str,
 ) -> StdResult<CurrentAskResponse> {
-    let ask = TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))?;
+    let ask = TOKEN_ASKS
+        .may_load(deps.storage, (&collection, token_id))?
+        .map(|ask| Ask {
+            price: ask.price,
+            funds_recipient: ask.funds_recipient.map(|r| r.to_string()),
+        });
     Ok(CurrentAskResponse { ask })
 }
 
