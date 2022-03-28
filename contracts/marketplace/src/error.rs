@@ -16,17 +16,14 @@ pub enum ContractError {
     #[error("No roylities exist for token_id")]
     NoRoyaltiesForTokenId {},
 
-    #[error("Invalid bid")]
-    InvalidBid {},
-
-    #[error("Invalid bid, amount too low")]
-    InvalidBidTooLow {},
-
     #[error("Funds sent don't match bid amount")]
     IncorrectBidFunds {},
 
     #[error("Bid not found")]
     BidNotFound {},
+
+    #[error("Ask does not exist")]
+    AskDoesNotExist {},
 
     #[error("Contract needs approval")]
     NeedsApproval {},

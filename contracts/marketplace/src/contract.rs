@@ -83,7 +83,7 @@ pub fn execute(
     }
 }
 
-/// Anyone may place a bid on a minted token. By placing a bid, the bidder sends a native Coin to the market contract.
+/// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
 pub fn execute_set_bid(
     deps: DepsMut,
     info: MessageInfo,
@@ -94,7 +94,6 @@ pub fn execute_set_bid(
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
 
     let mut res = Response::new();
-
     // Check bidder has existing bid, if so remove existing bid
     if let Some(existing_bid) =
         TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &info.sender))?
@@ -107,42 +106,42 @@ pub fn execute_set_bid(
         res = res.add_message(exec_refund_bidder)
     };
 
-    match TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))? {
-        Some(ask) => {
-            // Check if bid meets ask criteria and finalize sale if so
-            if ask.price == bid_price {
-                TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+    // Check if Ask exists before moving forward
+    if !TOKEN_ASKS.has(deps.storage, (&collection, token_id)) {
+        return Err(ContractError::AskDoesNotExist {});
+    }
+    // Guaranteed to have an Ask since we checked above
+    let ask = TOKEN_ASKS.load(deps.storage, (&collection, token_id))?;
 
-                let owner: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
-                    collection.clone(),
-                    &Cw721QueryMsg::OwnerOf {
-                        token_id: token_id.to_string(),
-                        include_expired: None,
-                    },
-                )?;
-                let owner_addr = deps.api.addr_validate(&owner.owner)?;
+    if ask.price != bid_price {
+        // Bid does not meet ask criteria, store bid
+        store_bid(deps, info.clone(), collection.clone(), token_id, bid_price)?;
+    } else {
+        // Bid meets ask criteriam so finalize sale
+        TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
 
-                // Include messages needed to finalize nft transfer and payout
-                let msgs = finalize_sale(
-                    deps,
-                    collection.clone(),
-                    token_id,
-                    info.sender.clone(),
-                    ask.funds_recipient.unwrap_or(owner_addr),
-                    coin(ask.price.u128(), NATIVE_DENOM),
-                )?;
+        let res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
+            collection.clone(),
+            &Cw721QueryMsg::OwnerOf {
+                token_id: token_id.to_string(),
+                include_expired: None,
+            },
+        )?;
+        let owner = deps.api.addr_validate(&res.owner)?;
 
-                res = res
-                    .add_attribute("action", "sale_finalized")
-                    .add_messages(msgs);
-            } else {
-                // If bid does not meet ask criteria, store bid
-                store_bid(deps, info.clone(), collection.clone(), token_id, bid_price)?;
-            }
-        }
-        None => {
-            store_bid(deps, info.clone(), collection.clone(), token_id, bid_price)?;
-        }
+        // Include messages needed to finalize nft transfer and payout
+        let msgs = finalize_sale(
+            deps,
+            collection.clone(),
+            token_id,
+            info.sender.clone(),
+            ask.funds_recipient.unwrap_or(owner),
+            coin(ask.price.u128(), NATIVE_DENOM),
+        )?;
+
+        res = res
+            .add_attribute("action", "sale_finalized")
+            .add_messages(msgs);
     }
 
     Ok(res
@@ -532,6 +531,7 @@ mod tests {
 
         // Bidder calls Set Bid successfully
         let res = execute(deps.as_mut(), mock_env(), bidder.clone(), set_bid_msg);
+        println!("{:?}", res);
         assert!(res.is_ok());
 
         // Query for bid
