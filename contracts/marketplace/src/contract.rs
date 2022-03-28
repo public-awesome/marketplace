@@ -118,13 +118,11 @@ pub fn execute_set_bid(
                     collection.clone(),
                     token_id,
                     info.sender.clone(),
-                    ask.funds_recipient.unwrap_or(info.sender.clone()),
+                    ask.funds_recipient.unwrap_or_else(|| info.sender.clone()),
                     ask.price,
                 )?;
 
-                res = res
-                    .add_attribute("action", "sale_finalized")
-                    .add_messages(msgs);
+                res = res.add_messages(msgs);
             }
         }
         None => {
@@ -136,11 +134,11 @@ pub fn execute_set_bid(
                     bidder: info.sender.clone(),
                 },
             )?;
-            res = res.add_attribute("action", "set_bid");
         }
     }
 
     Ok(res
+        .add_attribute("action", "set_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id)
         .add_attribute("bidder", info.sender)

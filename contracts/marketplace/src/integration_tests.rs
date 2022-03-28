@@ -191,6 +191,7 @@ mod tests {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
             price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -271,6 +272,7 @@ mod tests {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
             price: coin(100, NATIVE_DENOM),
+            funds_recipient: None,
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -585,6 +587,7 @@ mod tests {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID.to_string(),
             price: coin(100, NATIVE_DENOM),
+            funds_recipient: None,
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
