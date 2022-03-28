@@ -101,8 +101,8 @@ pub fn execute_set_bid(
     {
         TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &info.sender));
         let exec_refund_bidder = BankMsg::Send {
-            to_address: existing_bid.bidder.to_string(),
-            amount: vec![existing_bid.price],
+            to_address: info.sender.to_string(),
+            amount: vec![existing_bid],
         };
         res = res.add_message(exec_refund_bidder)
     };
@@ -141,10 +141,7 @@ pub fn execute_set_bid(
                 TOKEN_BIDS.save(
                     deps.storage,
                     (&collection, token_id, &info.sender),
-                    &Bid {
-                        price: coin(bid_price.u128(), NATIVE_DENOM),
-                        bidder: info.sender.clone(),
-                    },
+                    &coin(bid_price.u128(), NATIVE_DENOM),
                 )?;
             }
         }
@@ -152,10 +149,7 @@ pub fn execute_set_bid(
             TOKEN_BIDS.save(
                 deps.storage,
                 (&collection, token_id, &info.sender),
-                &Bid {
-                    price: coin(bid_price.u128(), NATIVE_DENOM),
-                    bidder: info.sender.clone(),
-                },
+                &coin(bid_price.u128(), NATIVE_DENOM),
             )?;
         }
     }
@@ -185,7 +179,7 @@ pub fn execute_remove_bid(
     // Refund bidder
     let exec_refund_bidder = BankMsg::Send {
         to_address: info.sender.to_string(),
-        amount: vec![bid.price],
+        amount: vec![bid],
     };
 
     Ok(Response::new()
@@ -277,14 +271,14 @@ pub fn execute_accept_bid(
         token_id,
         bidder.clone(),
         ask.funds_recipient.unwrap_or(info.sender),
-        bid.price.clone(),
+        bid,
     )?;
 
     Ok(Response::new()
         .add_attribute("action", "accept_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id)
-        .add_attribute("bidder", bid.bidder)
+        .add_attribute("bidder", bidder)
         .add_messages(msgs))
 }
 
@@ -462,10 +456,7 @@ pub fn query_bids(
         .take(limit)
         .map(|item| {
             let (_k, v) = item?;
-            Ok(Bid {
-                price: v.price,
-                bidder: v.bidder,
-            })
+            Ok(v)
         })
         .collect();
 
@@ -541,10 +532,7 @@ mod tests {
 
         let q = query(deps.as_ref(), mock_env(), query_bid_msg).unwrap();
         let value: BidResponse = from_binary(&q).unwrap();
-        let bid = Bid {
-            price: coin(1000, NATIVE_DENOM),
-            bidder: bidder.clone().sender,
-        };
+        let bid = coin(1000, NATIVE_DENOM);
         assert_eq!(value, BidResponse { bid: Some(bid) });
 
         // Query for list of bids

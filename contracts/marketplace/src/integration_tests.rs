@@ -33,7 +33,6 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 #[cfg(test)]
 mod tests {
     use crate::msg::BidResponse;
-    use crate::state::Bid;
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal};
@@ -492,10 +491,7 @@ mod tests {
             token_id: TOKEN_ID.to_string(),
             bidder: bidder.to_string(),
         };
-        let bid = Bid {
-            price: coin(150, NATIVE_DENOM),
-            bidder,
-        };
+        let bid = coin(150, NATIVE_DENOM);
 
         let res: BidResponse = router
             .wrap()
