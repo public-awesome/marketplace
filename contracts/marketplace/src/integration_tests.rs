@@ -600,7 +600,6 @@ mod tests {
             &set_bid_msg,
             &coins(100, NATIVE_DENOM),
         );
-        println!("{:?}", res);
         assert!(res.is_ok());
 
         // Check money is transfered correctly and royalties paid
