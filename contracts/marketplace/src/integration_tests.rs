@@ -501,7 +501,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(nft_marketplace_addr, &query_bid_msg)
             .unwrap();
-        assert_eq!(Some(bid_info), res.bid_info);
+        assert_eq!(Some(bid_info), res.bid);
     }
 
     #[test]

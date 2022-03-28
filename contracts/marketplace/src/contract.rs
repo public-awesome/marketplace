@@ -444,14 +444,14 @@ pub fn query_bid(
     token_id: &str,
     bidder: Addr,
 ) -> StdResult<BidResponse> {
-    let bid_info = TOKEN_BIDS
+    let bid = TOKEN_BIDS
         .may_load(deps.storage, (&collection, token_id, &bidder))?
         .map(|b| Bid {
             price: b.price,
             bidder: b.bidder.to_string(),
         });
 
-    Ok(BidResponse { bid_info })
+    Ok(BidResponse { bid })
 }
 
 pub fn query_bids(
@@ -465,7 +465,7 @@ pub fn query_bids(
     let start_addr = maybe_addr(deps.api, start_after)?;
     let start = start_addr.as_ref().map(Bound::exclusive);
 
-    let bid_infos: StdResult<Vec<Bid<String>>> = TOKEN_BIDS
+    let bids: StdResult<Vec<Bid<String>>> = TOKEN_BIDS
         .prefix((&collection, token_id))
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
@@ -478,9 +478,7 @@ pub fn query_bids(
         })
         .collect();
 
-    Ok(BidsResponse {
-        bid_infos: bid_infos?,
-    })
+    Ok(BidsResponse { bids: bids? })
 }
 
 #[cfg(test)]
@@ -559,7 +557,7 @@ mod tests {
         assert_eq!(
             value,
             BidResponse {
-                bid_info: Some(bid_info)
+                bid: Some(bid_info)
             }
         );
 
@@ -572,7 +570,7 @@ mod tests {
         };
         let q = query(deps.as_ref(), mock_env(), bids_query_msg).unwrap();
         let value: BidsResponse = from_binary(&q).unwrap();
-        assert_eq!(value.bid_infos.len(), 1);
+        assert_eq!(value.bids.len(), 1);
 
         // Remove bid
         let remove_bid_msg = ExecuteMsg::RemoveBid {
