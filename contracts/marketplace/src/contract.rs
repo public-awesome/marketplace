@@ -1,8 +1,8 @@
 use crate::error::ContractError;
 use crate::msg::{
-    BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    Bid, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{Ask, Bid, TOKEN_ASKS, TOKEN_BIDS};
+use crate::state::{Ask, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Uint128, WasmMsg,
@@ -102,7 +102,7 @@ pub fn execute_set_bid(
         TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &info.sender));
         let exec_refund_bidder = BankMsg::Send {
             to_address: info.sender.to_string(),
-            amount: vec![existing_bid],
+            amount: vec![coin(existing_bid.u128(), NATIVE_DENOM)],
         };
         res = res.add_message(exec_refund_bidder)
     };
@@ -171,7 +171,7 @@ pub fn execute_remove_bid(
     // Refund bidder
     let exec_refund_bidder = BankMsg::Send {
         to_address: info.sender.to_string(),
-        amount: vec![bid],
+        amount: vec![coin(bid.u128(), NATIVE_DENOM)],
     };
 
     Ok(Response::new()
@@ -263,7 +263,7 @@ pub fn execute_accept_bid(
         token_id,
         bidder.clone(),
         ask.funds_recipient.unwrap_or(info.sender),
-        bid,
+        coin(bid.u128(), NATIVE_DENOM),
     )?;
 
     Ok(Response::new()
@@ -382,7 +382,7 @@ fn store_bid(
     TOKEN_BIDS.save(
         deps.storage,
         (&collection, token_id, &info.sender),
-        &coin(bid_price.u128(), NATIVE_DENOM),
+        &bid_price,
     )
 }
 
@@ -442,7 +442,11 @@ pub fn query_bid(
 ) -> StdResult<BidResponse> {
     let bid = TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?;
 
-    Ok(BidResponse { bid })
+    Ok(BidResponse {
+        bid: bid.map(|b| Bid {
+            price: coin(b.u128(), NATIVE_DENOM),
+        }),
+    })
 }
 
 pub fn query_bids(
@@ -462,7 +466,9 @@ pub fn query_bids(
         .take(limit)
         .map(|item| {
             let (_k, v) = item?;
-            Ok(v)
+            Ok(Bid {
+                price: coin(v.u128(), NATIVE_DENOM),
+            })
         })
         .collect();
 
@@ -539,7 +545,12 @@ mod tests {
         let q = query(deps.as_ref(), mock_env(), query_bid_msg).unwrap();
         let value: BidResponse = from_binary(&q).unwrap();
         let bid = coin(1000, NATIVE_DENOM);
-        assert_eq!(value, BidResponse { bid: Some(bid) });
+        assert_eq!(
+            value,
+            BidResponse {
+                bid: Some(Bid { price: bid })
+            }
+        );
 
         // Query for list of bids
         let bids_query_msg = QueryMsg::Bids {

@@ -32,7 +32,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::BidResponse;
+    use crate::msg::{Bid, BidResponse};
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal};
@@ -497,7 +497,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(nft_marketplace_addr, &query_bid_msg)
             .unwrap();
-        assert_eq!(Some(bid), res.bid);
+        assert_eq!(Some(Bid { price: bid }), res.bid);
     }
 
     #[test]
