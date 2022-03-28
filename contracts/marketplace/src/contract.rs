@@ -91,31 +91,26 @@ pub fn execute_set_bid(
     token_id: &str,
 ) -> Result<Response, ContractError> {
     // Make sure a bid amount was sent
-    let bid_amount = must_pay(&info, NATIVE_DENOM)?;
+    let bid_price = must_pay(&info, NATIVE_DENOM)?;
 
     let mut res = Response::new();
 
     // Check bidder has existing bid, if so remove existing bid
-    if let Some(existing_bid) = query_bid(
-        deps.as_ref(),
-        collection.clone(),
-        token_id,
-        info.sender.clone(),
-    )?
-    .bid_info
+    if let Some(existing_bid) =
+        TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &info.sender))?
     {
         TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &info.sender));
         let exec_refund_bidder = BankMsg::Send {
-            to_address: existing_bid.bidder,
+            to_address: existing_bid.bidder.to_string(),
             amount: vec![existing_bid.price],
         };
         res = res.add_message(exec_refund_bidder)
-    }
+    };
 
-    match query_current_ask(deps.as_ref(), collection.clone(), token_id)?.ask {
+    match TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))? {
         Some(ask) => {
             // Check if bid meets ask criteria and finalize sale if so
-            if ask.price.amount == bid_amount {
+            if ask.price.amount == bid_price {
                 TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
                 // Include messages needed to finalize nft transfer and payout
                 let msgs: Vec<CosmosMsg> = finalize_sale(
@@ -137,7 +132,7 @@ pub fn execute_set_bid(
                 deps.storage,
                 (&collection, token_id, &info.sender),
                 &Bid {
-                    price: coin(bid_amount.u128(), NATIVE_DENOM),
+                    price: coin(bid_price.u128(), NATIVE_DENOM),
                     bidder: info.sender.clone(),
                 },
             )?;
@@ -149,7 +144,7 @@ pub fn execute_set_bid(
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id)
         .add_attribute("bidder", info.sender)
-        .add_attribute("bid_amount", bid_amount.to_string()))
+        .add_attribute("bid_price", bid_price.to_string()))
 }
 
 /// Removes a bid made by the bidder. Bidders can only remove their own bids
@@ -266,7 +261,7 @@ pub fn execute_accept_bid(
         deps,
         collection.clone(),
         token_id,
-        info.sender,
+        info.sender.clone(),
         ask.funds_recipient.unwrap_or(info.sender),
         bid.price.clone(),
     )?;
