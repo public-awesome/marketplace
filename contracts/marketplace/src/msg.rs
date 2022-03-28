@@ -56,7 +56,7 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurrentAskResponse {
-    pub ask: Option<Ask<String>>,
+    pub ask: Option<Ask>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

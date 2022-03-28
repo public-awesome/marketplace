@@ -10,9 +10,9 @@ pub struct Bid {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Ask<T = Addr> {
+pub struct Ask {
     pub price: Coin,
-    pub funds_recipient: Option<T>,
+    pub funds_recipient: Option<Addr>,
 }
 
 // Mapping from (collection, token_id, bidder) to bid

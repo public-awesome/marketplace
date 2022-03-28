@@ -429,12 +429,8 @@ pub fn query_current_ask(
     collection: Addr,
     token_id: &str,
 ) -> StdResult<CurrentAskResponse> {
-    let ask = TOKEN_ASKS
-        .may_load(deps.storage, (&collection, token_id))?
-        .map(|ask| Ask {
-            price: ask.price,
-            funds_recipient: ask.funds_recipient.map(|r| r.to_string()),
-        });
+    let ask = TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))?;
+
     Ok(CurrentAskResponse { ask })
 }
 
@@ -444,12 +440,7 @@ pub fn query_bid(
     token_id: &str,
     bidder: Addr,
 ) -> StdResult<BidResponse> {
-    let bid = TOKEN_BIDS
-        .may_load(deps.storage, (&collection, token_id, &bidder))?
-        .map(|b| Bid {
-            price: b.price,
-            bidder: b.bidder,
-        });
+    let bid = TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?;
 
     Ok(BidResponse { bid })
 }
