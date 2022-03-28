@@ -492,7 +492,7 @@ mod tests {
             token_id: TOKEN_ID.to_string(),
             bidder: bidder.to_string(),
         };
-        let bid_info = Bid {
+        let bid = Bid {
             price: coin(150, NATIVE_DENOM),
             bidder: bidder.to_string(),
         };
@@ -501,7 +501,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(nft_marketplace_addr, &query_bid_msg)
             .unwrap();
-        assert_eq!(Some(bid_info), res.bid);
+        assert_eq!(Some(bid), res.bid);
     }
 
     #[test]

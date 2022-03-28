@@ -550,16 +550,11 @@ mod tests {
 
         let q = query(deps.as_ref(), mock_env(), query_bid_msg).unwrap();
         let value: BidResponse = from_binary(&q).unwrap();
-        let bid_info = Bid {
+        let bid = Bid {
             price: coin(1000, NATIVE_DENOM),
             bidder: bidder.sender.to_string(),
         };
-        assert_eq!(
-            value,
-            BidResponse {
-                bid: Some(bid_info)
-            }
-        );
+        assert_eq!(value, BidResponse { bid: Some(bid) });
 
         // Query for list of bids
         let bids_query_msg = QueryMsg::Bids {
