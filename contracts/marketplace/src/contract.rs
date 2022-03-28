@@ -448,7 +448,7 @@ pub fn query_bid(
         .may_load(deps.storage, (&collection, token_id, &bidder))?
         .map(|b| Bid {
             price: b.price,
-            bidder: b.bidder.to_string(),
+            bidder: b.bidder,
         });
 
     Ok(BidResponse { bid })
@@ -465,7 +465,7 @@ pub fn query_bids(
     let start_addr = maybe_addr(deps.api, start_after)?;
     let start = start_addr.as_ref().map(Bound::exclusive);
 
-    let bids: StdResult<Vec<Bid<String>>> = TOKEN_BIDS
+    let bids: StdResult<Vec<Bid>> = TOKEN_BIDS
         .prefix((&collection, token_id))
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
@@ -473,7 +473,7 @@ pub fn query_bids(
             let (_k, v) = item?;
             Ok(Bid {
                 price: v.price,
-                bidder: v.bidder.to_string(),
+                bidder: v.bidder,
             })
         })
         .collect();
@@ -552,7 +552,7 @@ mod tests {
         let value: BidResponse = from_binary(&q).unwrap();
         let bid = Bid {
             price: coin(1000, NATIVE_DENOM),
-            bidder: bidder.sender.to_string(),
+            bidder: bidder.clone().sender,
         };
         assert_eq!(value, BidResponse { bid: Some(bid) });
 

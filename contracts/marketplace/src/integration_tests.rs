@@ -494,7 +494,7 @@ mod tests {
         };
         let bid = Bid {
             price: coin(150, NATIVE_DENOM),
-            bidder: bidder.to_string(),
+            bidder,
         };
 
         let res: BidResponse = router

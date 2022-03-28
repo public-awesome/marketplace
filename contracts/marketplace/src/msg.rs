@@ -61,10 +61,10 @@ pub struct CurrentAskResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidResponse {
-    pub bid: Option<Bid<String>>,
+    pub bid: Option<Bid>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidsResponse {
-    pub bids: Vec<Bid<String>>,
+    pub bids: Vec<Bid>,
 }
