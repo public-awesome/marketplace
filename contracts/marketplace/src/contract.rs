@@ -112,6 +112,7 @@ pub fn execute_set_bid(
             // Check if bid meets ask criteria and finalize sale if so
             if ask.price.amount == bid_price {
                 TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+                println!("gets here");
 
                 let owner = deps.querier.query_wasm_smart(
                     collection.clone(),
@@ -120,6 +121,7 @@ pub fn execute_set_bid(
                         include_expired: None,
                     },
                 )?;
+                println!("never gets here");
 
                 // Include messages needed to finalize nft transfer and payout
                 let msgs = finalize_sale(
@@ -130,13 +132,11 @@ pub fn execute_set_bid(
                     ask.funds_recipient.unwrap_or(owner),
                     ask.price,
                 )?;
+
                 res = res
                     .add_attribute("action", "sale_finalized")
                     .add_messages(msgs);
             } else {
-                // println!("{:?}", collection);
-                // println!("{:?}", token_id);
-                // println!("{:?}", info.sender);
                 // If bid does not meet ask criteria, store bid
                 TOKEN_BIDS.save(
                     deps.storage,
@@ -149,10 +149,6 @@ pub fn execute_set_bid(
             }
         }
         None => {
-            // println!("{:?}", collection);
-            // println!("{:?}", token_id);
-            // println!("{:?}", info.sender);
-
             TOKEN_BIDS.save(
                 deps.storage,
                 (&collection, token_id, &info.sender),
@@ -270,9 +266,6 @@ pub fn execute_accept_bid(
     TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
 
     // Query accepted bid
-    // println!("{:?}", collection);
-    // println!("{:?}", token_id);
-    // println!("{:?}", bidder);
     let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
     // Remove accepted bid
     TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
