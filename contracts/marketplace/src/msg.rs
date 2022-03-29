@@ -1,5 +1,5 @@
-use crate::state::{Ask, Bid};
-use cosmwasm_std::Addr;
+use crate::state::Ask;
+use cosmwasm_std::Coin;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -8,18 +8,46 @@ pub struct InstantiateMsg {}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
-pub enum QueryMsg {
-    /// Returns the current asking price for a token
-    CurrentAsk { collection: Addr, token_id: String },
-    /// Returns the bid for a token / bidder
-    Bid {
-        collection: Addr,
+pub enum ExecuteMsg {
+    SetBid {
+        collection: String,
         token_id: String,
-        bidder: Addr,
     },
-    /// Returns list of bids for token
+    RemoveBid {
+        collection: String,
+        token_id: String,
+    },
+    SetAsk {
+        collection: String,
+        token_id: String,
+        price: Coin,
+        funds_recipient: Option<String>,
+    },
+    RemoveAsk {
+        collection: String,
+        token_id: String,
+    },
+    AcceptBid {
+        collection: String,
+        token_id: String,
+        bidder: String,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum QueryMsg {
+    CurrentAsk {
+        collection: String,
+        token_id: String,
+    },
+    Bid {
+        collection: String,
+        token_id: String,
+        bidder: String,
+    },
     Bids {
-        collection: Addr,
+        collection: String,
         token_id: String,
         start_after: Option<String>,
         limit: Option<u32>,
@@ -27,32 +55,8 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
-pub enum ExecuteMsg {
-    SetBid {
-        collection: Addr,
-        token_id: String,
-        bid: Bid,
-    },
-    RemoveBid {
-        collection: Addr,
-        token_id: String,
-        bidder: Addr,
-    },
-    SetAsk {
-        collection: Addr,
-        token_id: String,
-        ask: Ask,
-    },
-    RemoveAsk {
-        collection: Addr,
-        token_id: String,
-    },
-    AcceptBid {
-        collection: Addr,
-        token_id: String,
-        bid: Bid,
-    },
+pub struct Bid {
+    pub price: Coin,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

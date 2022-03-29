@@ -1,18 +1,18 @@
 use crate::error::ContractError;
 use crate::msg::{
-    BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    Bid, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{Ask, Bid, TOKEN_ASKS, TOKEN_BIDS};
+use crate::state::{Ask, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
-    entry_point, has_coins, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, WasmMsg,
+    coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
+    MessageInfo, Order, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw_storage_plus::Bound;
-use cw_utils::maybe_addr;
+use cw_utils::{maybe_addr, must_pay};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{CosmosMsg, Response};
+use sg_std::{CosmosMsg, Response, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -40,105 +40,123 @@ pub fn execute(
     info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
+    let api = deps.api;
+
     match msg {
         ExecuteMsg::SetBid {
             collection,
             token_id,
-            bid,
-        } => execute_set_bid(deps, env, info, collection, token_id, bid),
+        } => execute_set_bid(deps, info, api.addr_validate(&collection)?, &token_id),
         ExecuteMsg::RemoveBid {
             collection,
             token_id,
-            bidder,
-        } => execute_remove_bid(deps, env, info, collection, token_id, bidder),
+        } => execute_remove_bid(deps, env, info, api.addr_validate(&collection)?, &token_id),
         ExecuteMsg::SetAsk {
             collection,
             token_id,
-            ask,
-        } => execute_set_ask(deps, env, info, collection, token_id, ask),
-        ExecuteMsg::RemoveAsk {
-            collection,
-            token_id,
-        } => execute_remove_ask(deps, env, info, collection, token_id),
-        ExecuteMsg::AcceptBid {
-            collection,
-            token_id,
-            bid,
-        } => execute_accept_bid(deps, env, info, collection, token_id, bid),
-    }
-}
-
-/// Anyone may place a bid on a minted token. By placing a bid, the bidder sends a native Coin to the market contract.
-pub fn execute_set_bid(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    collection: Addr,
-    token_id: String,
-    bid: Bid,
-) -> Result<Response, ContractError> {
-    if info.sender != bid.bidder {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    // Check bid is valid
-    bid.is_valid()?;
-
-    // Check sent amount matches bid
-    if !has_coins(&info.funds, &bid.amount) {
-        return Err(ContractError::InsufficientBidFunds {});
-    }
-
-    let mut res = Response::new();
-
-    // Check bidder has existing bid, if so remove existing bid
-    if let Some(existing_bid) = query_bid(deps.as_ref(), &collection, &token_id, &bid.bidder)?.bid {
-        // Remove bid
-        TOKEN_BIDS.remove(deps.storage, (&collection, &token_id, &bid.bidder));
-
-        // Refund bidder msg
-        let exec_refund_bidder = BankMsg::Send {
-            to_address: existing_bid.bidder.to_string(),
-            amount: vec![existing_bid.amount],
-        };
-
-        // Add refund bidder msg to response
-        res = res.add_message(exec_refund_bidder)
-    }
-
-    // Check if bid meets ask criteria. has_coins() checks both amount and denom.
-    // Finalize sale if so.
-    let ask = query_current_ask(deps.as_ref(), &collection, &token_id)?.ask;
-    if ask != None && has_coins(&[bid.amount.clone()], &ask.unwrap().amount) {
-        // Remove ask
-        TOKEN_ASKS.remove(deps.storage, (&collection, &token_id));
-
-        // Include messages needed to finalize nft transfer and payout
-        let msgs: Vec<CosmosMsg> = finalize_sale(
+            price,
+            funds_recipient,
+        } => execute_set_ask(
             deps,
             env,
             info,
+            api.addr_validate(&collection)?,
+            &token_id,
+            price,
+            funds_recipient.map(|addr| api.addr_validate(&addr).unwrap()),
+        ),
+        ExecuteMsg::RemoveAsk {
+            collection,
+            token_id,
+        } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, &token_id),
+        ExecuteMsg::AcceptBid {
+            collection,
+            token_id,
+            bidder,
+        } => execute_accept_bid(
+            deps,
+            info,
+            api.addr_validate(&collection)?,
+            &token_id,
+            api.addr_validate(&bidder)?,
+        ),
+    }
+}
+
+/// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
+pub fn execute_set_bid(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: &str,
+) -> Result<Response, ContractError> {
+    // Make sure a bid amount was sent
+    let bid_price = must_pay(&info, NATIVE_DENOM)?;
+    let bidder = info.sender;
+    let mut res = Response::new();
+
+    // Check bidder has existing bid, if so remove existing bid
+    if let Some(existing_bid) =
+        TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?
+    {
+        TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
+        let exec_refund_bidder = BankMsg::Send {
+            to_address: bidder.to_string(),
+            amount: vec![coin(existing_bid.u128(), NATIVE_DENOM)],
+        };
+        res = res.add_message(exec_refund_bidder)
+    };
+
+    // Check if Ask exists before moving forward
+    if !TOKEN_ASKS.has(deps.storage, (&collection, token_id)) {
+        return Err(ContractError::AskDoesNotExist {});
+    }
+    // Guaranteed to have an Ask since we checked above
+    let ask = TOKEN_ASKS.load(deps.storage, (&collection, token_id))?;
+
+    if ask.price != bid_price {
+        // Bid does not meet ask criteria, store bid
+        store_bid(
+            deps,
+            bidder.clone(),
             collection.clone(),
-            token_id.clone(),
-            bid.bidder.clone(),
-            bid.amount.clone(),
+            token_id,
+            bid_price,
+        )?;
+    } else {
+        // Bid meets ask criteria so finalize sale
+        TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+
+        let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
+            collection.clone(),
+            &Cw721QueryMsg::OwnerOf {
+                token_id: token_id.to_string(),
+                include_expired: None,
+            },
+        )?;
+        let owner = deps.api.addr_validate(&cw721_res.owner)?;
+
+        // Include messages needed to finalize nft transfer and payout
+        let msgs = finalize_sale(
+            deps,
+            collection.clone(),
+            token_id,
+            bidder.clone(),
+            ask.funds_recipient.unwrap_or(owner),
+            coin(ask.price.u128(), NATIVE_DENOM),
         )?;
 
         res = res
             .add_attribute("action", "sale_finalized")
             .add_messages(msgs);
-    } else {
-        // Save bid
-        TOKEN_BIDS.save(deps.storage, (&collection, &token_id, &bid.bidder), &bid)?;
-
-        res = res.add_attribute("action", "set_bid");
     }
 
     Ok(res
-        .add_attribute("collection", collection)
+        .add_attribute("action", "set_bid")
+        .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id)
-        .add_attribute("bidder", bid.bidder)
-        .add_attribute("amount", bid.amount.to_string()))
+        .add_attribute("bidder", bidder)
+        .add_attribute("bid_price", bid_price.to_string()))
 }
 
 /// Removes a bid made by the bidder. Bidders can only remove their own bids
@@ -147,26 +165,20 @@ pub fn execute_remove_bid(
     _env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: String,
-    bidder: Addr,
+    token_id: &str,
 ) -> Result<Response, ContractError> {
-    // Check bid exists for bidder
-    let bid = query_bid(deps.as_ref(), &collection, &token_id, &bidder)?
-        .bid
-        .ok_or(ContractError::BidNotFound {})?;
+    let bidder = info.sender;
 
-    // Check sender is the bidder
-    if info.sender != bid.bidder {
-        return Err(ContractError::Unauthorized {});
-    }
+    // Check bid exists for bidder
+    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
 
     // Remove bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, &token_id, &bidder));
+    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
 
     // Refund bidder
     let exec_refund_bidder = BankMsg::Send {
         to_address: bidder.to_string(),
-        amount: vec![bid.amount],
+        amount: vec![coin(bid.u128(), NATIVE_DENOM)],
     };
 
     Ok(Response::new()
@@ -183,11 +195,12 @@ pub fn execute_set_ask(
     env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: String,
-    ask: Ask,
+    token_id: &str,
+    price: Coin,
+    funds_recipient: Option<Addr>,
 ) -> Result<Response, ContractError> {
     // Only the media onwer can call this
-    let owner_of_response = check_only_owner(deps.as_ref(), &info, &collection, &token_id)?;
+    let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
     // Check that approval has been set for marketplace contract
     if owner_of_response
         .approvals
@@ -198,73 +211,81 @@ pub fn execute_set_ask(
     {
         return Err(ContractError::NeedsApproval {});
     }
-    TOKEN_ASKS.save(deps.storage, (&collection, &token_id), &ask)?;
+    TOKEN_ASKS.save(
+        deps.storage,
+        (&collection, token_id),
+        &Ask {
+            price: price.amount,
+            funds_recipient,
+        },
+    )?;
     Ok(Response::new()
         .add_attribute("action", "set_ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id)
-        .add_attribute("amount", ask.amount.to_string()))
+        .add_attribute("price", price.to_string()))
 }
 
 /// Removes the ask on a particular media
 pub fn execute_remove_ask(
     deps: DepsMut,
-    _env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: String,
+    token_id: &str,
 ) -> Result<Response, ContractError> {
-    // Only the media onwer can call this
-    check_only_owner(deps.as_ref(), &info, &collection, &token_id)?;
-    TOKEN_ASKS.remove(deps.storage, (&collection, &token_id));
+    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+
+    TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+
     Ok(Response::new()
         .add_attribute("action", "remove_ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id))
 }
 
-/// Owner can accept a bid which transfers funds as well as the media
+/// Owner can accept a bid which transfers funds as well as the token
 pub fn execute_accept_bid(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: String,
-    bid: Bid,
+    token_id: &str,
+    bidder: Addr,
 ) -> Result<Response, ContractError> {
-    // Only the media onwer can call this
-    check_only_owner(deps.as_ref(), &info, &collection, &token_id)?;
+    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
+    // Query current ask
+    let ask = TOKEN_ASKS.load(deps.storage, (&collection, token_id))?;
     // Remove ask
-    TOKEN_ASKS.remove(deps.storage, (&collection, &token_id));
+    TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
 
+    // Query accepted bid
+    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
     // Remove accepted bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, &token_id, &bid.bidder));
+    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
 
     // Transfer funds and NFT
     let msgs = finalize_sale(
         deps,
-        env,
-        info,
         collection.clone(),
-        token_id.clone(),
-        bid.bidder.clone(),
-        bid.amount.clone(),
+        token_id,
+        bidder.clone(),
+        ask.funds_recipient.unwrap_or(info.sender),
+        coin(bid.u128(), NATIVE_DENOM),
     )?;
 
     Ok(Response::new()
         .add_attribute("action", "accept_bid")
-        .add_attribute("collection", collection)
+        .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id)
-        .add_attribute("bidder", bid.bidder)
+        .add_attribute("bidder", bidder)
         .add_messages(msgs))
 }
 
 /// Checks to enfore only nft owner can call
-pub fn check_only_owner(
+fn check_only_owner(
     deps: Deps,
     info: &MessageInfo,
-    collection: &Addr,
+    collection: Addr,
     token_id: &str,
 ) -> Result<OwnerOfResponse, ContractError> {
     let owner: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
@@ -281,21 +302,21 @@ pub fn check_only_owner(
 }
 
 /// Transfers funds and NFT, updates bid
-pub fn finalize_sale(
+fn finalize_sale(
     deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
     collection: Addr,
-    token_id: String,
+    token_id: &str,
     recipient: Addr,
-    amount: Coin,
+    funds_recipient: Addr,
+    price: Coin,
 ) -> StdResult<Vec<CosmosMsg>> {
     // Payout bid
-    let mut msgs: Vec<CosmosMsg> = payout(deps.as_ref(), &collection, &token_id, &amount)?;
+    let mut msgs: Vec<CosmosMsg> =
+        payout(deps.as_ref(), collection.clone(), price, funds_recipient)?;
 
     // Create transfer cw721 msg
     let cw721_transfer_msg = Cw721ExecuteMsg::TransferNft {
-        token_id,
+        token_id: token_id.to_string(),
         recipient: recipient.to_string(),
     };
     let exec_cw721_transfer = WasmMsg::Execute {
@@ -310,23 +331,14 @@ pub fn finalize_sale(
 }
 
 /// Payout a bid
-pub fn payout(
+fn payout(
     deps: Deps,
-    collection: &Addr,
-    token_id: &str,
-    amount: &Coin,
+    collection: Addr,
+    payment: Coin,
+    payment_recipient: Addr,
 ) -> StdResult<Vec<CosmosMsg>> {
     // Will hold payment msgs
     let mut msgs: Vec<CosmosMsg> = vec![];
-
-    // Get current token owner
-    let owner: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
-        collection,
-        &cw721::Cw721QueryMsg::OwnerOf {
-            token_id: token_id.to_string(),
-            include_expired: None,
-        },
-    )?;
 
     // Check if token supports Royalties
     let collection_info: CollectionInfoResponse = deps
@@ -338,27 +350,27 @@ pub fn payout(
         let royalty_share_msg = BankMsg::Send {
             to_address: royalty.payment_address.to_string(),
             amount: vec![Coin {
-                amount: amount.amount * royalty.share,
-                denom: amount.denom.clone(),
+                amount: payment.amount * royalty.share,
+                denom: payment.denom.clone(),
             }],
         };
         msgs.append(&mut vec![royalty_share_msg.into()]);
 
         let owner_share_msg = BankMsg::Send {
-            to_address: owner.owner,
+            to_address: payment_recipient.to_string(),
             amount: vec![Coin {
-                amount: amount.amount * (Decimal::one() - royalty.share),
-                denom: amount.denom.clone(),
+                amount: payment.amount * (Decimal::one() - royalty.share),
+                denom: payment.denom,
             }],
         };
         msgs.append(&mut vec![owner_share_msg.into()]);
     } else {
         // If token doesn't support royalties, pay owner in full
         let owner_share_msg = BankMsg::Send {
-            to_address: owner.owner,
+            to_address: payment_recipient.to_string(),
             amount: vec![Coin {
-                amount: amount.amount,
-                denom: amount.denom.clone(),
+                amount: payment.amount,
+                denom: payment.denom,
             }],
         };
         msgs.append(&mut vec![owner_share_msg.into()]);
@@ -367,18 +379,39 @@ pub fn payout(
     Ok(msgs)
 }
 
+fn store_bid(
+    deps: DepsMut,
+    bidder: Addr,
+    collection: Addr,
+    token_id: &str,
+    bid_price: Uint128,
+) -> StdResult<()> {
+    TOKEN_BIDS.save(deps.storage, (&collection, token_id, &bidder), &bid_price)
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
+    let api = deps.api;
+
     match msg {
         QueryMsg::CurrentAsk {
             collection,
             token_id,
-        } => to_binary(&query_current_ask(deps, &collection, &token_id)?),
+        } => to_binary(&query_current_ask(
+            deps,
+            api.addr_validate(&collection)?,
+            &token_id,
+        )?),
         QueryMsg::Bid {
             collection,
             token_id,
             bidder,
-        } => to_binary(&query_bid(deps, &collection, &token_id, &bidder)?),
+        } => to_binary(&query_bid(
+            deps,
+            api.addr_validate(&collection)?,
+            &token_id,
+            api.addr_validate(&bidder)?,
+        )?),
         QueryMsg::Bids {
             collection,
             token_id,
@@ -386,7 +419,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
         } => to_binary(&query_bids(
             deps,
-            &collection,
+            api.addr_validate(&collection)?,
             &token_id,
             start_after,
             limit,
@@ -396,28 +429,32 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn query_current_ask(
     deps: Deps,
-    collection: &Addr,
+    collection: Addr,
     token_id: &str,
 ) -> StdResult<CurrentAskResponse> {
-    let ask = TOKEN_ASKS.may_load(deps.storage, (collection, token_id))?;
+    let ask = TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))?;
 
     Ok(CurrentAskResponse { ask })
 }
 
 pub fn query_bid(
     deps: Deps,
-    collection: &Addr,
+    collection: Addr,
     token_id: &str,
-    bidder: &Addr,
+    bidder: Addr,
 ) -> StdResult<BidResponse> {
-    let bid = TOKEN_BIDS.may_load(deps.storage, (collection, token_id, bidder))?;
+    let bid = TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?;
 
-    Ok(BidResponse { bid })
+    Ok(BidResponse {
+        bid: bid.map(|b| Bid {
+            price: coin(b.u128(), NATIVE_DENOM),
+        }),
+    })
 }
 
 pub fn query_bids(
     deps: Deps,
-    collection: &Addr,
+    collection: Addr,
     token_id: &str,
     start_after: Option<String>,
     limit: Option<u32>,
@@ -427,15 +464,13 @@ pub fn query_bids(
     let start = start_addr.as_ref().map(Bound::exclusive);
 
     let bids: StdResult<Vec<Bid>> = TOKEN_BIDS
-        .prefix((collection, token_id))
+        .prefix((&collection, token_id))
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
             let (_k, v) = item?;
             Ok(Bid {
-                amount: v.amount,
-                bidder: v.bidder,
-                recipient: v.recipient,
+                price: coin(v.u128(), NATIVE_DENOM),
             })
         })
         .collect();
@@ -447,7 +482,7 @@ pub fn query_bids(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coin, coins, from_binary};
+    use cosmwasm_std::{coin, coins};
     use sg_std::NATIVE_DENOM;
 
     const CREATOR: &str = "creator";
@@ -474,104 +509,45 @@ mod tests {
     }
 
     #[test]
-    fn set_and_remove_bid() {
+    fn try_set_bid() {
         let mut deps = mock_dependencies();
         setup_contract(deps.as_mut());
 
         let broke = mock_info("broke", &[]);
         let bidder = mock_info("bidder", &coins(1000, NATIVE_DENOM));
-        let recipient = mock_info("recipient", &coins(1000, NATIVE_DENOM));
-        let random_addr = mock_info("random", &coins(1000, NATIVE_DENOM));
 
-        // Ensure funds bidder has funds
-        let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
-            bidder: broke.sender.clone(),
-            recipient: recipient.sender.clone(),
-        };
         let set_bid_msg = ExecuteMsg::SetBid {
-            collection: Addr::unchecked(COLLECTION),
+            collection: COLLECTION.to_string(),
             token_id: TOKEN_ID.to_string(),
-            bid,
         };
 
-        // Bidder calls Set Bid successfully
-        let res = execute(deps.as_mut(), mock_env(), broke, set_bid_msg);
-        assert_eq!(res, Err(ContractError::InsufficientBidFunds {}));
-
-        // Set bid
-        let bid = Bid {
-            amount: coin(100, NATIVE_DENOM),
-            bidder: bidder.sender.clone(),
-            recipient: recipient.sender,
-        };
-        let set_bid_msg = ExecuteMsg::SetBid {
-            collection: Addr::unchecked(COLLECTION),
-            token_id: TOKEN_ID.to_string(),
-            bid: bid.clone(),
-        };
-
-        // Bidder calls Set Bid successfully
-        let res = execute(deps.as_mut(), mock_env(), bidder.clone(), set_bid_msg);
-        assert!(res.is_ok());
-
-        // Query for bid
-        let query_bid_msg = QueryMsg::Bid {
-            collection: Addr::unchecked(COLLECTION),
-            token_id: TOKEN_ID.to_string(),
-            bidder: bidder.sender.clone(),
-        };
-
-        let q = query(deps.as_ref(), mock_env(), query_bid_msg).unwrap();
-        let value: BidResponse = from_binary(&q).unwrap();
-        assert_eq!(value, BidResponse { bid: Some(bid) });
-
-        // Query for list of bids
-        let bids_query_msg = QueryMsg::Bids {
-            collection: Addr::unchecked(COLLECTION),
-            token_id: TOKEN_ID.to_string(),
-            start_after: None,
-            limit: None,
-        };
-        let q = query(deps.as_ref(), mock_env(), bids_query_msg).unwrap();
-        let value: BidsResponse = from_binary(&q).unwrap();
-        assert_eq!(value.bids.len(), 1);
-
-        // Remove bid
-        let remove_bid_msg = ExecuteMsg::RemoveBid {
-            collection: Addr::unchecked(COLLECTION),
-            token_id: TOKEN_ID.to_string(),
-            bidder: bidder.sender.clone(),
-        };
-
-        // Random address can't remove bid
-        let res = execute(
-            deps.as_mut(),
-            mock_env(),
-            random_addr,
-            remove_bid_msg.clone(),
+        // Broke bidder calls Set Bid and gets an error
+        let err = execute(deps.as_mut(), mock_env(), broke, set_bid_msg).unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::BidPaymentError(cw_utils::PaymentError::NoFunds {})
         );
-        assert!(res.is_err());
 
-        // Bidder can remove bid
-        let res = execute(deps.as_mut(), mock_env(), bidder, remove_bid_msg).unwrap();
+        let set_bid_msg = ExecuteMsg::SetBid {
+            collection: COLLECTION.to_string(),
+            token_id: TOKEN_ID.to_string(),
+        };
 
-        // Check Bank msg was added for refund
-        assert_eq!(1, res.messages.len());
+        // Bidder calls SetBid before an Ask is set, so it should fail
+        let err = execute(deps.as_mut(), mock_env(), bidder, set_bid_msg).unwrap_err();
+        assert_eq!(err, ContractError::AskDoesNotExist {});
     }
 
     #[test]
-    fn set_ask() {
+    fn try_set_ask() {
         let mut deps = mock_dependencies();
         setup_contract(deps.as_mut());
 
-        let ask = Ask {
-            amount: coin(100, NATIVE_DENOM),
-        };
         let set_ask = ExecuteMsg::SetAsk {
-            collection: Addr::unchecked(COLLECTION),
-            ask,
+            collection: COLLECTION.to_string(),
             token_id: TOKEN_ID.to_string(),
+            price: coin(100, NATIVE_DENOM),
+            funds_recipient: None,
         };
 
         // Reject if not called by the media owner
