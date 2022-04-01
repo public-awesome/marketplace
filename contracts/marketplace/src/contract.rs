@@ -424,6 +424,19 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
+        QueryMsg::AllListedNFTs { start_after, limit } => {
+            to_binary(&query_all_listed_nfts(deps, None, start_after, limit)?)
+        }
+        QueryMsg::AllListedNFTsInCollection {
+            collection,
+            start_after,
+            limit,
+        } => to_binary(&query_all_listed_nfts(
+            deps,
+            Some(api.addr_validate(&collection)?),
+            start_after,
+            limit,
+        )?),
     }
 }
 
@@ -476,6 +489,21 @@ pub fn query_bids(
         .collect();
 
     Ok(BidsResponse { bids: bids? })
+}
+
+pub fn query_all_listed_nfts(
+    deps: Deps,
+    collection: Option<Addr>,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<ListedNftsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let start_addr = maybe_addr(deps.api, start_after)?;
+    let start = start_addr.as_ref().map(Bound::exclusive);
+
+    let ask = TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))?;
+
+    Ok(ListedNftsResponse { asks: asks? })
 }
 
 #[cfg(test)]

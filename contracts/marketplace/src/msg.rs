@@ -52,6 +52,17 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    #[serde(rename = "all_listed_nfts")]
+    AllListedNFTs {
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
+    #[serde(rename = "all_listed_nfts_in_collection")]
+    AllListedNFTsInCollection {
+        collection: String,
+        start_after: Option<String>,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
