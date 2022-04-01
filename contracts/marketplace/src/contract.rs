@@ -12,7 +12,7 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{maybe_addr, must_pay};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{CosmosMsg, Response, NATIVE_DENOM};
+use sg_std::{burn_and_distribute_fee, CosmosMsg, Response, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -21,6 +21,9 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // Query limits
 const DEFAULT_QUERY_LIMIT: u32 = 10;
 const MAX_QUERY_LIMIT: u32 = 30;
+
+// Governance parameters
+const TRADING_FEE_PERCENT: u32 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -339,6 +342,11 @@ fn payout(
 ) -> StdResult<Vec<CosmosMsg>> {
     // Will hold payment msgs
     let mut msgs: Vec<CosmosMsg> = vec![];
+
+    // // Create Fair Burn message
+    // let fee_percent = Decimal::percent(TRADING_FEE_PERCENT as u64);
+    // let network_fee = payment.amount * fee_percent;
+    // msgs.append(&mut burn_and_distribute_fee(&info, network_fee.u128())?);
 
     // Check if token supports Royalties
     let collection_info: CollectionInfoResponse = deps
