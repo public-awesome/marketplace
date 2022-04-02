@@ -84,3 +84,12 @@ pub struct BidResponse {
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
 }
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Nft {
+    pub collection: String,
+    pub token_id: u32,
+}
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ListedNftsResponse {
+    pub nfts: Vec<Nft>,
+}
