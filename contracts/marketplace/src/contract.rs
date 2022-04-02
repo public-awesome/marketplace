@@ -495,6 +495,7 @@ pub fn query_bids(
         .map(|item| {
             let (_k, v) = item?;
             Ok(BidInfo {
+                token_id,
                 price: coin(v.u128(), NATIVE_DENOM),
             })
         })

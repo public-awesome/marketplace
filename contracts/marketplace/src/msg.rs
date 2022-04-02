@@ -59,6 +59,7 @@ pub enum QueryMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidInfo {
+    pub token_id: u32,
     pub price: Coin,
 }
 
