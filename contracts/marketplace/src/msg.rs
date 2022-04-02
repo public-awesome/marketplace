@@ -52,15 +52,16 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-    #[serde(rename = "all_listed_nfts")]
-    AllListedNFTs {
-        start_after: Option<String>,
-        limit: Option<u32>,
-    },
+    // #[serde(rename = "all_listed_nfts")]
+    // AllListedNFTs {
+    //     start_after: Option<String>,
+    //     limit: Option<u32>,
+    // },
+    /// Returns all nfts in a collection that have asks
     #[serde(rename = "all_listed_nfts_in_collection")]
     AllListedNFTsInCollection {
         collection: String,
-        start_after: Option<String>,
+        start_after: Option<u32>,
         limit: Option<u32>,
     },
 }

@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{
-    Bid, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    Bid, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg,
+    ListedNftsResponse, Nft, QueryMsg,
 };
 use crate::state::{Ask, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
@@ -424,14 +425,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::AllListedNFTs { start_after, limit } => {
-            to_binary(&query_all_listed_nfts(deps, None, start_after, limit)?)
-        }
+        // TODO
+        // QueryMsg::AllListedNFTs { start_after, limit } => {
+        //     to_binary(&query_all_listed_nfts(deps, None, start_after, limit)?)
+        // }
         QueryMsg::AllListedNFTsInCollection {
             collection,
             start_after,
             limit,
-        } => to_binary(&query_all_listed_nfts(
+        } => to_binary(&query_all_listed_nfts_in_collection(
             deps,
             Some(api.addr_validate(&collection)?),
             start_after,
@@ -491,19 +493,23 @@ pub fn query_bids(
     Ok(BidsResponse { bids: bids? })
 }
 
-pub fn query_all_listed_nfts(
+pub fn query_all_listed_nfts_in_collection(
     deps: Deps,
     collection: Option<Addr>,
-    start_after: Option<String>,
+    start_after: Option<u32>,
     limit: Option<u32>,
 ) -> StdResult<ListedNftsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start_addr = maybe_addr(deps.api, start_after)?;
-    let start = start_addr.as_ref().map(Bound::exclusive);
+    let start: Option<Bound<&u32>> = (collection_addr, start_after).map(Bound::exclusive);
 
-    let ask = TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))?;
+    let mut nfts: Vec<Nft> = Vec::new();
+    // iterate through asks to find listed nfts
+    nfts = TOKEN_ASKS
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect();
 
-    Ok(ListedNftsResponse { asks: asks? })
+    Ok(ListedNftsResponse { nfts: nfts })
 }
 
 #[cfg(test)]
