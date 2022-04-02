@@ -343,9 +343,10 @@ fn payout(
     // Will hold payment msgs
     let mut msgs: Vec<CosmosMsg> = vec![];
 
-    // Fair Burn amount
+    // Append Fair Burn message
     let fee_percent = Decimal::percent(TRADING_FEE_PERCENT as u64);
     let network_fee = payment.amount * fee_percent;
+    msgs.append(&mut fair_burn(network_fee.u128()));
 
     // Check if token supports Royalties
     let collection_info: CollectionInfoResponse = deps
@@ -382,9 +383,6 @@ fn payout(
         };
         msgs.append(&mut vec![owner_share_msg.into()]);
     }
-
-    // Append Fair Burn message
-    msgs.append(&mut fair_burn(network_fee.u128()));
 
     Ok(msgs)
 }
