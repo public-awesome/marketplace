@@ -44,6 +44,7 @@ pub enum QueryMsg {
     Asks {
         collection: String,
     },
+    AllAsks {},
     Bid {
         collection: String,
         token_id: u32,
@@ -71,6 +72,14 @@ pub struct AskInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AllAskInfo {
+    pub collection: String,
+    pub token_id: u32,
+    pub price: Coin,
+    pub funds_recipient: Option<Addr>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurrentAskResponse {
     pub ask: Option<Ask>,
 }
@@ -78,6 +87,11 @@ pub struct CurrentAskResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AsksResponse {
     pub asks: Vec<AskInfo>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AllAsksResponse {
+    pub asks: Vec<AllAskInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -51,6 +51,18 @@
     {
       "type": "object",
       "required": [
+        "all_asks"
+      ],
+      "properties": {
+        "all_asks": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "bid"
       ],
       "properties": {
