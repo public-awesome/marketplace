@@ -32,7 +32,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{Bid, BidResponse};
+    use crate::msg::{AsksResponse, Bid, BidResponse};
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal};
@@ -262,6 +262,64 @@ mod tests {
             .query_all_balances(nft_marketplace_addr)
             .unwrap();
         assert_eq!(contract_balances, []);
+    }
+
+    #[test]
+    fn try_query_asks() {
+        let mut router = custom_mock_app();
+
+        // Setup intial accounts
+        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+
+        // Instantiate and configure contracts
+        let (nft_marketplace_addr, nft_contract_addr) =
+            setup_contracts(&mut router, &creator).unwrap();
+
+        // Mint NFT for creator
+        mint_nft_for_creator(&mut router, &creator, &nft_contract_addr);
+
+        // Creator Authorizes NFT
+        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+            spender: nft_marketplace_addr.to_string(),
+            token_id: TOKEN_ID.to_string(),
+            expires: None,
+        };
+        let res = router.execute_contract(
+            creator.clone(),
+            nft_contract_addr.clone(),
+            &approve_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // test before ask is made
+        let query_asks_msg = QueryMsg::Asks {
+            collection: nft_contract_addr.to_string(),
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(nft_marketplace_addr.clone(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks, vec![]);
+
+        // An asking price is made by the creator
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: nft_contract_addr.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
+        };
+        let res =
+            router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
+        assert!(res.is_ok());
+
+        // test after ask is made
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(nft_marketplace_addr, &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks[0].token_id, TOKEN_ID);
+        assert_eq!(res.asks[0].price.amount.u128(), 110);
     }
 
     #[test]
