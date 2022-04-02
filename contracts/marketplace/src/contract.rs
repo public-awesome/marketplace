@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg,
-    InstantiateMsg, QueryMsg,
+    AllAskInfo, AllAsksResponse, AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse,
+    CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use crate::state::{Ask, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
@@ -436,6 +436,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Asks { collection } => {
             to_binary(&query_asks(deps, api.addr_validate(&collection)?)?)
         }
+        QueryMsg::AllAsks {} => to_binary(&query_all_asks(deps)?),
     }
 }
 
@@ -454,6 +455,23 @@ pub fn query_asks(deps: Deps, collection: Addr) -> StdResult<AsksResponse> {
         .collect();
 
     Ok(AsksResponse { asks: asks? })
+}
+
+pub fn query_all_asks(deps: Deps) -> StdResult<AllAsksResponse> {
+    let asks: StdResult<Vec<_>> = TOKEN_ASKS
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|item| {
+            let ((collection, token_id), ask) = item?;
+            Ok(AllAskInfo {
+                collection: collection.to_string(),
+                token_id,
+                price: coin(ask.price.u128(), NATIVE_DENOM),
+                funds_recipient: ask.funds_recipient,
+            })
+        })
+        .collect();
+
+    Ok(AllAsksResponse { asks: asks? })
 }
 
 pub fn query_current_ask(
