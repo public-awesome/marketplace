@@ -443,7 +443,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::AllAsks {} => to_binary(&query_all_asks(deps)?),
+        QueryMsg::AllAsks { start_after, limit } => {
+            to_binary(&query_all_asks(deps, start_after, limit)?)
+        }
     }
 }
 
@@ -473,9 +475,20 @@ pub fn query_asks(
     Ok(AsksResponse { asks: asks? })
 }
 
-pub fn query_all_asks(deps: Deps) -> StdResult<AllAsksResponse> {
+pub fn query_all_asks(
+    deps: Deps,
+    start_after: Option<String>,
+    limit: Option<u32>,
+) -> StdResult<AllAsksResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let start_addr = maybe_addr(deps.api, start_after)?;
+    let start: Option<Bound<&Addr>> = start_addr.as_ref().map(Bound::exclusive);
+
+    // TODO: may need to use multi-index
+
     let asks: StdResult<Vec<_>> = TOKEN_ASKS
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .map(|item| {
             let ((collection, token_id), ask) = item?;
             Ok(AllAskInfo {
