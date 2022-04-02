@@ -1,4 +1,4 @@
-use crate::state::Ask;
+use crate::state::{Ask, Bid};
 use cosmwasm_std::{Addr, Coin};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -58,7 +58,7 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Bid {
+pub struct BidInfo {
     pub price: Coin,
 }
 
@@ -86,7 +86,5 @@ pub struct BidResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidsResponse {
-    pub bids: Vec<Bid>,
+    pub bids: Vec<BidInfo>,
 }
-
-// TODO: Add BidInfo to include token_id

@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AskInfo, AsksResponse, Bid, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg,
+    AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg,
     InstantiateMsg, QueryMsg,
 };
 use crate::state::{Ask, TOKEN_ASKS, TOKEN_BIDS};
@@ -474,11 +474,7 @@ pub fn query_bid(
 ) -> StdResult<BidResponse> {
     let bid = TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?;
 
-    Ok(BidResponse {
-        bid: bid.map(|b| Bid {
-            price: coin(b.u128(), NATIVE_DENOM),
-        }),
-    })
+    Ok(BidResponse { bid })
 }
 
 pub fn query_bids(
@@ -492,13 +488,13 @@ pub fn query_bids(
     let start_addr = maybe_addr(deps.api, start_after)?;
     let start = start_addr.as_ref().map(Bound::exclusive);
 
-    let bids: StdResult<Vec<Bid>> = TOKEN_BIDS
+    let bids: StdResult<Vec<BidInfo>> = TOKEN_BIDS
         .prefix((&collection, token_id))
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
             let (_k, v) = item?;
-            Ok(Bid {
+            Ok(BidInfo {
                 price: coin(v.u128(), NATIVE_DENOM),
             })
         })
