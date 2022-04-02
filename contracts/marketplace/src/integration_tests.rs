@@ -295,6 +295,8 @@ mod tests {
         // test before ask is made
         let query_asks_msg = QueryMsg::Asks {
             collection: nft_contract_addr.to_string(),
+            start_after: None,
+            limit: None,
         };
         let res: AsksResponse = router
             .wrap()

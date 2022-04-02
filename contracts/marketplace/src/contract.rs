@@ -433,17 +433,33 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::Asks { collection } => {
-            to_binary(&query_asks(deps, api.addr_validate(&collection)?)?)
-        }
+        QueryMsg::Asks {
+            collection,
+            start_after,
+            limit,
+        } => to_binary(&query_asks(
+            deps,
+            api.addr_validate(&collection)?,
+            start_after,
+            limit,
+        )?),
         QueryMsg::AllAsks {} => to_binary(&query_all_asks(deps)?),
     }
 }
 
-pub fn query_asks(deps: Deps, collection: Addr) -> StdResult<AsksResponse> {
+pub fn query_asks(
+    deps: Deps,
+    collection: Addr,
+    start_after: Option<u32>,
+    limit: Option<u32>,
+) -> StdResult<AsksResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let start = start_after.map(Bound::exclusive);
+
     let asks: StdResult<Vec<_>> = TOKEN_ASKS
         .prefix(&collection)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .map(|item| {
             let (token_id, ask) = item?;
             Ok(AskInfo {

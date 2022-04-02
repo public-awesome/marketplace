@@ -43,6 +43,8 @@ pub enum QueryMsg {
     },
     Asks {
         collection: String,
+        start_after: Option<u32>,
+        limit: Option<u32>,
     },
     AllAsks {},
     Bid {
