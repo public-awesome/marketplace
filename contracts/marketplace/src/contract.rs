@@ -12,7 +12,7 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw_storage_plus::Bound;
 use cw_utils::{maybe_addr, must_pay};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{burn_and_distribute_fee, CosmosMsg, Response, NATIVE_DENOM};
+use sg_std::{fair_burn, CosmosMsg, Response, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -343,10 +343,9 @@ fn payout(
     // Will hold payment msgs
     let mut msgs: Vec<CosmosMsg> = vec![];
 
-    // // Create Fair Burn message
-    // let fee_percent = Decimal::percent(TRADING_FEE_PERCENT as u64);
-    // let network_fee = payment.amount * fee_percent;
-    // msgs.append(&mut burn_and_distribute_fee(&info, network_fee.u128())?);
+    // Fair Burn amount
+    let fee_percent = Decimal::percent(TRADING_FEE_PERCENT as u64);
+    let network_fee = payment.amount * fee_percent;
 
     // Check if token supports Royalties
     let collection_info: CollectionInfoResponse = deps
@@ -367,7 +366,7 @@ fn payout(
         let owner_share_msg = BankMsg::Send {
             to_address: payment_recipient.to_string(),
             amount: vec![Coin {
-                amount: payment.amount * (Decimal::one() - royalty.share),
+                amount: payment.amount * (Decimal::one() - royalty.share) - network_fee,
                 denom: payment.denom,
             }],
         };
@@ -377,12 +376,15 @@ fn payout(
         let owner_share_msg = BankMsg::Send {
             to_address: payment_recipient.to_string(),
             amount: vec![Coin {
-                amount: payment.amount,
+                amount: payment.amount - network_fee,
                 denom: payment.denom,
             }],
         };
         msgs.append(&mut vec![owner_share_msg.into()]);
     }
+
+    // Append Fair Burn message
+    msgs.append(&mut fair_burn(network_fee.u128()));
 
     Ok(msgs)
 }
