@@ -237,7 +237,8 @@ mod tests {
 
         // Check money is transfered
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-        assert_eq!(creator_native_balances, coins(100, NATIVE_DENOM));
+        // 100  - 2 (fee)
+        assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
         let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
         assert_eq!(
             bidder_native_balances,
@@ -349,7 +350,8 @@ mod tests {
 
         // Check money is transfered
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-        assert_eq!(creator_native_balances, coins(100, NATIVE_DENOM));
+        // 100  - 2 (fee)
+        assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
         let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
         assert_eq!(
             bidder_native_balances,
@@ -669,7 +671,8 @@ mod tests {
             coins(INITIAL_BALANCE + 10, NATIVE_DENOM)
         );
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-        assert_eq!(creator_native_balances, coins(90, NATIVE_DENOM));
+        // 100 - 10 (royalties) - 2 (fee)
+        assert_eq!(creator_native_balances, coins(100 - 10 - 2, NATIVE_DENOM));
         let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
         assert_eq!(
             bidder_native_balances,
