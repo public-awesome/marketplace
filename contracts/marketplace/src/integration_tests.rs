@@ -292,9 +292,11 @@ mod tests {
         );
         assert!(res.is_ok());
 
-        // test before ask is made
+        // test before ask is made, without using pagination
         let query_asks_msg = QueryMsg::Asks {
             collection: nft_contract_addr.to_string(),
+            start_after: None,
+            limit: None,
         };
         let res: AsksResponse = router
             .wrap()
@@ -320,6 +322,30 @@ mod tests {
             .unwrap();
         assert_eq!(res.asks[0].token_id, TOKEN_ID);
         assert_eq!(res.asks[0].price.amount.u128(), 110);
+
+        // test pagination, starting when tokens exist
+        let query_asks_msg = QueryMsg::Asks {
+            collection: nft_contract_addr.to_string(),
+            start_after: Some(TOKEN_ID - 1),
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(nft_marketplace_addr.clone(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks[0].token_id, TOKEN_ID);
+
+        // test pagination, starting when token don't exist
+        let query_asks_msg = QueryMsg::Asks {
+            collection: nft_contract_addr.to_string(),
+            start_after: Some(TOKEN_ID),
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(nft_marketplace_addr.clone(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 0);
 
         // test all asks query
         let res: AllAsksResponse = router
