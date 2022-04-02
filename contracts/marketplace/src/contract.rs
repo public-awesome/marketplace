@@ -1,6 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{
-    Bid, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CurrentAskResponse, ExecuteMsg,
+    InstantiateMsg, QueryMsg,
 };
 use crate::state::{Ask, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
@@ -432,7 +433,27 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
+        QueryMsg::Asks { collection } => {
+            to_binary(&query_asks(deps, api.addr_validate(&collection)?)?)
+        }
     }
+}
+
+pub fn query_asks(deps: Deps, collection: Addr) -> StdResult<AsksResponse> {
+    let asks: StdResult<Vec<_>> = TOKEN_ASKS
+        .prefix(&collection)
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|item| {
+            let (token_id, ask) = item?;
+            Ok(AskInfo {
+                token_id,
+                price: coin(ask.price.u128(), NATIVE_DENOM),
+                funds_recipient: ask.funds_recipient,
+            })
+        })
+        .collect();
+
+    Ok(AsksResponse { asks: asks? })
 }
 
 pub fn query_current_ask(
@@ -453,11 +474,7 @@ pub fn query_bid(
 ) -> StdResult<BidResponse> {
     let bid = TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?;
 
-    Ok(BidResponse {
-        bid: bid.map(|b| Bid {
-            price: coin(b.u128(), NATIVE_DENOM),
-        }),
-    })
+    Ok(BidResponse { bid })
 }
 
 pub fn query_bids(
@@ -471,13 +488,14 @@ pub fn query_bids(
     let start_addr = maybe_addr(deps.api, start_after)?;
     let start = start_addr.as_ref().map(Bound::exclusive);
 
-    let bids: StdResult<Vec<Bid>> = TOKEN_BIDS
+    let bids: StdResult<Vec<BidInfo>> = TOKEN_BIDS
         .prefix((&collection, token_id))
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
             let (_k, v) = item?;
-            Ok(Bid {
+            Ok(BidInfo {
+                token_id,
                 price: coin(v.u128(), NATIVE_DENOM),
             })
         })

@@ -1,5 +1,5 @@
-use crate::state::Ask;
-use cosmwasm_std::Coin;
+use crate::state::{Ask, Bid};
+use cosmwasm_std::{Addr, Coin};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -41,6 +41,9 @@ pub enum QueryMsg {
         collection: String,
         token_id: u32,
     },
+    Asks {
+        collection: String,
+    },
     Bid {
         collection: String,
         token_id: u32,
@@ -55,13 +58,26 @@ pub enum QueryMsg {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Bid {
+pub struct BidInfo {
+    pub token_id: u32,
     pub price: Coin,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AskInfo {
+    pub token_id: u32,
+    pub price: Coin,
+    pub funds_recipient: Option<Addr>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurrentAskResponse {
     pub ask: Option<Ask>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AsksResponse {
+    pub asks: Vec<AskInfo>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -71,5 +87,5 @@ pub struct BidResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidsResponse {
-    pub bids: Vec<Bid>,
+    pub bids: Vec<BidInfo>,
 }
