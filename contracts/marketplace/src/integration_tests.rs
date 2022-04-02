@@ -159,7 +159,7 @@ mod tests {
     }
 
     #[test]
-    fn happy_path() {
+    fn try_set_accept_bid() {
         let mut router = custom_mock_app();
 
         // Setup intial accounts
@@ -227,14 +227,18 @@ mod tests {
             token_id: TOKEN_ID,
             bidder: bidder.to_string(),
         };
-        let res =
-            router.execute_contract(creator.clone(), nft_marketplace_addr, &accept_bid_msg, &[]);
-        // println!("{:?}", res);
+        let res = router.execute_contract(
+            creator.clone(),
+            nft_marketplace_addr.clone(),
+            &accept_bid_msg,
+            &[],
+        );
         assert!(res.is_ok());
 
         // Check money is transfered
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-        assert_eq!(creator_native_balances, coins(100, NATIVE_DENOM));
+        // 100  - 2 (fee)
+        assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
         let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
         assert_eq!(
             bidder_native_balances,
@@ -251,6 +255,13 @@ mod tests {
             .query_wasm_smart(nft_contract_addr, &query_owner_msg)
             .unwrap();
         assert_eq!(res.owner, bidder.to_string());
+
+        // Check contract has zero balance
+        let contract_balances = router
+            .wrap()
+            .query_all_balances(nft_marketplace_addr)
+            .unwrap();
+        assert_eq!(contract_balances, []);
     }
 
     #[test]
@@ -339,7 +350,8 @@ mod tests {
 
         // Check money is transfered
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-        assert_eq!(creator_native_balances, coins(100, NATIVE_DENOM));
+        // 100  - 2 (fee)
+        assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
         let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
         assert_eq!(
             bidder_native_balances,
@@ -659,7 +671,8 @@ mod tests {
             coins(INITIAL_BALANCE + 10, NATIVE_DENOM)
         );
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-        assert_eq!(creator_native_balances, coins(90, NATIVE_DENOM));
+        // 100 - 10 (royalties) - 2 (fee)
+        assert_eq!(creator_native_balances, coins(100 - 10 - 2, NATIVE_DENOM));
         let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
         assert_eq!(
             bidder_native_balances,
