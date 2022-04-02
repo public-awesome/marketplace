@@ -19,7 +19,9 @@
               "type": "string"
             },
             "token_id": {
-              "type": "string"
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
             }
           }
         }
@@ -47,7 +49,9 @@
               "type": "string"
             },
             "token_id": {
-              "type": "string"
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
             }
           }
         }
@@ -85,7 +89,9 @@
               ]
             },
             "token_id": {
-              "type": "string"
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
             }
           }
         }

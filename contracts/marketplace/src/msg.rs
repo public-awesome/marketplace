@@ -11,25 +11,25 @@ pub struct InstantiateMsg {}
 pub enum ExecuteMsg {
     SetBid {
         collection: String,
-        token_id: String,
+        token_id: u32,
     },
     RemoveBid {
         collection: String,
-        token_id: String,
+        token_id: u32,
     },
     SetAsk {
         collection: String,
-        token_id: String,
+        token_id: u32,
         price: Coin,
         funds_recipient: Option<String>,
     },
     RemoveAsk {
         collection: String,
-        token_id: String,
+        token_id: u32,
     },
     AcceptBid {
         collection: String,
-        token_id: String,
+        token_id: u32,
         bidder: String,
     },
 }
@@ -39,16 +39,16 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     CurrentAsk {
         collection: String,
-        token_id: String,
+        token_id: u32,
     },
     Bid {
         collection: String,
-        token_id: String,
+        token_id: u32,
         bidder: String,
     },
     Bids {
         collection: String,
-        token_id: String,
+        token_id: u32,
         start_after: Option<String>,
         limit: Option<u32>,
     },

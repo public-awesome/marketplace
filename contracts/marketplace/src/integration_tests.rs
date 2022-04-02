@@ -41,7 +41,7 @@ mod tests {
     use sg_multi_test::StargazeApp;
     use sg_std::NATIVE_DENOM;
 
-    const TOKEN_ID: &str = "123";
+    const TOKEN_ID: u32 = 123;
     const CREATION_FEE: u128 = 1_000_000_000;
     const INITIAL_BALANCE: u128 = 2000;
 
@@ -189,7 +189,7 @@ mod tests {
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
         };
@@ -200,7 +200,7 @@ mod tests {
         // Bidder makes bid
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -224,7 +224,7 @@ mod tests {
         // Creator accepts bid
         let accept_bid_msg = ExecuteMsg::AcceptBid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
             bidder: bidder.to_string(),
         };
         let res =
@@ -270,7 +270,7 @@ mod tests {
         // An ask is made by the creator, but fails because NFT is not authorized
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
         };
@@ -309,7 +309,7 @@ mod tests {
             .ok();
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
         router
             .execute_contract(
@@ -323,7 +323,7 @@ mod tests {
         // Bidder makes bid that meets the ask criteria
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
         let res = router
             .execute_contract(
@@ -392,7 +392,7 @@ mod tests {
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
         };
@@ -403,7 +403,7 @@ mod tests {
         // Bidder makes bid
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
 
         let res = router.execute_contract(
@@ -431,7 +431,7 @@ mod tests {
         // Bidder removes bid
         let remove_bid_msg = ExecuteMsg::RemoveBid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
         let res =
             router.execute_contract(bidder.clone(), nft_marketplace_addr, &remove_bid_msg, &[]);
@@ -473,7 +473,7 @@ mod tests {
         // An ask is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
             price: coin(200, NATIVE_DENOM),
             funds_recipient: None,
         };
@@ -484,7 +484,7 @@ mod tests {
         // Bidder makes bid
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -511,7 +511,7 @@ mod tests {
         // Bidder makes higher bid
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -538,7 +538,7 @@ mod tests {
         // Check new bid has been saved
         let query_bid_msg = QueryMsg::Bid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
             bidder: bidder.to_string(),
         };
         let bid = coin(150, NATIVE_DENOM);
@@ -631,7 +631,7 @@ mod tests {
         // An ask is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
         };
@@ -642,7 +642,7 @@ mod tests {
         // Bidder makes bid
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
         let res = router.execute_contract(
             bidder.clone(),

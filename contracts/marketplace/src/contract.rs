@@ -46,11 +46,11 @@ pub fn execute(
         ExecuteMsg::SetBid {
             collection,
             token_id,
-        } => execute_set_bid(deps, info, api.addr_validate(&collection)?, &token_id),
+        } => execute_set_bid(deps, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::RemoveBid {
             collection,
             token_id,
-        } => execute_remove_bid(deps, env, info, api.addr_validate(&collection)?, &token_id),
+        } => execute_remove_bid(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::SetAsk {
             collection,
             token_id,
@@ -61,14 +61,14 @@ pub fn execute(
             env,
             info,
             api.addr_validate(&collection)?,
-            &token_id,
+            token_id,
             price,
             funds_recipient.map(|addr| api.addr_validate(&addr).unwrap()),
         ),
         ExecuteMsg::RemoveAsk {
             collection,
             token_id,
-        } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, &token_id),
+        } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::AcceptBid {
             collection,
             token_id,
@@ -77,7 +77,7 @@ pub fn execute(
             deps,
             info,
             api.addr_validate(&collection)?,
-            &token_id,
+            token_id,
             api.addr_validate(&bidder)?,
         ),
     }
@@ -88,7 +88,7 @@ pub fn execute_set_bid(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
 ) -> Result<Response, ContractError> {
     // Make sure a bid amount was sent
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
@@ -154,7 +154,7 @@ pub fn execute_set_bid(
     Ok(res
         .add_attribute("action", "set_bid")
         .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id)
+        .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_attribute("bid_price", bid_price.to_string()))
 }
@@ -165,7 +165,7 @@ pub fn execute_remove_bid(
     _env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
 ) -> Result<Response, ContractError> {
     let bidder = info.sender;
 
@@ -184,7 +184,7 @@ pub fn execute_remove_bid(
     Ok(Response::new()
         .add_attribute("action", "remove_bid")
         .add_attribute("collection", collection)
-        .add_attribute("token_id", token_id)
+        .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_message(exec_refund_bidder))
 }
@@ -195,7 +195,7 @@ pub fn execute_set_ask(
     env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
     price: Coin,
     funds_recipient: Option<Addr>,
 ) -> Result<Response, ContractError> {
@@ -222,7 +222,7 @@ pub fn execute_set_ask(
     Ok(Response::new()
         .add_attribute("action", "set_ask")
         .add_attribute("collection", collection)
-        .add_attribute("token_id", token_id)
+        .add_attribute("token_id", token_id.to_string())
         .add_attribute("price", price.to_string()))
 }
 
@@ -231,7 +231,7 @@ pub fn execute_remove_ask(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
 ) -> Result<Response, ContractError> {
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
@@ -240,7 +240,7 @@ pub fn execute_remove_ask(
     Ok(Response::new()
         .add_attribute("action", "remove_ask")
         .add_attribute("collection", collection)
-        .add_attribute("token_id", token_id))
+        .add_attribute("token_id", token_id.to_string()))
 }
 
 /// Owner can accept a bid which transfers funds as well as the token
@@ -248,7 +248,7 @@ pub fn execute_accept_bid(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
     bidder: Addr,
 ) -> Result<Response, ContractError> {
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -276,7 +276,7 @@ pub fn execute_accept_bid(
     Ok(Response::new()
         .add_attribute("action", "accept_bid")
         .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id)
+        .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_messages(msgs))
 }
@@ -286,7 +286,7 @@ fn check_only_owner(
     deps: Deps,
     info: &MessageInfo,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
 ) -> Result<OwnerOfResponse, ContractError> {
     let owner: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
         collection,
@@ -305,7 +305,7 @@ fn check_only_owner(
 fn finalize_sale(
     deps: DepsMut,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
     recipient: Addr,
     funds_recipient: Addr,
     price: Coin,
@@ -383,7 +383,7 @@ fn store_bid(
     deps: DepsMut,
     bidder: Addr,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
     bid_price: Uint128,
 ) -> StdResult<()> {
     TOKEN_BIDS.save(deps.storage, (&collection, token_id, &bidder), &bid_price)
@@ -400,7 +400,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => to_binary(&query_current_ask(
             deps,
             api.addr_validate(&collection)?,
-            &token_id,
+            token_id,
         )?),
         QueryMsg::Bid {
             collection,
@@ -409,7 +409,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => to_binary(&query_bid(
             deps,
             api.addr_validate(&collection)?,
-            &token_id,
+            token_id,
             api.addr_validate(&bidder)?,
         )?),
         QueryMsg::Bids {
@@ -420,7 +420,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => to_binary(&query_bids(
             deps,
             api.addr_validate(&collection)?,
-            &token_id,
+            token_id,
             start_after,
             limit,
         )?),
@@ -430,7 +430,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_current_ask(
     deps: Deps,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
 ) -> StdResult<CurrentAskResponse> {
     let ask = TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))?;
 
@@ -440,7 +440,7 @@ pub fn query_current_ask(
 pub fn query_bid(
     deps: Deps,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
     bidder: Addr,
 ) -> StdResult<BidResponse> {
     let bid = TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?;
@@ -455,7 +455,7 @@ pub fn query_bid(
 pub fn query_bids(
     deps: Deps,
     collection: Addr,
-    token_id: &str,
+    token_id: u32,
     start_after: Option<String>,
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
@@ -487,7 +487,7 @@ mod tests {
 
     const CREATOR: &str = "creator";
     const COLLECTION: &str = "collection";
-    const TOKEN_ID: &str = "123";
+    const TOKEN_ID: u32 = 123;
 
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {};
@@ -518,7 +518,7 @@ mod tests {
 
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
 
         // Broke bidder calls Set Bid and gets an error
@@ -530,7 +530,7 @@ mod tests {
 
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
         };
 
         // Bidder calls SetBid before an Ask is set, so it should fail
@@ -545,7 +545,7 @@ mod tests {
 
         let set_ask = ExecuteMsg::SetAsk {
             collection: COLLECTION.to_string(),
-            token_id: TOKEN_ID.to_string(),
+            token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
         };
