@@ -9,19 +9,25 @@
     "bids": {
       "type": "array",
       "items": {
-        "$ref": "#/definitions/Bid"
+        "$ref": "#/definitions/BidInfo"
       }
     }
   },
   "definitions": {
-    "Bid": {
+    "BidInfo": {
       "type": "object",
       "required": [
-        "price"
+        "price",
+        "token_id"
       ],
       "properties": {
         "price": {
           "$ref": "#/definitions/Coin"
+        },
+        "token_id": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
         }
       }
     },
