@@ -32,7 +32,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{AllAsksResponse, AsksResponse, BidResponse};
+    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse};
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
@@ -347,12 +347,18 @@ mod tests {
             .unwrap();
         assert_eq!(res.asks.len(), 0);
 
-        // test all asks query
-        let res: AllAsksResponse = router
+        // test listed collections query
+        let res: CollectionsResponse = router
             .wrap()
-            .query_wasm_smart(nft_marketplace_addr, &QueryMsg::AllAsks {})
+            .query_wasm_smart(
+                nft_marketplace_addr,
+                &QueryMsg::ListedCollections {
+                    start_after: None,
+                    limit: None,
+                },
+            )
             .unwrap();
-        assert_eq!(res.asks[0].collection, "Contract #1");
+        assert_eq!(res.collections[0], "Contract #1");
     }
 
     #[test]

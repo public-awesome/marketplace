@@ -37,6 +37,7 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    // TODO: add comments
     CurrentAsk {
         collection: String,
         token_id: u32,
@@ -46,7 +47,9 @@ pub enum QueryMsg {
         start_after: Option<u32>,
         limit: Option<u32>,
     },
-    AllAsks {
+    /// List of collections that have asks on them
+    /// Return type: CollectionsResponse
+    ListedCollections {
         start_after: Option<String>,
         limit: Option<u32>,
     },
@@ -77,14 +80,6 @@ pub struct AskInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AllAskInfo {
-    pub collection: String,
-    pub token_id: u32,
-    pub price: Coin,
-    pub funds_recipient: Option<Addr>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurrentAskResponse {
     pub ask: Option<Ask>,
 }
@@ -95,8 +90,8 @@ pub struct AsksResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AllAsksResponse {
-    pub asks: Vec<AllAskInfo>,
+pub struct CollectionsResponse {
+    pub collections: Vec<Addr>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AllAskInfo, AllAsksResponse, AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse,
+    AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use crate::state::{Ask, TOKEN_ASKS, TOKEN_BIDS};
@@ -10,7 +10,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
-use cw_storage_plus::Bound;
+use cw_storage_plus::{Bound, PrefixBound};
 use cw_utils::{maybe_addr, must_pay};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{fair_burn, CosmosMsg, Response, NATIVE_DENOM};
@@ -443,8 +443,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::AllAsks { start_after, limit } => {
-            to_binary(&query_all_asks(deps, start_after, limit)?)
+        QueryMsg::ListedCollections { start_after, limit } => {
+            to_binary(&query_listed_collections(deps, start_after, limit)?)
         }
     }
 }
@@ -475,32 +475,27 @@ pub fn query_asks(
     Ok(AsksResponse { asks: asks? })
 }
 
-pub fn query_all_asks(
+pub fn query_listed_collections(
     deps: Deps,
     start_after: Option<String>,
     limit: Option<u32>,
-) -> StdResult<AllAsksResponse> {
+) -> StdResult<CollectionsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
     let start_addr = maybe_addr(deps.api, start_after)?;
-    let start: Option<Bound<&Addr>> = start_addr.as_ref().map(Bound::exclusive);
+    let start = start_addr.as_ref().map(PrefixBound::exclusive);
 
-    // TODO: may need to use multi-index
-
-    let asks: StdResult<Vec<_>> = TOKEN_ASKS
-        .range(deps.storage, start, None, Order::Ascending)
+    let collections: StdResult<Vec<_>> = TOKEN_ASKS
+        .prefix_range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| {
-            let ((collection, token_id), ask) = item?;
-            Ok(AllAskInfo {
-                collection: collection.to_string(),
-                token_id,
-                price: coin(ask.price.u128(), NATIVE_DENOM),
-                funds_recipient: ask.funds_recipient,
-            })
+            let ((collection, _), _) = item?;
+            Ok(collection)
         })
         .collect();
 
-    Ok(AllAsksResponse { asks: asks? })
+    Ok(CollectionsResponse {
+        collections: collections?,
+    })
 }
 
 pub fn query_current_ask(
