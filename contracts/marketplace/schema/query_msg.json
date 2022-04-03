@@ -3,6 +3,7 @@
   "title": "QueryMsg",
   "oneOf": [
     {
+      "description": "Get the current ask for specific NFT Return type: `CurrentAskResponse`",
       "type": "object",
       "required": [
         "current_ask"
@@ -29,6 +30,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Get all asks for a collection Return type: `AsksResponse`",
       "type": "object",
       "required": [
         "asks"
@@ -65,18 +67,36 @@
       "additionalProperties": false
     },
     {
+      "description": "List of collections that have asks on them Return type: `CollectionsResponse`",
       "type": "object",
       "required": [
-        "all_asks"
+        "listed_collections"
       ],
       "properties": {
-        "all_asks": {
-          "type": "object"
+        "listed_collections": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
         }
       },
       "additionalProperties": false
     },
     {
+      "description": "Get data for a specific bid Return type: `BidResponse`",
       "type": "object",
       "required": [
         "bid"
@@ -107,6 +127,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Get all bids for a specific NFT Return type: `BidsResponse`",
       "type": "object",
       "required": [
         "bids"
