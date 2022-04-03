@@ -65,13 +65,30 @@
       "additionalProperties": false
     },
     {
+      "description": "List of collections that have asks on them Return type: CollectionsResponse",
       "type": "object",
       "required": [
-        "all_asks"
+        "listed_collections"
       ],
       "properties": {
-        "all_asks": {
-          "type": "object"
+        "listed_collections": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
         }
       },
       "additionalProperties": false
