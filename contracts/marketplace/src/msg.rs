@@ -37,27 +37,31 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
-    // TODO: add comments
-    CurrentAsk {
-        collection: String,
-        token_id: u32,
-    },
+    /// Get the current ask for specific NFT
+    /// Return type: `CurrentAskResponse`
+    CurrentAsk { collection: String, token_id: u32 },
+    /// Get all asks for a collection
+    /// Return type: `AsksResponse`
     Asks {
         collection: String,
         start_after: Option<u32>,
         limit: Option<u32>,
     },
     /// List of collections that have asks on them
-    /// Return type: CollectionsResponse
+    /// Return type: `CollectionsResponse`
     ListedCollections {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Get data for a specific bid
+    /// Return type: `BidResponse`
     Bid {
         collection: String,
         token_id: u32,
         bidder: String,
     },
+    /// Get all bids for a specific NFT
+    /// Return type: `BidsResponse`
     Bids {
         collection: String,
         token_id: u32,
