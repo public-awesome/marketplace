@@ -487,7 +487,7 @@ pub fn query_listed_collections(
     let collections: StdResult<Vec<_>> = TOKEN_ASKS
         .prefix_range(deps.storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|item| item.map(|(collection, _)| collection.0))
+        .map(|item| item.map(|(key, _)| key.0))
         .collect();
 
     Ok(CollectionsResponse {
