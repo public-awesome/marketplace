@@ -219,6 +219,7 @@ pub fn execute_set_ask(
         deps.storage,
         (&collection, token_id),
         &Ask {
+            seller: info.sender,
             price: price.amount,
             funds_recipient,
         },

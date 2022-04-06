@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Ask {
+    pub seller: Addr,
     pub price: Uint128,
     pub funds_recipient: Option<Addr>,
 }
