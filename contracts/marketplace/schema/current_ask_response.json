@@ -22,7 +22,8 @@
     "Ask": {
       "type": "object",
       "required": [
-        "price"
+        "price",
+        "seller"
       ],
       "properties": {
         "funds_recipient": {
@@ -37,6 +38,9 @@
         },
         "price": {
           "$ref": "#/definitions/Uint128"
+        },
+        "seller": {
+          "$ref": "#/definitions/Addr"
         }
       }
     },

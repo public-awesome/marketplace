@@ -78,6 +78,7 @@ pub struct BidInfo {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AskInfo {
+    pub seller: Addr,
     pub token_id: u32,
     pub price: Coin,
     pub funds_recipient: Option<Addr>,
