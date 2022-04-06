@@ -22,6 +22,7 @@
       "type": "object",
       "required": [
         "price",
+        "seller",
         "token_id"
       ],
       "properties": {
@@ -37,6 +38,9 @@
         },
         "price": {
           "$ref": "#/definitions/Coin"
+        },
+        "seller": {
+          "$ref": "#/definitions/Addr"
         },
         "token_id": {
           "type": "integer",
