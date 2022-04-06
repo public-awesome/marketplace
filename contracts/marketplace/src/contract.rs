@@ -466,6 +466,7 @@ pub fn query_asks(
         .map(|item| {
             let (token_id, ask) = item?;
             Ok(AskInfo {
+                seller: ask.seller,
                 token_id,
                 price: coin(ask.price.u128(), NATIVE_DENOM),
                 funds_recipient: ask.funds_recipient,
