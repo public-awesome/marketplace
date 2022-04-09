@@ -19,11 +19,13 @@ pub const TOKEN_BIDS: Map<(&Addr, u32, &Addr), Bid> = Map::new("b");
 
 // (collection, token_id) -> Ask
 // (collection) -> [Ask]
-pub const TOKEN_ASKS: Map<(&Addr, u32), Ask> = Map::new("a");
+// pub const TOKEN_ASKS: Map<(&Addr, u32), Ask> = Map::new("a");
 // (seller, collection, token_id) -> Ask
 // (seller, collection) -> [Ask]
 // (seller) -> [Ask]
 
+// TODO: do we need both collection and collection_token?
+// Can't we just have collection_token and prefix iterate over the collection?
 /// Defines incides for accessing Asks
 pub struct AskIndicies<'a> {
     // (collection) -> [Ask]
@@ -41,7 +43,8 @@ impl<'a> IndexList<Ask> for AskIndicies<'a> {
     }
 }
 
-pub fn asks<'a>() -> IndexedMap<'a, u32, Ask, AskIndicies<'a>> {
+// TODO: fix u32 key here...
+pub fn asks<'a>() -> IndexedMap<'a, &'a str, Ask, AskIndicies<'a>> {
     let indexes = AskIndicies {
         collection: MultiIndex::new(|d: &Ask| d.collection.clone(), "asks", "asks__collection"),
         collection_token: UniqueIndex::new(

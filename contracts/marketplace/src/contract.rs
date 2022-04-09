@@ -3,7 +3,7 @@ use crate::msg::{
     AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{Ask, TOKEN_ASKS, TOKEN_BIDS};
+use crate::state::{asks, Ask, TOKEN_BIDS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Uint128, WasmMsg,
@@ -112,11 +112,15 @@ pub fn execute_set_bid(
     };
 
     // Check if Ask exists before moving forward
-    if !TOKEN_ASKS.has(deps.storage, (&collection, token_id)) {
-        return Err(ContractError::AskDoesNotExist {});
-    }
-    // Guaranteed to have an Ask since we checked above
-    let ask = TOKEN_ASKS.load(deps.storage, (&collection, token_id))?;
+    let ask = asks()
+        .idx
+        .collection_token
+        .item(deps.storage, (collection, token_id))?
+        .map(|(_, a)| a)
+        .ok_or(ContractError::NoSuchAsk(
+            collection.to_string(),
+            token_id.to_string(),
+        ))?;
 
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
@@ -129,7 +133,9 @@ pub fn execute_set_bid(
         )?;
     } else {
         // Bid meets ask criteria so finalize sale
-        TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+        // TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+
+        // asks().remove(deps.storage, (collection, token_id));
 
         let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
             collection.clone(),
@@ -215,15 +221,28 @@ pub fn execute_set_ask(
     {
         return Err(ContractError::NeedsApproval {});
     }
-    TOKEN_ASKS.save(
+    // TOKEN_ASKS.save(
+    //     deps.storage,
+    //     (&collection, token_id),
+    //     &Ask {
+    //         seller: info.sender,
+    //         price: price.amount,
+    //         funds_recipient,
+    //     },
+    // )?;
+
+    asks().save(
         deps.storage,
-        (&collection, token_id),
+        "key",
         &Ask {
+            collection,
+            token_id,
             seller: info.sender,
             price: price.amount,
             funds_recipient,
         },
     )?;
+
     Ok(Response::new()
         .add_attribute("action", "set_ask")
         .add_attribute("collection", collection)
