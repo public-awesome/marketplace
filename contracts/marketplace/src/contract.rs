@@ -1,16 +1,18 @@
+use std::convert::TryInto;
+
 use crate::error::ContractError;
 use crate::msg::{
     AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{asks, Ask, TOKEN_BIDS};
+use crate::state::{asks, increment_asks, Ask, TOKEN_BIDS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Uint128, WasmMsg,
+    MessageInfo, Order, StdResult, Uint128, Uint64, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
-use cw_storage_plus::{Bound, PrefixBound};
+use cw_storage_plus::{Bound, PrefixBound, PrimaryKey};
 use cw_utils::{maybe_addr, must_pay};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{fair_burn, CosmosMsg, Response, NATIVE_DENOM};
@@ -112,11 +114,12 @@ pub fn execute_set_bid(
     };
 
     // Check if Ask exists before moving forward
-    let ask = asks()
+    let (ask_key, ask) = asks()
         .idx
         .collection_token
         .item(deps.storage, (collection, token_id))?
-        .map(|(_, a)| a)
+        // TODO: is there a better way to convert from Vec<u8> to u64?
+        .map(|(k, a)| (u64::from_be_bytes(k.as_slice().try_into().unwrap()), a))
         .ok_or(ContractError::NoSuchAsk(
             collection.to_string(),
             token_id.to_string(),
@@ -133,9 +136,7 @@ pub fn execute_set_bid(
         )?;
     } else {
         // Bid meets ask criteria so finalize sale
-        // TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
-
-        // asks().remove(deps.storage, (collection, token_id));
+        asks().remove(deps.storage, ask_key);
 
         let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
             collection.clone(),
@@ -221,19 +222,10 @@ pub fn execute_set_ask(
     {
         return Err(ContractError::NeedsApproval {});
     }
-    // TOKEN_ASKS.save(
-    //     deps.storage,
-    //     (&collection, token_id),
-    //     &Ask {
-    //         seller: info.sender,
-    //         price: price.amount,
-    //         funds_recipient,
-    //     },
-    // )?;
 
     asks().save(
         deps.storage,
-        "key",
+        increment_asks(deps.storage)?,
         &Ask {
             collection,
             token_id,
@@ -259,7 +251,26 @@ pub fn execute_remove_ask(
 ) -> Result<Response, ContractError> {
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
-    TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+    // let (ask_key, ask) = asks()
+    //     .idx
+    //     .collection_token
+    //     .item(deps.storage, (collection, token_id))?
+    //     .map(|(k, a)| (u64::from_be_bytes(k.as_slice().try_into().unwrap()), a))
+    //     .ok_or(ContractError::NoSuchAsk(
+    //         collection.to_string(),
+    //         token_id.to_string(),
+    //     ))?;
+
+    // TODO: is there a better way to do this?
+    let ask_key = asks()
+        .idx
+        .collection_token
+        .index_key((collection, token_id))
+        .as_slice()
+        .try_into()
+        .map(u64::from_be_bytes)
+        .unwrap();
+    asks().remove(deps.storage, ask_key);
 
     Ok(Response::new()
         .add_attribute("action", "remove_ask")
