@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse,
-    CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse, CurrentAskResponse,
+    ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use crate::state::{asks, Ask, TOKEN_BIDS};
 use cosmwasm_std::{
@@ -449,6 +449,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::ListedCollections { start_after, limit } => {
             to_binary(&query_listed_collections(deps, start_after, limit)?)
         }
+        QueryMsg::AsksBySeller { seller } => {
+            to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
+        }
     }
 }
 
@@ -474,15 +477,19 @@ pub fn query_asks(
             Order::Ascending,
         )
         .take(limit)
-        .map(|item| {
-            let (key, ask) = item?;
-            Ok(AskInfo {
-                seller: ask.seller,
-                token_id: key.1,
-                price: coin(ask.price.u128(), NATIVE_DENOM),
-                funds_recipient: ask.funds_recipient,
-            })
-        })
+        .map(|res| res.map(|item| item.1))
+        .collect();
+
+    Ok(AsksResponse { asks: asks? })
+}
+
+pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse> {
+    let asks: StdResult<Vec<_>> = asks()
+        .idx
+        .seller
+        .prefix(seller)
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|res| res.map(|item| item.1))
         .collect();
 
     Ok(AsksResponse { asks: asks? })
@@ -575,20 +582,36 @@ mod tests {
     fn ask_indexed_map() {
         let mut deps = mock_dependencies();
         let collection = Addr::unchecked(COLLECTION);
+        let seller = Addr::unchecked("seller");
 
         let ask = Ask {
             collection: collection.clone(),
             token_id: TOKEN_ID,
-            seller: Addr::unchecked("seller"),
+            seller: seller.clone(),
             price: Uint128::from(500u128),
             funds_recipient: None,
         };
-        let key = ask_key(collection, TOKEN_ID);
+        let key = ask_key(collection.clone(), TOKEN_ID);
         let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
+        assert!(res.is_ok());
+
+        let ask2 = Ask {
+            collection: collection.clone(),
+            token_id: TOKEN_ID + 1,
+            seller: seller.clone(),
+            price: Uint128::from(500u128),
+            funds_recipient: None,
+        };
+        let key2 = ask_key(collection, TOKEN_ID + 1);
+        let res = asks().save(deps.as_mut().storage, key2, &ask2);
         assert!(res.is_ok());
 
         let res = asks().load(deps.as_ref().storage, key);
         assert_eq!(res.unwrap(), ask);
+
+        let res = query_asks_by_seller(deps.as_ref(), seller).unwrap();
+        assert_eq!(res.asks.len(), 2);
+        assert_eq!(res.asks[0], ask);
     }
 
     fn setup_contract(deps: DepsMut) {

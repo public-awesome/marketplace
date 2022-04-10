@@ -40,13 +40,19 @@ pub enum QueryMsg {
     // TODO: add ask queries by seller
     /// Get the current ask for specific NFT
     /// Return type: `CurrentAskResponse`
-    CurrentAsk { collection: String, token_id: u32 },
+    CurrentAsk {
+        collection: String,
+        token_id: u32,
+    },
     /// Get all asks for a collection
     /// Return type: `AsksResponse`
     Asks {
         collection: String,
         start_after: Option<u32>,
         limit: Option<u32>,
+    },
+    AsksBySeller {
+        seller: String,
     },
     /// List of collections that have asks on them
     /// Return type: `CollectionsResponse`
@@ -78,21 +84,13 @@ pub struct BidInfo {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct AskInfo {
-    pub seller: Addr,
-    pub token_id: u32,
-    pub price: Coin,
-    pub funds_recipient: Option<Addr>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CurrentAskResponse {
     pub ask: Option<Ask>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AsksResponse {
-    pub asks: Vec<AskInfo>,
+    pub asks: Vec<Ask>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

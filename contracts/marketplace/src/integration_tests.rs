@@ -321,7 +321,7 @@ mod tests {
             .query_wasm_smart(nft_marketplace_addr.clone(), &query_asks_msg)
             .unwrap();
         assert_eq!(res.asks[0].token_id, TOKEN_ID);
-        assert_eq!(res.asks[0].price.amount.u128(), 110);
+        assert_eq!(res.asks[0].price.u128(), 110);
 
         // test pagination, starting when tokens exist
         let query_asks_msg = QueryMsg::Asks {
