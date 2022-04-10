@@ -1,5 +1,5 @@
-use cosmwasm_std::{Addr, StdResult, Storage, Uint128};
-use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex, UniqueIndex};
+use cosmwasm_std::{Addr, Uint128};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Map, MultiIndex, UniqueIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -22,40 +22,22 @@ pub const TOKEN_ASKS: Map<(&Addr, u32), Ask> = Map::new("a");
 
 // (collection, token_id) -> Ask
 // (collection) -> [Ask]
-// pub const TOKEN_ASKS: Map<(&Addr, u32), Ask> = Map::new("a");
 // (seller, collection, token_id) -> Ask
 // (seller, collection) -> [Ask]
 // (seller) -> [Ask]
 
-/// Primary key for Asks
-pub const ASK_COUNT: Item<u64> = Item::new("ask_count");
-
-pub fn ask_count(storage: &dyn Storage) -> StdResult<u64> {
-    Ok(ASK_COUNT.may_load(storage)?.unwrap_or_default())
-}
-
-pub fn increment_asks(storage: &mut dyn Storage) -> StdResult<u64> {
-    let val = ask_count(storage)? + 1;
-    ASK_COUNT.save(storage, &val)?;
-    Ok(val)
-}
-
-pub fn decrement_asks(storage: &mut dyn Storage) -> StdResult<u64> {
-    let val = ask_count(storage)? - 1;
-    ASK_COUNT.save(storage, &val)?;
-    Ok(val)
-}
+pub type AskKey = (Addr, u32);
 
 // TODO: do we need both collection and collection_token?
 // Can't we just have collection_token and prefix iterate over the collection?
 /// Defines incides for accessing Asks
 pub struct AskIndicies<'a> {
     // (collection) -> [Ask]
-    pub collection: MultiIndex<'a, Addr, Ask, u64>,
+    pub collection: MultiIndex<'a, Addr, Ask, AskKey>,
     // (collection, token_id) -> Ask
-    pub collection_token: UniqueIndex<'a, (Addr, u32), Ask, u64>,
+    pub collection_token: UniqueIndex<'a, AskKey, Ask, AskKey>,
     // (seller) -> [Ask]
-    pub seller: MultiIndex<'a, Addr, Ask, u64>,
+    pub seller: MultiIndex<'a, Addr, Ask, AskKey>,
 }
 
 impl<'a> IndexList<Ask> for AskIndicies<'a> {
@@ -65,7 +47,7 @@ impl<'a> IndexList<Ask> for AskIndicies<'a> {
     }
 }
 
-pub fn asks<'a>() -> IndexedMap<'a, u64, Ask, AskIndicies<'a>> {
+pub fn asks<'a>() -> IndexedMap<'a, AskKey, Ask, AskIndicies<'a>> {
     let indexes = AskIndicies {
         collection: MultiIndex::new(|d: &Ask| d.collection.clone(), "asks", "asks__collection"),
         collection_token: UniqueIndex::new(

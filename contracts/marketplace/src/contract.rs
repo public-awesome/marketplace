@@ -1,11 +1,9 @@
-use std::convert::TryInto;
-
 use crate::error::ContractError;
 use crate::msg::{
     AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{asks, increment_asks, Ask, TOKEN_ASKS, TOKEN_BIDS};
+use crate::state::{asks, Ask, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Uint128, WasmMsg,
@@ -113,15 +111,7 @@ pub fn execute_set_bid(
         res = res.add_message(exec_refund_bidder)
     };
 
-    // Check if Ask exists before moving forward
-    let (ask_key, ask) = asks()
-        .idx
-        .collection_token
-        .item(deps.storage, (collection.clone(), token_id))?
-        // TODO: is there a better way to convert from Vec<u8> to u64?
-        .map(|(k, a)| (u64::from_be_bytes(k.as_slice().try_into().unwrap()), a))
-        .ok_or_else(|| ContractError::NoSuchAsk(collection.to_string(), token_id.to_string()))?;
-
+    let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
         store_bid(
@@ -133,7 +123,7 @@ pub fn execute_set_bid(
         )?;
     } else {
         // Bid meets ask criteria so finalize sale
-        asks().remove(deps.storage, ask_key)?;
+        asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
         let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
             collection.clone(),
@@ -220,10 +210,9 @@ pub fn execute_set_ask(
         return Err(ContractError::NeedsApproval {});
     }
 
-    let ask_key = increment_asks(deps.storage)?;
     asks().save(
         deps.storage,
-        ask_key,
+        ask_key(collection.clone(), token_id),
         &Ask {
             collection: collection.clone(),
             token_id,
@@ -249,26 +238,7 @@ pub fn execute_remove_ask(
 ) -> Result<Response, ContractError> {
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
-    // let (ask_key, ask) = asks()
-    //     .idx
-    //     .collection_token
-    //     .item(deps.storage, (collection, token_id))?
-    //     .map(|(k, a)| (u64::from_be_bytes(k.as_slice().try_into().unwrap()), a))
-    //     .ok_or(ContractError::NoSuchAsk(
-    //         collection.to_string(),
-    //         token_id.to_string(),
-    //     ))?;
-
-    // TODO: is there a better way to do this?
-    let ask_key = asks()
-        .idx
-        .collection_token
-        .index_key((collection.clone(), token_id))
-        .as_slice()
-        .try_into()
-        .map(u64::from_be_bytes)
-        .unwrap();
-    asks().remove(deps.storage, ask_key)?;
+    asks().remove(deps.storage, (collection.clone(), token_id))?;
 
     Ok(Response::new()
         .add_attribute("action", "remove_ask")
@@ -425,6 +395,10 @@ fn store_bid(
     bid_price: Uint128,
 ) -> StdResult<()> {
     TOKEN_BIDS.save(deps.storage, (&collection, token_id, &bidder), &bid_price)
+}
+
+fn ask_key(collection: Addr, token_id: u32) -> (Addr, u32) {
+    (collection, token_id)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -587,19 +561,20 @@ mod tests {
     #[test]
     fn ask_indexed_map() {
         let mut deps = mock_dependencies();
+        let collection = Addr::unchecked(COLLECTION);
 
         let ask = Ask {
-            collection: Addr::unchecked(COLLECTION),
+            collection: collection.clone(),
             token_id: TOKEN_ID,
             seller: Addr::unchecked("seller"),
             price: Uint128::from(500u128),
             funds_recipient: None,
         };
-        let ask_key = 1u64;
-        let res = asks().save(deps.as_mut().storage, ask_key, &ask);
+        let key = ask_key(collection, TOKEN_ID);
+        let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
         assert!(res.is_ok());
 
-        let res = asks().load(deps.as_ref().storage, ask_key);
+        let res = asks().load(deps.as_ref().storage, key);
         assert_eq!(res.unwrap(), ask);
     }
 
