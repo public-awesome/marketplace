@@ -67,6 +67,26 @@
       "additionalProperties": false
     },
     {
+      "type": "object",
+      "required": [
+        "asks_by_seller"
+      ],
+      "properties": {
+        "asks_by_seller": {
+          "type": "object",
+          "required": [
+            "seller"
+          ],
+          "properties": {
+            "seller": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "List of collections that have asks on them Return type: `CollectionsResponse`",
       "type": "object",
       "required": [
