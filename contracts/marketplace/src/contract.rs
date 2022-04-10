@@ -3,7 +3,7 @@ use crate::msg::{
     AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{asks, Ask, TOKEN_ASKS, TOKEN_BIDS};
+use crate::state::{asks, Ask, TOKEN_BIDS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Uint128, WasmMsg,
@@ -257,9 +257,9 @@ pub fn execute_accept_bid(
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     // Query current ask
-    let ask = TOKEN_ASKS.load(deps.storage, (&collection, token_id))?;
+    let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     // Remove ask
-    TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+    asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
     // Query accepted bid
     let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
@@ -459,17 +459,26 @@ pub fn query_asks(
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
 
-    let asks: StdResult<Vec<_>> = TOKEN_ASKS
-        .prefix(&collection)
-        .range(deps.storage, start, None, Order::Ascending)
+    let asks: StdResult<Vec<_>> = asks()
+        .idx
+        .collection
+        .prefix(collection.clone())
+        .range(
+            deps.storage,
+            Some(Bound::exclusive((
+                collection,
+                start_after.unwrap_or_default(),
+            ))),
+            None,
+            Order::Ascending,
+        )
         .take(limit)
         .map(|item| {
-            let (token_id, ask) = item?;
+            let (key, ask) = item?;
             Ok(AskInfo {
                 seller: ask.seller,
-                token_id,
+                token_id: key.1,
                 price: coin(ask.price.u128(), NATIVE_DENOM),
                 funds_recipient: ask.funds_recipient,
             })
@@ -486,10 +495,14 @@ pub fn query_listed_collections(
 ) -> StdResult<CollectionsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
     let start_addr = maybe_addr(deps.api, start_after)?;
-    let start = start_addr.as_ref().map(PrefixBound::exclusive);
 
-    let collections: StdResult<Vec<_>> = TOKEN_ASKS
-        .prefix_range(deps.storage, start, None, Order::Ascending)
+    let collections: StdResult<Vec<_>> = asks()
+        .prefix_range(
+            deps.storage,
+            start_addr.map(PrefixBound::exclusive),
+            None,
+            Order::Ascending,
+        )
         .take(limit)
         .map(|item| item.map(|(key, _)| key.0))
         .collect();
@@ -504,7 +517,7 @@ pub fn query_current_ask(
     collection: Addr,
     token_id: u32,
 ) -> StdResult<CurrentAskResponse> {
-    let ask = TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))?;
+    let ask = asks().may_load(deps.storage, ask_key(collection, token_id))?;
 
     Ok(CurrentAskResponse { ask })
 }
@@ -551,7 +564,7 @@ pub fn query_bids(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coin, coins};
+    use cosmwasm_std::{coin, coins, StdError};
     use sg_std::NATIVE_DENOM;
 
     const CREATOR: &str = "creator";
@@ -624,7 +637,12 @@ mod tests {
 
         // Bidder calls SetBid before an Ask is set, so it should fail
         let err = execute(deps.as_mut(), mock_env(), bidder, set_bid_msg).unwrap_err();
-        assert_eq!(err, ContractError::AskDoesNotExist {});
+        assert_eq!(
+            err,
+            ContractError::Std(StdError::NotFound {
+                kind: "sg_marketplace::state::Ask".to_string()
+            })
+        );
     }
 
     #[test]

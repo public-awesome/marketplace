@@ -17,20 +17,16 @@ pub type Bid = Uint128;
 // Mapping from (collection, token_id, bidder) to bid amount
 pub const TOKEN_BIDS: Map<(&Addr, u32, &Addr), Bid> = Map::new("b");
 
-// Mapping from (collection, token_id) to the current ask for the token
-pub const TOKEN_ASKS: Map<(&Addr, u32), Ask> = Map::new("a");
-
-// (collection, token_id) -> Ask
-// (collection) -> [Ask]
-// (seller, collection, token_id) -> Ask
-// (seller, collection) -> [Ask]
-// (seller) -> [Ask]
-
 pub type AskKey = (Addr, u32);
 
 // TODO: do we need both collection and collection_token?
 // Can't we just have collection_token and prefix iterate over the collection?
 /// Defines incides for accessing Asks
+/// (collection, token_id) -> `Ask`
+/// (collection) -> [`Ask`]
+/// (seller, collection, token_id) -> `Ask`
+/// (seller, collection) -> [`Ask`]
+/// (seller) -> [`Ask`]
 pub struct AskIndicies<'a> {
     // (collection) -> [Ask]
     pub collection: MultiIndex<'a, Addr, Ask, AskKey>,

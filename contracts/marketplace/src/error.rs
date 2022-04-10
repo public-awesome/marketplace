@@ -22,12 +22,6 @@ pub enum ContractError {
     #[error("Bid not found")]
     BidNotFound {},
 
-    #[error("Ask does not exist")]
-    AskDoesNotExist {},
-
-    #[error("NoSuchAsk {0}/{1}")]
-    NoSuchAsk(String, String),
-
     #[error("Contract needs approval")]
     NeedsApproval {},
 
