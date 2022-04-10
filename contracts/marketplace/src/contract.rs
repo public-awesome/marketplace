@@ -5,14 +5,14 @@ use crate::msg::{
     AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{asks, increment_asks, Ask, TOKEN_BIDS};
+use crate::state::{asks, increment_asks, Ask, TOKEN_ASKS, TOKEN_BIDS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Uint128, Uint64, WasmMsg,
+    MessageInfo, Order, StdResult, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
-use cw_storage_plus::{Bound, PrefixBound, PrimaryKey};
+use cw_storage_plus::{Bound, PrefixBound};
 use cw_utils::{maybe_addr, must_pay};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{fair_burn, CosmosMsg, Response, NATIVE_DENOM};
@@ -117,13 +117,10 @@ pub fn execute_set_bid(
     let (ask_key, ask) = asks()
         .idx
         .collection_token
-        .item(deps.storage, (collection, token_id))?
+        .item(deps.storage, (collection.clone(), token_id))?
         // TODO: is there a better way to convert from Vec<u8> to u64?
         .map(|(k, a)| (u64::from_be_bytes(k.as_slice().try_into().unwrap()), a))
-        .ok_or(ContractError::NoSuchAsk(
-            collection.to_string(),
-            token_id.to_string(),
-        ))?;
+        .ok_or_else(|| ContractError::NoSuchAsk(collection.to_string(), token_id.to_string()))?;
 
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
@@ -136,7 +133,7 @@ pub fn execute_set_bid(
         )?;
     } else {
         // Bid meets ask criteria so finalize sale
-        asks().remove(deps.storage, ask_key);
+        asks().remove(deps.storage, ask_key)?;
 
         let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
             collection.clone(),
@@ -223,11 +220,12 @@ pub fn execute_set_ask(
         return Err(ContractError::NeedsApproval {});
     }
 
+    let ask_key = increment_asks(deps.storage)?;
     asks().save(
         deps.storage,
-        increment_asks(deps.storage)?,
+        ask_key,
         &Ask {
-            collection,
+            collection: collection.clone(),
             token_id,
             seller: info.sender,
             price: price.amount,
@@ -265,16 +263,16 @@ pub fn execute_remove_ask(
     let ask_key = asks()
         .idx
         .collection_token
-        .index_key((collection, token_id))
+        .index_key((collection.clone(), token_id))
         .as_slice()
         .try_into()
         .map(u64::from_be_bytes)
         .unwrap();
-    asks().remove(deps.storage, ask_key);
+    asks().remove(deps.storage, ask_key)?;
 
     Ok(Response::new()
         .add_attribute("action", "remove_ask")
-        .add_attribute("collection", collection)
+        .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string()))
 }
 
@@ -585,6 +583,25 @@ mod tests {
     const CREATOR: &str = "creator";
     const COLLECTION: &str = "collection";
     const TOKEN_ID: u32 = 123;
+
+    #[test]
+    fn ask_indexed_map() {
+        let mut deps = mock_dependencies();
+
+        let ask = Ask {
+            collection: Addr::unchecked(COLLECTION),
+            token_id: TOKEN_ID,
+            seller: Addr::unchecked("seller"),
+            price: Uint128::from(500u128),
+            funds_recipient: None,
+        };
+        let ask_key = 1u64;
+        let res = asks().save(deps.as_mut().storage, ask_key, &ask);
+        assert!(res.is_ok());
+
+        let res = asks().load(deps.as_ref().storage, ask_key);
+        assert_eq!(res.unwrap(), ask);
+    }
 
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {};

@@ -17,6 +17,9 @@ pub type Bid = Uint128;
 // Mapping from (collection, token_id, bidder) to bid amount
 pub const TOKEN_BIDS: Map<(&Addr, u32, &Addr), Bid> = Map::new("b");
 
+// Mapping from (collection, token_id) to the current ask for the token
+pub const TOKEN_ASKS: Map<(&Addr, u32), Ask> = Map::new("a");
+
 // (collection, token_id) -> Ask
 // (collection) -> [Ask]
 // pub const TOKEN_ASKS: Map<(&Addr, u32), Ask> = Map::new("a");
