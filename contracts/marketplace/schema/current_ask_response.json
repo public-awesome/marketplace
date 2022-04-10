@@ -22,10 +22,15 @@
     "Ask": {
       "type": "object",
       "required": [
+        "collection",
         "price",
-        "seller"
+        "seller",
+        "token_id"
       ],
       "properties": {
+        "collection": {
+          "$ref": "#/definitions/Addr"
+        },
         "funds_recipient": {
           "anyOf": [
             {
@@ -41,6 +46,11 @@
         },
         "seller": {
           "$ref": "#/definitions/Addr"
+        },
+        "token_id": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
         }
       }
     },
