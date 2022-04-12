@@ -3,10 +3,10 @@ use crate::msg::{
     AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse, CurrentAskResponse,
     ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{asks, Ask, TOKEN_BIDS};
+use crate::state::{asks, bids, Ask, Bid};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Uint128, WasmMsg,
+    MessageInfo, Order, StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -101,12 +101,12 @@ pub fn execute_set_bid(
 
     // Check bidder has existing bid, if so remove existing bid
     if let Some(existing_bid) =
-        TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?
+        bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?
     {
-        TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
+        bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
         let exec_refund_bidder = BankMsg::Send {
             to_address: bidder.to_string(),
-            amount: vec![coin(existing_bid.u128(), NATIVE_DENOM)],
+            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
         };
         res = res.add_message(exec_refund_bidder)
     };
@@ -114,12 +114,15 @@ pub fn execute_set_bid(
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
-        store_bid(
-            deps,
-            bidder.clone(),
-            collection.clone(),
-            token_id,
-            bid_price,
+        bids().save(
+            deps.storage,
+            (collection.clone(), token_id, bidder.clone()),
+            &Bid {
+                collection: collection.clone(),
+                token_id,
+                bidder: bidder.clone(),
+                price: bid_price,
+            },
         )?;
     } else {
         // Bid meets ask criteria so finalize sale
@@ -168,15 +171,15 @@ pub fn execute_remove_bid(
     let bidder = info.sender;
 
     // Check bid exists for bidder
-    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
+    let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
     // Remove bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
+    bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
     // Refund bidder
     let exec_refund_bidder = BankMsg::Send {
         to_address: bidder.to_string(),
-        amount: vec![coin(bid.u128(), NATIVE_DENOM)],
+        amount: vec![coin(bid.price.u128(), NATIVE_DENOM)],
     };
 
     Ok(Response::new()
@@ -262,9 +265,9 @@ pub fn execute_accept_bid(
     asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
     // Query accepted bid
-    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
+    let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
     // Remove accepted bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
+    bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
     // Transfer funds and NFT
     let msgs = finalize_sale(
@@ -273,7 +276,7 @@ pub fn execute_accept_bid(
         token_id,
         bidder.clone(),
         ask.funds_recipient.unwrap_or(info.sender),
-        coin(bid.u128(), NATIVE_DENOM),
+        coin(bid.price.u128(), NATIVE_DENOM),
     )?;
 
     Ok(Response::new()
@@ -385,16 +388,6 @@ fn payout(
     }
 
     Ok(msgs)
-}
-
-fn store_bid(
-    deps: DepsMut,
-    bidder: Addr,
-    collection: Addr,
-    token_id: u32,
-    bid_price: Uint128,
-) -> StdResult<()> {
-    TOKEN_BIDS.save(deps.storage, (&collection, token_id, &bidder), &bid_price)
 }
 
 fn ask_key(collection: Addr, token_id: u32) -> (Addr, u32) {
@@ -535,7 +528,7 @@ pub fn query_bid(
     token_id: u32,
     bidder: Addr,
 ) -> StdResult<BidResponse> {
-    let bid = TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?;
+    let bid = bids().may_load(deps.storage, (collection, token_id, bidder))?;
 
     Ok(BidResponse { bid })
 }
@@ -549,17 +542,33 @@ pub fn query_bids(
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
     let start_addr = maybe_addr(deps.api, start_after)?;
-    let start = start_addr.as_ref().map(Bound::exclusive);
+    // let start = start_addr.as_ref().map(Bound::exclusive);
 
-    let bids: StdResult<Vec<BidInfo>> = TOKEN_BIDS
-        .prefix((&collection, token_id))
-        .range(deps.storage, start, None, Order::Ascending)
+    // Some(Bound::exclusive((
+    //     collection,
+    //     start_after.unwrap_or_default(),
+    // ))),
+
+    let bids: StdResult<Vec<BidInfo>> = bids()
+        .idx
+        .collection
+        .prefix(collection.clone())
+        .range(
+            deps.storage,
+            Some(Bound::exclusive((
+                collection,
+                token_id,
+                start_addr.unwrap_or(None),
+            ))),
+            None,
+            Order::Ascending,
+        )
         .take(limit)
         .map(|item| {
             let (_k, v) = item?;
             Ok(BidInfo {
                 token_id,
-                price: coin(v.u128(), NATIVE_DENOM),
+                price: coin(v.price.u128(), NATIVE_DENOM),
             })
         })
         .collect();
@@ -571,7 +580,7 @@ pub fn query_bids(
 mod tests {
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coin, coins, StdError};
+    use cosmwasm_std::{coin, coins, StdError, Uint128};
     use sg_std::NATIVE_DENOM;
 
     const CREATOR: &str = "creator";
