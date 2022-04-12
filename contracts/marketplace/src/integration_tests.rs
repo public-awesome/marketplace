@@ -427,7 +427,7 @@ mod tests {
             .query_wasm_smart(nft_marketplace_addr, &query_bids_msg)
             .unwrap();
         assert_eq!(res.bids[0].token_id, TOKEN_ID);
-        assert_eq!(res.bids[0].price.amount.u128(), 100u128);
+        assert_eq!(res.bids[0].price.u128(), 100u128);
     }
 
     #[test]

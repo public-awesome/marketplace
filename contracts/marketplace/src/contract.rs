@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse, CurrentAskResponse,
-    ExecuteMsg, InstantiateMsg, QueryMsg,
+    AsksResponse, BidResponse, BidsResponse, CollectionsResponse, CurrentAskResponse, ExecuteMsg,
+    InstantiateMsg, QueryMsg,
 };
 use crate::state::{asks, bids, Ask, Bid};
 use cosmwasm_std::{
@@ -445,6 +445,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::AsksBySeller { seller } => {
             to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
         }
+        QueryMsg::BidsByBidder { bidder } => {
+            to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
+        }
     }
 }
 
@@ -533,6 +536,18 @@ pub fn query_bid(
     Ok(BidResponse { bid })
 }
 
+pub fn query_bids_by_bidder(deps: Deps, bidder: Addr) -> StdResult<BidsResponse> {
+    let bids = bids()
+        .idx
+        .bidder
+        .prefix(bidder)
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(BidsResponse { bids })
+}
+
 pub fn query_bids(
     deps: Deps,
     collection: Addr,
@@ -544,36 +559,26 @@ pub fn query_bids(
     let start_addr = maybe_addr(deps.api, start_after)?;
     // let start = start_addr.as_ref().map(Bound::exclusive);
 
-    // Some(Bound::exclusive((
-    //     collection,
-    //     start_after.unwrap_or_default(),
-    // ))),
-
-    let bids: StdResult<Vec<BidInfo>> = bids()
+    let bids = bids()
         .idx
-        .collection
-        .prefix(collection.clone())
+        .collection_token_id
+        .prefix((collection.clone(), token_id))
         .range(
             deps.storage,
             Some(Bound::exclusive((
                 collection,
                 token_id,
-                start_addr.unwrap_or(None),
+                // TODO: how do you fix this bounds?
+                start_addr.unwrap(),
             ))),
             None,
             Order::Ascending,
         )
         .take(limit)
-        .map(|item| {
-            let (_k, v) = item?;
-            Ok(BidInfo {
-                token_id,
-                price: coin(v.price.u128(), NATIVE_DENOM),
-            })
-        })
-        .collect();
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(BidsResponse { bids: bids? })
+    Ok(BidsResponse { bids })
 }
 
 #[cfg(test)]

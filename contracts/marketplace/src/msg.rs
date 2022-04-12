@@ -66,6 +66,11 @@ pub enum QueryMsg {
         token_id: u32,
         bidder: String,
     },
+    /// Get all bids by a bidder
+    /// Return type: `BidsResponse`
+    BidsByBidder {
+        bidder: String,
+    },
     /// Get all bids for a specific NFT
     /// Return type: `BidsResponse`
     Bids {
@@ -74,12 +79,6 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct BidInfo {
-    pub token_id: u32,
-    pub price: Coin,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -104,5 +103,5 @@ pub struct BidResponse {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidsResponse {
-    pub bids: Vec<BidInfo>,
+    pub bids: Vec<Bid>,
 }
