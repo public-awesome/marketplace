@@ -3,7 +3,7 @@ use crate::msg::{
     AsksResponse, BidResponse, BidsResponse, CollectionsResponse, CurrentAskResponse, ExecuteMsg,
     InstantiateMsg, QueryMsg,
 };
-use crate::state::{asks, bids, Ask, Bid};
+use crate::state::{ask_key, asks, bids, Ask, Bid};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, WasmMsg,
@@ -390,10 +390,6 @@ fn payout(
     Ok(msgs)
 }
 
-fn ask_key(collection: Addr, token_id: u32) -> (Addr, u32) {
-    (collection, token_id)
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let api = deps.api;
@@ -583,6 +579,8 @@ pub fn query_bids(
 
 #[cfg(test)]
 mod tests {
+    use crate::state::bid_key;
+
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coin, coins, StdError, Uint128};
@@ -626,6 +624,41 @@ mod tests {
         let res = query_asks_by_seller(deps.as_ref(), seller).unwrap();
         assert_eq!(res.asks.len(), 2);
         assert_eq!(res.asks[0], ask);
+    }
+
+    #[test]
+
+    fn bid_indexed_map() {
+        let mut deps = mock_dependencies();
+        let collection = Addr::unchecked(COLLECTION);
+        let bidder = Addr::unchecked("bidder");
+
+        let bid = Bid {
+            collection: collection.clone(),
+            token_id: TOKEN_ID,
+            bidder: bidder.clone(),
+            price: Uint128::from(500u128),
+        };
+        let key = bid_key(collection.clone(), TOKEN_ID, bidder.clone());
+        let res = bids().save(deps.as_mut().storage, key.clone(), &bid);
+        assert!(res.is_ok());
+
+        let bid2 = Bid {
+            collection: collection.clone(),
+            token_id: TOKEN_ID + 1,
+            bidder: bidder.clone(),
+            price: Uint128::from(500u128),
+        };
+        let key2 = bid_key(collection, TOKEN_ID + 1, bidder.clone());
+        let res = bids().save(deps.as_mut().storage, key2, &bid2);
+        assert!(res.is_ok());
+
+        let res = bids().load(deps.as_ref().storage, key);
+        assert_eq!(res.unwrap(), bid);
+
+        let res = query_bids_by_bidder(deps.as_ref(), bidder).unwrap();
+        assert_eq!(res.bids.len(), 2);
+        assert_eq!(res.bids[0], bid);
     }
 
     fn setup_contract(deps: DepsMut) {

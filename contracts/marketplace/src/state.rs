@@ -12,7 +12,13 @@ pub struct Ask {
     pub funds_recipient: Option<Addr>,
 }
 
-pub type AskKey = (Addr, u32);
+pub type TokenId = u32;
+
+pub type AskKey = (Addr, TokenId);
+
+pub fn ask_key(collection: Addr, token_id: TokenId) -> AskKey {
+    (collection, token_id)
+}
 
 /// Defines incides for accessing Asks
 pub struct AskIndicies<'a> {
@@ -38,18 +44,22 @@ pub fn asks<'a>() -> IndexedMap<'a, AskKey, Ask, AskIndicies<'a>> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Bid {
     pub collection: Addr,
-    pub token_id: u32,
+    pub token_id: TokenId,
     pub bidder: Addr,
     pub price: Uint128,
 }
 
 /// (collection, token_id, bidder) uniquely identifies a bid
-pub type BidKey = (Addr, u32, Addr);
+pub type BidKey = (Addr, TokenId, Addr);
+
+pub fn bid_key(collection: Addr, token_id: TokenId, bidder: Addr) -> BidKey {
+    (collection, token_id, bidder)
+}
 
 /// Defines incides for accessing bids
 pub struct BidIndicies<'a> {
     pub collection: MultiIndex<'a, Addr, Bid, BidKey>,
-    pub collection_token_id: MultiIndex<'a, (Addr, u32), Bid, BidKey>,
+    pub collection_token_id: MultiIndex<'a, (Addr, TokenId), Bid, BidKey>,
     pub bidder: MultiIndex<'a, Addr, Bid, BidKey>,
 }
 
@@ -65,7 +75,7 @@ pub fn bids<'a>() -> IndexedMap<'a, BidKey, Bid, BidIndicies<'a>> {
     let indexes = BidIndicies {
         collection: MultiIndex::new(|d: &Bid| d.collection.clone(), "bids", "bids__collection"),
         collection_token_id: MultiIndex::new(
-            |d: &Bid| (d.collection.clone(), d.token_id).clone(),
+            |d: &Bid| (d.collection.clone(), d.token_id),
             "bids",
             "bids__collection_token_id",
         ),
