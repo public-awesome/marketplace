@@ -12,6 +12,11 @@ start_after?: (number | null)
 [k: string]: unknown
 }
 } | {
+asks_by_seller: {
+seller: string
+[k: string]: unknown
+}
+} | {
 listed_collections: {
 limit?: (number | null)
 start_after?: (string | null)
@@ -22,6 +27,11 @@ bid: {
 bidder: string
 collection: string
 token_id: number
+[k: string]: unknown
+}
+} | {
+bids_by_bidder: {
+bidder: string
 [k: string]: unknown
 }
 } | {

@@ -1,4 +1,4 @@
-import { Coin } from "./shared-types";
+import { Uint128 } from "./shared-types";
 
 export type ExecuteMsg = ({
 set_bid: {
@@ -34,3 +34,9 @@ token_id: number
 [k: string]: unknown
 }
 })
+
+export interface Coin {
+amount: Uint128
+denom: string
+[k: string]: unknown
+}

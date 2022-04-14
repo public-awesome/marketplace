@@ -22,8 +22,18 @@ export type Addr = string;
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  */
 export type Uint128 = string;
-export interface Coin {
+export interface Ask {
     [k: string]: unknown;
-    amount: Uint128;
-    denom: string;
+    collection: Addr;
+    funds_recipient?: (Addr | null);
+    price: Uint128;
+    seller: Addr;
+    token_id: number;
+}
+export interface Bid {
+    [k: string]: unknown;
+    bidder: Addr;
+    collection: Addr;
+    price: Uint128;
+    token_id: number;
 }
