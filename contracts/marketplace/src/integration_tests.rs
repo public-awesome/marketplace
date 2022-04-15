@@ -33,6 +33,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 #[cfg(test)]
 mod tests {
     use crate::msg::{AsksResponse, BidResponse, CollectionsResponse};
+    use crate::state::Bid;
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
@@ -321,7 +322,7 @@ mod tests {
             .query_wasm_smart(nft_marketplace_addr.clone(), &query_asks_msg)
             .unwrap();
         assert_eq!(res.asks[0].token_id, TOKEN_ID);
-        assert_eq!(res.asks[0].price.amount.u128(), 110);
+        assert_eq!(res.asks[0].price.u128(), 110);
 
         // test pagination, starting when tokens exist
         let query_asks_msg = QueryMsg::Asks {
@@ -426,7 +427,7 @@ mod tests {
             .query_wasm_smart(nft_marketplace_addr, &query_bids_msg)
             .unwrap();
         assert_eq!(res.bids[0].token_id, TOKEN_ID);
-        assert_eq!(res.bids[0].price.amount.u128(), 100u128);
+        assert_eq!(res.bids[0].price.u128(), 100u128);
     }
 
     #[test]
@@ -718,7 +719,12 @@ mod tests {
             token_id: TOKEN_ID,
             bidder: bidder.to_string(),
         };
-        let bid = Uint128::from(150u128);
+        let bid = Bid {
+            collection: nft_contract_addr,
+            token_id: TOKEN_ID,
+            bidder,
+            price: Uint128::from(150u128),
+        };
 
         let res: BidResponse = router
             .wrap()

@@ -1,12 +1,12 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AskInfo, AsksResponse, BidInfo, BidResponse, BidsResponse, CollectionsResponse,
+    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{Ask, TOKEN_ASKS, TOKEN_BIDS};
+use crate::state::{ask_key, asks, bids, Ask, Bid};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Uint128, WasmMsg,
+    MessageInfo, Order, StdResult, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -101,35 +101,32 @@ pub fn execute_set_bid(
 
     // Check bidder has existing bid, if so remove existing bid
     if let Some(existing_bid) =
-        TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?
+        bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?
     {
-        TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
+        bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
         let exec_refund_bidder = BankMsg::Send {
             to_address: bidder.to_string(),
-            amount: vec![coin(existing_bid.u128(), NATIVE_DENOM)],
+            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
         };
         res = res.add_message(exec_refund_bidder)
     };
 
-    // Check if Ask exists before moving forward
-    if !TOKEN_ASKS.has(deps.storage, (&collection, token_id)) {
-        return Err(ContractError::AskDoesNotExist {});
-    }
-    // Guaranteed to have an Ask since we checked above
-    let ask = TOKEN_ASKS.load(deps.storage, (&collection, token_id))?;
-
+    let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
-        store_bid(
-            deps,
-            bidder.clone(),
-            collection.clone(),
-            token_id,
-            bid_price,
+        bids().save(
+            deps.storage,
+            (collection.clone(), token_id, bidder.clone()),
+            &Bid {
+                collection: collection.clone(),
+                token_id,
+                bidder: bidder.clone(),
+                price: bid_price,
+            },
         )?;
     } else {
         // Bid meets ask criteria so finalize sale
-        TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+        asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
         let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
             collection.clone(),
@@ -174,15 +171,15 @@ pub fn execute_remove_bid(
     let bidder = info.sender;
 
     // Check bid exists for bidder
-    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
+    let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
     // Remove bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
+    bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
     // Refund bidder
     let exec_refund_bidder = BankMsg::Send {
         to_address: bidder.to_string(),
-        amount: vec![coin(bid.u128(), NATIVE_DENOM)],
+        amount: vec![coin(bid.price.u128(), NATIVE_DENOM)],
     };
 
     Ok(Response::new()
@@ -215,15 +212,19 @@ pub fn execute_set_ask(
     {
         return Err(ContractError::NeedsApproval {});
     }
-    TOKEN_ASKS.save(
+
+    asks().save(
         deps.storage,
-        (&collection, token_id),
+        ask_key(collection.clone(), token_id),
         &Ask {
+            collection: collection.clone(),
+            token_id,
             seller: info.sender,
             price: price.amount,
             funds_recipient,
         },
     )?;
+
     Ok(Response::new()
         .add_attribute("action", "set_ask")
         .add_attribute("collection", collection)
@@ -240,11 +241,11 @@ pub fn execute_remove_ask(
 ) -> Result<Response, ContractError> {
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
-    TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+    asks().remove(deps.storage, (collection.clone(), token_id))?;
 
     Ok(Response::new()
         .add_attribute("action", "remove_ask")
-        .add_attribute("collection", collection)
+        .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string()))
 }
 
@@ -259,14 +260,14 @@ pub fn execute_accept_bid(
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     // Query current ask
-    let ask = TOKEN_ASKS.load(deps.storage, (&collection, token_id))?;
+    let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     // Remove ask
-    TOKEN_ASKS.remove(deps.storage, (&collection, token_id));
+    asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
     // Query accepted bid
-    let bid = TOKEN_BIDS.load(deps.storage, (&collection, token_id, &bidder))?;
+    let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
     // Remove accepted bid
-    TOKEN_BIDS.remove(deps.storage, (&collection, token_id, &bidder));
+    bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
     // Transfer funds and NFT
     let msgs = finalize_sale(
@@ -275,7 +276,7 @@ pub fn execute_accept_bid(
         token_id,
         bidder.clone(),
         ask.funds_recipient.unwrap_or(info.sender),
-        coin(bid.u128(), NATIVE_DENOM),
+        coin(bid.price.u128(), NATIVE_DENOM),
     )?;
 
     Ok(Response::new()
@@ -389,16 +390,6 @@ fn payout(
     Ok(msgs)
 }
 
-fn store_bid(
-    deps: DepsMut,
-    bidder: Addr,
-    collection: Addr,
-    token_id: u32,
-    bid_price: Uint128,
-) -> StdResult<()> {
-    TOKEN_BIDS.save(deps.storage, (&collection, token_id, &bidder), &bid_price)
-}
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let api = deps.api;
@@ -412,6 +403,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&collection)?,
             token_id,
         )?),
+        QueryMsg::Asks {
+            collection,
+            start_after,
+            limit,
+        } => to_binary(&query_asks(
+            deps,
+            api.addr_validate(&collection)?,
+            start_after,
+            limit,
+        )?),
+        QueryMsg::ListedCollections { start_after, limit } => {
+            to_binary(&query_listed_collections(deps, start_after, limit)?)
+        }
+        QueryMsg::AsksBySeller { seller } => {
+            to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
+        }
+        QueryMsg::AskCount { collection } => {
+            to_binary(&query_ask_count(deps, api.addr_validate(&collection)?)?)
+        }
         QueryMsg::Bid {
             collection,
             token_id,
@@ -434,18 +444,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::Asks {
-            collection,
-            start_after,
-            limit,
-        } => to_binary(&query_asks(
-            deps,
-            api.addr_validate(&collection)?,
-            start_after,
-            limit,
-        )?),
-        QueryMsg::ListedCollections { start_after, limit } => {
-            to_binary(&query_listed_collections(deps, start_after, limit)?)
+        QueryMsg::BidsByBidder { bidder } => {
+            to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
     }
 }
@@ -457,21 +457,45 @@ pub fn query_asks(
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start = start_after.map(Bound::exclusive);
 
-    let asks: StdResult<Vec<_>> = TOKEN_ASKS
-        .prefix(&collection)
-        .range(deps.storage, start, None, Order::Ascending)
+    let asks: StdResult<Vec<_>> = asks()
+        .idx
+        .collection
+        .prefix(collection.clone())
+        .range(
+            deps.storage,
+            Some(Bound::exclusive((
+                collection,
+                start_after.unwrap_or_default(),
+            ))),
+            None,
+            Order::Ascending,
+        )
         .take(limit)
-        .map(|item| {
-            let (token_id, ask) = item?;
-            Ok(AskInfo {
-                seller: ask.seller,
-                token_id,
-                price: coin(ask.price.u128(), NATIVE_DENOM),
-                funds_recipient: ask.funds_recipient,
-            })
-        })
+        .map(|res| res.map(|item| item.1))
+        .collect();
+
+    Ok(AsksResponse { asks: asks? })
+}
+
+pub fn query_ask_count(deps: Deps, collection: Addr) -> StdResult<AskCountResponse> {
+    let count = asks()
+        .idx
+        .collection
+        .prefix(collection)
+        .keys_raw(deps.storage, None, None, Order::Ascending)
+        .count() as u32;
+
+    Ok(AskCountResponse { count })
+}
+
+pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse> {
+    let asks: StdResult<Vec<_>> = asks()
+        .idx
+        .seller
+        .prefix(seller)
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|res| res.map(|item| item.1))
         .collect();
 
     Ok(AsksResponse { asks: asks? })
@@ -484,10 +508,14 @@ pub fn query_listed_collections(
 ) -> StdResult<CollectionsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
     let start_addr = maybe_addr(deps.api, start_after)?;
-    let start = start_addr.as_ref().map(PrefixBound::exclusive);
 
-    let collections: StdResult<Vec<_>> = TOKEN_ASKS
-        .prefix_range(deps.storage, start, None, Order::Ascending)
+    let collections: StdResult<Vec<_>> = asks()
+        .prefix_range(
+            deps.storage,
+            start_addr.map(PrefixBound::exclusive),
+            None,
+            Order::Ascending,
+        )
         .take(limit)
         .map(|item| item.map(|(key, _)| key.0))
         .collect();
@@ -502,7 +530,7 @@ pub fn query_current_ask(
     collection: Addr,
     token_id: u32,
 ) -> StdResult<CurrentAskResponse> {
-    let ask = TOKEN_ASKS.may_load(deps.storage, (&collection, token_id))?;
+    let ask = asks().may_load(deps.storage, ask_key(collection, token_id))?;
 
     Ok(CurrentAskResponse { ask })
 }
@@ -513,9 +541,21 @@ pub fn query_bid(
     token_id: u32,
     bidder: Addr,
 ) -> StdResult<BidResponse> {
-    let bid = TOKEN_BIDS.may_load(deps.storage, (&collection, token_id, &bidder))?;
+    let bid = bids().may_load(deps.storage, (collection, token_id, bidder))?;
 
     Ok(BidResponse { bid })
+}
+
+pub fn query_bids_by_bidder(deps: Deps, bidder: Addr) -> StdResult<BidsResponse> {
+    let bids = bids()
+        .idx
+        .bidder
+        .prefix(bidder)
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(BidsResponse { bids })
 }
 
 pub fn query_bids(
@@ -526,35 +566,106 @@ pub fn query_bids(
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start_addr = maybe_addr(deps.api, start_after)?;
-    let start = start_addr.as_ref().map(Bound::exclusive);
+    let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
 
-    let bids: StdResult<Vec<BidInfo>> = TOKEN_BIDS
-        .prefix((&collection, token_id))
+    let bids = bids()
+        .idx
+        .collection_token_id
+        .prefix((collection, token_id))
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
-        .map(|item| {
-            let (_k, v) = item?;
-            Ok(BidInfo {
-                token_id,
-                price: coin(v.u128(), NATIVE_DENOM),
-            })
-        })
-        .collect();
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(BidsResponse { bids: bids? })
+    Ok(BidsResponse { bids })
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::state::bid_key;
+
     use super::*;
     use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{coin, coins};
+    use cosmwasm_std::{coin, coins, StdError, Uint128};
     use sg_std::NATIVE_DENOM;
 
     const CREATOR: &str = "creator";
     const COLLECTION: &str = "collection";
     const TOKEN_ID: u32 = 123;
+
+    #[test]
+    fn ask_indexed_map() {
+        let mut deps = mock_dependencies();
+        let collection = Addr::unchecked(COLLECTION);
+        let seller = Addr::unchecked("seller");
+
+        let ask = Ask {
+            collection: collection.clone(),
+            token_id: TOKEN_ID,
+            seller: seller.clone(),
+            price: Uint128::from(500u128),
+            funds_recipient: None,
+        };
+        let key = ask_key(collection.clone(), TOKEN_ID);
+        let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
+        assert!(res.is_ok());
+
+        let ask2 = Ask {
+            collection: collection.clone(),
+            token_id: TOKEN_ID + 1,
+            seller: seller.clone(),
+            price: Uint128::from(500u128),
+            funds_recipient: None,
+        };
+        let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
+        let res = asks().save(deps.as_mut().storage, key2, &ask2);
+        assert!(res.is_ok());
+
+        let res = asks().load(deps.as_ref().storage, key);
+        assert_eq!(res.unwrap(), ask);
+
+        let res = query_asks_by_seller(deps.as_ref(), seller).unwrap();
+        assert_eq!(res.asks.len(), 2);
+        assert_eq!(res.asks[0], ask);
+
+        let res = query_ask_count(deps.as_ref(), collection).unwrap();
+        assert_eq!(res.count, 2);
+    }
+
+    #[test]
+
+    fn bid_indexed_map() {
+        let mut deps = mock_dependencies();
+        let collection = Addr::unchecked(COLLECTION);
+        let bidder = Addr::unchecked("bidder");
+
+        let bid = Bid {
+            collection: collection.clone(),
+            token_id: TOKEN_ID,
+            bidder: bidder.clone(),
+            price: Uint128::from(500u128),
+        };
+        let key = bid_key(collection.clone(), TOKEN_ID, bidder.clone());
+        let res = bids().save(deps.as_mut().storage, key.clone(), &bid);
+        assert!(res.is_ok());
+
+        let bid2 = Bid {
+            collection: collection.clone(),
+            token_id: TOKEN_ID + 1,
+            bidder: bidder.clone(),
+            price: Uint128::from(500u128),
+        };
+        let key2 = bid_key(collection, TOKEN_ID + 1, bidder.clone());
+        let res = bids().save(deps.as_mut().storage, key2, &bid2);
+        assert!(res.is_ok());
+
+        let res = bids().load(deps.as_ref().storage, key);
+        assert_eq!(res.unwrap(), bid);
+
+        let res = query_bids_by_bidder(deps.as_ref(), bidder).unwrap();
+        assert_eq!(res.bids.len(), 2);
+        assert_eq!(res.bids[0], bid);
+    }
 
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {};
@@ -602,7 +713,12 @@ mod tests {
 
         // Bidder calls SetBid before an Ask is set, so it should fail
         let err = execute(deps.as_mut(), mock_env(), bidder, set_bid_msg).unwrap_err();
-        assert_eq!(err, ContractError::AskDoesNotExist {});
+        assert_eq!(
+            err,
+            ContractError::Std(StdError::NotFound {
+                kind: "sg_marketplace::state::Ask".to_string()
+            })
+        );
     }
 
     #[test]
