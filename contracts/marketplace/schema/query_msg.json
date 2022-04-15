@@ -147,6 +147,27 @@
       "additionalProperties": false
     },
     {
+      "description": "Get all bids by a bidder Return type: `BidsResponse`",
+      "type": "object",
+      "required": [
+        "bids_by_bidder"
+      ],
+      "properties": {
+        "bids_by_bidder": {
+          "type": "object",
+          "required": [
+            "bidder"
+          ],
+          "properties": {
+            "bidder": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Get all bids for a specific NFT Return type: `BidsResponse`",
       "type": "object",
       "required": [

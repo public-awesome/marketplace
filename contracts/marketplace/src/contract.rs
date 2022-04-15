@@ -552,24 +552,13 @@ pub fn query_bids(
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start_addr = maybe_addr(deps.api, start_after)?;
-    // let start = start_addr.as_ref().map(Bound::exclusive);
+    let start = start_after.map(|s| Bound::ExclusiveRaw(s.into()));
 
     let bids = bids()
         .idx
         .collection_token_id
-        .prefix((collection.clone(), token_id))
-        .range(
-            deps.storage,
-            Some(Bound::exclusive((
-                collection,
-                token_id,
-                // TODO: how do you fix this bounds?
-                start_addr.unwrap(),
-            ))),
-            None,
-            Order::Ascending,
-        )
+        .prefix((collection, token_id))
+        .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
