@@ -69,6 +69,26 @@
     {
       "type": "object",
       "required": [
+        "ask_count"
+      ],
+      "properties": {
+        "ask_count": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "asks_by_seller"
       ],
       "properties": {

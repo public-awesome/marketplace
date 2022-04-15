@@ -12,6 +12,11 @@ start_after?: (number | null)
 [k: string]: unknown
 }
 } | {
+ask_count: {
+collection: string
+[k: string]: unknown
+}
+} | {
 asks_by_seller: {
 seller: string
 [k: string]: unknown
