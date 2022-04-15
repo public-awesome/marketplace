@@ -50,6 +50,9 @@ pub enum QueryMsg {
         start_after: Option<u32>,
         limit: Option<u32>,
     },
+    AskCount {
+        collection: String,
+    },
     AsksBySeller {
         seller: String,
     },
@@ -89,6 +92,11 @@ pub struct CurrentAskResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct AsksResponse {
     pub asks: Vec<Ask>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct AskCountResponse {
+    pub count: u32,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

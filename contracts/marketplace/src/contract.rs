@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AsksResponse, BidResponse, BidsResponse, CollectionsResponse, CurrentAskResponse, ExecuteMsg,
-    InstantiateMsg, QueryMsg,
+    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
+    CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
 use crate::state::{ask_key, asks, bids, Ask, Bid};
 use cosmwasm_std::{
@@ -403,6 +403,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&collection)?,
             token_id,
         )?),
+        QueryMsg::Asks {
+            collection,
+            start_after,
+            limit,
+        } => to_binary(&query_asks(
+            deps,
+            api.addr_validate(&collection)?,
+            start_after,
+            limit,
+        )?),
+        QueryMsg::ListedCollections { start_after, limit } => {
+            to_binary(&query_listed_collections(deps, start_after, limit)?)
+        }
+        QueryMsg::AsksBySeller { seller } => {
+            to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
+        }
+        QueryMsg::AskCount { collection } => {
+            to_binary(&query_ask_count(deps, api.addr_validate(&collection)?)?)
+        }
         QueryMsg::Bid {
             collection,
             token_id,
@@ -425,22 +444,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::Asks {
-            collection,
-            start_after,
-            limit,
-        } => to_binary(&query_asks(
-            deps,
-            api.addr_validate(&collection)?,
-            start_after,
-            limit,
-        )?),
-        QueryMsg::ListedCollections { start_after, limit } => {
-            to_binary(&query_listed_collections(deps, start_after, limit)?)
-        }
-        QueryMsg::AsksBySeller { seller } => {
-            to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
-        }
         QueryMsg::BidsByBidder { bidder } => {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
@@ -473,6 +476,17 @@ pub fn query_asks(
         .collect();
 
     Ok(AsksResponse { asks: asks? })
+}
+
+pub fn query_ask_count(deps: Deps, collection: Addr) -> StdResult<AskCountResponse> {
+    let count = asks()
+        .idx
+        .collection
+        .prefix(collection)
+        .keys_raw(deps.storage, None, None, Order::Ascending)
+        .count() as u32;
+
+    Ok(AskCountResponse { count })
 }
 
 pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse> {
@@ -603,7 +617,7 @@ mod tests {
             price: Uint128::from(500u128),
             funds_recipient: None,
         };
-        let key2 = ask_key(collection, TOKEN_ID + 1);
+        let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
         let res = asks().save(deps.as_mut().storage, key2, &ask2);
         assert!(res.is_ok());
 
@@ -613,6 +627,9 @@ mod tests {
         let res = query_asks_by_seller(deps.as_ref(), seller).unwrap();
         assert_eq!(res.asks.len(), 2);
         assert_eq!(res.asks[0], ask);
+
+        let res = query_ask_count(deps.as_ref(), collection).unwrap();
+        assert_eq!(res.count, 2);
     }
 
     #[test]
