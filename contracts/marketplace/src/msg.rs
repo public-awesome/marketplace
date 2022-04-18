@@ -12,6 +12,7 @@ pub enum ExecuteMsg {
     SetBid {
         collection: String,
         token_id: TokenId,
+        expires: u64,
     },
     RemoveBid {
         collection: String,

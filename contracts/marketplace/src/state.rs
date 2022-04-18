@@ -49,6 +49,7 @@ pub struct Bid {
     pub token_id: TokenId,
     pub bidder: Addr,
     pub price: Uint128,
+    pub expires: Expiry,
 }
 
 /// (collection, token_id, bidder) uniquely identifies a bid

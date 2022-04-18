@@ -57,7 +57,15 @@ pub fn execute(
         ExecuteMsg::SetBid {
             collection,
             token_id,
-        } => execute_set_bid(deps, env, info, api.addr_validate(&collection)?, token_id),
+            expires,
+        } => execute_set_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            Timestamp::from_nanos(expires),
+        ),
         ExecuteMsg::RemoveBid {
             collection,
             token_id,
@@ -86,6 +94,7 @@ pub fn execute(
             bidder,
         } => execute_accept_bid(
             deps,
+            env,
             info,
             api.addr_validate(&collection)?,
             token_id,
@@ -101,9 +110,15 @@ pub fn execute_set_bid(
     info: MessageInfo,
     collection: Addr,
     token_id: u32,
+    expires: Timestamp,
 ) -> Result<Response, ContractError> {
     // Make sure a bid amount was sent
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
+
+    if expires <= env.block.time {
+        return Err(ContractError::InvalidExpiration {});
+    }
+
     let bidder = info.sender;
     let mut res = Response::new();
 
@@ -133,6 +148,7 @@ pub fn execute_set_bid(
                 token_id,
                 bidder: bidder.clone(),
                 price: bid_price,
+                expires: expires.nanos(),
             },
         )?;
     } else {
@@ -269,6 +285,7 @@ pub fn execute_remove_ask(
 /// Owner can accept a bid which transfers funds as well as the token
 pub fn execute_accept_bid(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: u32,
@@ -278,11 +295,18 @@ pub fn execute_accept_bid(
 
     // Query current ask
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    // Remove ask
-    asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
+    if Timestamp::from_nanos(ask.expires) <= env.block.time {
+        return Err(ContractError::AskExpired {});
+    }
 
     // Query accepted bid
     let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
+    if Timestamp::from_nanos(bid.expires) <= env.block.time {
+        return Err(ContractError::BidExpired {});
+    }
+
+    // Remove ask
+    asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
     // Remove accepted bid
     bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
@@ -663,6 +687,7 @@ mod tests {
             token_id: TOKEN_ID,
             bidder: bidder.clone(),
             price: Uint128::from(500u128),
+            expires: 0,
         };
         let key = bid_key(collection.clone(), TOKEN_ID, bidder.clone());
         let res = bids().save(deps.as_mut().storage, key.clone(), &bid);
@@ -673,6 +698,7 @@ mod tests {
             token_id: TOKEN_ID + 1,
             bidder: bidder.clone(),
             price: Uint128::from(500u128),
+            expires: 0,
         };
         let key2 = bid_key(collection, TOKEN_ID + 1, bidder.clone());
         let res = bids().save(deps.as_mut().storage, key2, &bid2);
@@ -716,6 +742,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
             token_id: TOKEN_ID,
+            expires: 0,
         };
 
         // Broke bidder calls Set Bid and gets an error
@@ -728,6 +755,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
             token_id: TOKEN_ID,
+            expires: mock_env().block.time.nanos() + 100,
         };
 
         // Bidder calls SetBid before an Ask is set, so it should fail

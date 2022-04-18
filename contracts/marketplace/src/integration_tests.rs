@@ -203,6 +203,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.nanos() + 100,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -416,6 +417,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.nanos() + 100,
         };
         let res = router.execute_contract(
             bidder,
@@ -492,6 +494,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.nanos() + 100,
         };
         router
             .execute_contract(
@@ -506,6 +509,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.nanos() + 100,
         };
         let res = router
             .execute_contract(
@@ -588,6 +592,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.nanos() + 100,
         };
 
         let res = router.execute_contract(
@@ -670,6 +675,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.nanos() + 100,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -697,6 +703,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.nanos() + 100,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -731,6 +738,7 @@ mod tests {
             token_id: TOKEN_ID,
             bidder,
             price: Uint128::from(150u128),
+            expires: router.block_info().time.nanos() + 100,
         };
 
         let res: BidResponse = router
@@ -834,6 +842,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.nanos() + 100,
         };
         let res = router.execute_contract(
             bidder.clone(),
