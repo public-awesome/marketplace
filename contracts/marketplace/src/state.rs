@@ -8,7 +8,7 @@ pub struct Ask {
     pub collection: Addr,
     pub token_id: u32,
     pub seller: Addr,
-    pub price: Uint128,
+    pub price: u128,
     pub funds_recipient: Option<Addr>,
 }
 
@@ -24,11 +24,12 @@ pub fn ask_key(collection: Addr, token_id: TokenId) -> AskKey {
 pub struct AskIndicies<'a> {
     pub collection: MultiIndex<'a, Addr, Ask, AskKey>,
     pub seller: MultiIndex<'a, Addr, Ask, AskKey>,
+    pub price: MultiIndex<'a, u128, Ask, AskKey>,
 }
 
 impl<'a> IndexList<Ask> for AskIndicies<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Ask>> + '_> {
-        let v: Vec<&dyn Index<Ask>> = vec![&self.collection, &self.seller];
+        let v: Vec<&dyn Index<Ask>> = vec![&self.collection, &self.seller, &self.price];
         Box::new(v.into_iter())
     }
 }
@@ -37,6 +38,7 @@ pub fn asks<'a>() -> IndexedMap<'a, AskKey, Ask, AskIndicies<'a>> {
     let indexes = AskIndicies {
         collection: MultiIndex::new(|d: &Ask| d.collection.clone(), "asks", "asks__collection"),
         seller: MultiIndex::new(|d: &Ask| d.seller.clone(), "asks", "asks__seller"),
+        price: MultiIndex::new(|d: &Ask| d.price, "asks", "asks__price"),
     };
     IndexedMap::new("asks", indexes)
 }
