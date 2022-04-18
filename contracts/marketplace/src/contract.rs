@@ -57,7 +57,7 @@ pub fn execute(
         ExecuteMsg::SetBid {
             collection,
             token_id,
-        } => execute_set_bid(deps, info, api.addr_validate(&collection)?, token_id),
+        } => execute_set_bid(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::RemoveBid {
             collection,
             token_id,
@@ -97,6 +97,7 @@ pub fn execute(
 /// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
 pub fn execute_set_bid(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: u32,
@@ -119,6 +120,9 @@ pub fn execute_set_bid(
     };
 
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
+    if Timestamp::from_nanos(ask.expires) < env.block.time {
+        return Err(ContractError::AskExpired {});
+    }
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
         bids().save(
