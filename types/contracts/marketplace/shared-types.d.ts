@@ -25,6 +25,7 @@ export type Uint128 = string;
 export interface Ask {
     [k: string]: unknown;
     collection: Addr;
+    expires: number;
     funds_recipient?: (Addr | null);
     price: Uint128;
     seller: Addr;
@@ -34,6 +35,7 @@ export interface Bid {
     [k: string]: unknown;
     bidder: Addr;
     collection: Addr;
+    expires: number;
     price: Uint128;
     token_id: number;
 }

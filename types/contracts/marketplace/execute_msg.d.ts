@@ -3,6 +3,7 @@ import { Uint128 } from "./shared-types";
 export type ExecuteMsg = ({
 set_bid: {
 collection: string
+expires: number
 token_id: number
 [k: string]: unknown
 }
@@ -15,6 +16,7 @@ token_id: number
 } | {
 set_ask: {
 collection: string
+expires: number
 funds_recipient?: (string | null)
 price: Coin
 token_id: number
