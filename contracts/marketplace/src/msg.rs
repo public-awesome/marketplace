@@ -22,6 +22,7 @@ pub enum ExecuteMsg {
         token_id: u32,
         price: Coin,
         funds_recipient: Option<String>,
+        expires: u64,
     },
     RemoveAsk {
         collection: String,

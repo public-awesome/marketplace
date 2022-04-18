@@ -6,7 +6,7 @@ use crate::msg::{
 use crate::state::{ask_key, asks, bids, Ask, Bid};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, WasmMsg,
+    MessageInfo, Order, StdResult, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -37,6 +37,13 @@ pub fn instantiate(
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
+/// To mitigate clippy::too_many_arguments warning
+pub struct ExecuteEnv<'a> {
+    deps: DepsMut<'a>,
+    env: Env,
+    info: MessageInfo,
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -60,14 +67,14 @@ pub fn execute(
             token_id,
             price,
             funds_recipient,
+            expires,
         } => execute_set_ask(
-            deps,
-            env,
-            info,
+            ExecuteEnv { deps, env, info },
             api.addr_validate(&collection)?,
             token_id,
             price,
             funds_recipient.map(|addr| api.addr_validate(&addr).unwrap()),
+            Timestamp::from_nanos(expires),
         ),
         ExecuteMsg::RemoveAsk {
             collection,
@@ -192,14 +199,19 @@ pub fn execute_remove_bid(
 
 /// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
 pub fn execute_set_ask(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    env: ExecuteEnv,
     collection: Addr,
     token_id: u32,
     price: Coin,
     funds_recipient: Option<Addr>,
+    expires: Timestamp,
 ) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, env } = env;
+
+    if expires <= env.block.time {
+        return Err(ContractError::InvalidExpiration {});
+    }
+
     // Only the media onwer can call this
     let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
     // Check that approval has been set for marketplace contract
@@ -222,6 +234,7 @@ pub fn execute_set_ask(
             seller: info.sender,
             price: price.amount,
             funds_recipient,
+            expires: expires.nanos(),
         },
     )?;
 
@@ -605,6 +618,7 @@ mod tests {
             seller: seller.clone(),
             price: Uint128::from(500u128),
             funds_recipient: None,
+            expires: 0,
         };
         let key = ask_key(collection.clone(), TOKEN_ID);
         let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
@@ -616,6 +630,7 @@ mod tests {
             seller: seller.clone(),
             price: Uint128::from(500u128),
             funds_recipient: None,
+            expires: 0,
         };
         let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
         let res = asks().save(deps.as_mut().storage, key2, &ask2);
@@ -731,6 +746,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
+            expires: 0,
         };
 
         // Reject if not called by the media owner
