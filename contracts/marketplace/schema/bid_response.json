@@ -24,6 +24,7 @@
       "required": [
         "bidder",
         "collection",
+        "expires",
         "price",
         "token_id"
       ],
@@ -33,6 +34,11 @@
         },
         "collection": {
           "$ref": "#/definitions/Addr"
+        },
+        "expires": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         },
         "price": {
           "$ref": "#/definitions/Uint128"

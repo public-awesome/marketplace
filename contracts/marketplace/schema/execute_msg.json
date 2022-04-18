@@ -12,11 +12,17 @@
           "type": "object",
           "required": [
             "collection",
+            "expires",
             "token_id"
           ],
           "properties": {
             "collection": {
               "type": "string"
+            },
+            "expires": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             },
             "token_id": {
               "type": "integer",
@@ -64,12 +70,18 @@
           "type": "object",
           "required": [
             "collection",
+            "expires",
             "price",
             "token_id"
           ],
           "properties": {
             "collection": {
               "type": "string"
+            },
+            "expires": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             },
             "funds_recipient": {
               "type": [
