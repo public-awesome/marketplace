@@ -272,6 +272,34 @@ pub fn execute_remove_stale_asks(
     }
 
     // TODO iterate through ALL collection asks
+    let collection_asks: Vec<Ask> = query_asks(
+        deps.as_ref(),
+        collection.clone(),
+        None,
+        Some(MAX_QUERY_LIMIT),
+    )?
+    .asks;
+
+    for ask in collection_asks.iter() {
+        // if ask seller is not current token owner, remove ask
+        let owner: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
+            collection.clone(),
+            &Cw721QueryMsg::OwnerOf {
+                token_id: ask.token_id.to_string(),
+                include_expired: None,
+            },
+        )?;
+        if owner.owner != ask.seller {
+            if (fair_burn_deposit) {
+                fair_burn_deposit = false;
+            }
+            asks().remove(deps.storage, (collection.clone(), ask.token_id))?;
+        }
+    }
+
+    if fair_burn_deposit == true {
+        msgs.append(&mut fair_burn(DEPOSIT_AMOUNT));
+    }
 
     Ok(Response::new()
         .add_messages(msgs)
