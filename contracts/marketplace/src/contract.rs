@@ -253,6 +253,7 @@ pub fn execute_set_ask(
             price: price.amount,
             funds_recipient,
             expires,
+            active: true,
         },
     )?;
 
@@ -655,6 +656,7 @@ mod tests {
             price: Uint128::from(500u128),
             funds_recipient: None,
             expires: Timestamp::from_seconds(0),
+            active: true,
         };
         let key = ask_key(collection.clone(), TOKEN_ID);
         let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
@@ -667,6 +669,7 @@ mod tests {
             price: Uint128::from(500u128),
             funds_recipient: None,
             expires: Timestamp::from_seconds(0),
+            active: true,
         };
         let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
         let res = asks().save(deps.as_mut().storage, key2, &ask2);
