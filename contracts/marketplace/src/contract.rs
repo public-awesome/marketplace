@@ -84,6 +84,10 @@ pub fn execute(
             token_id,
             api.addr_validate(&bidder)?,
         ),
+        ExecuteMsg::RemoveStaleAsks {
+            collection,
+            deposit,
+        } => execute_remove_stale_asks(deps, env, info, api.addr_validate(&collection)?, deposit),
     }
 }
 
@@ -247,6 +251,24 @@ pub fn execute_remove_ask(
         .add_attribute("action", "remove_ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string()))
+}
+
+/// Anyone can call to remove stale asks. If there are no stale asks, deposit is lost and fair burned.
+pub fn execute_remove_stale_asks(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    deposit: Coin,
+) -> Result<Response, ContractError> {
+    // iterate through collection asks
+    // if ask owner is not current token owner, remove ask
+    // TODO remove associated bids
+    // fairburn if no stale asks
+
+    Ok(Response::new()
+        .add_attribute("action", "remove_stale_asks")
+        .add_attribute("collection", collection.to_string()))
 }
 
 /// Owner can accept a bid which transfers funds as well as the token

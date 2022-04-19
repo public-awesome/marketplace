@@ -32,6 +32,10 @@ pub enum ExecuteMsg {
         token_id: u32,
         bidder: String,
     },
+    RemoveStaleAsks {
+        collection: String,
+        deposit: Coin,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
