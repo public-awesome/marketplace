@@ -6,7 +6,7 @@ use crate::msg::{
 use crate::state::{ask_key, asks, bids, Ask, Bid};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, WasmMsg,
+    MessageInfo, Order, StdResult, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -24,7 +24,9 @@ const DEFAULT_QUERY_LIMIT: u32 = 10;
 const MAX_QUERY_LIMIT: u32 = 30;
 
 // Governance parameters
-const TRADING_FEE_PERCENT: u32 = 2;
+pub const TRADING_FEE_PERCENT: u32 = 2; // 2%
+pub const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
+pub const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -35,6 +37,13 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::new().add_attribute("action", "instantiate"))
+}
+
+/// To mitigate clippy::too_many_arguments warning
+pub struct ExecuteEnv<'a> {
+    deps: DepsMut<'a>,
+    env: Env,
+    info: MessageInfo,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -50,7 +59,15 @@ pub fn execute(
         ExecuteMsg::SetBid {
             collection,
             token_id,
-        } => execute_set_bid(deps, info, api.addr_validate(&collection)?, token_id),
+            expires,
+        } => execute_set_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            expires,
+        ),
         ExecuteMsg::RemoveBid {
             collection,
             token_id,
@@ -60,14 +77,14 @@ pub fn execute(
             token_id,
             price,
             funds_recipient,
+            expires,
         } => execute_set_ask(
-            deps,
-            env,
-            info,
+            ExecuteEnv { deps, env, info },
             api.addr_validate(&collection)?,
             token_id,
             price,
             funds_recipient.map(|addr| api.addr_validate(&addr).unwrap()),
+            expires,
         ),
         ExecuteMsg::RemoveAsk {
             collection,
@@ -79,6 +96,7 @@ pub fn execute(
             bidder,
         } => execute_accept_bid(
             deps,
+            env,
             info,
             api.addr_validate(&collection)?,
             token_id,
@@ -90,12 +108,17 @@ pub fn execute(
 /// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
 pub fn execute_set_bid(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: u32,
+    expires: Timestamp,
 ) -> Result<Response, ContractError> {
     // Make sure a bid amount was sent
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
+
+    expires_validate(&env, expires)?;
+
     let bidder = info.sender;
     let mut res = Response::new();
 
@@ -112,6 +135,9 @@ pub fn execute_set_bid(
     };
 
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
+    if ask.expires <= env.block.time {
+        return Err(ContractError::AskExpired {});
+    }
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
         bids().save(
@@ -122,6 +148,7 @@ pub fn execute_set_bid(
                 token_id,
                 bidder: bidder.clone(),
                 price: bid_price,
+                expires,
             },
         )?;
     } else {
@@ -192,14 +219,17 @@ pub fn execute_remove_bid(
 
 /// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
 pub fn execute_set_ask(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    env: ExecuteEnv,
     collection: Addr,
     token_id: u32,
     price: Coin,
     funds_recipient: Option<Addr>,
+    expires: Timestamp,
 ) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, env } = env;
+
+    expires_validate(&env, expires)?;
+
     // Only the media onwer can call this
     let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
     // Check that approval has been set for marketplace contract
@@ -222,6 +252,7 @@ pub fn execute_set_ask(
             seller: info.sender,
             price: price.amount,
             funds_recipient,
+            expires,
         },
     )?;
 
@@ -252,6 +283,7 @@ pub fn execute_remove_ask(
 /// Owner can accept a bid which transfers funds as well as the token
 pub fn execute_accept_bid(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: u32,
@@ -261,11 +293,18 @@ pub fn execute_accept_bid(
 
     // Query current ask
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    // Remove ask
-    asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
+    if ask.expires <= env.block.time {
+        return Err(ContractError::AskExpired {});
+    }
 
     // Query accepted bid
     let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
+    if bid.expires <= env.block.time {
+        return Err(ContractError::BidExpired {});
+    }
+
+    // Remove ask
+    asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
     // Remove accepted bid
     bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
@@ -388,6 +427,16 @@ fn payout(
     }
 
     Ok(msgs)
+}
+
+fn expires_validate(env: &Env, expires: Timestamp) -> Result<(), ContractError> {
+    if expires <= env.block.time.plus_seconds(MIN_EXPIRY)
+        || expires > env.block.time.plus_seconds(MAX_EXPIRY)
+    {
+        return Err(ContractError::InvalidExpiration {});
+    }
+
+    Ok(())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -605,6 +654,7 @@ mod tests {
             seller: seller.clone(),
             price: Uint128::from(500u128),
             funds_recipient: None,
+            expires: Timestamp::from_seconds(0),
         };
         let key = ask_key(collection.clone(), TOKEN_ID);
         let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
@@ -616,6 +666,7 @@ mod tests {
             seller: seller.clone(),
             price: Uint128::from(500u128),
             funds_recipient: None,
+            expires: Timestamp::from_seconds(0),
         };
         let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
         let res = asks().save(deps.as_mut().storage, key2, &ask2);
@@ -644,6 +695,7 @@ mod tests {
             token_id: TOKEN_ID,
             bidder: bidder.clone(),
             price: Uint128::from(500u128),
+            expires: Timestamp::from_seconds(0),
         };
         let key = bid_key(collection.clone(), TOKEN_ID, bidder.clone());
         let res = bids().save(deps.as_mut().storage, key.clone(), &bid);
@@ -654,6 +706,7 @@ mod tests {
             token_id: TOKEN_ID + 1,
             bidder: bidder.clone(),
             price: Uint128::from(500u128),
+            expires: Timestamp::from_seconds(0),
         };
         let key2 = bid_key(collection, TOKEN_ID + 1, bidder.clone());
         let res = bids().save(deps.as_mut().storage, key2, &bid2);
@@ -697,6 +750,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
             token_id: TOKEN_ID,
+            expires: Timestamp::from_seconds(0),
         };
 
         // Broke bidder calls Set Bid and gets an error
@@ -709,6 +763,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
             token_id: TOKEN_ID,
+            expires: mock_env().block.time.plus_seconds(MIN_EXPIRY + 1),
         };
 
         // Bidder calls SetBid before an Ask is set, so it should fail
@@ -731,6 +786,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
+            expires: Timestamp::from_seconds(0),
         };
 
         // Reject if not called by the media owner

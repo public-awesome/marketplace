@@ -1,7 +1,9 @@
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+pub type TokenId = u32;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Ask {
@@ -10,9 +12,8 @@ pub struct Ask {
     pub seller: Addr,
     pub price: Uint128,
     pub funds_recipient: Option<Addr>,
+    pub expires: Timestamp,
 }
-
-pub type TokenId = u32;
 
 pub type AskKey = (Addr, TokenId);
 
@@ -47,6 +48,7 @@ pub struct Bid {
     pub token_id: TokenId,
     pub bidder: Addr,
     pub price: Uint128,
+    pub expires: Timestamp,
 }
 
 /// (collection, token_id, bidder) uniquely identifies a bid

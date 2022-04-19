@@ -19,6 +19,15 @@ pub enum ContractError {
     #[error("Funds sent don't match bid amount")]
     IncorrectBidFunds {},
 
+    #[error("InvalidExpiration")]
+    InvalidExpiration {},
+
+    #[error("AskExpired")]
+    AskExpired {},
+
+    #[error("BidExpired")]
+    BidExpired {},
+
     #[error("Bid not found")]
     BidNotFound {},
 

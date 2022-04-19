@@ -1,5 +1,5 @@
-use crate::state::{Ask, Bid};
-use cosmwasm_std::{Addr, Coin};
+use crate::state::{Ask, Bid, TokenId};
+use cosmwasm_std::{Addr, Coin, Timestamp};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -11,25 +11,27 @@ pub struct InstantiateMsg {}
 pub enum ExecuteMsg {
     SetBid {
         collection: String,
-        token_id: u32,
+        token_id: TokenId,
+        expires: Timestamp,
     },
     RemoveBid {
         collection: String,
-        token_id: u32,
+        token_id: TokenId,
     },
     SetAsk {
         collection: String,
-        token_id: u32,
+        token_id: TokenId,
         price: Coin,
         funds_recipient: Option<String>,
+        expires: Timestamp,
     },
     RemoveAsk {
         collection: String,
-        token_id: u32,
+        token_id: TokenId,
     },
     AcceptBid {
         collection: String,
-        token_id: u32,
+        token_id: TokenId,
         bidder: String,
     },
 }
@@ -41,13 +43,13 @@ pub enum QueryMsg {
     /// Return type: `CurrentAskResponse`
     CurrentAsk {
         collection: String,
-        token_id: u32,
+        token_id: TokenId,
     },
     /// Get all asks for a collection
     /// Return type: `AsksResponse`
     Asks {
         collection: String,
-        start_after: Option<u32>,
+        start_after: Option<TokenId>,
         limit: Option<u32>,
     },
     AskCount {
@@ -66,7 +68,7 @@ pub enum QueryMsg {
     /// Return type: `BidResponse`
     Bid {
         collection: String,
-        token_id: u32,
+        token_id: TokenId,
         bidder: String,
     },
     /// Get all bids by a bidder
@@ -78,7 +80,7 @@ pub enum QueryMsg {
     /// Return type: `BidsResponse`
     Bids {
         collection: String,
-        token_id: u32,
+        token_id: TokenId,
         start_after: Option<String>,
         limit: Option<u32>,
     },

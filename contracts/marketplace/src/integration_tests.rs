@@ -1,4 +1,5 @@
 #![cfg(test)]
+use crate::contract::MIN_EXPIRY;
 use crate::error::ContractError;
 use crate::msg::{BidsResponse, ExecuteMsg, QueryMsg};
 use cosmwasm_std::{Addr, Empty};
@@ -193,6 +194,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -202,6 +204,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -311,6 +314,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -391,6 +395,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -413,6 +418,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
             bidder,
@@ -450,6 +456,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -472,6 +479,7 @@ mod tests {
         // Now set_ask succeeds
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
+        println!("{:?}", res);
         assert!(res.is_ok());
 
         // Bidder makes bid with a random token in the same amount as the ask
@@ -487,6 +495,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         router
             .execute_contract(
@@ -501,6 +510,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router
             .execute_contract(
@@ -573,6 +583,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -582,6 +593,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
 
         let res = router.execute_contract(
@@ -654,6 +666,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(200, NATIVE_DENOM),
             funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -663,6 +676,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -690,6 +704,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -724,6 +739,7 @@ mod tests {
             token_id: TOKEN_ID,
             bidder,
             price: Uint128::from(150u128),
+            expires: (router.block_info().time.plus_seconds(MIN_EXPIRY + 1)),
         };
 
         let res: BidResponse = router
@@ -817,6 +833,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
@@ -826,6 +843,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),
             token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
             bidder.clone(),
