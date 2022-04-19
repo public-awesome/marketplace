@@ -25,6 +25,7 @@ const MAX_QUERY_LIMIT: u32 = 30;
 
 // Governance parameters
 const TRADING_FEE_PERCENT: u32 = 2;
+const DEPOSIT_AMOUNT: u128 = 100_000_000;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -84,10 +85,9 @@ pub fn execute(
             token_id,
             api.addr_validate(&bidder)?,
         ),
-        ExecuteMsg::RemoveStaleAsks {
-            collection,
-            deposit,
-        } => execute_remove_stale_asks(deps, env, info, api.addr_validate(&collection)?, deposit),
+        ExecuteMsg::RemoveStaleAsks { collection } => {
+            execute_remove_stale_asks(deps, env, info, api.addr_validate(&collection)?)
+        }
     }
 }
 
@@ -256,17 +256,25 @@ pub fn execute_remove_ask(
 /// Anyone can call to remove stale asks. If there are no stale asks, deposit is lost and fair burned.
 pub fn execute_remove_stale_asks(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     collection: Addr,
-    deposit: Coin,
 ) -> Result<Response, ContractError> {
-    // iterate through collection asks
-    // if ask owner is not current token owner, remove ask
     // TODO remove associated bids
-    // fairburn if no stale asks
+    let mut fair_burn_deposit = true;
+    let mut msgs: Vec<CosmosMsg> = vec![];
+    let payment = must_pay(&info, &NATIVE_DENOM)?.u128();
+    if payment != DEPOSIT_AMOUNT {
+        return Err(ContractError::IncorrectPaymentAmount(
+            coin(DEPOSIT_AMOUNT, NATIVE_DENOM),
+            coin(payment, NATIVE_DENOM),
+        ));
+    }
+
+    // TODO iterate through ALL collection asks
 
     Ok(Response::new()
+        .add_messages(msgs)
         .add_attribute("action", "remove_stale_asks")
         .add_attribute("collection", collection.to_string()))
 }

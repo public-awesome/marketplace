@@ -34,7 +34,6 @@ pub enum ExecuteMsg {
     },
     RemoveStaleAsks {
         collection: String,
-        deposit: Coin,
     },
 }
 

@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{Coin, StdError};
 use cw_utils::PaymentError;
 use thiserror::Error;
 
@@ -10,10 +10,10 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Invalid roylties")]
+    #[error("Invalid royalties")]
     InvalidRoyalties {},
 
-    #[error("No roylities exist for token_id")]
+    #[error("No royalties exist for token_id")]
     NoRoyaltiesForTokenId {},
 
     #[error("Funds sent don't match bid amount")]
@@ -24,6 +24,9 @@ pub enum ContractError {
 
     #[error("Contract needs approval")]
     NeedsApproval {},
+
+    #[error("IncorrectPaymentAmount {0} != {1}")]
+    IncorrectPaymentAmount(Coin, Coin),
 
     #[error("{0}")]
     BidPaymentError(#[from] PaymentError),
