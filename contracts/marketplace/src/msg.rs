@@ -1,5 +1,5 @@
 use crate::state::{Ask, Bid, TokenId};
-use cosmwasm_std::{Addr, Coin};
+use cosmwasm_std::{Addr, Coin, Timestamp};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +12,7 @@ pub enum ExecuteMsg {
     SetBid {
         collection: String,
         token_id: TokenId,
-        expires: u64,
+        expires: Timestamp,
     },
     RemoveBid {
         collection: String,
@@ -23,7 +23,7 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         price: Coin,
         funds_recipient: Option<String>,
-        expires: u64,
+        expires: Timestamp,
     },
     RemoveAsk {
         collection: String,

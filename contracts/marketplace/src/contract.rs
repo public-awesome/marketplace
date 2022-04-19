@@ -66,7 +66,7 @@ pub fn execute(
             info,
             api.addr_validate(&collection)?,
             token_id,
-            Timestamp::from_seconds(expires),
+            expires,
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -84,7 +84,7 @@ pub fn execute(
             token_id,
             price,
             funds_recipient.map(|addr| api.addr_validate(&addr).unwrap()),
-            Timestamp::from_seconds(expires),
+            expires,
         ),
         ExecuteMsg::RemoveAsk {
             collection,
@@ -135,7 +135,7 @@ pub fn execute_set_bid(
     };
 
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    if Timestamp::from_nanos(ask.expires) <= env.block.time {
+    if ask.expires <= env.block.time {
         return Err(ContractError::AskExpired {});
     }
     if ask.price != bid_price {
@@ -148,7 +148,7 @@ pub fn execute_set_bid(
                 token_id,
                 bidder: bidder.clone(),
                 price: bid_price,
-                expires: expires.nanos(),
+                expires,
             },
         )?;
     } else {
@@ -252,7 +252,7 @@ pub fn execute_set_ask(
             seller: info.sender,
             price: price.amount,
             funds_recipient,
-            expires: expires.nanos(),
+            expires,
         },
     )?;
 
@@ -293,13 +293,13 @@ pub fn execute_accept_bid(
 
     // Query current ask
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    if Timestamp::from_nanos(ask.expires) <= env.block.time {
+    if ask.expires <= env.block.time {
         return Err(ContractError::AskExpired {});
     }
 
     // Query accepted bid
     let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-    if Timestamp::from_nanos(bid.expires) <= env.block.time {
+    if bid.expires <= env.block.time {
         return Err(ContractError::BidExpired {});
     }
 
@@ -654,7 +654,7 @@ mod tests {
             seller: seller.clone(),
             price: Uint128::from(500u128),
             funds_recipient: None,
-            expires: 0,
+            expires: Timestamp::from_seconds(0),
         };
         let key = ask_key(collection.clone(), TOKEN_ID);
         let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
@@ -666,7 +666,7 @@ mod tests {
             seller: seller.clone(),
             price: Uint128::from(500u128),
             funds_recipient: None,
-            expires: 0,
+            expires: Timestamp::from_seconds(0),
         };
         let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
         let res = asks().save(deps.as_mut().storage, key2, &ask2);
@@ -695,7 +695,7 @@ mod tests {
             token_id: TOKEN_ID,
             bidder: bidder.clone(),
             price: Uint128::from(500u128),
-            expires: 0,
+            expires: Timestamp::from_seconds(0),
         };
         let key = bid_key(collection.clone(), TOKEN_ID, bidder.clone());
         let res = bids().save(deps.as_mut().storage, key.clone(), &bid);
@@ -706,7 +706,7 @@ mod tests {
             token_id: TOKEN_ID + 1,
             bidder: bidder.clone(),
             price: Uint128::from(500u128),
-            expires: 0,
+            expires: Timestamp::from_seconds(0),
         };
         let key2 = bid_key(collection, TOKEN_ID + 1, bidder.clone());
         let res = bids().save(deps.as_mut().storage, key2, &bid2);
@@ -750,7 +750,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
             token_id: TOKEN_ID,
-            expires: 0,
+            expires: Timestamp::from_seconds(0),
         };
 
         // Broke bidder calls Set Bid and gets an error
@@ -763,7 +763,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
             token_id: TOKEN_ID,
-            expires: mock_env().block.time.plus_seconds(MIN_EXPIRY).seconds() + 1,
+            expires: mock_env().block.time.plus_seconds(MIN_EXPIRY + 1),
         };
 
         // Bidder calls SetBid before an Ask is set, so it should fail
@@ -786,7 +786,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
-            expires: 0,
+            expires: Timestamp::from_seconds(0),
         };
 
         // Reject if not called by the media owner
