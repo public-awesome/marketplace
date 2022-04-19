@@ -21,6 +21,7 @@
     "Ask": {
       "type": "object",
       "required": [
+        "active",
         "collection",
         "expires",
         "price",
@@ -28,6 +29,9 @@
         "token_id"
       ],
       "properties": {
+        "active": {
+          "type": "boolean"
+        },
         "collection": {
           "$ref": "#/definitions/Addr"
         },
