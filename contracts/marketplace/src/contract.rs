@@ -3,7 +3,7 @@ use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{ask_key, asks, bids, Ask, Bid};
+use crate::state::{ask_key, asks, bids, Ask, Bid, Config, TokenId, CONFIG};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Timestamp, WasmMsg,
@@ -33,9 +33,15 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let config = Config {
+        admin: deps.api.addr_validate(&msg.admin)?,
+    };
+    CONFIG.save(deps.storage, &config)?;
+
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
@@ -78,7 +84,13 @@ pub fn execute(
             collection,
             token_id,
             active,
-        } => todo!(),
+        } => execute_update_ask_state(
+            deps,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            active,
+        ),
         ExecuteMsg::SetBid {
             collection,
             token_id,
@@ -89,7 +101,7 @@ pub fn execute(
             info,
             api.addr_validate(&collection)?,
             token_id,
-            Timestamp::from_nanos(expires),
+            expires,
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -147,7 +159,7 @@ pub fn execute_set_ask(
             seller: info.sender,
             price: price.amount,
             funds_recipient,
-            expires: expires.nanos(),
+            expires,
             active: true,
         },
     )?;
@@ -174,6 +186,30 @@ pub fn execute_remove_ask(
         .add_attribute("action", "remove_ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string()))
+}
+
+/// Updates the the active state of the ask
+pub fn execute_update_ask_state(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+    active: bool,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
+    ask.active = active;
+    asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_ask_state")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("active", active.to_string()))
 }
 
 /// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
@@ -731,7 +767,9 @@ mod tests {
     }
 
     fn setup_contract(deps: DepsMut) {
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            admin: "admin".to_string(),
+        };
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps, mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -741,7 +779,9 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            admin: "admin".to_string(),
+        };
         let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 
         // we can just call .unwrap() to assert this was a success

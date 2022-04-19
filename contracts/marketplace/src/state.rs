@@ -1,7 +1,14 @@
 use cosmwasm_std::{Addr, Timestamp, Uint128};
-use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Config {
+    pub admin: Addr,
+}
+
+pub const CONFIG: Item<Config> = Item::new("config");
 
 pub type TokenId = u32;
 

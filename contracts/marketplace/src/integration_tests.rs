@@ -54,7 +54,9 @@ mod tests {
     ) -> Result<(Addr, Addr), ContractError> {
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
-        let msg = crate::msg::InstantiateMsg {};
+        let msg = crate::msg::InstantiateMsg {
+            admin: "admin".to_string(),
+        };
         let nft_marketplace_addr = router
             .instantiate_contract(
                 marketplace_id,
@@ -758,7 +760,9 @@ mod tests {
 
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
-        let msg = crate::msg::InstantiateMsg {};
+        let msg = crate::msg::InstantiateMsg {
+            admin: "admin".to_string(),
+        };
         let nft_marketplace_addr = router
             .instantiate_contract(
                 marketplace_id,
