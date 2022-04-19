@@ -263,7 +263,7 @@ pub fn execute_remove_stale_asks(
     // TODO remove associated bids
     let mut fair_burn_deposit = true;
     let mut msgs: Vec<CosmosMsg> = vec![];
-    let payment = must_pay(&info, &NATIVE_DENOM)?.u128();
+    let payment = must_pay(&info, NATIVE_DENOM)?.u128();
     if payment != DEPOSIT_AMOUNT {
         return Err(ContractError::IncorrectPaymentAmount(
             coin(DEPOSIT_AMOUNT, NATIVE_DENOM),
@@ -290,14 +290,14 @@ pub fn execute_remove_stale_asks(
             },
         )?;
         if owner.owner != ask.seller {
-            if (fair_burn_deposit) {
+            if fair_burn_deposit {
                 fair_burn_deposit = false;
             }
             asks().remove(deps.storage, (collection.clone(), ask.token_id))?;
         }
     }
 
-    if fair_burn_deposit == true {
+    if fair_burn_deposit {
         msgs.append(&mut fair_burn(DEPOSIT_AMOUNT));
     }
 
