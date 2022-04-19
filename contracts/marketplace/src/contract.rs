@@ -761,7 +761,7 @@ mod tests {
         let err = execute(deps.as_mut(), mock_env(), broke, set_bid_msg).unwrap_err();
         assert_eq!(
             err,
-            ContractError::BidPaymentError(cw_utils::PaymentError::NoFunds {})
+            ContractError::PaymentError(cw_utils::PaymentError::NoFunds {})
         );
 
         let set_bid_msg = ExecuteMsg::SetBid {
@@ -795,5 +795,48 @@ mod tests {
         let not_allowed = mock_info("random", &[]);
         let err = execute(deps.as_mut(), mock_env(), not_allowed, set_ask);
         assert!(err.is_err());
+    }
+
+    #[test]
+    fn try_remove_stale_asks() {
+        let mut deps = mock_dependencies();
+        setup_contract(deps.as_mut());
+
+        let remove_stale_asks = ExecuteMsg::RemoveStaleAsks {
+            collection: COLLECTION.to_string(),
+        };
+
+        // Reject no deposit tx
+        let no_deposit = mock_info("random", &[]);
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            no_deposit,
+            remove_stale_asks.clone(),
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::PaymentError(cw_utils::PaymentError::NoFunds {})
+        );
+
+        // Reject wrong deposit amount
+        let no_deposit = mock_info(
+            "random",
+            &[Coin {
+                denom: NATIVE_DENOM.to_string(),
+                amount: Uint128::from(2u128),
+            }],
+        );
+        let err = execute(deps.as_mut(), mock_env(), no_deposit, remove_stale_asks).unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::IncorrectPaymentAmount(
+                coin(DEPOSIT_AMOUNT, NATIVE_DENOM),
+                coin(2u128, NATIVE_DENOM),
+            )
+        );
+
+        // test removing stale asks
     }
 }

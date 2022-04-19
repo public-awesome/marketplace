@@ -29,5 +29,5 @@ pub enum ContractError {
     IncorrectPaymentAmount(Coin, Coin),
 
     #[error("{0}")]
-    BidPaymentError(#[from] PaymentError),
+    PaymentError(#[from] PaymentError),
 }
