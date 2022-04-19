@@ -25,7 +25,8 @@ const MAX_QUERY_LIMIT: u32 = 30;
 
 // Governance parameters
 const TRADING_FEE_PERCENT: u32 = 2; // 2%
-const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours
+const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
+const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -65,7 +66,7 @@ pub fn execute(
             info,
             api.addr_validate(&collection)?,
             token_id,
-            Timestamp::from_nanos(expires),
+            Timestamp::from_seconds(expires),
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -83,7 +84,7 @@ pub fn execute(
             token_id,
             price,
             funds_recipient.map(|addr| api.addr_validate(&addr).unwrap()),
-            Timestamp::from_nanos(expires),
+            Timestamp::from_seconds(expires),
         ),
         ExecuteMsg::RemoveAsk {
             collection,
@@ -116,9 +117,7 @@ pub fn execute_set_bid(
     // Make sure a bid amount was sent
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
 
-    if expires <= env.block.time.plus_seconds(MIN_EXPIRY) {
-        return Err(ContractError::InvalidExpiration {});
-    }
+    is_expired(&env, expires)?;
 
     let bidder = info.sender;
     let mut res = Response::new();
@@ -229,9 +228,7 @@ pub fn execute_set_ask(
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
 
-    if expires <= env.block.time.plus_seconds(MIN_EXPIRY) {
-        return Err(ContractError::InvalidExpiration {});
-    }
+    is_expired(&env, expires)?;
 
     // Only the media onwer can call this
     let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -430,6 +427,16 @@ fn payout(
     }
 
     Ok(msgs)
+}
+
+fn is_expired(env: &Env, expires: Timestamp) -> Result<(), ContractError> {
+    if expires <= env.block.time.plus_seconds(MIN_EXPIRY)
+        || expires > env.block.time.plus_seconds(MAX_EXPIRY)
+    {
+        return Err(ContractError::InvalidExpiration {});
+    }
+
+    Ok(())
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -756,7 +763,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: COLLECTION.to_string(),
             token_id: TOKEN_ID,
-            expires: mock_env().block.time.nanos() + 100,
+            expires: mock_env().block.time.plus_seconds(MIN_EXPIRY).seconds() + 1,
         };
 
         // Bidder calls SetBid before an Ask is set, so it should fail
