@@ -202,6 +202,44 @@ mod tests {
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
         assert!(res.is_ok());
 
+        // Should error on non-admin trying to update active state
+        let update_ask_state = ExecuteMsg::UpdateAskState {
+            collection: nft_contract_addr.to_string(),
+            token_id: TOKEN_ID,
+            active: false,
+        };
+        router
+            .execute_contract(
+                creator.clone(),
+                nft_marketplace_addr.clone(),
+                &update_ask_state,
+                &[],
+            )
+            .unwrap_err();
+
+        // Should not error on admin updating active state
+        let res = router.execute_contract(
+            Addr::unchecked("admin"),
+            nft_marketplace_addr.clone(),
+            &update_ask_state,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // Reset active state
+        let update_ask_state = ExecuteMsg::UpdateAskState {
+            collection: nft_contract_addr.to_string(),
+            token_id: TOKEN_ID,
+            active: true,
+        };
+        let res = router.execute_contract(
+            Addr::unchecked("admin"),
+            nft_marketplace_addr.clone(),
+            &update_ask_state,
+            &[],
+        );
+        assert!(res.is_ok());
+
         // Bidder makes bid
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: nft_contract_addr.to_string(),

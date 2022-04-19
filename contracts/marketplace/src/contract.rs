@@ -245,6 +245,9 @@ pub fn execute_set_bid(
     if ask.expires <= env.block.time {
         return Err(ContractError::AskExpired {});
     }
+    if !ask.active {
+        return Err(ContractError::AskNotActive {});
+    }
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
         bids().save(
@@ -339,6 +342,9 @@ pub fn execute_accept_bid(
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     if ask.expires <= env.block.time {
         return Err(ContractError::AskExpired {});
+    }
+    if !ask.active {
+        return Err(ContractError::AskNotActive {});
     }
 
     // Query accepted bid
