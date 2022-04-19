@@ -24,9 +24,9 @@ const DEFAULT_QUERY_LIMIT: u32 = 10;
 const MAX_QUERY_LIMIT: u32 = 30;
 
 // Governance parameters
-const TRADING_FEE_PERCENT: u32 = 2; // 2%
-const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
-const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
+pub const TRADING_FEE_PERCENT: u32 = 2; // 2%
+pub const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
+pub const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
