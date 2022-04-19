@@ -41,6 +41,11 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         bidder: String,
     },
+    UpdateAsk {
+        collection: String,
+        token_id: TokenId,
+        price: Coin,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
