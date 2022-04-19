@@ -24,7 +24,8 @@ const DEFAULT_QUERY_LIMIT: u32 = 10;
 const MAX_QUERY_LIMIT: u32 = 30;
 
 // Governance parameters
-const TRADING_FEE_PERCENT: u32 = 2;
+const TRADING_FEE_PERCENT: u32 = 2; // 2%
+const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -115,7 +116,7 @@ pub fn execute_set_bid(
     // Make sure a bid amount was sent
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
 
-    if expires <= env.block.time {
+    if expires <= env.block.time.plus_seconds(MIN_EXPIRY) {
         return Err(ContractError::InvalidExpiration {});
     }
 
@@ -135,7 +136,7 @@ pub fn execute_set_bid(
     };
 
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    if Timestamp::from_nanos(ask.expires) < env.block.time {
+    if Timestamp::from_nanos(ask.expires) <= env.block.time {
         return Err(ContractError::AskExpired {});
     }
     if ask.price != bid_price {
@@ -228,7 +229,7 @@ pub fn execute_set_ask(
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
 
-    if expires <= env.block.time {
+    if expires <= env.block.time.plus_seconds(MIN_EXPIRY) {
         return Err(ContractError::InvalidExpiration {});
     }
 
