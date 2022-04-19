@@ -117,7 +117,7 @@ pub fn execute_set_bid(
     // Make sure a bid amount was sent
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
 
-    is_expired(&env, expires)?;
+    expires_validate(&env, expires)?;
 
     let bidder = info.sender;
     let mut res = Response::new();
@@ -228,7 +228,7 @@ pub fn execute_set_ask(
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
 
-    is_expired(&env, expires)?;
+    expires_validate(&env, expires)?;
 
     // Only the media onwer can call this
     let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -429,7 +429,7 @@ fn payout(
     Ok(msgs)
 }
 
-fn is_expired(env: &Env, expires: Timestamp) -> Result<(), ContractError> {
+fn expires_validate(env: &Env, expires: Timestamp) -> Result<(), ContractError> {
     if expires <= env.block.time.plus_seconds(MIN_EXPIRY)
         || expires > env.block.time.plus_seconds(MAX_EXPIRY)
     {
