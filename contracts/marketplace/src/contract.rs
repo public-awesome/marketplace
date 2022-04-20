@@ -6,7 +6,7 @@ use crate::msg::{
 use crate::state::{ask_key, asks, bids, Ask, Bid, Config, TokenId, CONFIG};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Timestamp, Uint128, WasmMsg,
+    MessageInfo, Order, StdResult, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -139,6 +139,7 @@ pub fn execute_set_ask(
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
     nonpayable(&info)?;
+    price_validate(&price)?;
 
     if expires <= env.block.time {
         return Err(ContractError::InvalidExpiration {});
@@ -155,10 +156,6 @@ pub fn execute_set_ask(
         != 1
     {
         return Err(ContractError::NeedsApproval {});
-    }
-
-    if price.amount.is_zero() || price.denom != NATIVE_DENOM {
-        return Err(ContractError::InvalidPrice {});
     }
 
     asks().save(
@@ -238,6 +235,7 @@ pub fn execute_update_ask(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    price_validate(&price)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     ask.price = price.amount;
@@ -523,6 +521,14 @@ fn expires_validate(env: &Env, expires: Timestamp) -> Result<(), ContractError> 
         || expires > env.block.time.plus_seconds(MAX_EXPIRY)
     {
         return Err(ContractError::InvalidExpiration {});
+    }
+
+    Ok(())
+}
+
+fn price_validate(price: &Coin) -> Result<(), ContractError> {
+    if price.amount.is_zero() || price.denom != NATIVE_DENOM {
+        return Err(ContractError::InvalidPrice {});
     }
 
     Ok(())
