@@ -61,7 +61,8 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SudoMsg {
-    /// List an NFT on the marketplace by creating a new ask
+    /// Update the config parameters
+    /// Can only be called by governance
     UpdateConfig {
         admin: Option<String>,
         trading_fee_percent: Option<u32>,
