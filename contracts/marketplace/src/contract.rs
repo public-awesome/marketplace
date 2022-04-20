@@ -188,7 +188,9 @@ pub fn execute_remove_ask(
         .add_attribute("token_id", token_id.to_string()))
 }
 
-/// Updates the the active state of the ask
+/// Updates the the active state of the ask.
+/// This is a privileged operation called by an admin to update the active state of an Ask
+/// when an NFT transfer happens.
 pub fn execute_update_ask_state(
     deps: DepsMut,
     info: MessageInfo,
