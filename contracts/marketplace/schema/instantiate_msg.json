@@ -3,11 +3,29 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "admin"
+    "admin",
+    "max_expiry",
+    "min_expiry",
+    "trading_fee_percent"
   ],
   "properties": {
     "admin": {
       "type": "string"
+    },
+    "max_expiry": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "min_expiry": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
+    },
+    "trading_fee_percent": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
     }
   }
 }
