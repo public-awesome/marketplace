@@ -449,6 +449,10 @@ fn finalize_sale(
         token_id: token_id.to_string(),
         recipient: recipient.to_string(),
     };
+
+    // TODO: figure out how to use helper
+    // Cw721Contract(collection).call(cw721_transfer_msg)?;
+
     let exec_cw721_transfer = WasmMsg::Execute {
         contract_addr: collection.to_string(),
         msg: to_binary(&cw721_transfer_msg)?,
