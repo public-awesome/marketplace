@@ -67,6 +67,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Count of all asks Return type: `AskCountResponse`",
       "type": "object",
       "required": [
         "ask_count"
@@ -87,6 +88,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Get all asks by seller Return type: `AsksResponse`",
       "type": "object",
       "required": [
         "asks_by_seller"

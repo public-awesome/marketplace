@@ -3,6 +3,7 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
+      "description": "List an NFT on the marketplace by creating a new ask",
       "type": "object",
       "required": [
         "set_ask"
@@ -43,6 +44,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Remove an existing ask from the marketplace",
       "type": "object",
       "required": [
         "remove_ask"
@@ -69,6 +71,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Admin operation to change the active state of an ask when an NFT is transferred",
       "type": "object",
       "required": [
         "update_ask_state"
@@ -99,6 +102,38 @@
       "additionalProperties": false
     },
     {
+      "description": "Update the price of an existing ask",
+      "type": "object",
+      "required": [
+        "update_ask"
+      ],
+      "properties": {
+        "update_ask": {
+          "type": "object",
+          "required": [
+            "collection",
+            "price",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            },
+            "token_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Place a bid on an existing ask",
       "type": "object",
       "required": [
         "set_bid"
@@ -129,6 +164,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Remove an existing bid from an ask",
       "type": "object",
       "required": [
         "remove_bid"
@@ -155,6 +191,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Accept a bid on an existing ask",
       "type": "object",
       "required": [
         "accept_bid"
