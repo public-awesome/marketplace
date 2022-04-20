@@ -219,6 +219,25 @@ pub fn execute_update_ask_state(
         .add_attribute("active", active.to_string()))
 }
 
+/// Updates the ask on a particular NFT
+pub fn execute_update_ask(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: u32,
+    price: Coin,
+) -> Result<Response, ContractError> {
+    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+
+    // asks().remove(deps.storage, (collection.clone(), token_id))?;
+    asks().update(deps.storage, ask_key(collection, token_id), action)
+
+    Ok(Response::new()
+        .add_attribute("action", "remove_ask")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string()))
+}
+
 /// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
 pub fn execute_set_bid(
     deps: DepsMut,
@@ -332,88 +351,6 @@ pub fn execute_remove_bid(
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_message(exec_refund_bidder))
-}
-
-/// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
-pub fn execute_set_ask(
-    env: ExecuteEnv,
-    collection: Addr,
-    token_id: u32,
-    price: Coin,
-    funds_recipient: Option<Addr>,
-    expires: Timestamp,
-) -> Result<Response, ContractError> {
-    let ExecuteEnv { deps, info, env } = env;
-
-    expires_validate(&env, expires)?;
-
-    // Only the media onwer can call this
-    let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-    // Check that approval has been set for marketplace contract
-    if owner_of_response
-        .approvals
-        .iter()
-        .map(|x| x.spender == env.contract.address)
-        .len()
-        != 1
-    {
-        return Err(ContractError::NeedsApproval {});
-    }
-
-    asks().save(
-        deps.storage,
-        ask_key(collection.clone(), token_id),
-        &Ask {
-            collection: collection.clone(),
-            token_id,
-            seller: info.sender,
-            price: price.amount,
-            funds_recipient,
-            expires,
-        },
-    )?;
-
-    Ok(Response::new()
-        .add_attribute("action", "set_ask")
-        .add_attribute("collection", collection)
-        .add_attribute("token_id", token_id.to_string())
-        .add_attribute("price", price.to_string()))
-}
-
-/// Removes the ask on a particular media
-pub fn execute_remove_ask(
-    deps: DepsMut,
-    info: MessageInfo,
-    collection: Addr,
-    token_id: u32,
-) -> Result<Response, ContractError> {
-    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-
-    asks().remove(deps.storage, (collection.clone(), token_id))?;
-
-    Ok(Response::new()
-        .add_attribute("action", "remove_ask")
-        .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string()))
-}
-
-/// Updates the ask on a particular NFT
-pub fn execute_update_ask(
-    deps: DepsMut,
-    info: MessageInfo,
-    collection: Addr,
-    token_id: u32,
-    price: Coin,
-) -> Result<Response, ContractError> {
-    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-
-    // asks().remove(deps.storage, (collection.clone(), token_id))?;
-    asks().update(deps.storage, ask_key(collection, token_id), action)
-
-    Ok(Response::new()
-        .add_attribute("action", "remove_ask")
-        .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string()))
 }
 
 /// Owner can accept a bid which transfers funds as well as the token
