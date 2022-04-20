@@ -1,5 +1,4 @@
 #![cfg(test)]
-use crate::contract::MIN_EXPIRY;
 use crate::error::ContractError;
 use crate::msg::{BidsResponse, ExecuteMsg, QueryMsg};
 use cosmwasm_std::{Addr, Empty};
@@ -46,6 +45,10 @@ mod tests {
     const TOKEN_ID: u32 = 123;
     const CREATION_FEE: u128 = 1_000_000_000;
     const INITIAL_BALANCE: u128 = 2000;
+    // Governance parameters
+    const TRADING_FEE_PERCENT: u32 = 2; // 2%
+    const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
+    const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 
     // Instantiates all needed contracts for testing
     fn setup_contracts(
@@ -56,6 +59,9 @@ mod tests {
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
             admin: "admin".to_string(),
+            trading_fee_percent: TRADING_FEE_PERCENT,
+            min_expiry: MIN_EXPIRY,
+            max_expiry: MAX_EXPIRY,
         };
         let nft_marketplace_addr = router
             .instantiate_contract(
@@ -958,6 +964,9 @@ mod tests {
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
             admin: "admin".to_string(),
+            trading_fee_percent: TRADING_FEE_PERCENT,
+            min_expiry: MIN_EXPIRY,
+            max_expiry: MAX_EXPIRY,
         };
         let nft_marketplace_addr = router
             .instantiate_contract(

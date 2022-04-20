@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub admin: String,
+    pub trading_fee_percent: u32,
+    pub min_expiry: u64,
+    pub max_expiry: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -52,6 +55,18 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         bidder: String,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SudoMsg {
+    /// List an NFT on the marketplace by creating a new ask
+    UpdateConfig {
+        admin: Option<String>,
+        trading_fee_percent: Option<u32>,
+        min_expiry: Option<u64>,
+        max_expiry: Option<u64>,
     },
 }
 

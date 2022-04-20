@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Config {
     pub admin: Addr,
+    pub trading_fee_percent: u32,
+    pub min_expiry: u64,
+    pub max_expiry: u64,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
