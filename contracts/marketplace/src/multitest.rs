@@ -17,7 +17,8 @@ pub fn contract_nft_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
         crate::contract::execute,
         crate::contract::instantiate,
         crate::contract::query,
-    );
+    )
+    .with_sudo(crate::contract::sudo);
     Box::new(contract)
 }
 
