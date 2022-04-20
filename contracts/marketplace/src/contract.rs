@@ -219,7 +219,7 @@ pub fn execute_update_ask_state(
         .add_attribute("active", active.to_string()))
 }
 
-/// Updates the ask on a particular NFT
+/// Updates the ask price on a particular NFT
 pub fn execute_update_ask(
     deps: DepsMut,
     info: MessageInfo,
@@ -229,8 +229,9 @@ pub fn execute_update_ask(
 ) -> Result<Response, ContractError> {
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
-    // asks().remove(deps.storage, (collection.clone(), token_id))?;
-    asks().update(deps.storage, ask_key(collection, token_id), action)
+    let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
+    ask.price = price.amount;
+    asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
     Ok(Response::new()
         .add_attribute("action", "remove_ask")
