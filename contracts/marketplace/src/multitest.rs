@@ -568,7 +568,7 @@ mod tests {
                 },
             )
             .unwrap();
-        assert_eq!(res.collections[0], "Contract #1");
+        assert_eq!(res.collections[0], "contract1");
     }
 
     #[test]
