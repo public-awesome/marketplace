@@ -11,7 +11,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw_storage_plus::{Bound, PrefixBound};
-use cw_utils::{maybe_addr, must_pay};
+use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{fair_burn, CosmosMsg, Response, NATIVE_DENOM};
 
@@ -137,6 +137,7 @@ pub fn execute_set_ask(
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
+    nonpayable(&info)?;
 
     if expires <= env.block.time {
         return Err(ContractError::InvalidExpiration {});
@@ -183,6 +184,8 @@ pub fn execute_remove_ask(
     collection: Addr,
     token_id: u32,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     asks().remove(deps.storage, (collection.clone(), token_id))?;
@@ -203,6 +206,8 @@ pub fn execute_update_ask_state(
     token_id: TokenId,
     active: bool,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let config = CONFIG.load(deps.storage)?;
     if info.sender != config.admin {
         return Err(ContractError::Unauthorized {});
@@ -227,6 +232,8 @@ pub fn execute_update_ask(
     token_id: u32,
     price: Coin,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
@@ -332,6 +339,8 @@ pub fn execute_remove_bid(
     collection: Addr,
     token_id: u32,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let bidder = info.sender;
 
     // Check bid exists for bidder
@@ -363,6 +372,8 @@ pub fn execute_accept_bid(
     token_id: u32,
     bidder: Addr,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     // Query current ask
