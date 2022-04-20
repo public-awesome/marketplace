@@ -4,7 +4,7 @@ use crate::msg::{BidsResponse, ExecuteMsg, QueryMsg};
 use cosmwasm_std::{Addr, Empty};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
-use cw_multi_test::{BankSudo, Contract, ContractWrapper, Executor, SudoMsg};
+use cw_multi_test::{BankSudo, Contract, ContractWrapper, Executor, SudoMsg as CwSudoMsg};
 use sg_multi_test::StargazeApp;
 use sg_std::StargazeMsgWrapper;
 
@@ -32,7 +32,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse};
+    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, SudoMsg};
     use crate::state::Bid;
 
     use super::*;
@@ -113,7 +113,7 @@ mod tests {
         let creator_funds: Vec<Coin> = coins(CREATION_FEE, NATIVE_DENOM);
         let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
         router
-            .sudo(SudoMsg::Bank({
+            .sudo(CwSudoMsg::Bank({
                 BankSudo::Mint {
                     to_address: owner.to_string(),
                     amount: funds.clone(),
@@ -122,7 +122,7 @@ mod tests {
             .map_err(|err| println!("{:?}", err))
             .ok();
         router
-            .sudo(SudoMsg::Bank({
+            .sudo(CwSudoMsg::Bank({
                 BankSudo::Mint {
                     to_address: bidder.to_string(),
                     amount: funds.clone(),
@@ -131,7 +131,7 @@ mod tests {
             .map_err(|err| println!("{:?}", err))
             .ok();
         router
-            .sudo(SudoMsg::Bank({
+            .sudo(CwSudoMsg::Bank({
                 BankSudo::Mint {
                     to_address: creator.to_string(),
                     amount: creator_funds.clone(),
@@ -688,7 +688,7 @@ mod tests {
 
         // Bidder makes bid with a random token in the same amount as the ask
         router
-            .sudo(SudoMsg::Bank({
+            .sudo(CwSudoMsg::Bank({
                 BankSudo::Mint {
                     to_address: bidder.to_string(),
                     amount: coins(1000, "random"),
@@ -954,7 +954,7 @@ mod tests {
     }
 
     #[test]
-    fn royalties() {
+    fn try_royalties() {
         let mut router = custom_mock_app();
 
         // Setup intial accounts
@@ -1087,5 +1087,26 @@ mod tests {
             .query_wasm_smart(nft_contract_addr, &query_owner_msg)
             .unwrap();
         assert_eq!(res.owner, bidder.to_string());
+    }
+
+    #[test]
+    fn try_sudo_update_config() {
+        let mut router = custom_mock_app();
+
+        // Setup intial accounts
+        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+
+        // Instantiate and configure contracts
+        let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+        let update_config_msg = SudoMsg::UpdateConfig {
+            admin: Some("rosa".to_string()),
+            trading_fee_percent: None,
+            min_expiry: None,
+            max_expiry: None,
+        };
+        let res = router.wasm_sudo(marketplace, &update_config_msg);
+        println!("{:?}", res);
+        assert!(res.is_ok());
     }
 }

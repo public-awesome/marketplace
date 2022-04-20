@@ -461,8 +461,6 @@ pub fn sudo(
     }
 }
 
-// TODO: test with sudio multitest
-
 /// Only governance can update the config
 pub fn sudo_update_config(
     deps: DepsMut,
