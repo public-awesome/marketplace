@@ -56,6 +56,11 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         bidder: String,
     },
+    /// Freeze will make a mutable contract immutable, must be called by an admin
+    Freeze {},
+    /// UpdateAdmins will change the admin set of the contract, must be called by an existing admin,
+    /// and only works if the contract is mutable
+    UpdateAdmins { admins: Vec<String> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
