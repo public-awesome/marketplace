@@ -242,9 +242,10 @@ pub fn execute_update_ask(
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
     Ok(Response::new()
-        .add_attribute("action", "remove_ask")
+        .add_attribute("action", "update_ask")
         .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string()))
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("price", price.to_string()))
 }
 
 /// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
