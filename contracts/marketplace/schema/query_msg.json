@@ -229,6 +229,19 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Get the config for the contract Return type: `ConfigResponse`",
+      "type": "object",
+      "required": [
+        "config"
+      ],
+      "properties": {
+        "config": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }

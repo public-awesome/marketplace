@@ -47,4 +47,8 @@ start_after?: (string | null)
 token_id: number
 [k: string]: unknown
 }
+} | {
+config: {
+[k: string]: unknown
+}
 })
