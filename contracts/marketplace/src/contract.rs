@@ -8,13 +8,21 @@ use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
 };
+use cw1_whitelist::{
+    contract::{
+        execute_freeze, execute_update_admins, instantiate as whitelist_instantiate,
+        query_admin_list,
+    },
+    msg::InstantiateMsg,
+    state::ADMIN_LIST,
+};
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
 use cw_storage_plus::{Bound, PrefixBound};
 use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{fair_burn, CosmosMsg, Response, NATIVE_DENOM};
+use sg_std::{fair_burn, CosmosMsg, StargazeMsg, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -27,10 +35,11 @@ const MAX_QUERY_LIMIT: u32 = 30;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
-    _info: MessageInfo,
+    env: Env,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
+    whitelist_instantiate(deps.branch(), env, info, msg)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let config = Config {
@@ -123,8 +132,16 @@ pub fn execute(
             token_id,
             price,
         } => execute_update_ask(deps, info, api.addr_validate(&collection)?, token_id, price),
+        ExecuteMsg::Freeze {} => Ok(execute_freeze(deps, env, info)?),
+        ExecuteMsg::UpdateAdmins { admins } => Ok(execute_update_admins(deps, env, info, admins)?),
     }
 }
+
+// impl From<QueryMsg> for Cw721QueryMsg {
+//     fn from(msg: QueryMsg) -> Cw721QueryMsg {
+//         match msg {}
+//     }
+// }
 
 /// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
 pub fn execute_set_ask(
