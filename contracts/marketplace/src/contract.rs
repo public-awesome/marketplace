@@ -194,6 +194,7 @@ pub fn execute_remove_ask(
     let bids_to_remove = bids()
         .idx
         .collection_token_id
+        .prefix((collection.clone(), token_id))
         .range(deps.storage, None, None, Order::Ascending)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
