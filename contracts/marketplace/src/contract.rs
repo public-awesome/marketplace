@@ -463,7 +463,7 @@ pub fn sudo(
 
 // TODO: test with sudio multitest
 
-/// Owner can accept a bid which transfers funds as well as the token
+/// Only governance can update the config
 pub fn sudo_update_config(
     deps: DepsMut,
     _env: Env,
