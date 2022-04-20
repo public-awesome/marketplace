@@ -3,10 +3,10 @@ use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{ask_key, asks, bids, Ask, Bid, Config, TokenId, CONFIG};
+use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, Config, TokenId, CONFIG};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Timestamp, WasmMsg,
+    MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -191,10 +191,24 @@ pub fn execute_remove_ask(
 
     asks().remove(deps.storage, (collection.clone(), token_id))?;
 
+    let bids_to_remove = bids()
+        .idx
+        .collection_token_id
+        .prefix((collection.clone(), token_id))
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    let mut msgs: Vec<BankMsg> = vec![];
+    for bid in bids_to_remove.iter() {
+        msgs.push(_remove_bid(deps.storage, bid.clone())?)
+    }
+
     Ok(Response::new()
         .add_attribute("action", "remove_ask")
         .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string()))
+        .add_attribute("token_id", token_id.to_string())
+        .add_messages(msgs))
 }
 
 /// Updates the the active state of the ask.
@@ -346,23 +360,30 @@ pub fn execute_remove_bid(
     let bidder = info.sender;
 
     // Check bid exists for bidder
-    let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-
-    // Remove bid
-    bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-
-    // Refund bidder
-    let exec_refund_bidder = BankMsg::Send {
-        to_address: bidder.to_string(),
-        amount: vec![coin(bid.price.u128(), NATIVE_DENOM)],
-    };
+    let bid = bids().load(
+        deps.storage,
+        bid_key(collection.clone(), token_id, bidder.clone()),
+    )?;
 
     Ok(Response::new()
         .add_attribute("action", "remove_bid")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
-        .add_message(exec_refund_bidder))
+        .add_message(_remove_bid(deps.storage, bid)?))
+}
+
+fn _remove_bid(store: &mut dyn Storage, bid: Bid) -> Result<BankMsg, ContractError> {
+    // Remove bid
+    bids().remove(store, (bid.collection, bid.token_id, bid.bidder.clone()))?;
+
+    // Refund bidder
+    let msg = BankMsg::Send {
+        to_address: bid.bidder.to_string(),
+        amount: vec![coin(bid.price.u128(), NATIVE_DENOM)],
+    };
+
+    Ok(msg)
 }
 
 /// Owner can accept a bid which transfers funds as well as the token
