@@ -46,6 +46,7 @@ sg721 = "0.10.0"
 thiserror = { version = "1.0.30" }
 sg-std = "0.10.0"
 cw-utils = "0.13.1"
+cw1-whitelist = "0.13.2"
 
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta7" }
