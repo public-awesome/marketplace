@@ -438,7 +438,6 @@ pub fn execute_accept_bid(
 pub fn sudo(
     deps: DepsMut,
     env: Env,
-    info: MessageInfo,
     msg: SudoMsg,
 ) -> Result<Response, ContractError> {
     let api = deps.api;
@@ -452,7 +451,6 @@ pub fn sudo(
         } => sudo_update_config(
             deps,
             env,
-            info,
             admin.map(|a| api.addr_validate(&a)).transpose()?,
             trading_fee_percent,
             min_expiry,
@@ -465,14 +463,11 @@ pub fn sudo(
 pub fn sudo_update_config(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
     admin: Option<Addr>,
     trading_fee_percent: Option<u32>,
     min_expiry: Option<u64>,
     max_expiry: Option<u64>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-
     let mut config = CONFIG.load(deps.storage)?;
     config.admin = admin.unwrap_or(config.admin);
     config.trading_fee_percent = trading_fee_percent.unwrap_or(config.trading_fee_percent);
