@@ -6,7 +6,7 @@ use crate::msg::{
 use crate::state::{ask_key, asks, bids, Ask, Bid, Config, TokenId, CONFIG};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Timestamp, WasmMsg,
+    MessageInfo, Order, StdResult, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -157,9 +157,9 @@ pub fn execute_set_ask(
         return Err(ContractError::NeedsApproval {});
     }
 
-    // TODO: check if the token exists
-
-    // TODO: make sure price is not zero
+    if price.amount.is_zero() || price.denom != NATIVE_DENOM {
+        return Err(ContractError::InvalidPrice {});
+    }
 
     asks().save(
         deps.storage,
