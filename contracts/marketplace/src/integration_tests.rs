@@ -355,7 +355,7 @@ mod tests {
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
-            bidder.clone(),
+            bidder,
             nft_marketplace_addr.clone(),
             &set_bid_msg,
             &coins(100, NATIVE_DENOM),
@@ -384,7 +384,7 @@ mod tests {
         };
         let res: BidsResponse = router
             .wrap()
-            .query_wasm_smart(nft_marketplace_addr.clone(), &query_bids_msg)
+            .query_wasm_smart(nft_marketplace_addr, &query_bids_msg)
             .unwrap();
         assert_eq!(res.bids, vec![]);
     }
