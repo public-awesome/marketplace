@@ -33,7 +33,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, SudoMsg};
+    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, ConfigResponse, SudoMsg};
     use crate::state::Bid;
 
     use super::*;
@@ -1106,8 +1106,14 @@ mod tests {
             min_expiry: None,
             max_expiry: None,
         };
-        let res = router.wasm_sudo(marketplace, &update_config_msg);
-        println!("{:?}", res);
+        let res = router.wasm_sudo(marketplace.clone(), &update_config_msg);
         assert!(res.is_ok());
+
+        let query_config_msg = QueryMsg::Config {};
+        let res: ConfigResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_config_msg)
+            .unwrap();
+        assert_eq!(res.config.admin.to_string(), "rosa".to_string());
     }
 }

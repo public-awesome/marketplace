@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
+    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse, ConfigResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg,
 };
 use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, Config, TokenId, CONFIG};
@@ -659,9 +659,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BidsByBidder { bidder } => {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
     }
 }
 
+pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+    let config = CONFIG.load(deps.storage)?;
+
+    Ok(ConfigResponse { config })
+}
 pub fn query_asks(
     deps: Deps,
     collection: Addr,
