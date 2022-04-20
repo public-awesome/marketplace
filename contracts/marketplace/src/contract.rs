@@ -10,6 +10,7 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
+use cw721_base::helpers::Cw721Contract;
 use cw_storage_plus::{Bound, PrefixBound};
 use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
@@ -144,7 +145,7 @@ pub fn execute_set_ask(
     }
 
     // Only the media onwer can call this
-    let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    let owner_of_response = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
     // Check that approval has been set for marketplace contract
     if owner_of_response
         .approvals
@@ -155,6 +156,10 @@ pub fn execute_set_ask(
     {
         return Err(ContractError::NeedsApproval {});
     }
+
+    // TODO: check if the token exists
+
+    // TODO: make sure price is not zero
 
     asks().save(
         deps.storage,
@@ -185,8 +190,7 @@ pub fn execute_remove_ask(
     token_id: u32,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-
-    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     asks().remove(deps.storage, (collection.clone(), token_id))?;
 
@@ -233,8 +237,7 @@ pub fn execute_update_ask(
     price: Coin,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-
-    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     ask.price = price.amount;
@@ -373,8 +376,7 @@ pub fn execute_accept_bid(
     bidder: Addr,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-
-    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     // Query current ask
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
@@ -415,23 +417,18 @@ pub fn execute_accept_bid(
 }
 
 /// Checks to enfore only nft owner can call
-fn check_only_owner(
+fn only_owner(
     deps: Deps,
     info: &MessageInfo,
     collection: Addr,
     token_id: u32,
 ) -> Result<OwnerOfResponse, ContractError> {
-    let owner: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
-        collection,
-        &Cw721QueryMsg::OwnerOf {
-            token_id: token_id.to_string(),
-            include_expired: None,
-        },
-    )?;
-    if owner.owner != info.sender {
+    let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
+    if res.owner != info.sender {
         return Err(ContractError::Unauthorized {});
     }
-    Ok(owner)
+
+    Ok(res)
 }
 
 /// Transfers funds and NFT, updates bid
