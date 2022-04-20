@@ -54,7 +54,9 @@ mod tests {
     ) -> Result<(Addr, Addr), ContractError> {
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
-        let msg = crate::msg::InstantiateMsg {};
+        let msg = crate::msg::InstantiateMsg {
+            admin: "admin".to_string(),
+        };
         let nft_marketplace_addr = router
             .instantiate_contract(
                 marketplace_id,
@@ -198,6 +200,44 @@ mod tests {
         };
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
+        assert!(res.is_ok());
+
+        // Should error on non-admin trying to update active state
+        let update_ask_state = ExecuteMsg::UpdateAskState {
+            collection: nft_contract_addr.to_string(),
+            token_id: TOKEN_ID,
+            active: false,
+        };
+        router
+            .execute_contract(
+                creator.clone(),
+                nft_marketplace_addr.clone(),
+                &update_ask_state,
+                &[],
+            )
+            .unwrap_err();
+
+        // Should not error on admin updating active state
+        let res = router.execute_contract(
+            Addr::unchecked("admin"),
+            nft_marketplace_addr.clone(),
+            &update_ask_state,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // Reset active state
+        let update_ask_state = ExecuteMsg::UpdateAskState {
+            collection: nft_contract_addr.to_string(),
+            token_id: TOKEN_ID,
+            active: true,
+        };
+        let res = router.execute_contract(
+            Addr::unchecked("admin"),
+            nft_marketplace_addr.clone(),
+            &update_ask_state,
+            &[],
+        );
         assert!(res.is_ok());
 
         // Bidder makes bid
@@ -758,7 +798,9 @@ mod tests {
 
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
-        let msg = crate::msg::InstantiateMsg {};
+        let msg = crate::msg::InstantiateMsg {
+            admin: "admin".to_string(),
+        };
         let nft_marketplace_addr = router
             .instantiate_contract(
                 marketplace_id,

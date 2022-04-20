@@ -3,7 +3,7 @@ use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
 };
-use crate::state::{ask_key, asks, bids, Ask, Bid};
+use crate::state::{ask_key, asks, bids, Ask, Bid, Config, TokenId, CONFIG};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Timestamp, WasmMsg,
@@ -33,9 +33,15 @@ pub fn instantiate(
     deps: DepsMut,
     _env: Env,
     _info: MessageInfo,
-    _msg: InstantiateMsg,
+    msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let config = Config {
+        admin: deps.api.addr_validate(&msg.admin)?,
+    };
+    CONFIG.save(deps.storage, &config)?;
+
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
 
@@ -56,22 +62,6 @@ pub fn execute(
     let api = deps.api;
 
     match msg {
-        ExecuteMsg::SetBid {
-            collection,
-            token_id,
-            expires,
-        } => execute_set_bid(
-            deps,
-            env,
-            info,
-            api.addr_validate(&collection)?,
-            token_id,
-            expires,
-        ),
-        ExecuteMsg::RemoveBid {
-            collection,
-            token_id,
-        } => execute_remove_bid(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::SetAsk {
             collection,
             token_id,
@@ -90,6 +80,33 @@ pub fn execute(
             collection,
             token_id,
         } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::UpdateAskState {
+            collection,
+            token_id,
+            active,
+        } => execute_update_ask_state(
+            deps,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            active,
+        ),
+        ExecuteMsg::SetBid {
+            collection,
+            token_id,
+            expires,
+        } => execute_set_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            expires,
+        ),
+        ExecuteMsg::RemoveBid {
+            collection,
+            token_id,
+        } => execute_remove_bid(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::AcceptBid {
             collection,
             token_id,
@@ -103,6 +120,98 @@ pub fn execute(
             api.addr_validate(&bidder)?,
         ),
     }
+}
+
+/// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
+pub fn execute_set_ask(
+    env: ExecuteEnv,
+    collection: Addr,
+    token_id: u32,
+    price: Coin,
+    funds_recipient: Option<Addr>,
+    expires: Timestamp,
+) -> Result<Response, ContractError> {
+    let ExecuteEnv { deps, info, env } = env;
+
+    if expires <= env.block.time {
+        return Err(ContractError::InvalidExpiration {});
+    }
+
+    // Only the media onwer can call this
+    let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    // Check that approval has been set for marketplace contract
+    if owner_of_response
+        .approvals
+        .iter()
+        .map(|x| x.spender == env.contract.address)
+        .len()
+        != 1
+    {
+        return Err(ContractError::NeedsApproval {});
+    }
+
+    asks().save(
+        deps.storage,
+        ask_key(collection.clone(), token_id),
+        &Ask {
+            collection: collection.clone(),
+            token_id,
+            seller: info.sender,
+            price: price.amount,
+            funds_recipient,
+            expires,
+            active: true,
+        },
+    )?;
+
+    Ok(Response::new()
+        .add_attribute("action", "set_ask")
+        .add_attribute("collection", collection)
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("price", price.to_string()))
+}
+
+/// Removes the ask on a particular media
+pub fn execute_remove_ask(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: u32,
+) -> Result<Response, ContractError> {
+    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+
+    asks().remove(deps.storage, (collection.clone(), token_id))?;
+
+    Ok(Response::new()
+        .add_attribute("action", "remove_ask")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string()))
+}
+
+/// Updates the the active state of the ask.
+/// This is a privileged operation called by an admin to update the active state of an Ask
+/// when an NFT transfer happens.
+pub fn execute_update_ask_state(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+    active: bool,
+) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    if info.sender != config.admin {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
+    ask.active = active;
+    asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
+
+    Ok(Response::new()
+        .add_attribute("action", "update_ask_state")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("active", active.to_string()))
 }
 
 /// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
@@ -137,6 +246,9 @@ pub fn execute_set_bid(
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     if ask.expires <= env.block.time {
         return Err(ContractError::AskExpired {});
+    }
+    if !ask.active {
+        return Err(ContractError::AskNotActive {});
     }
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
@@ -217,69 +329,6 @@ pub fn execute_remove_bid(
         .add_message(exec_refund_bidder))
 }
 
-/// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
-pub fn execute_set_ask(
-    env: ExecuteEnv,
-    collection: Addr,
-    token_id: u32,
-    price: Coin,
-    funds_recipient: Option<Addr>,
-    expires: Timestamp,
-) -> Result<Response, ContractError> {
-    let ExecuteEnv { deps, info, env } = env;
-
-    expires_validate(&env, expires)?;
-
-    // Only the media onwer can call this
-    let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-    // Check that approval has been set for marketplace contract
-    if owner_of_response
-        .approvals
-        .iter()
-        .map(|x| x.spender == env.contract.address)
-        .len()
-        != 1
-    {
-        return Err(ContractError::NeedsApproval {});
-    }
-
-    asks().save(
-        deps.storage,
-        ask_key(collection.clone(), token_id),
-        &Ask {
-            collection: collection.clone(),
-            token_id,
-            seller: info.sender,
-            price: price.amount,
-            funds_recipient,
-            expires,
-        },
-    )?;
-
-    Ok(Response::new()
-        .add_attribute("action", "set_ask")
-        .add_attribute("collection", collection)
-        .add_attribute("token_id", token_id.to_string())
-        .add_attribute("price", price.to_string()))
-}
-
-/// Removes the ask on a particular media
-pub fn execute_remove_ask(
-    deps: DepsMut,
-    info: MessageInfo,
-    collection: Addr,
-    token_id: u32,
-) -> Result<Response, ContractError> {
-    check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-
-    asks().remove(deps.storage, (collection.clone(), token_id))?;
-
-    Ok(Response::new()
-        .add_attribute("action", "remove_ask")
-        .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string()))
-}
-
 /// Owner can accept a bid which transfers funds as well as the token
 pub fn execute_accept_bid(
     deps: DepsMut,
@@ -295,6 +344,9 @@ pub fn execute_accept_bid(
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     if ask.expires <= env.block.time {
         return Err(ContractError::AskExpired {});
+    }
+    if !ask.active {
+        return Err(ContractError::AskNotActive {});
     }
 
     // Query accepted bid
@@ -655,6 +707,7 @@ mod tests {
             price: Uint128::from(500u128),
             funds_recipient: None,
             expires: Timestamp::from_seconds(0),
+            active: true,
         };
         let key = ask_key(collection.clone(), TOKEN_ID);
         let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
@@ -667,6 +720,7 @@ mod tests {
             price: Uint128::from(500u128),
             funds_recipient: None,
             expires: Timestamp::from_seconds(0),
+            active: true,
         };
         let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
         let res = asks().save(deps.as_mut().storage, key2, &ask2);
@@ -721,7 +775,9 @@ mod tests {
     }
 
     fn setup_contract(deps: DepsMut) {
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            admin: "admin".to_string(),
+        };
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps, mock_env(), info, msg).unwrap();
         assert_eq!(0, res.messages.len());
@@ -731,7 +787,9 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies();
 
-        let msg = InstantiateMsg {};
+        let msg = InstantiateMsg {
+            admin: "admin".to_string(),
+        };
         let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 
         // we can just call .unwrap() to assert this was a success

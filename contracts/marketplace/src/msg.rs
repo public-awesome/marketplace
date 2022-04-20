@@ -4,20 +4,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub admin: String,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    SetBid {
-        collection: String,
-        token_id: TokenId,
-        expires: Timestamp,
-    },
-    RemoveBid {
-        collection: String,
-        token_id: TokenId,
-    },
     SetAsk {
         collection: String,
         token_id: TokenId,
@@ -26,6 +19,20 @@ pub enum ExecuteMsg {
         expires: Timestamp,
     },
     RemoveAsk {
+        collection: String,
+        token_id: TokenId,
+    },
+    UpdateAskState {
+        collection: String,
+        token_id: TokenId,
+        active: bool,
+    },
+    SetBid {
+        collection: String,
+        token_id: TokenId,
+        expires: Timestamp,
+    },
+    RemoveBid {
         collection: String,
         token_id: TokenId,
     },

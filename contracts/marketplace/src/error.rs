@@ -25,6 +25,9 @@ pub enum ContractError {
     #[error("AskExpired")]
     AskExpired {},
 
+    #[error("AskNotActive")]
+    AskNotActive {},
+
     #[error("BidExpired")]
     BidExpired {},
 
