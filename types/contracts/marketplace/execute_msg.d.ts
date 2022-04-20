@@ -23,6 +23,13 @@ token_id: number
 [k: string]: unknown
 }
 } | {
+update_ask: {
+collection: string
+price: Coin
+token_id: number
+[k: string]: unknown
+}
+} | {
 set_bid: {
 collection: string
 expires: Timestamp
