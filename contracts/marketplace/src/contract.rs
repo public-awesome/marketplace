@@ -6,7 +6,7 @@ use crate::msg::{
 use crate::state::{ask_key, asks, bids, Ask, Bid};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Timestamp, WasmMsg,
+    MessageInfo, Order, StdResult, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -229,6 +229,13 @@ pub fn execute_set_ask(
     let ExecuteEnv { deps, info, env } = env;
 
     expires_validate(&env, expires)?;
+
+    if price.denom != NATIVE_DENOM || price.amount == Uint128::zero() {
+        return Err(ContractError::InvalidAskPrice {
+            denom: price.denom,
+            amount: price.amount.u128(),
+        });
+    }
 
     // Only the media onwer can call this
     let owner_of_response = check_only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -786,12 +793,41 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
-            expires: Timestamp::from_seconds(0),
+            expires: Timestamp::from_seconds(
+                mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
+            ),
         };
 
         // Reject if not called by the media owner
         let not_allowed = mock_info("random", &[]);
-        let err = execute(deps.as_mut(), mock_env(), not_allowed, set_ask);
+        let err = execute(deps.as_mut(), mock_env(), not_allowed.clone(), set_ask);
         assert!(err.is_err());
+
+        // Reject wrong denom
+        let set_bad_ask = ExecuteMsg::SetAsk {
+            collection: COLLECTION.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(100, "osmo".to_string()),
+            funds_recipient: None,
+            expires: Timestamp::from_seconds(
+                mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
+            ),
+        };
+        println!("set bad ask");
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("creator", &[]),
+            set_bad_ask,
+        )
+        .unwrap_err();
+        assert_eq!(
+            err,
+            ContractError::InvalidAskPrice {
+                denom: "osmo".to_string(),
+                amount: 100
+            }
+        );
+        // assert!(err.is_err());
     }
 }
