@@ -4,14 +4,13 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Config {
-    pub admin: Addr,
+pub struct SudoParams {
     pub trading_fee_percent: u32,
     pub min_expiry: u64,
     pub max_expiry: u64,
 }
 
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");
 
 pub type TokenId = u32;
 

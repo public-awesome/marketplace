@@ -1,11 +1,12 @@
-use crate::state::{Ask, Bid, Config, TokenId};
+use crate::state::{Ask, Bid, SudoParams, TokenId};
 use cosmwasm_std::{Addr, Coin, Timestamp};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub admin: String,
+    pub admins: Vec<String>,
+    pub admins_mutable: bool,
     pub trading_fee_percent: u32,
     pub min_expiry: u64,
     pub max_expiry: u64,
@@ -66,10 +67,9 @@ pub enum ExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SudoMsg {
-    /// Update the config parameters
+    /// Update the contract parameters
     /// Can only be called by governance
-    UpdateConfig {
-        admin: Option<String>,
+    UpdateParams {
         trading_fee_percent: Option<u32>,
         min_expiry: Option<u64>,
         max_expiry: Option<u64>,
@@ -123,8 +123,8 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Get the config for the contract
-    /// Return type: `ConfigResponse`
-    Config {},
+    /// Return type: `ParamResponse`
+    Params {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -158,6 +158,6 @@ pub struct BidsResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ConfigResponse {
-    pub config: Config,
+pub struct ParamResponse {
+    pub params: SudoParams,
 }

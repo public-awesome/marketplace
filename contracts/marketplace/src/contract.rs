@@ -1,19 +1,16 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse, ConfigResponse,
-    CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg,
+    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
+    CurrentAskResponse, ExecuteMsg, InstantiateMsg, ParamResponse, QueryMsg, SudoMsg,
 };
-use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, Config, TokenId, CONFIG};
+use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SudoParams, TokenId, SUDO_PARAMS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
 };
 use cw1_whitelist::{
-    contract::{
-        execute_freeze, execute_update_admins, instantiate as whitelist_instantiate,
-        query_admin_list,
-    },
-    msg::InstantiateMsg,
+    contract::{execute_freeze, execute_update_admins, instantiate as whitelist_instantiate},
+    msg::InstantiateMsg as Cw1WhiteListInitMsg,
     state::ADMIN_LIST,
 };
 use cw2::set_contract_version;
@@ -22,7 +19,7 @@ use cw721_base::helpers::Cw721Contract;
 use cw_storage_plus::{Bound, PrefixBound};
 use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{fair_burn, CosmosMsg, StargazeMsg, NATIVE_DENOM};
+use sg_std::{fair_burn, CosmosMsg, Response, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -39,16 +36,24 @@ pub fn instantiate(
     info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
-    whitelist_instantiate(deps.branch(), env, info, msg)?;
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let config = Config {
-        admin: deps.api.addr_validate(&msg.admin)?,
+    whitelist_instantiate(
+        deps.branch(),
+        env,
+        info,
+        Cw1WhiteListInitMsg {
+            admins: msg.admins,
+            mutable: msg.admins_mutable,
+        },
+    )?;
+
+    let params = SudoParams {
         trading_fee_percent: msg.trading_fee_percent,
         min_expiry: msg.min_expiry,
         max_expiry: msg.max_expiry,
     };
-    CONFIG.save(deps.storage, &config)?;
+    SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
 }
@@ -238,8 +243,8 @@ pub fn execute_update_ask_state(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let config = CONFIG.load(deps.storage)?;
-    if info.sender != config.admin {
+    let admin_list = ADMIN_LIST.load(deps.storage)?;
+    if !admin_list.is_admin(&info.sender) {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -456,39 +461,29 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
     let api = deps.api;
 
     match msg {
-        SudoMsg::UpdateConfig {
-            admin,
+        SudoMsg::UpdateParams {
             trading_fee_percent,
             min_expiry,
             max_expiry,
-        } => sudo_update_config(
-            deps,
-            env,
-            admin.map(|a| api.addr_validate(&a)).transpose()?,
-            trading_fee_percent,
-            min_expiry,
-            max_expiry,
-        ),
+        } => sudo_update_params(deps, env, trading_fee_percent, min_expiry, max_expiry),
     }
 }
 
 /// Only governance can update the config
-pub fn sudo_update_config(
+pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
-    admin: Option<Addr>,
     trading_fee_percent: Option<u32>,
     min_expiry: Option<u64>,
     max_expiry: Option<u64>,
 ) -> Result<Response, ContractError> {
-    let mut config = CONFIG.load(deps.storage)?;
-    config.admin = admin.unwrap_or(config.admin);
-    config.trading_fee_percent = trading_fee_percent.unwrap_or(config.trading_fee_percent);
-    config.min_expiry = min_expiry.unwrap_or(config.min_expiry);
-    config.max_expiry = max_expiry.unwrap_or(config.max_expiry);
-    CONFIG.save(deps.storage, &config)?;
+    let mut params = SUDO_PARAMS.load(deps.storage)?;
+    params.trading_fee_percent = trading_fee_percent.unwrap_or(params.trading_fee_percent);
+    params.min_expiry = min_expiry.unwrap_or(params.min_expiry);
+    params.max_expiry = max_expiry.unwrap_or(params.max_expiry);
+    SUDO_PARAMS.save(deps.storage, &params)?;
 
-    Ok(Response::new().add_attribute("action", "update_config"))
+    Ok(Response::new().add_attribute("action", "update_params"))
 }
 
 /// Checks to enfore only nft owner can call
@@ -546,7 +541,7 @@ fn payout(
     payment: Coin,
     payment_recipient: Addr,
 ) -> StdResult<Vec<CosmosMsg>> {
-    let config = CONFIG.load(deps.storage)?;
+    let config = SUDO_PARAMS.load(deps.storage)?;
 
     // Will hold payment msgs
     let mut msgs: Vec<CosmosMsg> = vec![];
@@ -600,7 +595,7 @@ fn expires_validate(
     env: &Env,
     expires: Timestamp,
 ) -> Result<(), ContractError> {
-    let config = CONFIG.load(store)?;
+    let config = SUDO_PARAMS.load(store)?;
 
     if expires <= env.block.time.plus_seconds(config.min_expiry)
         || expires > env.block.time.plus_seconds(config.max_expiry)
@@ -676,14 +671,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BidsByBidder { bidder } => {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::Params {} => to_binary(&query_config(deps)?),
     }
 }
 
-pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
-    let config = CONFIG.load(deps.storage)?;
+pub fn query_config(deps: Deps) -> StdResult<ParamResponse> {
+    let config = SUDO_PARAMS.load(deps.storage)?;
 
-    Ok(ConfigResponse { config })
+    Ok(ParamResponse { params: config })
 }
 pub fn query_asks(
     deps: Deps,
@@ -817,6 +812,8 @@ pub fn query_bids(
 
 #[cfg(test)]
 mod tests {
+    use std::vec;
+
     use crate::state::bid_key;
 
     use super::*;
@@ -914,7 +911,8 @@ mod tests {
 
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {
-            admin: "admin".to_string(),
+            admins: vec!["admin".to_string()],
+            admins_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -929,7 +927,8 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
-            admin: "admin".to_string(),
+            admins: vec!["admin".to_string()],
+            admins_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
