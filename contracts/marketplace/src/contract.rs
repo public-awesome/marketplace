@@ -800,7 +800,7 @@ mod tests {
 
         // Reject if not called by the media owner
         let not_allowed = mock_info("random", &[]);
-        let err = execute(deps.as_mut(), mock_env(), not_allowed.clone(), set_ask);
+        let err = execute(deps.as_mut(), mock_env(), not_allowed, set_ask);
         assert!(err.is_err());
 
         // Reject wrong denom
