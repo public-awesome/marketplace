@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::msg::{
-    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
-    CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg,
+    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse, ConfigResponse,
+    CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg,
 };
 use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, Config, TokenId, CONFIG};
 use cosmwasm_std::{
@@ -24,11 +24,6 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const DEFAULT_QUERY_LIMIT: u32 = 10;
 const MAX_QUERY_LIMIT: u32 = 30;
 
-// Governance parameters
-pub const TRADING_FEE_PERCENT: u32 = 2; // 2%
-pub const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
-pub const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -40,6 +35,9 @@ pub fn instantiate(
 
     let config = Config {
         admin: deps.api.addr_validate(&msg.admin)?,
+        trading_fee_percent: msg.trading_fee_percent,
+        min_expiry: msg.min_expiry,
+        max_expiry: msg.max_expiry,
     };
     CONFIG.save(deps.storage, &config)?;
 
@@ -274,7 +272,7 @@ pub fn execute_set_bid(
     // Make sure a bid amount was sent
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
 
-    expires_validate(&env, expires)?;
+    expires_validate(deps.storage, &env, expires)?;
 
     let bidder = info.sender;
     let mut res = Response::new();
@@ -436,6 +434,46 @@ pub fn execute_accept_bid(
         .add_messages(msgs))
 }
 
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    let api = deps.api;
+
+    match msg {
+        SudoMsg::UpdateConfig {
+            admin,
+            trading_fee_percent,
+            min_expiry,
+            max_expiry,
+        } => sudo_update_config(
+            deps,
+            env,
+            admin.map(|a| api.addr_validate(&a)).transpose()?,
+            trading_fee_percent,
+            min_expiry,
+            max_expiry,
+        ),
+    }
+}
+
+/// Only governance can update the config
+pub fn sudo_update_config(
+    deps: DepsMut,
+    _env: Env,
+    admin: Option<Addr>,
+    trading_fee_percent: Option<u32>,
+    min_expiry: Option<u64>,
+    max_expiry: Option<u64>,
+) -> Result<Response, ContractError> {
+    let mut config = CONFIG.load(deps.storage)?;
+    config.admin = admin.unwrap_or(config.admin);
+    config.trading_fee_percent = trading_fee_percent.unwrap_or(config.trading_fee_percent);
+    config.min_expiry = min_expiry.unwrap_or(config.min_expiry);
+    config.max_expiry = max_expiry.unwrap_or(config.max_expiry);
+    CONFIG.save(deps.storage, &config)?;
+
+    Ok(Response::new().add_attribute("action", "update_config"))
+}
+
 /// Checks to enfore only nft owner can call
 fn only_owner(
     deps: Deps,
@@ -491,11 +529,13 @@ fn payout(
     payment: Coin,
     payment_recipient: Addr,
 ) -> StdResult<Vec<CosmosMsg>> {
+    let config = CONFIG.load(deps.storage)?;
+
     // Will hold payment msgs
     let mut msgs: Vec<CosmosMsg> = vec![];
 
     // Append Fair Burn message
-    let fee_percent = Decimal::percent(TRADING_FEE_PERCENT as u64);
+    let fee_percent = Decimal::percent(config.trading_fee_percent as u64);
     let network_fee = payment.amount * fee_percent;
     msgs.append(&mut fair_burn(network_fee.u128()));
 
@@ -538,9 +578,15 @@ fn payout(
     Ok(msgs)
 }
 
-fn expires_validate(env: &Env, expires: Timestamp) -> Result<(), ContractError> {
-    if expires <= env.block.time.plus_seconds(MIN_EXPIRY)
-        || expires > env.block.time.plus_seconds(MAX_EXPIRY)
+fn expires_validate(
+    store: &dyn Storage,
+    env: &Env,
+    expires: Timestamp,
+) -> Result<(), ContractError> {
+    let config = CONFIG.load(store)?;
+
+    if expires <= env.block.time.plus_seconds(config.min_expiry)
+        || expires > env.block.time.plus_seconds(config.max_expiry)
     {
         return Err(ContractError::InvalidExpiration {});
     }
@@ -613,9 +659,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BidsByBidder { bidder } => {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
+        QueryMsg::Config {} => to_binary(&query_config(deps)?),
     }
 }
 
+pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+    let config = CONFIG.load(deps.storage)?;
+
+    Ok(ConfigResponse { config })
+}
 pub fn query_asks(
     deps: Deps,
     collection: Addr,
@@ -758,6 +810,10 @@ mod tests {
     const CREATOR: &str = "creator";
     const COLLECTION: &str = "collection";
     const TOKEN_ID: u32 = 123;
+    // Governance parameters
+    const TRADING_FEE_PERCENT: u32 = 2; // 2%
+    const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
+    const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 
     #[test]
     fn ask_indexed_map() {
@@ -842,6 +898,9 @@ mod tests {
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {
             admin: "admin".to_string(),
+            trading_fee_percent: TRADING_FEE_PERCENT,
+            min_expiry: MIN_EXPIRY,
+            max_expiry: MAX_EXPIRY,
         };
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps, mock_env(), info, msg).unwrap();
@@ -854,6 +913,9 @@ mod tests {
 
         let msg = InstantiateMsg {
             admin: "admin".to_string(),
+            trading_fee_percent: TRADING_FEE_PERCENT,
+            min_expiry: MIN_EXPIRY,
+            max_expiry: MAX_EXPIRY,
         };
         let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 

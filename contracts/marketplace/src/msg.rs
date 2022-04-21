@@ -1,4 +1,4 @@
-use crate::state::{Ask, Bid, TokenId};
+use crate::state::{Ask, Bid, Config, TokenId};
 use cosmwasm_std::{Addr, Coin, Timestamp};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub admin: String,
+    pub trading_fee_percent: u32,
+    pub min_expiry: u64,
+    pub max_expiry: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -57,6 +60,19 @@ pub enum ExecuteMsg {
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
+pub enum SudoMsg {
+    /// Update the config parameters
+    /// Can only be called by governance
+    UpdateConfig {
+        admin: Option<String>,
+        trading_fee_percent: Option<u32>,
+        min_expiry: Option<u64>,
+        max_expiry: Option<u64>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
     /// Get the current ask for specific NFT
     /// Return type: `CurrentAskResponse`
@@ -101,6 +117,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Get the config for the contract
+    /// Return type: `ConfigResponse`
+    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -131,4 +150,9 @@ pub struct BidResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ConfigResponse {
+    pub config: Config,
 }
