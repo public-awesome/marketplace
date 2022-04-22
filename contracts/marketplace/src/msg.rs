@@ -5,8 +5,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub admins: Vec<String>,
-    pub admins_mutable: bool,
+    /// Operators are entites that are responsible for maintaining the active state of Asks.
+    /// They listen to NFT transfer events, and update the active state of Asks.
+    pub operators: Vec<String>,
+    pub operators_mutable: bool,
     pub trading_fee_percent: u32,
     pub min_expiry: u64,
     pub max_expiry: u64,
@@ -59,9 +61,9 @@ pub enum ExecuteMsg {
     },
     /// Freeze will make a mutable contract immutable, must be called by an admin
     Freeze {},
-    /// UpdateAdmins will change the admin set of the contract, must be called by an existing admin,
-    /// and only works if the contract is mutable
-    UpdateAdmins { admins: Vec<String> },
+    /// UpdateOperators will change the operator set of the contract, must be called by an existing operator,
+    /// and only works if the contract is mutable.
+    UpdateOperators { operators: Vec<String> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -125,9 +127,9 @@ pub enum QueryMsg {
     /// Get the config for the contract
     /// Return type: `ParamResponse`
     Params {},
-    /// Shows all admins and whether or not it is mutable
+    /// Shows the operator list and whether or not it is mutable
     /// Returns cw1-whitelist::AdminListResponse
-    AdminList {},
+    Operators {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

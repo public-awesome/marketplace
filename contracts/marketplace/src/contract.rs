@@ -45,8 +45,8 @@ pub fn instantiate(
         env,
         info,
         Cw1WhiteListInitMsg {
-            admins: msg.admins,
-            mutable: msg.admins_mutable,
+            admins: msg.operators,
+            mutable: msg.operators_mutable,
         },
     )?;
 
@@ -140,7 +140,9 @@ pub fn execute(
             price,
         } => execute_update_ask(deps, info, api.addr_validate(&collection)?, token_id, price),
         ExecuteMsg::Freeze {} => Ok(execute_freeze(deps, env, info)?),
-        ExecuteMsg::UpdateAdmins { admins } => Ok(execute_update_admins(deps, env, info, admins)?),
+        ExecuteMsg::UpdateOperators { operators } => {
+            Ok(execute_update_admins(deps, env, info, operators)?)
+        }
     }
 }
 
@@ -666,7 +668,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
         QueryMsg::Params {} => to_binary(&query_config(deps)?),
-        QueryMsg::AdminList {} => to_binary(&query_admin_list(deps)?),
+        QueryMsg::Operators {} => to_binary(&query_admin_list(deps)?),
     }
 }
 
@@ -906,8 +908,8 @@ mod tests {
 
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {
-            admins: vec!["admin".to_string()],
-            admins_mutable: true,
+            operators: vec!["admin".to_string()],
+            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -922,8 +924,8 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
-            admins: vec!["admin".to_string()],
-            admins_mutable: true,
+            operators: vec!["admin".to_string()],
+            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -999,8 +1001,8 @@ mod tests {
         let res = query_admin_list(deps.as_ref()).unwrap();
         assert_eq!(res.admins, vec!["admin".to_string()]);
 
-        let update_admins = ExecuteMsg::UpdateAdmins {
-            admins: vec!["new_admin".to_string()],
+        let update_admins = ExecuteMsg::UpdateOperators {
+            operators: vec!["new_admin".to_string()],
         };
 
         let admin = mock_info("admin", &[]);

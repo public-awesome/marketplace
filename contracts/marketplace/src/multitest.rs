@@ -59,8 +59,8 @@ mod tests {
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
-            admins: vec!["admin".to_string()],
-            admins_mutable: true,
+            operators: vec!["admin".to_string()],
+            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -965,8 +965,8 @@ mod tests {
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
-            admins: vec!["admin".to_string()],
-            admins_mutable: true,
+            operators: vec!["admin".to_string()],
+            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
