@@ -608,7 +608,7 @@ fn price_validate(price: &Coin) -> Result<(), ContractError> {
     Ok(())
 }
 
-pub fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
+fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
     addresses
         .iter()
         .map(|addr| api.addr_validate(addr))
