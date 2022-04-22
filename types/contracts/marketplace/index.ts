@@ -1,3 +1,4 @@
+export * from "./ask_count_response";
 export * from "./asks_response";
 export * from "./bid_response";
 export * from "./bids_response";
@@ -5,5 +6,6 @@ export * from "./collections_response";
 export * from "./current_ask_response";
 export * from "./execute_msg";
 export * from "./instantiate_msg";
+export * from "./param_response";
 export * from "./query_msg";
 export * from "./shared-types";

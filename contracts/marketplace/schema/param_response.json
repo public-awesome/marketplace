@@ -1,0 +1,40 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ParamResponse",
+  "type": "object",
+  "required": [
+    "params"
+  ],
+  "properties": {
+    "params": {
+      "$ref": "#/definitions/SudoParams"
+    }
+  },
+  "definitions": {
+    "SudoParams": {
+      "type": "object",
+      "required": [
+        "max_expiry",
+        "min_expiry",
+        "trading_fee_percent"
+      ],
+      "properties": {
+        "max_expiry": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min_expiry": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "trading_fee_percent": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}
