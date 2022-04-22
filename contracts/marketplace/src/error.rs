@@ -1,5 +1,4 @@
 use cosmwasm_std::StdError;
-use cw1_whitelist::ContractError as WhitelistError;
 use cw_utils::PaymentError;
 use thiserror::Error;
 
@@ -40,9 +39,6 @@ pub enum ContractError {
 
     #[error("Contract needs approval")]
     NeedsApproval {},
-
-    #[error("{0}")]
-    WhitelistError(#[from] WhitelistError),
 
     #[error("{0}")]
     BidPaymentError(#[from] PaymentError),
