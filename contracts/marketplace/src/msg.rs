@@ -59,7 +59,7 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         bidder: String,
     },
-    /// Freeze will make a mutable contract immutable, must be called by an admin
+    /// Freeze will make the operator list immutable
     Freeze {},
     /// UpdateOperators will change the operator set of the contract, must be called by an existing operator,
     /// and only works if the contract is mutable.
