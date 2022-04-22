@@ -18,8 +18,9 @@ use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
 use cw_storage_plus::{Bound, PrefixBound};
 use cw_utils::{maybe_addr, must_pay, nonpayable};
+use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{fair_burn, CosmosMsg, Response, NATIVE_DENOM};
+use sg_std::{CosmosMsg, Response, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -551,7 +552,7 @@ fn payout(
     // Append Fair Burn message
     let fee_percent = Decimal::percent(config.trading_fee_percent as u64);
     let network_fee = payment.amount * fee_percent;
-    msgs.append(&mut fair_burn(network_fee.u128()));
+    msgs.append(&mut fair_burn(network_fee.u128(), None));
 
     // Check if token supports Royalties
     let collection_info: CollectionInfoResponse = deps

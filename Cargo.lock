@@ -708,6 +708,7 @@ dependencies = [
  "serde",
  "sg-multi-test",
  "sg-std",
+ "sg1",
  "sg721",
  "thiserror",
 ]
