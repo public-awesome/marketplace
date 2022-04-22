@@ -8,7 +8,6 @@ pub struct InstantiateMsg {
     /// Operators are entites that are responsible for maintaining the active state of Asks.
     /// They listen to NFT transfer events, and update the active state of Asks.
     pub operators: Vec<String>,
-    pub operators_mutable: bool,
     pub trading_fee_percent: u32,
     pub min_expiry: u64,
     pub max_expiry: u64,
@@ -59,11 +58,6 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         bidder: String,
     },
-    /// Freeze will make the operator list immutable
-    Freeze {},
-    /// UpdateOperators will change the operator set of the contract, must be called by an existing operator,
-    /// and only works if the contract is mutable.
-    UpdateOperators { operators: Vec<String> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -76,6 +70,8 @@ pub enum SudoMsg {
         min_expiry: Option<u64>,
         max_expiry: Option<u64>,
     },
+    /// UpdateOperators will change the operator set of the contract
+    UpdateOperators { operators: Vec<String> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -165,4 +161,9 @@ pub struct BidsResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ParamResponse {
     pub params: SudoParams,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+pub struct OperatorsResponse {
+    pub operators: Vec<String>,
 }
