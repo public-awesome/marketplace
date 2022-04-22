@@ -6,7 +6,7 @@ use crate::msg::{
 use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SudoParams, TokenId, SUDO_PARAMS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, Response as StdResponse, StdResult, Storage, Timestamp, WasmMsg,
+    MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
 };
 use cw1_whitelist::{
     contract::{execute_freeze, execute_update_admins, instantiate as whitelist_instantiate},
@@ -32,7 +32,7 @@ const MAX_QUERY_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    deps: DepsMut,
+    mut deps: DepsMut,
     env: Env,
     info: MessageInfo,
     msg: InstantiateMsg,
@@ -138,17 +138,9 @@ pub fn execute(
             token_id,
             price,
         } => execute_update_ask(deps, info, api.addr_validate(&collection)?, token_id, price),
-        ExecuteMsg::Freeze {} => transform(execute_freeze(deps, env, info)?),
+        ExecuteMsg::Freeze {} => Ok(execute_freeze(deps, env, info)?),
         ExecuteMsg::UpdateAdmins { admins } => Ok(execute_update_admins(deps, env, info, admins)?),
     }
-}
-
-pub fn transform(res: StdResponse) -> Result<Response, ContractError> {
-    Ok(Response::default()
-        .add_attributes(res.attributes)
-        .add_events(res.events)
-        .add_messages(res.messages)
-        .add_submessages(res.submessages))
 }
 
 /// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
@@ -461,7 +453,7 @@ pub fn execute_accept_bid(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
-    let api = deps.api;
+    // let api = deps.api;
 
     match msg {
         SudoMsg::UpdateParams {
