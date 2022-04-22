@@ -238,8 +238,8 @@ pub fn execute_update_ask_state(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let admin_list = ADMIN_LIST.load(deps.storage)?;
-    if !admin_list.is_admin(&info.sender) {
+    let admins = ADMIN_LIST.load(deps.storage)?;
+    if !admins.is_admin(&info.sender) {
         return Err(ContractError::Unauthorized {});
     }
 
