@@ -998,17 +998,26 @@ mod tests {
         let mut deps = mock_dependencies();
         setup_contract(deps.as_mut());
 
-        let set_ask = ExecuteMsg::SetAsk {
-            collection: COLLECTION.to_string(),
-            token_id: TOKEN_ID,
-            price: coin(100, NATIVE_DENOM),
-            funds_recipient: None,
-            expires: Timestamp::from_seconds(0),
+        let res = query_admin_list(deps.as_ref()).unwrap();
+        assert_eq!(res.admins, vec!["admin".to_string()]);
+
+        let update_admins = ExecuteMsg::UpdateAdmins {
+            admins: vec!["new_admin".to_string()],
         };
 
-        // Reject if not called by the media owner
-        let not_allowed = mock_info("random", &[]);
-        let err = execute(deps.as_mut(), mock_env(), not_allowed, set_ask);
-        assert!(err.is_err());
+        let admin = mock_info("admin", &[]);
+        let res = execute(
+            deps.as_mut(),
+            mock_env(),
+            admin.clone(),
+            update_admins.clone(),
+        );
+        assert!(res.is_ok());
+
+        let res = query_admin_list(deps.as_ref()).unwrap();
+        assert_eq!(res.admins, vec!["new_admin".to_string()]);
+
+        let res = execute(deps.as_mut(), mock_env(), admin, update_admins);
+        assert!(res.is_err());
     }
 }
