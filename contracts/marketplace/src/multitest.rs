@@ -59,8 +59,8 @@ mod tests {
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
-            admins: vec!["admin".to_string()],
-            admins_mutable: true,
+            operators: vec!["operator".to_string()],
+            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -227,7 +227,7 @@ mod tests {
 
         // Should not error on admin updating active state
         let res = router.execute_contract(
-            Addr::unchecked("admin"),
+            Addr::unchecked("operator"),
             nft_marketplace_addr.clone(),
             &update_ask_state,
             &[],
@@ -241,7 +241,7 @@ mod tests {
             active: true,
         };
         let res = router.execute_contract(
-            Addr::unchecked("admin"),
+            Addr::unchecked("operator"),
             nft_marketplace_addr.clone(),
             &update_ask_state,
             &[],
@@ -965,8 +965,8 @@ mod tests {
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
-            admins: vec!["admin".to_string()],
-            admins_mutable: true,
+            operators: vec!["operator".to_string()],
+            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,

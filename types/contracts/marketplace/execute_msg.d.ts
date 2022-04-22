@@ -54,8 +54,8 @@ freeze: {
 [k: string]: unknown
 }
 } | {
-update_admins: {
-admins: string[]
+update_operators: {
+operators: string[]
 [k: string]: unknown
 }
 })
