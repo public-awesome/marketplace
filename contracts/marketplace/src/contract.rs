@@ -1017,7 +1017,15 @@ mod tests {
         let res = query_admin_list(deps.as_ref()).unwrap();
         assert_eq!(res.admins, vec!["new_admin".to_string()]);
 
-        let res = execute(deps.as_mut(), mock_env(), admin, update_admins);
+        let res = execute(deps.as_mut(), mock_env(), admin, update_admins.clone());
+        assert!(res.is_err());
+
+        let freeze_msg = ExecuteMsg::Freeze {};
+        let new_admin = mock_info("new_admin", &[]);
+        let res = execute(deps.as_mut(), mock_env(), new_admin.clone(), freeze_msg);
+        assert!(res.is_ok());
+
+        let res = execute(deps.as_mut(), mock_env(), new_admin, update_admins);
         assert!(res.is_err());
     }
 }
