@@ -3,7 +3,7 @@ use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse, ConfigResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg,
 };
-use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, Config, TokenId, CONFIG};
+use crate::state::{ask_key, asks, bids, Ask, Bid, Config, TokenId, CONFIG};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
@@ -360,7 +360,7 @@ pub fn execute_remove_bid(
     // Check bid exists for bidder
     let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
-    let remove_bid_and_refund_msg = _remove_bid(deps.storage, bid.clone())?;
+    let remove_bid_and_refund_msg = _remove_bid(deps.storage, bid)?;
 
     Ok(Response::new()
         .add_attribute("action", "remove_bid")
@@ -990,7 +990,6 @@ mod tests {
                 mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
             ),
         };
-        println!("set bad ask");
         let err = execute(
             deps.as_mut(),
             mock_env(),
@@ -998,13 +997,6 @@ mod tests {
             set_bad_ask,
         )
         .unwrap_err();
-        assert_eq!(
-            err,
-            ContractError::InvalidAskPrice {
-                denom: "osmo".to_string(),
-                amount: 100
-            }
-        );
-        // assert!(err.is_err());
+        assert_eq!(err, ContractError::InvalidPrice {});
     }
 }
