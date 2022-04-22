@@ -3,15 +3,12 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "admin",
     "max_expiry",
     "min_expiry",
+    "operators",
     "trading_fee_percent"
   ],
   "properties": {
-    "admin": {
-      "type": "string"
-    },
     "max_expiry": {
       "type": "integer",
       "format": "uint64",
@@ -21,6 +18,13 @@
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "operators": {
+      "description": "Operators are entites that are responsible for maintaining the active state of Asks. They listen to NFT transfer events, and update the active state of Asks.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "trading_fee_percent": {
       "type": "integer",

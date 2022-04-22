@@ -33,7 +33,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, ConfigResponse, SudoMsg};
+    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, ParamResponse, SudoMsg};
     use crate::state::Bid;
 
     use super::*;
@@ -59,7 +59,7 @@ mod tests {
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
-            admin: "admin".to_string(),
+            operators: vec!["operator".to_string()],
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -226,7 +226,7 @@ mod tests {
 
         // Should not error on admin updating active state
         let res = router.execute_contract(
-            Addr::unchecked("admin"),
+            Addr::unchecked("operator"),
             nft_marketplace_addr.clone(),
             &update_ask_state,
             &[],
@@ -240,7 +240,7 @@ mod tests {
             active: true,
         };
         let res = router.execute_contract(
-            Addr::unchecked("admin"),
+            Addr::unchecked("operator"),
             nft_marketplace_addr.clone(),
             &update_ask_state,
             &[],
@@ -568,7 +568,7 @@ mod tests {
                 },
             )
             .unwrap();
-        assert_eq!(res.collections[0], "Contract #1");
+        assert_eq!(res.collections[0], "contract1");
     }
 
     #[test]
@@ -964,7 +964,7 @@ mod tests {
         // Instantiate marketplace contract
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
-            admin: "admin".to_string(),
+            operators: vec!["operator".to_string()],
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -1100,20 +1100,21 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let update_config_msg = SudoMsg::UpdateConfig {
-            admin: Some("rosa".to_string()),
-            trading_fee_percent: None,
+        let update_config_msg = SudoMsg::UpdateParams {
+            trading_fee_percent: Some(5),
             min_expiry: None,
             max_expiry: None,
+            operators: Some(vec!["operator".to_string()]),
         };
         let res = router.wasm_sudo(marketplace.clone(), &update_config_msg);
         assert!(res.is_ok());
 
-        let query_config_msg = QueryMsg::Config {};
-        let res: ConfigResponse = router
+        let query_params_msg = QueryMsg::Params {};
+        let res: ParamResponse = router
             .wrap()
-            .query_wasm_smart(marketplace, &query_config_msg)
+            .query_wasm_smart(marketplace, &query_params_msg)
             .unwrap();
-        assert_eq!(res.config.admin.to_string(), "rosa".to_string());
+        assert_eq!(res.params.trading_fee_percent, 5);
+        assert_eq!(res.params.operators, vec!["operator".to_string()]);
     }
 }

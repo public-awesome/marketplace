@@ -231,13 +231,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Get the config for the contract Return type: `ConfigResponse`",
+      "description": "Get the config for the contract Return type: `ParamResponse`",
       "type": "object",
       "required": [
-        "config"
+        "params"
       ],
       "properties": {
-        "config": {
+        "params": {
           "type": "object"
         }
       },
