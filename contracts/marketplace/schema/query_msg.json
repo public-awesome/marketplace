@@ -242,19 +242,6 @@
         }
       },
       "additionalProperties": false
-    },
-    {
-      "description": "Shows the operator list and whether or not it is mutable Returns cw1-whitelist::AdminListResponse",
-      "type": "object",
-      "required": [
-        "operators"
-      ],
-      "properties": {
-        "operators": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
     }
   ]
 }

@@ -51,8 +51,4 @@ token_id: number
 params: {
 [k: string]: unknown
 }
-} | {
-operators: {
-[k: string]: unknown
-}
 })
