@@ -41,6 +41,9 @@ pub enum ContractError {
     #[error("Contract needs approval")]
     NeedsApproval {},
 
+    #[error("Invalid Ask Price #{denom} #{amount}")]
+    InvalidAskPrice { denom: String, amount: u128 },
+
     #[error("{0}")]
     WhitelistError(#[from] WhitelistError),
 
