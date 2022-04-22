@@ -48,7 +48,11 @@ token_id: number
 [k: string]: unknown
 }
 } | {
-config: {
+params: {
+[k: string]: unknown
+}
+} | {
+admin_list: {
 [k: string]: unknown
 }
 })

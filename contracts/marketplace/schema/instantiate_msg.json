@@ -3,14 +3,21 @@
   "title": "InstantiateMsg",
   "type": "object",
   "required": [
-    "admin",
+    "admins",
+    "admins_mutable",
     "max_expiry",
     "min_expiry",
     "trading_fee_percent"
   ],
   "properties": {
-    "admin": {
-      "type": "string"
+    "admins": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "admins_mutable": {
+      "type": "boolean"
     },
     "max_expiry": {
       "type": "integer",

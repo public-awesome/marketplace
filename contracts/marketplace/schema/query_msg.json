@@ -231,13 +231,26 @@
       "additionalProperties": false
     },
     {
-      "description": "Get the config for the contract Return type: `ConfigResponse`",
+      "description": "Get the config for the contract Return type: `ParamResponse`",
       "type": "object",
       "required": [
-        "config"
+        "params"
       ],
       "properties": {
-        "config": {
+        "params": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Shows all admins and whether or not it is mutable Returns cw1-whitelist::AdminListResponse",
+      "type": "object",
+      "required": [
+        "admin_list"
+      ],
+      "properties": {
+        "admin_list": {
           "type": "object"
         }
       },
