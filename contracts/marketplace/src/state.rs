@@ -20,7 +20,7 @@ pub struct Ask {
     pub collection: Addr,
     pub token_id: TokenId,
     pub seller: Addr,
-    pub price: Uint128,
+    pub price: u128,
     pub funds_recipient: Option<Addr>,
     pub expires: Timestamp,
     pub active: bool,
