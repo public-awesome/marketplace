@@ -125,6 +125,9 @@ pub enum QueryMsg {
     /// Get the config for the contract
     /// Return type: `ParamResponse`
     Params {},
+    /// Shows all admins and whether or not it is mutable
+    /// Returns cw1-whitelist::AdminListResponse
+    AdminList {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

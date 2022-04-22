@@ -8,6 +8,7 @@ use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
 };
+use cw1_whitelist::contract::query_admin_list;
 use cw1_whitelist::{
     contract::{execute_freeze, execute_update_admins, instantiate as whitelist_instantiate},
     msg::InstantiateMsg as Cw1WhiteListInitMsg,
@@ -667,6 +668,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
         QueryMsg::Params {} => to_binary(&query_config(deps)?),
+        QueryMsg::AdminList {} => to_binary(&query_admin_list(deps)?),
     }
 }
 
@@ -974,6 +976,25 @@ mod tests {
 
     #[test]
     fn try_set_ask() {
+        let mut deps = mock_dependencies();
+        setup_contract(deps.as_mut());
+
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: COLLECTION.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(100, NATIVE_DENOM),
+            funds_recipient: None,
+            expires: Timestamp::from_seconds(0),
+        };
+
+        // Reject if not called by the media owner
+        let not_allowed = mock_info("random", &[]);
+        let err = execute(deps.as_mut(), mock_env(), not_allowed, set_ask);
+        assert!(err.is_err());
+    }
+
+    #[test]
+    fn try_update_admins() {
         let mut deps = mock_dependencies();
         setup_contract(deps.as_mut());
 
