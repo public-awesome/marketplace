@@ -1,13 +1,9 @@
 use crate::error::ContractError;
 use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
-    CurrentAskResponse, ExecuteMsg, InstantiateMsg, OperatorsResponse, ParamResponse, QueryMsg,
-    SudoMsg,
+    CurrentAskResponse, ExecuteMsg, InstantiateMsg, ParamResponse, QueryMsg, SudoMsg,
 };
-use crate::state::{
-    ask_key, asks, bid_key, bids, Ask, Bid, Operators, SudoParams, TokenId, OPERATOR_LIST,
-    SUDO_PARAMS,
-};
+use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SudoParams, TokenId, SUDO_PARAMS};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, Api, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
@@ -38,23 +34,15 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let operators = Operators {
-        operators: map_validate(deps.api, &msg.operators)?,
-    };
-    OPERATOR_LIST.save(deps.storage, &operators)?;
-
     let params = SudoParams {
         trading_fee_percent: msg.trading_fee_percent,
         min_expiry: msg.min_expiry,
         max_expiry: msg.max_expiry,
+        operators: map_validate(deps.api, &msg.operators)?,
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "instantiate"))
-}
-
-fn map_validate(api: &dyn Api, admins: &[String]) -> StdResult<Vec<Addr>> {
-    admins.iter().map(|addr| api.addr_validate(addr)).collect()
 }
 
 /// To mitigate clippy::too_many_arguments warning
@@ -234,8 +222,12 @@ pub fn execute_update_ask_state(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let operators = OPERATOR_LIST.load(deps.storage)?;
-    if !operators.is_operator(&info.sender) {
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    if !params
+        .operators
+        .iter()
+        .any(|a| a.as_ref() == info.sender.as_ref())
+    {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -454,24 +446,16 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             trading_fee_percent,
             min_expiry,
             max_expiry,
-        } => sudo_update_params(deps, env, trading_fee_percent, min_expiry, max_expiry),
-        SudoMsg::UpdateOperators { operators } => {
-            Ok(execute_update_operators(deps, env, operators)?)
-        }
+            operators,
+        } => sudo_update_params(
+            deps,
+            env,
+            trading_fee_percent,
+            min_expiry,
+            max_expiry,
+            operators,
+        ),
     }
-}
-
-pub fn execute_update_operators(
-    deps: DepsMut,
-    _env: Env,
-    admins: Vec<String>,
-) -> Result<Response, ContractError> {
-    let mut list = OPERATOR_LIST.load(deps.storage)?;
-    list.operators = map_validate(deps.api, &admins)?;
-    OPERATOR_LIST.save(deps.storage, &list)?;
-
-    let res = Response::new().add_attribute("action", "update_operators");
-    Ok(res)
 }
 
 /// Only governance can update the config
@@ -481,11 +465,16 @@ pub fn sudo_update_params(
     trading_fee_percent: Option<u32>,
     min_expiry: Option<u64>,
     max_expiry: Option<u64>,
+    operators: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
+
     params.trading_fee_percent = trading_fee_percent.unwrap_or(params.trading_fee_percent);
     params.min_expiry = min_expiry.unwrap_or(params.min_expiry);
     params.max_expiry = max_expiry.unwrap_or(params.max_expiry);
+    if let Some(operators) = operators {
+        params.operators = map_validate(deps.api, &operators)?;
+    }
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "update_params"))
@@ -619,6 +608,13 @@ fn price_validate(price: &Coin) -> Result<(), ContractError> {
     Ok(())
 }
 
+pub fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
+    addresses
+        .iter()
+        .map(|addr| api.addr_validate(addr))
+        .collect()
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let api = deps.api;
@@ -676,19 +672,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BidsByBidder { bidder } => {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
-        QueryMsg::Params {} => to_binary(&query_config(deps)?),
-        QueryMsg::Operators {} => to_binary(&query_operators(deps)?),
+        QueryMsg::Params {} => to_binary(&query_params(deps)?),
     }
 }
 
-pub fn query_operators(deps: Deps) -> StdResult<OperatorsResponse> {
-    let list = OPERATOR_LIST.load(deps.storage)?;
-    Ok(OperatorsResponse {
-        operators: list.operators.into_iter().map(|a| a.into()).collect(),
-    })
-}
-
-pub fn query_config(deps: Deps) -> StdResult<ParamResponse> {
+pub fn query_params(deps: Deps) -> StdResult<ParamResponse> {
     let config = SUDO_PARAMS.load(deps.storage)?;
 
     Ok(ParamResponse { params: config })
@@ -1026,24 +1014,5 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(err, ContractError::InvalidPrice {});
-    }
-
-    #[test]
-    fn try_update_admins() {
-        let mut deps = mock_dependencies();
-        setup_contract(deps.as_mut());
-
-        let res = query_operators(deps.as_ref()).unwrap();
-        assert_eq!(res.operators, vec!["operator".to_string()]);
-
-        let update_operators = SudoMsg::UpdateOperators {
-            operators: vec!["new_operator".to_string()],
-        };
-
-        let res = sudo(deps.as_mut(), mock_env(), update_operators);
-        assert!(res.is_ok());
-
-        let res = query_operators(deps.as_ref()).unwrap();
-        assert_eq!(res.operators, vec!["new_operator".to_string()]);
     }
 }

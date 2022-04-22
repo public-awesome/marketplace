@@ -8,6 +8,7 @@ pub struct SudoParams {
     pub trading_fee_percent: u32,
     pub min_expiry: u64,
     pub max_expiry: u64,
+    pub operators: Vec<Addr>,
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");
@@ -95,18 +96,3 @@ pub fn bids<'a>() -> IndexedMap<'a, BidKey, Bid, BidIndicies<'a>> {
     };
     IndexedMap::new("bids", indexes)
 }
-
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug, Default)]
-pub struct Operators {
-    pub operators: Vec<Addr>,
-}
-
-impl Operators {
-    /// returns true if the address is a registered operator
-    pub fn is_operator(&self, addr: impl AsRef<str>) -> bool {
-        let addr = addr.as_ref();
-        self.operators.iter().any(|a| a.as_ref() == addr)
-    }
-}
-
-pub const OPERATOR_LIST: Item<Operators> = Item::new("operator_list");
