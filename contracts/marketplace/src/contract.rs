@@ -181,7 +181,7 @@ pub fn execute_set_ask(
             collection: collection.clone(),
             token_id,
             seller: info.sender,
-            price: price.amount,
+            price: price.amount.u128(),
             funds_recipient,
             expires,
             active: true,
@@ -268,7 +268,7 @@ pub fn execute_update_ask(
     price_validate(&price)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    ask.price = price.amount;
+    ask.price = price.amount.u128();
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
     Ok(Response::new()
@@ -314,7 +314,7 @@ pub fn execute_set_bid(
     if !ask.active {
         return Err(ContractError::AskNotActive {});
     }
-    if ask.price != bid_price {
+    if ask.price != bid_price.u128() {
         // Bid does not meet ask criteria, store bid
         bids().save(
             deps.storage,
@@ -347,7 +347,7 @@ pub fn execute_set_bid(
             token_id,
             bidder.clone(),
             ask.funds_recipient.unwrap_or(owner),
-            coin(ask.price.u128(), NATIVE_DENOM),
+            coin(ask.price, NATIVE_DENOM),
         )?;
 
         res = res
@@ -834,7 +834,7 @@ mod tests {
             collection: collection.clone(),
             token_id: TOKEN_ID,
             seller: seller.clone(),
-            price: Uint128::from(500u128),
+            price: 500u128,
             funds_recipient: None,
             expires: Timestamp::from_seconds(0),
             active: true,
@@ -847,7 +847,7 @@ mod tests {
             collection: collection.clone(),
             token_id: TOKEN_ID + 1,
             seller: seller.clone(),
-            price: Uint128::from(500u128),
+            price: 500u128,
             funds_recipient: None,
             expires: Timestamp::from_seconds(0),
             active: true,
