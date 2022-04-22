@@ -14,11 +14,11 @@ fn custom_mock_app() -> StargazeApp {
 
 pub fn contract_nft_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
     let contract = ContractWrapper::new(
-        crate::contract::execute,
-        crate::contract::instantiate,
-        crate::contract::query,
+        crate::execute::execute,
+        crate::execute::instantiate,
+        crate::query::query,
     )
-    .with_sudo(crate::contract::sudo);
+    .with_sudo(crate::execute::sudo);
     Box::new(contract)
 }
 
