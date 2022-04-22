@@ -3,7 +3,7 @@ use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse, ConfigResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg,
 };
-use crate::state::{ask_key, asks, bids, Ask, Bid, Config, TokenId, CONFIG};
+use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, Config, TokenId, CONFIG};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
@@ -199,7 +199,7 @@ pub fn execute_remove_ask(
 
     let mut msgs: Vec<BankMsg> = vec![];
     for bid in bids_to_remove.iter() {
-        msgs.push(_remove_bid(deps.storage, bid.clone())?)
+        msgs.push(remove_and_refund_bid(deps.storage, bid.clone())?)
     }
 
     Ok(Response::new()
@@ -358,19 +358,20 @@ pub fn execute_remove_bid(
     let bidder = info.sender;
 
     // Check bid exists for bidder
-    let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-
-    let remove_bid_and_refund_msg = _remove_bid(deps.storage, bid)?;
+    let bid = bids().load(
+        deps.storage,
+        bid_key(collection.clone(), token_id, bidder.clone()),
+    )?;
 
     Ok(Response::new()
+        .add_message(remove_and_refund_bid(deps.storage, bid)?)
         .add_attribute("action", "remove_bid")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("bidder", bidder)
-        .add_message(remove_bid_and_refund_msg))
+        .add_attribute("bidder", bidder))
 }
 
-fn _remove_bid(store: &mut dyn Storage, bid: Bid) -> Result<BankMsg, ContractError> {
+fn remove_and_refund_bid(store: &mut dyn Storage, bid: Bid) -> Result<BankMsg, ContractError> {
     // Remove bid
     bids().remove(store, (bid.collection, bid.token_id, bid.bidder.clone()))?;
 
