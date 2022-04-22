@@ -49,15 +49,6 @@ collection: string
 token_id: number
 [k: string]: unknown
 }
-} | {
-freeze: {
-[k: string]: unknown
-}
-} | {
-update_operators: {
-operators: string[]
-[k: string]: unknown
-}
 })
 
 export interface Coin {

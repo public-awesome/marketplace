@@ -6,7 +6,6 @@
     "max_expiry",
     "min_expiry",
     "operators",
-    "operators_mutable",
     "trading_fee_percent"
   ],
   "properties": {
@@ -26,9 +25,6 @@
       "items": {
         "type": "string"
       }
-    },
-    "operators_mutable": {
-      "type": "boolean"
     },
     "trading_fee_percent": {
       "type": "integer",

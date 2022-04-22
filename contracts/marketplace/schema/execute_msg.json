@@ -220,43 +220,6 @@
         }
       },
       "additionalProperties": false
-    },
-    {
-      "description": "Freeze will make a mutable contract immutable, must be called by an admin",
-      "type": "object",
-      "required": [
-        "freeze"
-      ],
-      "properties": {
-        "freeze": {
-          "type": "object"
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "UpdateOperators will change the operator set of the contract, must be called by an existing operator, and only works if the contract is mutable.",
-      "type": "object",
-      "required": [
-        "update_operators"
-      ],
-      "properties": {
-        "update_operators": {
-          "type": "object",
-          "required": [
-            "operators"
-          ],
-          "properties": {
-            "operators": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "additionalProperties": false
     }
   ],
   "definitions": {

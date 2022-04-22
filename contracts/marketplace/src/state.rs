@@ -8,6 +8,7 @@ pub struct SudoParams {
     pub trading_fee_percent: u32,
     pub min_expiry: u64,
     pub max_expiry: u64,
+    pub operators: Vec<Addr>,
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");

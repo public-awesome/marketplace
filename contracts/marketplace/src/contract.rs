@@ -5,14 +5,8 @@ use crate::msg::{
 };
 use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SudoParams, TokenId, SUDO_PARAMS};
 use cosmwasm_std::{
-    coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
+    coin, entry_point, to_binary, Addr, Api, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
-};
-use cw1_whitelist::contract::query_admin_list;
-use cw1_whitelist::{
-    contract::{execute_freeze, execute_update_admins, instantiate as whitelist_instantiate},
-    msg::InstantiateMsg as Cw1WhiteListInitMsg,
-    state::ADMIN_LIST,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -33,27 +27,18 @@ const MAX_QUERY_LIMIT: u32 = 30;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
-    mut deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
+    deps: DepsMut,
+    _env: Env,
+    _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-
-    whitelist_instantiate(
-        deps.branch(),
-        env,
-        info,
-        Cw1WhiteListInitMsg {
-            admins: msg.operators,
-            mutable: msg.operators_mutable,
-        },
-    )?;
 
     let params = SudoParams {
         trading_fee_percent: msg.trading_fee_percent,
         min_expiry: msg.min_expiry,
         max_expiry: msg.max_expiry,
+        operators: map_validate(deps.api, &msg.operators)?,
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -139,10 +124,6 @@ pub fn execute(
             token_id,
             price,
         } => execute_update_ask(deps, info, api.addr_validate(&collection)?, token_id, price),
-        ExecuteMsg::Freeze {} => Ok(execute_freeze(deps, env, info)?),
-        ExecuteMsg::UpdateOperators { operators } => {
-            Ok(execute_update_admins(deps, env, info, operators)?)
-        }
     }
 }
 
@@ -241,8 +222,12 @@ pub fn execute_update_ask_state(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let operators = ADMIN_LIST.load(deps.storage)?;
-    if !operators.is_admin(&info.sender) {
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    if !params
+        .operators
+        .iter()
+        .any(|a| a.as_ref() == info.sender.as_ref())
+    {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -461,7 +446,15 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             trading_fee_percent,
             min_expiry,
             max_expiry,
-        } => sudo_update_params(deps, env, trading_fee_percent, min_expiry, max_expiry),
+            operators,
+        } => sudo_update_params(
+            deps,
+            env,
+            trading_fee_percent,
+            min_expiry,
+            max_expiry,
+            operators,
+        ),
     }
 }
 
@@ -472,11 +465,16 @@ pub fn sudo_update_params(
     trading_fee_percent: Option<u32>,
     min_expiry: Option<u64>,
     max_expiry: Option<u64>,
+    operators: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
+
     params.trading_fee_percent = trading_fee_percent.unwrap_or(params.trading_fee_percent);
     params.min_expiry = min_expiry.unwrap_or(params.min_expiry);
     params.max_expiry = max_expiry.unwrap_or(params.max_expiry);
+    if let Some(operators) = operators {
+        params.operators = map_validate(deps.api, &operators)?;
+    }
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "update_params"))
@@ -610,6 +608,13 @@ fn price_validate(price: &Coin) -> Result<(), ContractError> {
     Ok(())
 }
 
+fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
+    addresses
+        .iter()
+        .map(|addr| api.addr_validate(addr))
+        .collect()
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let api = deps.api;
@@ -667,12 +672,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BidsByBidder { bidder } => {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
-        QueryMsg::Params {} => to_binary(&query_config(deps)?),
-        QueryMsg::Operators {} => to_binary(&query_admin_list(deps)?),
+        QueryMsg::Params {} => to_binary(&query_params(deps)?),
     }
 }
 
-pub fn query_config(deps: Deps) -> StdResult<ParamResponse> {
+pub fn query_params(deps: Deps) -> StdResult<ParamResponse> {
     let config = SUDO_PARAMS.load(deps.storage)?;
 
     Ok(ParamResponse { params: config })
@@ -909,7 +913,6 @@ mod tests {
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {
             operators: vec!["operator".to_string()],
-            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -925,7 +928,6 @@ mod tests {
 
         let msg = InstantiateMsg {
             operators: vec!["operator".to_string()],
-            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -1012,41 +1014,5 @@ mod tests {
         )
         .unwrap_err();
         assert_eq!(err, ContractError::InvalidPrice {});
-    }
-
-    #[test]
-    fn try_update_admins() {
-        let mut deps = mock_dependencies();
-        setup_contract(deps.as_mut());
-
-        let res = query_admin_list(deps.as_ref()).unwrap();
-        assert_eq!(res.admins, vec!["operator".to_string()]);
-
-        let update_admins = ExecuteMsg::UpdateOperators {
-            operators: vec!["new_operator".to_string()],
-        };
-
-        let admin = mock_info("operator", &[]);
-        let res = execute(
-            deps.as_mut(),
-            mock_env(),
-            admin.clone(),
-            update_admins.clone(),
-        );
-        assert!(res.is_ok());
-
-        let res = query_admin_list(deps.as_ref()).unwrap();
-        assert_eq!(res.admins, vec!["new_operator".to_string()]);
-
-        let res = execute(deps.as_mut(), mock_env(), admin, update_admins.clone());
-        assert!(res.is_err());
-
-        let freeze_msg = ExecuteMsg::Freeze {};
-        let new_admin = mock_info("new_operator", &[]);
-        let res = execute(deps.as_mut(), mock_env(), new_admin.clone(), freeze_msg);
-        assert!(res.is_ok());
-
-        let res = execute(deps.as_mut(), mock_env(), new_admin, update_admins);
-        assert!(res.is_err());
     }
 }

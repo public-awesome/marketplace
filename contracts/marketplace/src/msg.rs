@@ -5,13 +5,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    /// Operators are entites that are responsible for maintaining the active state of Asks.
-    /// They listen to NFT transfer events, and update the active state of Asks.
-    pub operators: Vec<String>,
-    pub operators_mutable: bool,
     pub trading_fee_percent: u32,
     pub min_expiry: u64,
     pub max_expiry: u64,
+    /// Operators are entites that are responsible for maintaining the active state of Asks.
+    /// They listen to NFT transfer events, and update the active state of Asks.
+    pub operators: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -59,11 +58,6 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         bidder: String,
     },
-    /// Freeze will make a mutable contract immutable, must be called by an admin
-    Freeze {},
-    /// UpdateOperators will change the operator set of the contract, must be called by an existing operator,
-    /// and only works if the contract is mutable.
-    UpdateOperators { operators: Vec<String> },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -75,6 +69,7 @@ pub enum SudoMsg {
         trading_fee_percent: Option<u32>,
         min_expiry: Option<u64>,
         max_expiry: Option<u64>,
+        operators: Option<Vec<String>>,
     },
 }
 
@@ -127,9 +122,6 @@ pub enum QueryMsg {
     /// Get the config for the contract
     /// Return type: `ParamResponse`
     Params {},
-    /// Shows the operator list and whether or not it is mutable
-    /// Returns cw1-whitelist::AdminListResponse
-    Operators {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

@@ -60,7 +60,6 @@ mod tests {
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -966,7 +965,6 @@ mod tests {
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
             max_expiry: MAX_EXPIRY,
@@ -1106,6 +1104,7 @@ mod tests {
             trading_fee_percent: Some(5),
             min_expiry: None,
             max_expiry: None,
+            operators: Some(vec!["operator".to_string()]),
         };
         let res = router.wasm_sudo(marketplace.clone(), &update_config_msg);
         assert!(res.is_ok());
@@ -1116,5 +1115,6 @@ mod tests {
             .query_wasm_smart(marketplace, &query_params_msg)
             .unwrap();
         assert_eq!(res.params.trading_fee_percent, 5);
+        assert_eq!(res.params.operators, vec!["operator".to_string()]);
     }
 }
