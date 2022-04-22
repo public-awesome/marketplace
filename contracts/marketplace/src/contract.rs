@@ -3,7 +3,7 @@ use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse, ConfigResponse,
     CurrentAskResponse, ExecuteMsg, InstantiateMsg, QueryMsg, SudoMsg,
 };
-use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, Config, TokenId, CONFIG};
+use crate::state::{ask_key, asks, bids, Ask, Bid, Config, TokenId, CONFIG};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Binary, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
@@ -358,17 +358,16 @@ pub fn execute_remove_bid(
     let bidder = info.sender;
 
     // Check bid exists for bidder
-    let bid = bids().load(
-        deps.storage,
-        bid_key(collection.clone(), token_id, bidder.clone()),
-    )?;
+    let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
+
+    let remove_bid_and_refund_msg = _remove_bid(deps.storage, bid)?;
 
     Ok(Response::new()
         .add_attribute("action", "remove_bid")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
-        .add_message(_remove_bid(deps.storage, bid)?))
+        .add_message(remove_bid_and_refund_msg))
 }
 
 fn _remove_bid(store: &mut dyn Storage, bid: Bid) -> Result<BankMsg, ContractError> {
@@ -971,12 +970,33 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
-            expires: Timestamp::from_seconds(0),
+            expires: Timestamp::from_seconds(
+                mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
+            ),
         };
 
         // Reject if not called by the media owner
         let not_allowed = mock_info("random", &[]);
         let err = execute(deps.as_mut(), mock_env(), not_allowed, set_ask);
         assert!(err.is_err());
+
+        // Reject wrong denom
+        let set_bad_ask = ExecuteMsg::SetAsk {
+            collection: COLLECTION.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(100, "osmo".to_string()),
+            funds_recipient: None,
+            expires: Timestamp::from_seconds(
+                mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
+            ),
+        };
+        let err = execute(
+            deps.as_mut(),
+            mock_env(),
+            mock_info("creator", &[]),
+            set_bad_ask,
+        )
+        .unwrap_err();
+        assert_eq!(err, ContractError::InvalidPrice {});
     }
 }
