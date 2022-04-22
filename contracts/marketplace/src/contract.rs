@@ -230,7 +230,7 @@ pub fn execute_remove_ask(
 }
 
 /// Updates the the active state of the ask.
-/// This is a privileged operation called by an admin to update the active state of an Ask
+/// This is a privileged operation called by an operator to update the active state of an Ask
 /// when an NFT transfer happens.
 pub fn execute_update_ask_state(
     deps: DepsMut,
@@ -241,8 +241,8 @@ pub fn execute_update_ask_state(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let admins = ADMIN_LIST.load(deps.storage)?;
-    if !admins.is_admin(&info.sender) {
+    let operators = ADMIN_LIST.load(deps.storage)?;
+    if !operators.is_admin(&info.sender) {
         return Err(ContractError::Unauthorized {});
     }
 
@@ -908,7 +908,7 @@ mod tests {
 
     fn setup_contract(deps: DepsMut) {
         let msg = InstantiateMsg {
-            operators: vec!["admin".to_string()],
+            operators: vec!["operator".to_string()],
             operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
@@ -924,7 +924,7 @@ mod tests {
         let mut deps = mock_dependencies();
 
         let msg = InstantiateMsg {
-            operators: vec!["admin".to_string()],
+            operators: vec!["operator".to_string()],
             operators_mutable: true,
             trading_fee_percent: TRADING_FEE_PERCENT,
             min_expiry: MIN_EXPIRY,
@@ -999,13 +999,13 @@ mod tests {
         setup_contract(deps.as_mut());
 
         let res = query_admin_list(deps.as_ref()).unwrap();
-        assert_eq!(res.admins, vec!["admin".to_string()]);
+        assert_eq!(res.admins, vec!["operator".to_string()]);
 
         let update_admins = ExecuteMsg::UpdateOperators {
-            operators: vec!["new_admin".to_string()],
+            operators: vec!["new_operator".to_string()],
         };
 
-        let admin = mock_info("admin", &[]);
+        let admin = mock_info("operator", &[]);
         let res = execute(
             deps.as_mut(),
             mock_env(),
@@ -1015,13 +1015,13 @@ mod tests {
         assert!(res.is_ok());
 
         let res = query_admin_list(deps.as_ref()).unwrap();
-        assert_eq!(res.admins, vec!["new_admin".to_string()]);
+        assert_eq!(res.admins, vec!["new_operator".to_string()]);
 
         let res = execute(deps.as_mut(), mock_env(), admin, update_admins.clone());
         assert!(res.is_err());
 
         let freeze_msg = ExecuteMsg::Freeze {};
-        let new_admin = mock_info("new_admin", &[]);
+        let new_admin = mock_info("new_operator", &[]);
         let res = execute(deps.as_mut(), mock_env(), new_admin.clone(), freeze_msg);
         assert!(res.is_ok());
 
