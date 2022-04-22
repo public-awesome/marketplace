@@ -235,19 +235,19 @@
       "additionalProperties": false
     },
     {
-      "description": "UpdateAdmins will change the admin set of the contract, must be called by an existing admin, and only works if the contract is mutable",
+      "description": "UpdateOperators will change the operator set of the contract, must be called by an existing operator, and only works if the contract is mutable.",
       "type": "object",
       "required": [
-        "update_admins"
+        "update_operators"
       ],
       "properties": {
-        "update_admins": {
+        "update_operators": {
           "type": "object",
           "required": [
-            "admins"
+            "operators"
           ],
           "properties": {
-            "admins": {
+            "operators": {
               "type": "array",
               "items": {
                 "type": "string"

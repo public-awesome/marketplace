@@ -244,13 +244,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Shows all admins and whether or not it is mutable Returns cw1-whitelist::AdminListResponse",
+      "description": "Shows the operator list and whether or not it is mutable Returns cw1-whitelist::AdminListResponse",
       "type": "object",
       "required": [
-        "admin_list"
+        "operators"
       ],
       "properties": {
-        "admin_list": {
+        "operators": {
           "type": "object"
         }
       },

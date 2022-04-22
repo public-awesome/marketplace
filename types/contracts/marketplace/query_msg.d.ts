@@ -52,7 +52,7 @@ params: {
 [k: string]: unknown
 }
 } | {
-admin_list: {
+operators: {
 [k: string]: unknown
 }
 })
