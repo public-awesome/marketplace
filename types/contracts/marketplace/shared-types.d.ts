@@ -48,6 +48,7 @@ export type Uint64 = string;
 export type Uint128 = string;
 export interface Ask {
     [k: string]: unknown;
+    active: boolean;
     collection: Addr;
     expires: Timestamp;
     funds_recipient?: (Addr | null);

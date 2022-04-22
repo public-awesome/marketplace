@@ -1,23 +1,20 @@
-use crate::state::{Ask, Bid, TokenId};
+use crate::state::{Ask, Bid, Config, TokenId};
 use cosmwasm_std::{Addr, Coin, Timestamp};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct InstantiateMsg {}
+pub struct InstantiateMsg {
+    pub admin: String,
+    pub trading_fee_percent: u32,
+    pub min_expiry: u64,
+    pub max_expiry: u64,
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
-    SetBid {
-        collection: String,
-        token_id: TokenId,
-        expires: Timestamp,
-    },
-    RemoveBid {
-        collection: String,
-        token_id: TokenId,
-    },
+    /// List an NFT on the marketplace by creating a new ask
     SetAsk {
         collection: String,
         token_id: TokenId,
@@ -25,14 +22,52 @@ pub enum ExecuteMsg {
         funds_recipient: Option<String>,
         expires: Timestamp,
     },
+    /// Remove an existing ask from the marketplace
     RemoveAsk {
         collection: String,
         token_id: TokenId,
     },
+    /// Admin operation to change the active state of an ask when an NFT is transferred
+    UpdateAskState {
+        collection: String,
+        token_id: TokenId,
+        active: bool,
+    },
+    /// Update the price of an existing ask
+    UpdateAsk {
+        collection: String,
+        token_id: TokenId,
+        price: Coin,
+    },
+    /// Place a bid on an existing ask
+    SetBid {
+        collection: String,
+        token_id: TokenId,
+        expires: Timestamp,
+    },
+    /// Remove an existing bid from an ask
+    RemoveBid {
+        collection: String,
+        token_id: TokenId,
+    },
+    /// Accept a bid on an existing ask
     AcceptBid {
         collection: String,
         token_id: TokenId,
         bidder: String,
+    },
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SudoMsg {
+    /// Update the config parameters
+    /// Can only be called by governance
+    UpdateConfig {
+        admin: Option<String>,
+        trading_fee_percent: Option<u32>,
+        min_expiry: Option<u64>,
+        max_expiry: Option<u64>,
     },
 }
 
@@ -52,12 +87,12 @@ pub enum QueryMsg {
         start_after: Option<TokenId>,
         limit: Option<u32>,
     },
-    AskCount {
-        collection: String,
-    },
-    AsksBySeller {
-        seller: String,
-    },
+    /// Count of all asks
+    /// Return type: `AskCountResponse`
+    AskCount { collection: String },
+    /// Get all asks by seller
+    /// Return type: `AsksResponse`
+    AsksBySeller { seller: String },
     /// List of collections that have asks on them
     /// Return type: `CollectionsResponse`
     ListedCollections {
@@ -73,9 +108,7 @@ pub enum QueryMsg {
     },
     /// Get all bids by a bidder
     /// Return type: `BidsResponse`
-    BidsByBidder {
-        bidder: String,
-    },
+    BidsByBidder { bidder: String },
     /// Get all bids for a specific NFT
     /// Return type: `BidsResponse`
     Bids {
@@ -84,6 +117,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Get the config for the contract
+    /// Return type: `ConfigResponse`
+    Config {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -114,4 +150,9 @@ pub struct BidResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ConfigResponse {
+    pub config: Config,
 }

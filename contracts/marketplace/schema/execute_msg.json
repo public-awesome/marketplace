@@ -3,62 +3,7 @@
   "title": "ExecuteMsg",
   "oneOf": [
     {
-      "type": "object",
-      "required": [
-        "set_bid"
-      ],
-      "properties": {
-        "set_bid": {
-          "type": "object",
-          "required": [
-            "collection",
-            "expires",
-            "token_id"
-          ],
-          "properties": {
-            "collection": {
-              "type": "string"
-            },
-            "expires": {
-              "$ref": "#/definitions/Timestamp"
-            },
-            "token_id": {
-              "type": "integer",
-              "format": "uint32",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
-        "remove_bid"
-      ],
-      "properties": {
-        "remove_bid": {
-          "type": "object",
-          "required": [
-            "collection",
-            "token_id"
-          ],
-          "properties": {
-            "collection": {
-              "type": "string"
-            },
-            "token_id": {
-              "type": "integer",
-              "format": "uint32",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
+      "description": "List an NFT on the marketplace by creating a new ask",
       "type": "object",
       "required": [
         "set_ask"
@@ -99,6 +44,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Remove an existing ask from the marketplace",
       "type": "object",
       "required": [
         "remove_ask"
@@ -125,6 +71,127 @@
       "additionalProperties": false
     },
     {
+      "description": "Admin operation to change the active state of an ask when an NFT is transferred",
+      "type": "object",
+      "required": [
+        "update_ask_state"
+      ],
+      "properties": {
+        "update_ask_state": {
+          "type": "object",
+          "required": [
+            "active",
+            "collection",
+            "token_id"
+          ],
+          "properties": {
+            "active": {
+              "type": "boolean"
+            },
+            "collection": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Update the price of an existing ask",
+      "type": "object",
+      "required": [
+        "update_ask"
+      ],
+      "properties": {
+        "update_ask": {
+          "type": "object",
+          "required": [
+            "collection",
+            "price",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            },
+            "token_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Place a bid on an existing ask",
+      "type": "object",
+      "required": [
+        "set_bid"
+      ],
+      "properties": {
+        "set_bid": {
+          "type": "object",
+          "required": [
+            "collection",
+            "expires",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "expires": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "token_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove an existing bid from an ask",
+      "type": "object",
+      "required": [
+        "remove_bid"
+      ],
+      "properties": {
+        "remove_bid": {
+          "type": "object",
+          "required": [
+            "collection",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Accept a bid on an existing ask",
       "type": "object",
       "required": [
         "accept_bid"
