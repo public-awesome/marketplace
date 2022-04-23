@@ -122,6 +122,9 @@ pub enum QueryMsg {
         start_after: Option<String>,
         limit: Option<u32>,
     },
+    /// Get all bids for a collection sorted by price
+    /// Return type: `BidsResponse`
+    BidsSortedByPrice { collection: String },
     /// Get the config for the contract
     /// Return type: `ParamResponse`
     Params {},

@@ -72,6 +72,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BidsByBidder { bidder } => {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
+        QueryMsg::BidsSortedByPrice { collection } => to_binary(&query_bids_sorted_by_price(
+            deps,
+            api.addr_validate(&collection)?,
+        )?),
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
     }
 }
@@ -218,6 +222,18 @@ pub fn query_bids(
         .prefix((collection, token_id))
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(BidsResponse { bids })
+}
+
+pub fn query_bids_sorted_by_price(deps: Deps, collection: Addr) -> StdResult<BidsResponse> {
+    let bids = bids()
+        .idx
+        .collection_price
+        .sub_prefix(collection)
+        .range(deps.storage, None, None, Order::Ascending)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
 
