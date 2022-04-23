@@ -1,8 +1,8 @@
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, SudoMsg};
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, SudoParams,
-    TokenId, SUDO_PARAMS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
+    SudoParams, TokenId, SUDO_PARAMS,
 };
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, Api, BankMsg, Coin, Decimal, Deps, DepsMut, Env,
@@ -450,25 +450,6 @@ pub fn execute_accept_bid(
         .add_messages(msgs))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
-    match msg {
-        SudoMsg::UpdateParams {
-            trading_fee_percent,
-            ask_expiry,
-            bid_expiry,
-            operators,
-        } => sudo_update_params(
-            deps,
-            env,
-            trading_fee_percent,
-            ask_expiry,
-            bid_expiry,
-            operators,
-        ),
-    }
-}
-
 /// Place a collection bid (limit order) across an entire collection
 pub fn execute_set_collection_bid(
     deps: DepsMut,
@@ -497,6 +478,17 @@ pub fn execute_set_collection_bid(
         };
         res = res.add_message(exec_refund_bidder)
     };
+
+    collection_bids().save(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+        &CollectionBid {
+            collection: collection.clone(),
+            bidder: bidder.clone(),
+            price,
+            expires,
+        },
+    )?;
 
     Ok(res
         .add_attribute("action", "set_collection_bid")
@@ -546,6 +538,25 @@ pub fn execute_accept_collection_bid(
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_messages(msgs))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    match msg {
+        SudoMsg::UpdateParams {
+            trading_fee_percent,
+            ask_expiry,
+            bid_expiry,
+            operators,
+        } => sudo_update_params(
+            deps,
+            env,
+            trading_fee_percent,
+            ask_expiry,
+            bid_expiry,
+            operators,
+        ),
+    }
 }
 
 /// Only governance can update the config

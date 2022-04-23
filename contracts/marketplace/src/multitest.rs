@@ -1413,4 +1413,51 @@ mod tests {
         assert_eq!(res.params.ask_expiry, (1, 2));
         assert_eq!(res.params.operators, vec!["operator".to_string()]);
     }
+
+    #[test]
+    fn try_collection_bids() {
+        let mut router = custom_mock_app();
+
+        // Setup intial accounts
+        let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+        // Instantiate and configure contracts
+        let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+        // Mint NFT for creator
+        mint_nft_for_creator(&mut router, &creator, &collection);
+
+        // Creator Authorizes NFTs
+        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+            spender: marketplace.to_string(),
+            token_id: TOKEN_ID.to_string(),
+            expires: None,
+        };
+        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
+        assert!(res.is_ok());
+
+        // A collection bid is made by the bidder
+        let set_collection_bid = ExecuteMsg::SetCollectionBid {
+            collection: collection.to_string(),
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        let res = router.execute_contract(
+            bidder.clone(),
+            marketplace.clone(),
+            &set_collection_bid,
+            &coins(150, NATIVE_DENOM),
+        );
+        assert!(res.is_ok());
+
+        // A collection bid is accepted
+        let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            bidder: bidder.to_string(),
+        };
+        let res =
+            router.execute_contract(creator.clone(), marketplace, &accept_collection_bid, &[]);
+        println!("{:?}", res);
+        assert!(res.is_ok());
+    }
 }
