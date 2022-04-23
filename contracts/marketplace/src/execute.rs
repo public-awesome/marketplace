@@ -28,8 +28,8 @@ pub fn instantiate(
 
     let params = SudoParams {
         trading_fee_percent: msg.trading_fee_percent,
-        min_expiry: msg.min_expiry,
-        max_expiry: msg.max_expiry,
+        ask_expiry: msg.ask_expiry,
+        bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
@@ -266,10 +266,10 @@ pub fn execute_set_bid(
     token_id: u32,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
-    // Make sure a bid amount was sent
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
 
-    expires_validate(deps.storage, &env, expires)?;
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    expires_validate(&env, expires, params.bid_expiry)?;
 
     let bidder = info.sender;
     let mut res = Response::new();
@@ -436,15 +436,15 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
     match msg {
         SudoMsg::UpdateParams {
             trading_fee_percent,
-            min_expiry,
-            max_expiry,
+            ask_expiry,
+            bid_expiry,
             operators,
         } => sudo_update_params(
             deps,
             env,
             trading_fee_percent,
-            min_expiry,
-            max_expiry,
+            ask_expiry,
+            bid_expiry,
             operators,
         ),
     }
@@ -455,15 +455,15 @@ pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
     trading_fee_percent: Option<u32>,
-    min_expiry: Option<u64>,
-    max_expiry: Option<u64>,
+    ask_expiry: Option<(u64, u64)>,
+    bid_expiry: Option<(u64, u64)>,
     operators: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
 
     params.trading_fee_percent = trading_fee_percent.unwrap_or(params.trading_fee_percent);
-    params.min_expiry = min_expiry.unwrap_or(params.min_expiry);
-    params.max_expiry = max_expiry.unwrap_or(params.max_expiry);
+    params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
+    params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
     if let Some(operators) = operators {
         params.operators = map_validate(deps.api, &operators)?;
     }
@@ -577,14 +577,12 @@ fn payout(
 }
 
 fn expires_validate(
-    store: &dyn Storage,
     env: &Env,
     expires: Timestamp,
+    expiry: (u64, u64),
 ) -> Result<(), ContractError> {
-    let config = SUDO_PARAMS.load(store)?;
-
-    if expires <= env.block.time.plus_seconds(config.min_expiry)
-        || expires > env.block.time.plus_seconds(config.max_expiry)
+    if expires <= env.block.time.plus_seconds(expiry.0)
+        || expires > env.block.time.plus_seconds(expiry.1)
     {
         return Err(ContractError::InvalidExpiration {});
     }

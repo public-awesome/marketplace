@@ -104,8 +104,8 @@ mod tests {
         let msg = InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_percent: TRADING_FEE_PERCENT,
-            min_expiry: MIN_EXPIRY,
-            max_expiry: MAX_EXPIRY,
+            ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
         };
         let info = mock_info(CREATOR, &[]);
         let res = instantiate(deps, mock_env(), info, msg).unwrap();
@@ -119,8 +119,8 @@ mod tests {
         let msg = InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_percent: TRADING_FEE_PERCENT,
-            min_expiry: MIN_EXPIRY,
-            max_expiry: MAX_EXPIRY,
+            ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
         };
         let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 

@@ -5,8 +5,8 @@ params: SudoParams
 [k: string]: unknown
 }
 export interface SudoParams {
-max_expiry: number
-min_expiry: number
+ask_expiry: [number, number]
+bid_expiry: [number, number]
 operators: Addr[]
 trading_fee_percent: number
 [k: string]: unknown
