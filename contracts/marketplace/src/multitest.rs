@@ -1457,7 +1457,6 @@ mod tests {
         };
         let res =
             router.execute_contract(creator.clone(), marketplace, &accept_collection_bid, &[]);
-        println!("{:?}", res);
         assert!(res.is_ok());
     }
 }

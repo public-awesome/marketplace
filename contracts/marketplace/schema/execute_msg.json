@@ -220,6 +220,62 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Place a bid (limit order) across an entire collection",
+      "type": "object",
+      "required": [
+        "set_collection_bid"
+      ],
+      "properties": {
+        "set_collection_bid": {
+          "type": "object",
+          "required": [
+            "collection",
+            "expires"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "expires": {
+              "$ref": "#/definitions/Timestamp"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Accept a collection bid",
+      "type": "object",
+      "required": [
+        "accept_collection_bid"
+      ],
+      "properties": {
+        "accept_collection_bid": {
+          "type": "object",
+          "required": [
+            "bidder",
+            "collection",
+            "token_id"
+          ],
+          "properties": {
+            "bidder": {
+              "type": "string"
+            },
+            "collection": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {

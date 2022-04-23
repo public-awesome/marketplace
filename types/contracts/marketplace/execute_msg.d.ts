@@ -49,6 +49,19 @@ collection: string
 token_id: number
 [k: string]: unknown
 }
+} | {
+set_collection_bid: {
+collection: string
+expires: Timestamp
+[k: string]: unknown
+}
+} | {
+accept_collection_bid: {
+bidder: string
+collection: string
+token_id: number
+[k: string]: unknown
+}
 })
 
 export interface Coin {
