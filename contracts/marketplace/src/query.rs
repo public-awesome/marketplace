@@ -1,6 +1,7 @@
 use crate::msg::{
-    AskCountResponse, AsksResponse, BidResponse, Bidder, BidsResponse, CollectionBidResponse,
-    CollectionBidsResponse, CollectionsResponse, CurrentAskResponse, ParamResponse, QueryMsg,
+    AskCountResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
+    CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, CurrentAskResponse,
+    ParamResponse, QueryMsg,
 };
 use crate::state::{
     ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, SUDO_PARAMS,
@@ -170,7 +171,7 @@ pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse>
 
 pub fn query_listed_collections(
     deps: Deps,
-    start_after: Option<String>,
+    start_after: Option<Collection>,
     limit: Option<u32>,
 ) -> StdResult<CollectionsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;

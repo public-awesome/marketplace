@@ -84,7 +84,9 @@ pub enum SudoMsg {
     },
 }
 
+pub type Collection = String;
 pub type Bidder = String;
+pub type Seller = String;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
@@ -92,38 +94,38 @@ pub enum QueryMsg {
     /// Get the current ask for specific NFT
     /// Return type: `CurrentAskResponse`
     CurrentAsk {
-        collection: String,
+        collection: Collection,
         token_id: TokenId,
     },
     /// Get all asks for a collection
     /// Return type: `AsksResponse`
     Asks {
-        collection: String,
+        collection: Collection,
         start_after: Option<TokenId>,
         limit: Option<u32>,
     },
     /// Get all asks for a collection sorted by price
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
-        collection: String,
+        collection: Collection,
         limit: Option<u32>,
     },
     /// Count of all asks
     /// Return type: `AskCountResponse`
-    AskCount { collection: String },
+    AskCount { collection: Collection },
     /// Get all asks by seller
     /// Return type: `AsksResponse`
-    AsksBySeller { seller: String },
+    AsksBySeller { seller: Seller },
     /// List of collections that have asks on them
     /// Return type: `CollectionsResponse`
     ListedCollections {
-        start_after: Option<String>,
+        start_after: Option<Collection>,
         limit: Option<u32>,
     },
     /// Get data for a specific bid
     /// Return type: `BidResponse`
     Bid {
-        collection: String,
+        collection: Collection,
         token_id: TokenId,
         bidder: Bidder,
     },
@@ -133,7 +135,7 @@ pub enum QueryMsg {
     /// Get all bids for a specific NFT
     /// Return type: `BidsResponse`
     Bids {
-        collection: String,
+        collection: Collection,
         token_id: TokenId,
         start_after: Option<Bidder>,
         limit: Option<u32>,
@@ -141,7 +143,7 @@ pub enum QueryMsg {
     /// Get all bids for a collection sorted by price
     /// Return type: `BidsResponse`
     BidsSortedByPrice {
-        collection: String,
+        collection: Collection,
         limit: Option<u32>,
     },
     /// Get the config for the contract
@@ -149,7 +151,10 @@ pub enum QueryMsg {
     Params {},
     /// Get data for a specific collection bid
     /// Return type: `CollectionBidResponse`
-    CollectionBid { collection: String, bidder: Bidder },
+    CollectionBid {
+        collection: Collection,
+        bidder: Bidder,
+    },
     /// Get all collection bids by a bidder
     /// Return type: `CollectionBidsResponse`
     CollectionBidsByBidder { bidder: Bidder },
@@ -163,7 +168,7 @@ pub enum QueryMsg {
     /// Get all collection bids for a collection sorted by price
     /// Return type: `CollectionBidsResponse`
     CollectionBidsSortedByPrice {
-        collection: String,
+        collection: Collection,
         limit: Option<u32>,
     },
 }
