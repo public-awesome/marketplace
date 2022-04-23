@@ -34,10 +34,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::AsksSortedByPrice { collection } => to_binary(&query_asks_sorted_by_price(
-            deps,
-            api.addr_validate(&collection)?,
-        )?),
+        QueryMsg::AsksSortedByPrice { collection, limit } => to_binary(
+            &query_asks_sorted_by_price(deps, api.addr_validate(&collection)?, limit)?,
+        ),
         QueryMsg::ListedCollections { start_after, limit } => {
             to_binary(&query_listed_collections(deps, start_after, limit)?)
         }
@@ -72,10 +71,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BidsByBidder { bidder } => {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
-        QueryMsg::BidsSortedByPrice { collection } => to_binary(&query_bids_sorted_by_price(
-            deps,
-            api.addr_validate(&collection)?,
-        )?),
+        QueryMsg::BidsSortedByPrice { collection, limit } => to_binary(
+            &query_bids_sorted_by_price(deps, api.addr_validate(&collection)?, limit)?,
+        ),
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
     }
 }
@@ -114,12 +112,19 @@ pub fn query_asks(
     Ok(AsksResponse { asks: asks? })
 }
 
-pub fn query_asks_sorted_by_price(deps: Deps, collection: Addr) -> StdResult<AsksResponse> {
+pub fn query_asks_sorted_by_price(
+    deps: Deps,
+    collection: Addr,
+    limit: Option<u32>,
+) -> StdResult<AsksResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
     let asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
         .range(deps.storage, None, None, Order::Ascending)
+        .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
 
@@ -228,12 +233,19 @@ pub fn query_bids(
     Ok(BidsResponse { bids })
 }
 
-pub fn query_bids_sorted_by_price(deps: Deps, collection: Addr) -> StdResult<BidsResponse> {
+pub fn query_bids_sorted_by_price(
+    deps: Deps,
+    collection: Addr,
+    limit: Option<u32>,
+) -> StdResult<BidsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
     let bids = bids()
         .idx
         .collection_price
         .sub_prefix(collection)
         .range(deps.storage, None, None, Order::Ascending)
+        .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
 

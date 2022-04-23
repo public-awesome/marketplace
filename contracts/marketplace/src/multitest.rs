@@ -668,6 +668,7 @@ mod tests {
 
         let query_asks_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
+            limit: None,
         };
         let res: AsksResponse = router
             .wrap()
@@ -816,6 +817,7 @@ mod tests {
 
         let query_bids_msg = QueryMsg::BidsSortedByPrice {
             collection: collection.to_string(),
+            limit: None,
         };
         let res: BidsResponse = router
             .wrap()

@@ -91,7 +91,10 @@ pub enum QueryMsg {
     },
     /// Get all asks for a collection sorted by price
     /// Return type: `AsksResponse`
-    AsksSortedByPrice { collection: String },
+    AsksSortedByPrice {
+        collection: String,
+        limit: Option<u32>,
+    },
     /// Count of all asks
     /// Return type: `AskCountResponse`
     AskCount { collection: String },
@@ -124,7 +127,10 @@ pub enum QueryMsg {
     },
     /// Get all bids for a collection sorted by price
     /// Return type: `BidsResponse`
-    BidsSortedByPrice { collection: String },
+    BidsSortedByPrice {
+        collection: String,
+        limit: Option<u32>,
+    },
     /// Get the config for the contract
     /// Return type: `ParamResponse`
     Params {},
