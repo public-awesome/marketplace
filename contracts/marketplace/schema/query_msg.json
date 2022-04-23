@@ -300,6 +300,81 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Get data for a specific collection bid Return type: `CollectionBidResponse`",
+      "type": "object",
+      "required": [
+        "collection_bid"
+      ],
+      "properties": {
+        "collection_bid": {
+          "type": "object",
+          "required": [
+            "bidder",
+            "collection"
+          ],
+          "properties": {
+            "bidder": {
+              "type": "string"
+            },
+            "collection": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get all collection bids by a bidder Return type: `CollectionBidsResponse`",
+      "type": "object",
+      "required": [
+        "collection_bids_by_bidder"
+      ],
+      "properties": {
+        "collection_bids_by_bidder": {
+          "type": "object",
+          "required": [
+            "bidder"
+          ],
+          "properties": {
+            "bidder": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get all collection bids for a collection sorted by price Return type: `CollectionBidsResponse`",
+      "type": "object",
+      "required": [
+        "collection_bids_sorted_by_price"
+      ],
+      "properties": {
+        "collection_bids_sorted_by_price": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }

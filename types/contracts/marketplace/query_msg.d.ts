@@ -63,4 +63,21 @@ limit?: (number | null)
 params: {
 [k: string]: unknown
 }
+} | {
+collection_bid: {
+bidder: string
+collection: string
+[k: string]: unknown
+}
+} | {
+collection_bids_by_bidder: {
+bidder: string
+[k: string]: unknown
+}
+} | {
+collection_bids_sorted_by_price: {
+collection: string
+limit?: (number | null)
+[k: string]: unknown
+}
 })
