@@ -123,6 +123,18 @@ pub fn execute(
             collection,
             expires,
         } => execute_set_collection_bid(deps, env, info, api.addr_validate(&collection)?, expires),
+        ExecuteMsg::AcceptCollectionBid {
+            collection,
+            token_id,
+            bidder,
+        } => execute_accept_collection_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            api.addr_validate(&bidder)?,
+        ),
     }
 }
 
@@ -491,6 +503,49 @@ pub fn execute_set_collection_bid(
         .add_attribute("collection", collection.to_string())
         .add_attribute("bidder", bidder)
         .add_attribute("bid_price", price.to_string()))
+}
+
+/// Owner of an item in a collection can accept a collection bid which transfers funds as well as a token
+pub fn execute_accept_collection_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+    bidder: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+
+    let bid = collection_bids().load(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )?;
+    if bid.expires <= env.block.time {
+        return Err(ContractError::BidExpired {});
+    }
+
+    collection_bids().remove(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )?;
+
+    // Transfer funds and NFT
+    let msgs = finalize_sale(
+        deps,
+        collection.clone(),
+        token_id,
+        bidder.clone(),
+        info.sender,
+        coin(bid.price.u128(), NATIVE_DENOM),
+    )?;
+
+    Ok(Response::new()
+        .add_attribute("action", "accept_collection_bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("bidder", bidder)
+        .add_messages(msgs))
 }
 
 /// Only governance can update the config

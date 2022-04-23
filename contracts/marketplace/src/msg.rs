@@ -63,6 +63,12 @@ pub enum ExecuteMsg {
         collection: String,
         expires: Timestamp,
     },
+    /// Accept a collection bid
+    AcceptCollectionBid {
+        collection: String,
+        token_id: TokenId,
+        bidder: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
