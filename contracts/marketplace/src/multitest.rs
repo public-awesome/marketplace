@@ -572,6 +572,114 @@ mod tests {
     }
 
     #[test]
+    fn try_query_sorted_asks() {
+        let mut router = custom_mock_app();
+
+        // Setup intial accounts
+        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+
+        // Instantiate and configure contracts
+        let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+        // Mint NFT for creator
+        mint_nft_for_creator(&mut router, &creator, &collection);
+
+        let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
+            token_id: (TOKEN_ID + 1).to_string(),
+            owner: creator.clone().to_string(),
+            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
+            extension: Empty {},
+        });
+        let res = router.execute_contract(
+            creator.clone(),
+            collection.clone(),
+            &mint_for_creator_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
+            token_id: (TOKEN_ID + 2).to_string(),
+            owner: creator.clone().to_string(),
+            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
+            extension: Empty {},
+        });
+        let res = router.execute_contract(
+            creator.clone(),
+            collection.clone(),
+            &mint_for_creator_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // Creator Authorizes NFTs
+        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+            spender: marketplace.to_string(),
+            token_id: TOKEN_ID.to_string(),
+            expires: None,
+        };
+        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
+        assert!(res.is_ok());
+        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+            spender: marketplace.to_string(),
+            token_id: (TOKEN_ID + 1).to_string(),
+            expires: None,
+        };
+        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
+        assert!(res.is_ok());
+        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+            spender: marketplace.to_string(),
+            token_id: (TOKEN_ID + 2).to_string(),
+            expires: None,
+        };
+        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
+        assert!(res.is_ok());
+
+        // An asking price is made by the creator
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+        assert!(res.is_ok());
+        // An asking price is made by the creator
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID + 1,
+            price: coin(109, NATIVE_DENOM),
+            funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+        assert!(res.is_ok());
+        // An asking price is made by the creator
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID + 2,
+            price: coin(111, NATIVE_DENOM),
+            funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+        assert!(res.is_ok());
+
+        let query_asks_msg = QueryMsg::AsksSortedByPrice {
+            collection: collection.to_string(),
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 3);
+        assert_eq!(res.asks[0].price.u128(), 109u128);
+        assert_eq!(res.asks[1].price.u128(), 110u128);
+        assert_eq!(res.asks[2].price.u128(), 111u128);
+    }
+
+    #[test]
     fn try_query_bids() {
         let mut router = custom_mock_app();
         // Setup intial accounts
