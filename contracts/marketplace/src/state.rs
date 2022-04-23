@@ -37,13 +37,13 @@ pub fn ask_key(collection: Addr, token_id: TokenId) -> AskKey {
 /// Defines incides for accessing Asks
 pub struct AskIndicies<'a> {
     pub collection: MultiIndex<'a, Addr, Ask, AskKey>,
-    pub seller: MultiIndex<'a, Addr, Ask, AskKey>,
     pub collection_price: MultiIndex<'a, (Addr, u128), Ask, AskKey>,
+    pub seller: MultiIndex<'a, Addr, Ask, AskKey>,
 }
 
 impl<'a> IndexList<Ask> for AskIndicies<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Ask>> + '_> {
-        let v: Vec<&dyn Index<Ask>> = vec![&self.collection, &self.seller, &self.collection_price];
+        let v: Vec<&dyn Index<Ask>> = vec![&self.collection, &self.collection_price, &self.seller];
         Box::new(v.into_iter())
     }
 }
@@ -51,12 +51,12 @@ impl<'a> IndexList<Ask> for AskIndicies<'a> {
 pub fn asks<'a>() -> IndexedMap<'a, AskKey, Ask, AskIndicies<'a>> {
     let indexes = AskIndicies {
         collection: MultiIndex::new(|d: &Ask| d.collection.clone(), "asks", "asks__collection"),
-        seller: MultiIndex::new(|d: &Ask| d.seller.clone(), "asks", "asks__seller"),
         collection_price: MultiIndex::new(
             |d: &Ask| (d.collection.clone(), d.price.u128()),
             "asks",
             "asks__collection_price",
         ),
+        seller: MultiIndex::new(|d: &Ask| d.seller.clone(), "asks", "asks__seller"),
     };
     IndexedMap::new("asks", indexes)
 }

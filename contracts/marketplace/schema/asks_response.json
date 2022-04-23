@@ -19,6 +19,7 @@
       "type": "string"
     },
     "Ask": {
+      "description": "Represents an ask on the marketplace",
       "type": "object",
       "required": [
         "active",

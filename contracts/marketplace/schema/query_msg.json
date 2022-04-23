@@ -67,6 +67,27 @@
       "additionalProperties": false
     },
     {
+      "description": "Get all asks for a collection sorted by price Return type: `AsksResponse`",
+      "type": "object",
+      "required": [
+        "asks_sorted_by_price"
+      ],
+      "properties": {
+        "asks_sorted_by_price": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Count of all asks Return type: `AskCountResponse`",
       "type": "object",
       "required": [
@@ -224,6 +245,27 @@
               "type": "integer",
               "format": "uint32",
               "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get all bids for a collection sorted by price Return type: `BidsResponse`",
+      "type": "object",
+      "required": [
+        "bids_sorted_by_price"
+      ],
+      "properties": {
+        "bids_sorted_by_price": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
             }
           }
         }
