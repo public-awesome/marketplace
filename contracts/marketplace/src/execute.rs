@@ -142,7 +142,7 @@ pub fn execute(
 pub fn execute_set_ask(
     env: ExecuteEnv,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
     price: Coin,
     funds_recipient: Option<Addr>,
     expires: Timestamp,
@@ -194,7 +194,7 @@ pub fn execute_remove_ask(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -258,7 +258,7 @@ pub fn execute_update_ask(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
     price: Coin,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
@@ -282,7 +282,7 @@ pub fn execute_set_bid(
     env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
@@ -367,7 +367,7 @@ pub fn execute_remove_bid(
     _env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -406,7 +406,7 @@ pub fn execute_accept_bid(
     env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
     bidder: Addr,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
