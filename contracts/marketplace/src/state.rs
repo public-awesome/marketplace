@@ -6,10 +6,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SudoParams {
     pub trading_fee_percent: u32,
-    pub min_ask_expiry: u64,
-    pub max_ask_expiry: u64,
-    pub min_bid_expiry: u64,
-    pub max_bid_expiry: u64,
+    pub ask_expiry: (u64, u64),
+    pub bid_expiry: (u64, u64),
     pub operators: Vec<Addr>,
 }
 
