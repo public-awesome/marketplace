@@ -1,8 +1,10 @@
 use crate::msg::{
-    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionsResponse,
-    CurrentAskResponse, ParamResponse, QueryMsg,
+    AskCountResponse, AsksResponse, BidResponse, Bidder, BidsResponse, CollectionBidResponse,
+    CollectionBidsResponse, CollectionsResponse, CurrentAskResponse, ParamResponse, QueryMsg,
 };
-use crate::state::{ask_key, asks, bids, SUDO_PARAMS};
+use crate::state::{
+    ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, SUDO_PARAMS,
+};
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
 use cw_storage_plus::{Bound, PrefixBound};
 use cw_utils::maybe_addr;
@@ -75,6 +77,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             &query_bids_sorted_by_price(deps, api.addr_validate(&collection)?, limit)?,
         ),
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
+        QueryMsg::CollectionBid { collection, bidder } => to_binary(&query_collection_bid(
+            deps,
+            api.addr_validate(&collection)?,
+            api.addr_validate(&bidder)?,
+        )?),
+        QueryMsg::CollectionBidsSortedByPrice { collection, limit } => to_binary(
+            &query_collection_bids_sorted_by_price(deps, api.addr_validate(&collection)?, limit)?,
+        ),
+        QueryMsg::CollectionBidsByBidder { bidder } => to_binary(&query_collection_bids_by_bidder(
+            deps,
+            api.addr_validate(&bidder)?,
+        )?),
     }
 }
 
@@ -87,7 +101,7 @@ pub fn query_params(deps: Deps) -> StdResult<ParamResponse> {
 pub fn query_asks(
     deps: Deps,
     collection: Addr,
-    start_after: Option<u32>,
+    start_after: Option<TokenId>,
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -181,7 +195,7 @@ pub fn query_listed_collections(
 pub fn query_current_ask(
     deps: Deps,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
 ) -> StdResult<CurrentAskResponse> {
     let ask = asks().may_load(deps.storage, ask_key(collection, token_id))?;
 
@@ -191,7 +205,7 @@ pub fn query_current_ask(
 pub fn query_bid(
     deps: Deps,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
     bidder: Addr,
 ) -> StdResult<BidResponse> {
     let bid = bids().may_load(deps.storage, (collection, token_id, bidder))?;
@@ -214,8 +228,8 @@ pub fn query_bids_by_bidder(deps: Deps, bidder: Addr) -> StdResult<BidsResponse>
 pub fn query_bids(
     deps: Deps,
     collection: Addr,
-    token_id: u32,
-    start_after: Option<String>,
+    token_id: TokenId,
+    start_after: Option<Bidder>,
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -250,4 +264,48 @@ pub fn query_bids_sorted_by_price(
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(BidsResponse { bids })
+}
+
+pub fn query_collection_bid(
+    deps: Deps,
+    collection: Addr,
+    bidder: Addr,
+) -> StdResult<CollectionBidResponse> {
+    let bid = collection_bids().may_load(deps.storage, collection_bid_key(collection, bidder))?;
+
+    Ok(CollectionBidResponse { bid })
+}
+
+pub fn query_collection_bids_sorted_by_price(
+    deps: Deps,
+    collection: Addr,
+    limit: Option<u32>,
+) -> StdResult<CollectionBidsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let bids = collection_bids()
+        .idx
+        .collection_price
+        .sub_prefix(collection)
+        .range(deps.storage, None, None, Order::Ascending)
+        .take(limit)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(CollectionBidsResponse { bids })
+}
+
+pub fn query_collection_bids_by_bidder(
+    deps: Deps,
+    bidder: Addr,
+) -> StdResult<CollectionBidsResponse> {
+    let bids = collection_bids()
+        .idx
+        .bidder
+        .prefix(bidder)
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(CollectionBidsResponse { bids })
 }

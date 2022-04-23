@@ -1,4 +1,4 @@
-use crate::state::{Ask, Bid, SudoParams, TokenId};
+use crate::state::{Ask, Bid, CollectionBid, SudoParams, TokenId};
 use cosmwasm_std::{Addr, Coin, Timestamp};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -84,6 +84,8 @@ pub enum SudoMsg {
     },
 }
 
+pub type Bidder = String;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
@@ -123,17 +125,17 @@ pub enum QueryMsg {
     Bid {
         collection: String,
         token_id: TokenId,
-        bidder: String,
+        bidder: Bidder,
     },
     /// Get all bids by a bidder
     /// Return type: `BidsResponse`
-    BidsByBidder { bidder: String },
+    BidsByBidder { bidder: Bidder },
     /// Get all bids for a specific NFT
     /// Return type: `BidsResponse`
     Bids {
         collection: String,
         token_id: TokenId,
-        start_after: Option<String>,
+        start_after: Option<Bidder>,
         limit: Option<u32>,
     },
     /// Get all bids for a collection sorted by price
@@ -145,6 +147,25 @@ pub enum QueryMsg {
     /// Get the config for the contract
     /// Return type: `ParamResponse`
     Params {},
+    /// Get data for a specific collection bid
+    /// Return type: `CollectionBidResponse`
+    CollectionBid { collection: String, bidder: Bidder },
+    /// Get all collection bids by a bidder
+    /// Return type: `CollectionBidsResponse`
+    CollectionBidsByBidder { bidder: Bidder },
+    /// Get all collection bids for a collection
+    /// Return type: `CollectionBidsResponse`
+    // CollectionBids {
+    //     collection: String,
+    //     start_after: Option<String>,
+    //     limit: Option<u32>,
+    // },
+    /// Get all collection bids for a collection sorted by price
+    /// Return type: `CollectionBidsResponse`
+    CollectionBidsSortedByPrice {
+        collection: String,
+        limit: Option<u32>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -180,4 +201,14 @@ pub struct BidsResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct ParamResponse {
     pub params: SudoParams,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CollectionBidResponse {
+    pub bid: Option<CollectionBid>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CollectionBidsResponse {
+    pub bids: Vec<CollectionBid>,
 }
