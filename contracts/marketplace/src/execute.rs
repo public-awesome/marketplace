@@ -1,6 +1,9 @@
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, SudoMsg};
-use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SudoParams, TokenId, SUDO_PARAMS};
+use crate::state::{
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, SudoParams,
+    TokenId, SUDO_PARAMS,
+};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, Api, BankMsg, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
@@ -116,6 +119,10 @@ pub fn execute(
             token_id,
             price,
         } => execute_update_ask(deps, info, api.addr_validate(&collection)?, token_id, price),
+        ExecuteMsg::SetCollectionBid {
+            collection,
+            expires,
+        } => execute_set_collection_bid(deps, env, info, api.addr_validate(&collection)?, expires),
     }
 }
 
@@ -448,6 +455,42 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             operators,
         ),
     }
+}
+
+/// Place a collection bid (limit order) across an entire collection
+pub fn execute_set_collection_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    expires: Timestamp,
+) -> Result<Response, ContractError> {
+    let price = must_pay(&info, NATIVE_DENOM)?;
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    expires_validate(&env, expires, params.bid_expiry)?;
+
+    let bidder = info.sender;
+    let mut res = Response::new();
+
+    // Check bidder has existing bid, if so remove existing bid
+    if let Some(existing_bid) = collection_bids().may_load(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )? {
+        collection_bids().remove(deps.storage, (collection.clone(), bidder.clone()))?;
+        let exec_refund_bidder = BankMsg::Send {
+            to_address: bidder.to_string(),
+            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
+        };
+        res = res.add_message(exec_refund_bidder)
+    };
+
+    Ok(res
+        .add_attribute("action", "set_collection_bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("bidder", bidder)
+        .add_attribute("bid_price", price.to_string()))
 }
 
 /// Only governance can update the config

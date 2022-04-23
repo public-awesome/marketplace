@@ -58,6 +58,11 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         bidder: String,
     },
+    /// Place a bid (limit order) across an entire collection
+    SetCollectionBid {
+        collection: String,
+        expires: Timestamp,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
