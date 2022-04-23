@@ -158,13 +158,6 @@ pub enum QueryMsg {
     /// Get all collection bids by a bidder
     /// Return type: `CollectionBidsResponse`
     CollectionBidsByBidder { bidder: Bidder },
-    /// Get all collection bids for a collection
-    /// Return type: `CollectionBidsResponse`
-    // CollectionBids {
-    //     collection: String,
-    //     start_after: Option<String>,
-    //     limit: Option<u32>,
-    // },
     /// Get all collection bids for a collection sorted by price
     /// Return type: `CollectionBidsResponse`
     CollectionBidsSortedByPrice {

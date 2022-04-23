@@ -1,6 +1,8 @@
 #![cfg(test)]
 use crate::error::ContractError;
-use crate::msg::{BidsResponse, ExecuteMsg, QueryMsg};
+use crate::msg::{
+    BidsResponse, CollectionBidResponse, CollectionBidsResponse, ExecuteMsg, QueryMsg,
+};
 use cosmwasm_std::{Addr, Empty};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
@@ -1448,6 +1450,38 @@ mod tests {
             &coins(150, NATIVE_DENOM),
         );
         assert!(res.is_ok());
+
+        // test querying a single collection bid
+        let query_collection_bid = QueryMsg::CollectionBid {
+            collection: collection.to_string(),
+            bidder: bidder.to_string(),
+        };
+        let res: CollectionBidResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_collection_bid)
+            .unwrap();
+        assert_eq!(res.bid.unwrap().price.u128(), 150u128);
+
+        // test querying all collection bids by bidder
+        let query_collection_bids = QueryMsg::CollectionBidsByBidder {
+            bidder: bidder.to_string(),
+        };
+        let res: CollectionBidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_collection_bids)
+            .unwrap();
+        assert_eq!(res.bids[0].price.u128(), 150u128);
+
+        // test querying all sorted collection bids by bidder
+        let query_sorted_collection_bids = QueryMsg::CollectionBidsSortedByPrice {
+            collection: collection.to_string(),
+            limit: Some(10),
+        };
+        let res: CollectionBidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_sorted_collection_bids)
+            .unwrap();
+        assert_eq!(res.bids[0].price.u128(), 150u128);
 
         // A collection bid is accepted
         let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
