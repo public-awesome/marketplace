@@ -12,6 +12,12 @@ start_after?: (number | null)
 [k: string]: unknown
 }
 } | {
+asks_sorted_by_price: {
+collection: string
+limit?: (number | null)
+[k: string]: unknown
+}
+} | {
 ask_count: {
 collection: string
 [k: string]: unknown
@@ -45,6 +51,12 @@ collection: string
 limit?: (number | null)
 start_after?: (string | null)
 token_id: number
+[k: string]: unknown
+}
+} | {
+bids_sorted_by_price: {
+collection: string
+limit?: (number | null)
 [k: string]: unknown
 }
 } | {

@@ -20,6 +20,7 @@
       "type": "string"
     },
     "Bid": {
+      "description": "Represents a bid (offer) on the marketplace",
       "type": "object",
       "required": [
         "bidder",

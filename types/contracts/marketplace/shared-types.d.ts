@@ -46,6 +46,9 @@ export type Uint64 = string;
  * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
  */
 export type Uint128 = string;
+/**
+ * Represents an ask on the marketplace
+ */
 export interface Ask {
     [k: string]: unknown;
     active: boolean;
@@ -56,6 +59,9 @@ export interface Ask {
     seller: Addr;
     token_id: number;
 }
+/**
+ * Represents a bid (offer) on the marketplace
+ */
 export interface Bid {
     [k: string]: unknown;
     bidder: Addr;
