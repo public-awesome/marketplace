@@ -15,6 +15,7 @@ pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");
 
 pub type TokenId = u32;
 
+/// Represents an ask on the marketplace
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Ask {
     pub collection: Addr,
@@ -26,8 +27,9 @@ pub struct Ask {
     pub active: bool,
 }
 
+/// Primary key for asks: (collection, token_id)
 pub type AskKey = (Addr, TokenId);
-
+/// Convenience ask key constructor
 pub fn ask_key(collection: Addr, token_id: TokenId) -> AskKey {
     (collection, token_id)
 }
@@ -36,11 +38,12 @@ pub fn ask_key(collection: Addr, token_id: TokenId) -> AskKey {
 pub struct AskIndicies<'a> {
     pub collection: MultiIndex<'a, Addr, Ask, AskKey>,
     pub seller: MultiIndex<'a, Addr, Ask, AskKey>,
+    pub collection_price: MultiIndex<'a, (Addr, u128), Ask, AskKey>,
 }
 
 impl<'a> IndexList<Ask> for AskIndicies<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Ask>> + '_> {
-        let v: Vec<&dyn Index<Ask>> = vec![&self.collection, &self.seller];
+        let v: Vec<&dyn Index<Ask>> = vec![&self.collection, &self.seller, &self.collection_price];
         Box::new(v.into_iter())
     }
 }
@@ -49,10 +52,16 @@ pub fn asks<'a>() -> IndexedMap<'a, AskKey, Ask, AskIndicies<'a>> {
     let indexes = AskIndicies {
         collection: MultiIndex::new(|d: &Ask| d.collection.clone(), "asks", "asks__collection"),
         seller: MultiIndex::new(|d: &Ask| d.seller.clone(), "asks", "asks__seller"),
+        collection_price: MultiIndex::new(
+            |d: &Ask| (d.collection.clone(), d.price.u128()),
+            "asks",
+            "asks__collection_price",
+        ),
     };
     IndexedMap::new("asks", indexes)
 }
 
+/// Represents a bid (offer) on the marketplace
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Bid {
     pub collection: Addr,
@@ -62,9 +71,9 @@ pub struct Bid {
     pub expires: Timestamp,
 }
 
-/// (collection, token_id, bidder) uniquely identifies a bid
+/// Primary key for bids: (collection, token_id, bidder)
 pub type BidKey = (Addr, TokenId, Addr);
-
+/// Convenience bid key constructor
 pub fn bid_key(collection: Addr, token_id: TokenId, bidder: Addr) -> BidKey {
     (collection, token_id, bidder)
 }

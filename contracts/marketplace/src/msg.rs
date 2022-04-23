@@ -89,6 +89,9 @@ pub enum QueryMsg {
         start_after: Option<TokenId>,
         limit: Option<u32>,
     },
+    /// Get all asks for a collection sorted by price
+    /// Return type: `AsksResponse`
+    AsksSortedByPrice { collection: String },
     /// Count of all asks
     /// Return type: `AskCountResponse`
     AskCount { collection: String },

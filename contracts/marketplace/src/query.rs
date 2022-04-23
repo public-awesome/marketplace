@@ -34,6 +34,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
+        QueryMsg::AsksSortedByPrice { collection } => to_binary(&query_asks_sorted_by_price(
+            deps,
+            api.addr_validate(&collection)?,
+        )?),
         QueryMsg::ListedCollections { start_after, limit } => {
             to_binary(&query_listed_collections(deps, start_after, limit)?)
         }
@@ -77,6 +81,7 @@ pub fn query_params(deps: Deps) -> StdResult<ParamResponse> {
 
     Ok(ParamResponse { params: config })
 }
+
 pub fn query_asks(
     deps: Deps,
     collection: Addr,
@@ -103,6 +108,18 @@ pub fn query_asks(
         .collect();
 
     Ok(AsksResponse { asks: asks? })
+}
+
+pub fn query_asks_sorted_by_price(deps: Deps, collection: Addr) -> StdResult<AsksResponse> {
+    let asks = asks()
+        .idx
+        .collection_price
+        .sub_prefix(collection)
+        .range(deps.storage, None, None, Order::Ascending)
+        .map(|res| res.map(|item| item.1))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(AsksResponse { asks })
 }
 
 pub fn query_ask_count(deps: Deps, collection: Addr) -> StdResult<AskCountResponse> {
