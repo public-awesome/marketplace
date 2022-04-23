@@ -6,8 +6,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub trading_fee_percent: u32,
-    pub min_expiry: u64,
-    pub max_expiry: u64,
+    pub min_ask_expiry: u64,
+    pub max_ask_expiry: u64,
+    pub min_bid_expiry: u64,
+    pub max_bid_expiry: u64,
     /// Operators are entites that are responsible for maintaining the active state of Asks.
     /// They listen to NFT transfer events, and update the active state of Asks.
     pub operators: Vec<String>,
@@ -67,8 +69,10 @@ pub enum SudoMsg {
     /// Can only be called by governance
     UpdateParams {
         trading_fee_percent: Option<u32>,
-        min_expiry: Option<u64>,
-        max_expiry: Option<u64>,
+        min_ask_expiry: Option<u64>,
+        max_ask_expiry: Option<u64>,
+        min_bid_expiry: Option<u64>,
+        max_bid_expiry: Option<u64>,
         operators: Option<Vec<String>>,
     },
 }

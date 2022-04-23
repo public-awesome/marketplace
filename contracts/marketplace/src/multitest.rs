@@ -61,8 +61,10 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_percent: TRADING_FEE_PERCENT,
-            min_expiry: MIN_EXPIRY,
-            max_expiry: MAX_EXPIRY,
+            min_ask_expiry: MIN_EXPIRY,
+            max_ask_expiry: MAX_EXPIRY,
+            min_bid_expiry: MIN_EXPIRY,
+            max_bid_expiry: MAX_EXPIRY,
         };
         let nft_marketplace_addr = router
             .instantiate_contract(
@@ -1261,8 +1263,10 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_percent: TRADING_FEE_PERCENT,
-            min_expiry: MIN_EXPIRY,
-            max_expiry: MAX_EXPIRY,
+            min_ask_expiry: MIN_EXPIRY,
+            max_ask_expiry: MAX_EXPIRY,
+            min_bid_expiry: MIN_EXPIRY,
+            max_bid_expiry: MAX_EXPIRY,
         };
         let nft_marketplace_addr = router
             .instantiate_contract(
@@ -1397,8 +1401,10 @@ mod tests {
 
         let update_config_msg = SudoMsg::UpdateParams {
             trading_fee_percent: Some(5),
-            min_expiry: None,
-            max_expiry: None,
+            min_ask_expiry: None,
+            max_ask_expiry: None,
+            min_bid_expiry: None,
+            max_bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
         };
         let res = router.wasm_sudo(marketplace.clone(), &update_config_msg);
