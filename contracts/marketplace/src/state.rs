@@ -34,7 +34,7 @@ pub fn ask_key(collection: Addr, token_id: TokenId) -> AskKey {
     (collection, token_id)
 }
 
-/// Defines incides for accessing Asks
+/// Defines indices for accessing Asks
 pub struct AskIndicies<'a> {
     pub collection: MultiIndex<'a, Addr, Ask, AskKey>,
     pub collection_price: MultiIndex<'a, (Addr, u128), Ask, AskKey>,
