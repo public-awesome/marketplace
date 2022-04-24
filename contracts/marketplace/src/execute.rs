@@ -1,12 +1,13 @@
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, SudoMsg};
+use crate::helpers::map_validate;
+use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, HOOKS, SUDO_PARAMS,
+    SudoParams, TokenId, SUDO_PARAMS,
 };
 use cosmwasm_std::{
-    coin, entry_point, to_binary, Addr, Api, BankMsg, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
+    coin, entry_point, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo,
+    Order, StdResult, Storage, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -540,69 +541,6 @@ pub fn execute_accept_collection_bid(
         .add_messages(msgs))
 }
 
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
-    let api = deps.api;
-
-    match msg {
-        SudoMsg::UpdateParams {
-            trading_fee_percent,
-            ask_expiry,
-            bid_expiry,
-            operators,
-        } => sudo_update_params(
-            deps,
-            env,
-            trading_fee_percent,
-            ask_expiry,
-            bid_expiry,
-            operators,
-        ),
-        SudoMsg::AddHook { hook } => sudo_add_hook(deps, env, api.addr_validate(&hook)?),
-        SudoMsg::RemoveHook { hook } => sudo_remove_hook(deps, api.addr_validate(&hook)?),
-    }
-}
-
-/// Only governance can update the config
-pub fn sudo_update_params(
-    deps: DepsMut,
-    _env: Env,
-    trading_fee_percent: Option<u32>,
-    ask_expiry: Option<(u64, u64)>,
-    bid_expiry: Option<(u64, u64)>,
-    operators: Option<Vec<String>>,
-) -> Result<Response, ContractError> {
-    let mut params = SUDO_PARAMS.load(deps.storage)?;
-
-    params.trading_fee_percent = trading_fee_percent.unwrap_or(params.trading_fee_percent);
-    params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
-    params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
-    if let Some(operators) = operators {
-        params.operators = map_validate(deps.api, &operators)?;
-    }
-    SUDO_PARAMS.save(deps.storage, &params)?;
-
-    Ok(Response::new().add_attribute("action", "update_params"))
-}
-
-pub fn sudo_add_hook(deps: DepsMut, _env: Env, hook: Addr) -> Result<Response, ContractError> {
-    HOOKS.add_hook(deps.storage, hook.clone())?;
-
-    let res = Response::new()
-        .add_attribute("action", "add_hook")
-        .add_attribute("hook", hook);
-    Ok(res)
-}
-
-pub fn sudo_remove_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
-    HOOKS.remove_hook(deps.storage, hook.clone())?;
-
-    let res = Response::new()
-        .add_attribute("action", "remove_hook")
-        .add_attribute("hook", hook);
-    Ok(res)
-}
-
 /// Checks to enfore only nft owner can call
 fn only_owner(
     deps: Deps,
@@ -727,11 +665,4 @@ fn price_validate(price: &Coin) -> Result<(), ContractError> {
     }
 
     Ok(())
-}
-
-fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
-    addresses
-        .iter()
-        .map(|addr| api.addr_validate(addr))
-        .collect()
 }
