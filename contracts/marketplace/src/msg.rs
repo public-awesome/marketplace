@@ -1,5 +1,5 @@
 use crate::state::{Ask, Bid, CollectionBid, SudoParams, TokenId};
-use cosmwasm_std::{Addr, Coin, Timestamp};
+use cosmwasm_std::{to_binary, Addr, Binary, Coin, CosmosMsg, StdResult, Timestamp, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -216,4 +216,46 @@ pub struct CollectionBidResponse {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CollectionBidsResponse {
     pub bids: Vec<CollectionBid>,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct SaleFinalizedHookMsg {
+    pub collection: Collection,
+    pub token_id: TokenId,
+    pub seller: Seller,
+}
+
+impl SaleFinalizedHookMsg {
+    pub fn new(collection: Collection, token_id: TokenId, seller: Seller) -> Self {
+        SaleFinalizedHookMsg {
+            collection,
+            token_id,
+            seller,
+        }
+    }
+
+    /// serializes the message
+    pub fn into_binary(self) -> StdResult<Binary> {
+        let msg = SaleFinalizedExecuteMsg::SaleFinalizedHook(self);
+        to_binary(&msg)
+    }
+
+    /// creates a cosmos_msg sending this struct to the named contract
+    pub fn into_cosmos_msg<T: Into<String>>(self, contract_addr: T) -> StdResult<CosmosMsg> {
+        let msg = self.into_binary()?;
+        let execute = WasmMsg::Execute {
+            contract_addr: contract_addr.into(),
+            msg,
+            funds: vec![],
+        };
+        Ok(execute.into())
+    }
+}
+
+// This is just a helper to properly serialize the above message
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+enum SaleFinalizedExecuteMsg {
+    SaleFinalizedHook(SaleFinalizedHookMsg),
 }
