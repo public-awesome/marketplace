@@ -1,6 +1,6 @@
 use cosmwasm_std::StdError;
-use cw_controllers::HookError;
 use cw_utils::PaymentError;
+use sg_controllers::HookError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]

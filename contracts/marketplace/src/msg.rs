@@ -1,7 +1,8 @@
 use crate::state::{Ask, Bid, CollectionBid, SudoParams, TokenId};
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, CosmosMsg, StdResult, Timestamp, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use sg_std::CosmosMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {

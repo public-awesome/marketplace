@@ -435,7 +435,7 @@ pub fn execute_accept_bid(
     bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
     // Transfer funds and NFT
-    let msgs = finalize_sale(
+    let (msgs, submsgs) = finalize_sale(
         deps,
         collection.clone(),
         token_id,
@@ -449,7 +449,8 @@ pub fn execute_accept_bid(
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
-        .add_messages(msgs))
+        .add_messages(msgs)
+        .add_submessages(submsgs))
 }
 
 /// Place a collection bid (limit order) across an entire collection
@@ -525,7 +526,7 @@ pub fn execute_accept_collection_bid(
     )?;
 
     // Transfer funds and NFT
-    let msgs = finalize_sale(
+    let (msgs, submsgs) = finalize_sale(
         deps,
         collection.clone(),
         token_id,
@@ -539,7 +540,8 @@ pub fn execute_accept_collection_bid(
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
-        .add_messages(msgs))
+        .add_messages(msgs)
+        .add_submessages(submsgs))
 }
 
 /// Checks to enfore only nft owner can call
@@ -576,9 +578,6 @@ fn finalize_sale(
         recipient: recipient.to_string(),
     };
 
-    // TODO: figure out how to use helper
-    // Cw721Contract(collection).call(cw721_transfer_msg)?;
-
     let exec_cw721_transfer = WasmMsg::Execute {
         contract_addr: collection.to_string(),
         msg: to_binary(&cw721_transfer_msg)?,
@@ -593,7 +592,7 @@ fn finalize_sale(
         seller: "seller".to_string(),
         buyer: recipient.to_string(),
     };
-    // TODO: need custom `prepare_hooks` that returns a Stargaze `SubMsg`
+
     let submsg = HOOKS.prepare_hooks(deps.storage, |h| {
         msg.clone().into_cosmos_msg(h).map(SubMsg::new)
     })?;
