@@ -344,6 +344,7 @@ pub fn execute_set_bid(
             deps,
             collection.clone(),
             token_id,
+            owner.clone(),
             bidder.clone(),
             ask.funds_recipient.unwrap_or(owner),
             coin(ask.price.u128(), NATIVE_DENOM),
@@ -439,6 +440,7 @@ pub fn execute_accept_bid(
         deps,
         collection.clone(),
         token_id,
+        info.sender.clone(),
         bidder.clone(),
         ask.funds_recipient.unwrap_or(info.sender),
         coin(bid.price.u128(), NATIVE_DENOM),
@@ -530,6 +532,7 @@ pub fn execute_accept_collection_bid(
         deps,
         collection.clone(),
         token_id,
+        info.sender.clone(),
         bidder.clone(),
         info.sender,
         coin(bid.price.u128(), NATIVE_DENOM),
@@ -564,6 +567,7 @@ fn finalize_sale(
     deps: DepsMut,
     collection: Addr,
     token_id: u32,
+    seller: Addr,
     recipient: Addr,
     funds_recipient: Addr,
     price: Coin,
@@ -589,7 +593,7 @@ fn finalize_sale(
     let msg = SaleFinalizedHookMsg {
         collection: collection.to_string(),
         token_id,
-        seller: "seller".to_string(),
+        seller: seller.to_string(),
         buyer: recipient.to_string(),
     };
 
