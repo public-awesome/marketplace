@@ -82,6 +82,10 @@ pub enum SudoMsg {
         bid_expiry: Option<(u64, u64)>,
         operators: Option<Vec<String>>,
     },
+    /// Add a new hook to be informed of all trades
+    AddHook { hook: String },
+    /// Remove a hook
+    RemoveHook { hook: String },
 }
 
 pub type Collection = String;

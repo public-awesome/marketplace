@@ -1,4 +1,5 @@
 use cosmwasm_std::StdError;
+use cw_controllers::HookError;
 use cw_utils::PaymentError;
 use thiserror::Error;
 
@@ -42,4 +43,7 @@ pub enum ContractError {
 
     #[error("{0}")]
     BidPaymentError(#[from] PaymentError),
+
+    #[error("{0}")]
+    Hook(#[from] HookError),
 }

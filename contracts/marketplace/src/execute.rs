@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, SudoMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, SUDO_PARAMS,
+    SudoParams, TokenId, HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, Api, BankMsg, Coin, Decimal, Deps, DepsMut, Env,
@@ -542,6 +542,8 @@ pub fn execute_accept_collection_bid(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
+    let api = deps.api;
+
     match msg {
         SudoMsg::UpdateParams {
             trading_fee_percent,
@@ -556,6 +558,8 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             bid_expiry,
             operators,
         ),
+        SudoMsg::AddHook { hook } => sudo_add_hook(deps, env, api.addr_validate(&hook)?),
+        SudoMsg::RemoveHook { hook } => sudo_remove_hook(deps, api.addr_validate(&hook)?),
     }
 }
 
@@ -579,6 +583,24 @@ pub fn sudo_update_params(
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "update_params"))
+}
+
+pub fn sudo_add_hook(deps: DepsMut, _env: Env, hook: Addr) -> Result<Response, ContractError> {
+    HOOKS.add_hook(deps.storage, hook.clone())?;
+
+    let res = Response::new()
+        .add_attribute("action", "add_hook")
+        .add_attribute("hook", hook);
+    Ok(res)
+}
+
+pub fn sudo_remove_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
+    HOOKS.remove_hook(deps.storage, hook.clone())?;
+
+    let res = Response::new()
+        .add_attribute("action", "remove_hook")
+        .add_attribute("hook", hook);
+    Ok(res)
 }
 
 /// Checks to enfore only nft owner can call
