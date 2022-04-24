@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{ExecuteMsg, InstantiateMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, SaleFinalizedHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, SUDO_PARAMS,
+    SudoParams, TokenId, HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo,
@@ -15,7 +15,7 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{must_pay, nonpayable};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{CosmosMsg, Response, NATIVE_DENOM};
+use sg_std::{CosmosMsg, Response, SubMsg, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -340,7 +340,7 @@ pub fn execute_set_bid(
         let owner = deps.api.addr_validate(&cw721_res.owner)?;
 
         // Include messages needed to finalize nft transfer and payout
-        let msgs = finalize_sale(
+        let (msgs, submsgs) = finalize_sale(
             deps,
             collection.clone(),
             token_id,
@@ -351,7 +351,8 @@ pub fn execute_set_bid(
 
         res = res
             .add_attribute("action", "sale_finalized")
-            .add_messages(msgs);
+            .add_messages(msgs)
+            .add_submessages(submsgs);
     }
 
     Ok(res
@@ -564,7 +565,7 @@ fn finalize_sale(
     recipient: Addr,
     funds_recipient: Addr,
     price: Coin,
-) -> StdResult<Vec<CosmosMsg>> {
+) -> StdResult<(Vec<CosmosMsg>, Vec<SubMsg>)> {
     // Payout bid
     let mut msgs: Vec<CosmosMsg> =
         payout(deps.as_ref(), collection.clone(), price, funds_recipient)?;
@@ -586,7 +587,18 @@ fn finalize_sale(
 
     msgs.append(&mut vec![exec_cw721_transfer.into()]);
 
-    Ok(msgs)
+    let msg = SaleFinalizedHookMsg {
+        collection: collection.to_string(),
+        token_id,
+        seller: "seller".to_string(),
+        buyer: recipient.to_string(),
+    };
+    // TODO: need custom `prepare_hooks` that returns a Stargaze `SubMsg`
+    let submsg = HOOKS.prepare_hooks(deps.storage, |h| {
+        msg.clone().into_cosmos_msg(h).map(SubMsg::new)
+    })?;
+
+    Ok((msgs, submsg))
 }
 
 /// Payout a bid

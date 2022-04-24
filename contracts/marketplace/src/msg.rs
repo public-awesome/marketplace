@@ -221,17 +221,19 @@ pub struct CollectionBidsResponse {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct SaleFinalizedHookMsg {
-    pub collection: Collection,
-    pub token_id: TokenId,
-    pub seller: Seller,
+    pub collection: String,
+    pub token_id: u32,
+    pub seller: String,
+    pub buyer: String,
 }
 
 impl SaleFinalizedHookMsg {
-    pub fn new(collection: Collection, token_id: TokenId, seller: Seller) -> Self {
+    pub fn new(collection: String, token_id: u32, seller: String, buyer: String) -> Self {
         SaleFinalizedHookMsg {
             collection,
             token_id,
             seller,
+            buyer,
         }
     }
 
