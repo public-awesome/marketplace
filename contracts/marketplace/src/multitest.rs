@@ -1494,12 +1494,7 @@ mod tests {
         };
         // Error because the "hook" contract is not deployed
         let _err = router
-            .execute_contract(
-                bidder.clone(),
-                marketplace,
-                &set_bid_msg,
-                &coins(100, NATIVE_DENOM),
-            )
+            .execute_contract(bidder, marketplace, &set_bid_msg, &coins(100, NATIVE_DENOM))
             .unwrap_err();
 
         // If the bid is accepted, the sale would be finalized
