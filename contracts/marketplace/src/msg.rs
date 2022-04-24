@@ -168,6 +168,9 @@ pub enum QueryMsg {
         collection: Collection,
         limit: Option<u32>,
     },
+    /// Show all registered hooks
+    /// Return type: `HooksResponse`
+    Hooks {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
