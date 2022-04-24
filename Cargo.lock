@@ -633,9 +633,9 @@ dependencies = [
 
 [[package]]
 name = "sg-controllers"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e3cb8c8181b876427355252453c44aff1f83111be9af1981a6b3e151305e7931"
+checksum = "8139d4ec93b30e68b5fe598076bf80bc778e950e1b1af6e7cd7a38da439bbc79"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus",

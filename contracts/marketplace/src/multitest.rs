@@ -7,6 +7,7 @@ use cosmwasm_std::{Addr, Empty};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
 use cw_multi_test::{BankSudo, Contract, ContractWrapper, Executor, SudoMsg as CwSudoMsg};
+use sg_controllers::HooksResponse;
 use sg_multi_test::StargazeApp;
 use sg_std::StargazeMsgWrapper;
 
@@ -1414,6 +1415,40 @@ mod tests {
         assert_eq!(res.params.trading_fee_percent, 5);
         assert_eq!(res.params.ask_expiry, (1, 2));
         assert_eq!(res.params.operators, vec!["operator".to_string()]);
+    }
+
+    #[test]
+    fn try_add_remove_hooks() {
+        let mut router = custom_mock_app();
+        // Setup intial accounts
+        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+        // Instantiate and configure contracts
+        let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+        let add_hook_msg = SudoMsg::AddHook {
+            hook: "hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+        assert!(res.is_ok());
+
+        let query_hooks_msg = QueryMsg::Hooks {};
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
+            .unwrap();
+        assert_eq!(res.hooks, vec!["hook".to_string()]);
+
+        let remove_hook_msg = SudoMsg::RemoveHook {
+            hook: "hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
+        assert!(res.is_ok());
+
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_hooks_msg)
+            .unwrap();
+        assert!(res.hooks.is_empty());
     }
 
     #[test]

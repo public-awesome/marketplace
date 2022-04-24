@@ -204,5 +204,3 @@ fn try_set_ask() {
     .unwrap_err();
     assert_eq!(err, ContractError::InvalidPrice {});
 }
-
-// TODO: Add hook tests
