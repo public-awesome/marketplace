@@ -375,6 +375,19 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Show all registered hooks Return type: `HooksResponse`",
+      "type": "object",
+      "required": [
+        "hooks"
+      ],
+      "properties": {
+        "hooks": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }

@@ -80,4 +80,8 @@ collection: string
 limit?: (number | null)
 [k: string]: unknown
 }
+} | {
+hooks: {
+[k: string]: unknown
+}
 })
