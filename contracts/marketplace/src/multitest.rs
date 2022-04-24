@@ -1425,7 +1425,7 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let add_hook_msg = SudoMsg::AddHook {
+        let add_hook_msg = SudoMsg::AddSaleFinalizedHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
@@ -1438,7 +1438,7 @@ mod tests {
             .unwrap();
         assert_eq!(res.hooks, vec!["hook".to_string()]);
 
-        let remove_hook_msg = SudoMsg::RemoveHook {
+        let remove_hook_msg = SudoMsg::RemoveSaleFinalizedHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
@@ -1459,7 +1459,7 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
-        let add_hook_msg = SudoMsg::AddHook {
+        let add_hook_msg = SudoMsg::AddSaleFinalizedHook {
             hook: "hook".to_string(),
         };
         let _res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);

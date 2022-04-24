@@ -84,9 +84,9 @@ pub enum SudoMsg {
         operators: Option<Vec<String>>,
     },
     /// Add a new hook to be informed of all trades
-    AddHook { hook: String },
+    AddSaleFinalizedHook { hook: String },
     /// Remove a hook
-    RemoveHook { hook: String },
+    RemoveSaleFinalizedHook { hook: String },
 }
 
 pub type Collection = String;

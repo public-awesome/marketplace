@@ -23,8 +23,12 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             bid_expiry,
             operators,
         ),
-        SudoMsg::AddHook { hook } => sudo_add_hook(deps, env, api.addr_validate(&hook)?),
-        SudoMsg::RemoveHook { hook } => sudo_remove_hook(deps, api.addr_validate(&hook)?),
+        SudoMsg::AddSaleFinalizedHook { hook } => {
+            sudo_add_hook(deps, env, api.addr_validate(&hook)?)
+        }
+        SudoMsg::RemoveSaleFinalizedHook { hook } => {
+            sudo_remove_hook(deps, api.addr_validate(&hook)?)
+        }
     }
 }
 
