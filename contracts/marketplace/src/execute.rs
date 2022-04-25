@@ -3,7 +3,7 @@ use crate::helpers::map_validate;
 use crate::msg::{ExecuteMsg, InstantiateMsg, SaleFinalizedHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, HOOKS, SUDO_PARAMS,
+    SudoParams, TokenId, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo,
@@ -597,7 +597,7 @@ fn finalize_sale(
         buyer: recipient.to_string(),
     };
 
-    let submsg = HOOKS.prepare_hooks(deps.storage, |h| {
+    let submsg = SALE_FINALIZED_HOOKS.prepare_hooks(deps.storage, |h| {
         msg.clone().into_cosmos_msg(h).map(SubMsg::new)
     })?;
 
