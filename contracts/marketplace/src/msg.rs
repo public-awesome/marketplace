@@ -169,9 +169,9 @@ pub enum QueryMsg {
         collection: Collection,
         limit: Option<u32>,
     },
-    /// Show all registered hooks
+    /// Show all registered sale finalized hooks
     /// Return type: `HooksResponse`
-    Hooks {},
+    SaleFinalizedHooks {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

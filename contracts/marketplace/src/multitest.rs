@@ -1431,7 +1431,7 @@ mod tests {
         let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
         assert!(res.is_ok());
 
-        let query_hooks_msg = QueryMsg::Hooks {};
+        let query_hooks_msg = QueryMsg::SaleFinalizedHooks {};
         let res: HooksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &query_hooks_msg)

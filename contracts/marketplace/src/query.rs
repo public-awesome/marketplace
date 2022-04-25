@@ -91,7 +91,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps,
             api.addr_validate(&bidder)?,
         )?),
-        QueryMsg::Hooks {} => to_binary(&SALE_FINALIZED_HOOKS.query_hooks(deps)?),
+        QueryMsg::SaleFinalizedHooks {} => to_binary(&SALE_FINALIZED_HOOKS.query_hooks(deps)?),
     }
 }
 
