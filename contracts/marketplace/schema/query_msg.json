@@ -377,13 +377,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Show all registered hooks Return type: `HooksResponse`",
+      "description": "Show all registered sale finalized hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [
-        "hooks"
+        "sale_finalized_hooks"
       ],
       "properties": {
-        "hooks": {
+        "sale_finalized_hooks": {
           "type": "object"
         }
       },
