@@ -342,7 +342,7 @@ pub fn execute_set_bid(
         let owner = deps.api.addr_validate(&cw721_res.owner)?;
 
         // Include messages needed to finalize nft transfer and payout
-        let (msgs, submsgs) = finalize_sale(
+        let (msgs, _) = finalize_sale(
             deps,
             collection.clone(),
             token_id,
@@ -354,8 +354,8 @@ pub fn execute_set_bid(
 
         res = res
             .add_attribute("action", "sale_finalized")
-            .add_messages(msgs)
-            .add_submessages(submsgs);
+            .add_messages(msgs);
+            // .add_submessages(submsgs);
     }
 
     Ok(res
