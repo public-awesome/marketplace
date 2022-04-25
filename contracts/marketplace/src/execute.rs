@@ -5,9 +5,11 @@ use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
     SudoParams, TokenId, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, entry_point, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo,
-    Order, StdResult, Storage, Timestamp, WasmMsg,
+    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
+    StdResult, Storage, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
