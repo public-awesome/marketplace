@@ -7,6 +7,7 @@ use cosmwasm_std::{Addr, Empty};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
 use cw_multi_test::{BankSudo, Contract, ContractWrapper, Executor, SudoMsg as CwSudoMsg};
+use sg_controllers::HooksResponse;
 use sg_multi_test::StargazeApp;
 use sg_std::StargazeMsgWrapper;
 
@@ -20,7 +21,7 @@ pub fn contract_nft_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
         crate::execute::instantiate,
         crate::query::query,
     )
-    .with_sudo(crate::execute::sudo);
+    .with_sudo(crate::sudo::sudo);
     Box::new(contract)
 }
 
@@ -1414,6 +1415,90 @@ mod tests {
         assert_eq!(res.params.trading_fee_percent, 5);
         assert_eq!(res.params.ask_expiry, (1, 2));
         assert_eq!(res.params.operators, vec!["operator".to_string()]);
+    }
+
+    #[test]
+    fn try_add_remove_hooks() {
+        let mut router = custom_mock_app();
+        // Setup intial accounts
+        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+        // Instantiate and configure contracts
+        let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+        let add_hook_msg = SudoMsg::AddSaleFinalizedHook {
+            hook: "hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+        assert!(res.is_ok());
+
+        let query_hooks_msg = QueryMsg::SaleFinalizedHooks {};
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
+            .unwrap();
+        assert_eq!(res.hooks, vec!["hook".to_string()]);
+
+        let remove_hook_msg = SudoMsg::RemoveSaleFinalizedHook {
+            hook: "hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
+        assert!(res.is_ok());
+
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_hooks_msg)
+            .unwrap();
+        assert!(res.hooks.is_empty());
+    }
+
+    #[test]
+    fn try_hook_was_run() {
+        let mut router = custom_mock_app();
+        // Setup intial accounts
+        let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+        // Instantiate and configure contracts
+        let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+        let add_hook_msg = SudoMsg::AddSaleFinalizedHook {
+            hook: "hook".to_string(),
+        };
+        let _res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+
+        // Mint NFT for creator
+        mint_nft_for_creator(&mut router, &creator, &collection);
+
+        // An ask is made by the creator, but fails because NFT is not authorized
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(100, NATIVE_DENOM),
+            funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        // Creator Authorizes NFT
+        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+            spender: marketplace.to_string(),
+            token_id: TOKEN_ID.to_string(),
+            expires: None,
+        };
+        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
+        assert!(res.is_ok());
+        // Now set_ask succeeds
+        let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+        assert!(res.is_ok());
+        // Bidder makes bid that meets the ask criteria
+        let set_bid_msg = ExecuteMsg::SetBid {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        // Error because the "hook" contract is not deployed
+        let _err = router
+            .execute_contract(bidder, marketplace, &set_bid_msg, &coins(100, NATIVE_DENOM))
+            .unwrap_err();
+
+        // If the bid is accepted, the sale would be finalized
+        // assert_eq!("sale_finalized", res.events[1].attributes[1].value);
     }
 
     #[test]

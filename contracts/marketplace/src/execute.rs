@@ -1,12 +1,13 @@
 use crate::error::ContractError;
-use crate::msg::{ExecuteMsg, InstantiateMsg, SudoMsg};
+use crate::helpers::map_validate;
+use crate::msg::{ExecuteMsg, InstantiateMsg, SaleFinalizedHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, SUDO_PARAMS,
+    SudoParams, TokenId, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{
-    coin, entry_point, to_binary, Addr, Api, BankMsg, Coin, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
+    coin, entry_point, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo,
+    Order, StdResult, Storage, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -14,7 +15,7 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{must_pay, nonpayable};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{CosmosMsg, Response, NATIVE_DENOM};
+use sg_std::{CosmosMsg, Response, SubMsg, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -339,10 +340,11 @@ pub fn execute_set_bid(
         let owner = deps.api.addr_validate(&cw721_res.owner)?;
 
         // Include messages needed to finalize nft transfer and payout
-        let msgs = finalize_sale(
+        let (msgs, submsgs) = finalize_sale(
             deps,
             collection.clone(),
             token_id,
+            owner.clone(),
             bidder.clone(),
             ask.funds_recipient.unwrap_or(owner),
             coin(ask.price.u128(), NATIVE_DENOM),
@@ -350,7 +352,8 @@ pub fn execute_set_bid(
 
         res = res
             .add_attribute("action", "sale_finalized")
-            .add_messages(msgs);
+            .add_messages(msgs)
+            .add_submessages(submsgs);
     }
 
     Ok(res
@@ -433,10 +436,11 @@ pub fn execute_accept_bid(
     bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
     // Transfer funds and NFT
-    let msgs = finalize_sale(
+    let (msgs, submsgs) = finalize_sale(
         deps,
         collection.clone(),
         token_id,
+        info.sender.clone(),
         bidder.clone(),
         ask.funds_recipient.unwrap_or(info.sender),
         coin(bid.price.u128(), NATIVE_DENOM),
@@ -447,7 +451,8 @@ pub fn execute_accept_bid(
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
-        .add_messages(msgs))
+        .add_messages(msgs)
+        .add_submessages(submsgs))
 }
 
 /// Place a collection bid (limit order) across an entire collection
@@ -523,10 +528,11 @@ pub fn execute_accept_collection_bid(
     )?;
 
     // Transfer funds and NFT
-    let msgs = finalize_sale(
+    let (msgs, submsgs) = finalize_sale(
         deps,
         collection.clone(),
         token_id,
+        info.sender.clone(),
         bidder.clone(),
         info.sender,
         coin(bid.price.u128(), NATIVE_DENOM),
@@ -537,48 +543,8 @@ pub fn execute_accept_collection_bid(
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
-        .add_messages(msgs))
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
-    match msg {
-        SudoMsg::UpdateParams {
-            trading_fee_percent,
-            ask_expiry,
-            bid_expiry,
-            operators,
-        } => sudo_update_params(
-            deps,
-            env,
-            trading_fee_percent,
-            ask_expiry,
-            bid_expiry,
-            operators,
-        ),
-    }
-}
-
-/// Only governance can update the config
-pub fn sudo_update_params(
-    deps: DepsMut,
-    _env: Env,
-    trading_fee_percent: Option<u32>,
-    ask_expiry: Option<(u64, u64)>,
-    bid_expiry: Option<(u64, u64)>,
-    operators: Option<Vec<String>>,
-) -> Result<Response, ContractError> {
-    let mut params = SUDO_PARAMS.load(deps.storage)?;
-
-    params.trading_fee_percent = trading_fee_percent.unwrap_or(params.trading_fee_percent);
-    params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
-    params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
-    if let Some(operators) = operators {
-        params.operators = map_validate(deps.api, &operators)?;
-    }
-    SUDO_PARAMS.save(deps.storage, &params)?;
-
-    Ok(Response::new().add_attribute("action", "update_params"))
+        .add_messages(msgs)
+        .add_submessages(submsgs))
 }
 
 /// Checks to enfore only nft owner can call
@@ -601,10 +567,11 @@ fn finalize_sale(
     deps: DepsMut,
     collection: Addr,
     token_id: u32,
+    seller: Addr,
     recipient: Addr,
     funds_recipient: Addr,
     price: Coin,
-) -> StdResult<Vec<CosmosMsg>> {
+) -> StdResult<(Vec<CosmosMsg>, Vec<SubMsg>)> {
     // Payout bid
     let mut msgs: Vec<CosmosMsg> =
         payout(deps.as_ref(), collection.clone(), price, funds_recipient)?;
@@ -615,9 +582,6 @@ fn finalize_sale(
         recipient: recipient.to_string(),
     };
 
-    // TODO: figure out how to use helper
-    // Cw721Contract(collection).call(cw721_transfer_msg)?;
-
     let exec_cw721_transfer = WasmMsg::Execute {
         contract_addr: collection.to_string(),
         msg: to_binary(&cw721_transfer_msg)?,
@@ -626,7 +590,18 @@ fn finalize_sale(
 
     msgs.append(&mut vec![exec_cw721_transfer.into()]);
 
-    Ok(msgs)
+    let msg = SaleFinalizedHookMsg {
+        collection: collection.to_string(),
+        token_id,
+        seller: seller.to_string(),
+        buyer: recipient.to_string(),
+    };
+
+    let submsg = SALE_FINALIZED_HOOKS.prepare_hooks(deps.storage, |h| {
+        msg.clone().into_cosmos_msg(h).map(SubMsg::new)
+    })?;
+
+    Ok((msgs, submsg))
 }
 
 /// Payout a bid
@@ -705,11 +680,4 @@ fn price_validate(price: &Coin) -> Result<(), ContractError> {
     }
 
     Ok(())
-}
-
-fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
-    addresses
-        .iter()
-        .map(|addr| api.addr_validate(addr))
-        .collect()
 }

@@ -2,6 +2,7 @@ use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
+use sg_controllers::Hooks;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SudoParams {
@@ -12,6 +13,8 @@ pub struct SudoParams {
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");
+
+pub const SALE_FINALIZED_HOOKS: Hooks = Hooks::new("sale-finalized-hooks");
 
 pub type TokenId = u32;
 

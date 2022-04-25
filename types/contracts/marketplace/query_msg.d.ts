@@ -80,4 +80,8 @@ collection: string
 limit?: (number | null)
 [k: string]: unknown
 }
+} | {
+sale_finalized_hooks: {
+[k: string]: unknown
+}
 })

@@ -632,6 +632,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "sg-controllers"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8139d4ec93b30e68b5fe598076bf80bc778e950e1b1af6e7cd7a38da439bbc79"
+dependencies = [
+ "cosmwasm-std",
+ "cw-storage-plus",
+ "schemars",
+ "serde",
+ "sg-std",
+ "thiserror",
+]
+
+[[package]]
 name = "sg-marketplace"
 version = "0.1.1"
 dependencies = [
@@ -647,6 +661,7 @@ dependencies = [
  "cw721-base",
  "schemars",
  "serde",
+ "sg-controllers",
  "sg-multi-test",
  "sg-std",
  "sg1",

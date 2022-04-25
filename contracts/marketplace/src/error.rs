@@ -1,5 +1,6 @@
 use cosmwasm_std::StdError;
 use cw_utils::PaymentError;
+use sg_controllers::HookError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
@@ -42,4 +43,7 @@ pub enum ContractError {
 
     #[error("{0}")]
     BidPaymentError(#[from] PaymentError),
+
+    #[error("{0}")]
+    Hook(#[from] HookError),
 }

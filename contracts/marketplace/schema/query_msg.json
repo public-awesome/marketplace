@@ -375,6 +375,19 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Show all registered sale finalized hooks Return type: `HooksResponse`",
+      "type": "object",
+      "required": [
+        "sale_finalized_hooks"
+      ],
+      "properties": {
+        "sale_finalized_hooks": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }
