@@ -1,6 +1,9 @@
 use crate::error::ContractError;
 use crate::msg::{ExecuteMsg, InstantiateMsg, SudoMsg};
-use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SudoParams, TokenId, SUDO_PARAMS};
+use crate::state::{
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
+    SudoParams, TokenId, SUDO_PARAMS,
+};
 use cosmwasm_std::{
     coin, entry_point, to_binary, Addr, Api, BankMsg, Coin, Decimal, Deps, DepsMut, Env,
     MessageInfo, Order, StdResult, Storage, Timestamp, WasmMsg,
@@ -116,6 +119,22 @@ pub fn execute(
             token_id,
             price,
         } => execute_update_ask(deps, info, api.addr_validate(&collection)?, token_id, price),
+        ExecuteMsg::SetCollectionBid {
+            collection,
+            expires,
+        } => execute_set_collection_bid(deps, env, info, api.addr_validate(&collection)?, expires),
+        ExecuteMsg::AcceptCollectionBid {
+            collection,
+            token_id,
+            bidder,
+        } => execute_accept_collection_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            api.addr_validate(&bidder)?,
+        ),
     }
 }
 
@@ -123,7 +142,7 @@ pub fn execute(
 pub fn execute_set_ask(
     env: ExecuteEnv,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
     price: Coin,
     funds_recipient: Option<Addr>,
     expires: Timestamp,
@@ -175,7 +194,7 @@ pub fn execute_remove_ask(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -239,7 +258,7 @@ pub fn execute_update_ask(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
     price: Coin,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
@@ -263,7 +282,7 @@ pub fn execute_set_bid(
     env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
@@ -348,7 +367,7 @@ pub fn execute_remove_bid(
     _env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -387,7 +406,7 @@ pub fn execute_accept_bid(
     env: Env,
     info: MessageInfo,
     collection: Addr,
-    token_id: u32,
+    token_id: TokenId,
     bidder: Addr,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
@@ -425,6 +444,96 @@ pub fn execute_accept_bid(
 
     Ok(Response::new()
         .add_attribute("action", "accept_bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("bidder", bidder)
+        .add_messages(msgs))
+}
+
+/// Place a collection bid (limit order) across an entire collection
+pub fn execute_set_collection_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    expires: Timestamp,
+) -> Result<Response, ContractError> {
+    let price = must_pay(&info, NATIVE_DENOM)?;
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    expires_validate(&env, expires, params.bid_expiry)?;
+
+    let bidder = info.sender;
+    let mut res = Response::new();
+
+    // Check bidder has existing bid, if so remove existing bid
+    if let Some(existing_bid) = collection_bids().may_load(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )? {
+        collection_bids().remove(deps.storage, (collection.clone(), bidder.clone()))?;
+        let exec_refund_bidder = BankMsg::Send {
+            to_address: bidder.to_string(),
+            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
+        };
+        res = res.add_message(exec_refund_bidder)
+    };
+
+    collection_bids().save(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+        &CollectionBid {
+            collection: collection.clone(),
+            bidder: bidder.clone(),
+            price,
+            expires,
+        },
+    )?;
+
+    Ok(res
+        .add_attribute("action", "set_collection_bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("bidder", bidder)
+        .add_attribute("bid_price", price.to_string()))
+}
+
+/// Owner of an item in a collection can accept a collection bid which transfers funds as well as a token
+pub fn execute_accept_collection_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+    bidder: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+
+    let bid = collection_bids().load(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )?;
+    if bid.expires <= env.block.time {
+        return Err(ContractError::BidExpired {});
+    }
+
+    collection_bids().remove(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )?;
+
+    // Transfer funds and NFT
+    let msgs = finalize_sale(
+        deps,
+        collection.clone(),
+        token_id,
+        bidder.clone(),
+        info.sender,
+        coin(bid.price.u128(), NATIVE_DENOM),
+    )?;
+
+    Ok(Response::new()
+        .add_attribute("action", "accept_collection_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)

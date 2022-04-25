@@ -115,3 +115,56 @@ pub fn bids<'a>() -> IndexedMap<'a, BidKey, Bid, BidIndicies<'a>> {
     };
     IndexedMap::new("bids", indexes)
 }
+
+/// Represents a bid (offer) across an entire collection in the marketplace
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CollectionBid {
+    pub collection: Addr,
+    pub bidder: Addr,
+    pub price: Uint128,
+    pub expires: Timestamp,
+}
+
+/// Primary key for bids: (collection, token_id, bidder)
+pub type CollectionBidKey = (Addr, Addr);
+/// Convenience collection bid key constructor
+pub fn collection_bid_key(collection: Addr, bidder: Addr) -> CollectionBidKey {
+    (collection, bidder)
+}
+
+/// Defines incides for accessing collection bids
+pub struct CollectionBidIndicies<'a> {
+    pub collection: MultiIndex<'a, Addr, CollectionBid, CollectionBidKey>,
+    pub collection_price: MultiIndex<'a, (Addr, u128), CollectionBid, CollectionBidKey>,
+    pub bidder: MultiIndex<'a, Addr, CollectionBid, CollectionBidKey>,
+}
+
+impl<'a> IndexList<CollectionBid> for CollectionBidIndicies<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<CollectionBid>> + '_> {
+        let v: Vec<&dyn Index<CollectionBid>> =
+            vec![&self.collection, &self.collection_price, &self.bidder];
+        Box::new(v.into_iter())
+    }
+}
+
+pub fn collection_bids<'a>(
+) -> IndexedMap<'a, CollectionBidKey, CollectionBid, CollectionBidIndicies<'a>> {
+    let indexes = CollectionBidIndicies {
+        collection: MultiIndex::new(
+            |d: &CollectionBid| d.collection.clone(),
+            "col_bids",
+            "col_bids__collection",
+        ),
+        collection_price: MultiIndex::new(
+            |d: &CollectionBid| (d.collection.clone(), d.price.u128()),
+            "col_bids",
+            "col_bids__collection_price",
+        ),
+        bidder: MultiIndex::new(
+            |d: &CollectionBid| d.bidder.clone(),
+            "col_bids",
+            "col_bids__bidder",
+        ),
+    };
+    IndexedMap::new("col_bids", indexes)
+}
