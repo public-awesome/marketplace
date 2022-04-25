@@ -1,0 +1,27 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SaleFinalizedHookMsg",
+  "type": "object",
+  "required": [
+    "buyer",
+    "collection",
+    "seller",
+    "token_id"
+  ],
+  "properties": {
+    "buyer": {
+      "type": "string"
+    },
+    "collection": {
+      "type": "string"
+    },
+    "seller": {
+      "type": "string"
+    },
+    "token_id": {
+      "type": "integer",
+      "format": "uint32",
+      "minimum": 0.0
+    }
+  }
+}
