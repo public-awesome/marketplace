@@ -19,6 +19,7 @@ fn main() {
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(SudoMsg), &out_dir);
+    export_schema(&schema_for!(SaleFinalizedHookMsg), &out_dir);
     export_schema(&schema_for!(AsksResponse), &out_dir);
     export_schema(&schema_for!(BidResponse), &out_dir);
     export_schema(&schema_for!(BidsResponse), &out_dir);
@@ -27,5 +28,4 @@ fn main() {
     export_schema(&schema_for!(AskCountResponse), &out_dir);
     export_schema(&schema_for!(ParamResponse), &out_dir);
     export_schema(&schema_for!(CollectionBidResponse), &out_dir);
-    export_schema(&schema_for!(SaleFinalizedHookMsg), &out_dir);
 }
