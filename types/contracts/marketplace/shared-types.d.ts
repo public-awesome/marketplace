@@ -70,20 +70,3 @@ export interface Bid {
     price: Uint128;
     token_id: number;
 }
-/**
- * Represents a bid (offer) across an entire collection in the marketplace
- */
-export interface CollectionBid {
-    [k: string]: unknown;
-    bidder: Addr;
-    collection: Addr;
-    expires: Timestamp;
-    price: Uint128;
-}
-export interface SudoParams {
-    [k: string]: unknown;
-    ask_expiry: [number, number];
-    bid_expiry: [number, number];
-    operators: Addr[];
-    trading_fee_percent: number;
-}
