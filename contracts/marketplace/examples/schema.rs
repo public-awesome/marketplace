@@ -4,7 +4,6 @@ use sg_marketplace::msg::{
     CollectionsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, ParamResponse, QueryMsg,
     SaleFinalizedHookMsg, SudoMsg,
 };
-use sg_marketplace::state::{Ask, Bid, CollectionBid, SudoParams};
 use sg_marketplace::MarketplaceContract;
 use std::env::current_dir;
 use std::fs::create_dir_all;
@@ -29,8 +28,4 @@ fn main() {
     export_schema(&schema_for!(ParamResponse), &out_dir);
     export_schema(&schema_for!(CollectionBidResponse), &out_dir);
     export_schema(&schema_for!(SaleFinalizedHookMsg), &out_dir);
-    export_schema(&schema_for!(SudoParams), &out_dir);
-    export_schema(&schema_for!(Ask), &out_dir);
-    export_schema(&schema_for!(Bid), &out_dir);
-    export_schema(&schema_for!(CollectionBid), &out_dir);
 }
