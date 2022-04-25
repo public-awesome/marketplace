@@ -81,7 +81,7 @@ limit?: (number | null)
 [k: string]: unknown
 }
 } | {
-hooks: {
+sale_finalized_hooks: {
 [k: string]: unknown
 }
 })
