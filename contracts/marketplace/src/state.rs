@@ -14,6 +14,8 @@ pub struct SudoParams {
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");
 
+pub const SALE_FINALIZED_HOOKS: Hooks = Hooks::new("sale-finalized-hooks");
+
 pub type TokenId = u32;
 
 /// Represents an ask on the marketplace
@@ -169,5 +171,3 @@ pub fn collection_bids<'a>(
     };
     IndexedMap::new("col_bids", indexes)
 }
-
-pub const SALE_FINALIZED_HOOKS: Hooks = Hooks::new("sale-finalized-hooks");
