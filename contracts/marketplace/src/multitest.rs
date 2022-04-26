@@ -1418,7 +1418,7 @@ mod tests {
     }
 
     #[test]
-    fn try_add_remove_hooks() {
+    fn try_add_remove_sales_hooks() {
         let mut router = custom_mock_app();
         // Setup intial accounts
         let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
@@ -1499,6 +1499,40 @@ mod tests {
 
         // If the bid is accepted, the sale would be finalized
         // assert_eq!("sale_finalized", res.events[1].attributes[1].value);
+    }
+
+    #[test]
+    fn try_add_remove_listing_hooks() {
+        let mut router = custom_mock_app();
+        // Setup intial accounts
+        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+        // Instantiate and configure contracts
+        let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+        let add_hook_msg = SudoMsg::AddListedHook {
+            hook: "hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+        assert!(res.is_ok());
+
+        let query_hooks_msg = QueryMsg::ListedHooks {};
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
+            .unwrap();
+        assert_eq!(res.hooks, vec!["hook".to_string()]);
+
+        let remove_hook_msg = SudoMsg::RemoveListedHook {
+            hook: "hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
+        assert!(res.is_ok());
+
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_hooks_msg)
+            .unwrap();
+        assert!(res.hooks.is_empty());
     }
 
     #[test]
