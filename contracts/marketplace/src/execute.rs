@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{ExecuteMsg, InstantiateMsg, SaleFinalizedHookMsg};
+use crate::msg::{ExecuteMsg, InstantiateMsg, ListedHookMsg, SaleFinalizedHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
+    SudoParams, TokenId, LISTED_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -171,21 +171,34 @@ pub fn execute_set_ask(
         return Err(ContractError::NeedsApproval {});
     }
 
+    let seller = info.sender;
     asks().save(
         deps.storage,
         ask_key(collection.clone(), token_id),
         &Ask {
             collection: collection.clone(),
             token_id,
-            seller: info.sender,
+            seller: seller.clone(),
             price: price.amount,
-            funds_recipient,
+            funds_recipient: funds_recipient.clone(),
             expires,
             active: true,
         },
     )?;
 
+    // Include hook submessages finalize ask
+    // ex: listing rewards
+    let submsgs = finalize_ask(
+        deps.as_ref(),
+        collection.clone(),
+        token_id,
+        seller.clone(),
+        funds_recipient.unwrap_or(seller),
+        coin(price.amount.u128(), NATIVE_DENOM),
+    )?;
+
     Ok(Response::new()
+        .add_submessages(submsgs)
         .add_attribute("action", "set_ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
@@ -604,6 +617,28 @@ fn finalize_sale(
     })?;
 
     Ok((msgs, submsg))
+}
+
+fn finalize_ask(
+    deps: Deps,
+    collection: Addr,
+    token_id: u32,
+    seller: Addr,
+    funds_recipient: Addr,
+    price: Coin,
+) -> StdResult<Vec<SubMsg>> {
+    let msg = ListedHookMsg {
+        collection: collection.to_string(),
+        token_id,
+        seller: seller.to_string(),
+        funds_recipient: funds_recipient.to_string(),
+        price,
+    };
+
+    let submsg = LISTED_HOOKS.prepare_hooks(deps.storage, |h| {
+        msg.clone().into_cosmos_msg(h).map(SubMsg::new)
+    })?;
+    Ok(submsg)
 }
 
 /// Payout a bid

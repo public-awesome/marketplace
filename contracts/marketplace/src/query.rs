@@ -4,8 +4,8 @@ use crate::msg::{
     ParamResponse, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, SALE_FINALIZED_HOOKS,
-    SUDO_PARAMS,
+    ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, LISTED_HOOKS,
+    SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
 use cw_storage_plus::{Bound, PrefixBound};
@@ -92,6 +92,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&bidder)?,
         )?),
         QueryMsg::SaleFinalizedHooks {} => to_binary(&SALE_FINALIZED_HOOKS.query_hooks(deps)?),
+        QueryMsg::ListedHooks {} => to_binary(&LISTED_HOOKS.query_hooks(deps)?),
     }
 }
 
