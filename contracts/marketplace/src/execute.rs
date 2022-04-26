@@ -17,11 +17,13 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{must_pay, nonpayable};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{CosmosMsg, Response, StargazeQuery, SubMsg, NATIVE_DENOM};
+use sg_std::{CosmosMsg, Response, SubMsg, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const REPLY_SALE_FINALIZED_HOOK: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -600,19 +602,25 @@ fn finalize_sale(
     };
 
     let submsg = SALE_FINALIZED_HOOKS.prepare_hooks(deps.storage, |h| {
-        msg.clone().into_cosmos_msg(h).map(SubMsg::new)
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: to_binary(&msg)?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_SALE_FINALIZED_HOOK))
     })?;
 
     Ok((msgs, submsg))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> Result<Response, ContractError> {
-    let resp = Response::new().set_data(to_binary("sadf")?);
-
-    println!("in reply................");
-
-    Ok(resp)
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        REPLY_SALE_FINALIZED_HOOK => {
+            Ok(Response::new().add_attribute("action", "sale_finalized_hook_failed"))
+        }
+        _ => Err(ContractError::UnrecognisedReply(msg.id)),
+    }
 }
 
 /// Payout a bid
