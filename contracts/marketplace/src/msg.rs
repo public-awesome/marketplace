@@ -152,7 +152,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Get the config for the contract
-    /// Return type: `ParamResponse`
+    /// Return type: `ParamsResponse`
     Params {},
     /// Get data for a specific collection bid
     /// Return type: `CollectionBidResponse`
@@ -205,7 +205,7 @@ pub struct BidsResponse {
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ParamResponse {
+pub struct ParamsResponse {
     pub params: SudoParams,
 }
 
