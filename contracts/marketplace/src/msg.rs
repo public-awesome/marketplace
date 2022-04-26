@@ -85,8 +85,12 @@ pub enum SudoMsg {
     },
     /// Add a new hook to be informed of all trades
     AddSaleFinalizedHook { hook: String },
-    /// Remove a hook
+    /// Add a new hook to be informed of all listings
+    AddListedHook { hook: String },
+    /// Remove a trade hook
     RemoveSaleFinalizedHook { hook: String },
+    /// Remove a listing hook
+    RemoveListedHook { hook: String },
 }
 
 pub type Collection = String;
