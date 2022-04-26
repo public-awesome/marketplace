@@ -8,7 +8,7 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
+    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Reply,
     StdResult, Storage, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -17,7 +17,7 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{must_pay, nonpayable};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::{CosmosMsg, Response, SubMsg, NATIVE_DENOM};
+use sg_std::{CosmosMsg, Response, StargazeQuery, SubMsg, NATIVE_DENOM};
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -604,6 +604,15 @@ fn finalize_sale(
     })?;
 
     Ok((msgs, submsg))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, _msg: Reply) -> Result<Response, ContractError> {
+    let resp = Response::new().set_data(to_binary("sadf")?);
+
+    println!("in reply................");
+
+    Ok(resp)
 }
 
 /// Payout a bid

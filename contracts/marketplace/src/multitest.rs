@@ -21,7 +21,8 @@ pub fn contract_nft_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
         crate::execute::instantiate,
         crate::query::query,
     )
-    .with_sudo(crate::sudo::sudo);
+    .with_sudo(crate::sudo::sudo)
+    .with_reply(crate::execute::reply);
     Box::new(contract)
 }
 
@@ -1493,12 +1494,9 @@ mod tests {
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         // Error because the "hook" contract is not deployed
-        let _err = router
+        let _ = router
             .execute_contract(bidder, marketplace, &set_bid_msg, &coins(100, NATIVE_DENOM))
             .unwrap_err();
-
-        // If the bid is accepted, the sale would be finalized
-        // assert_eq!("sale_finalized", res.events[1].attributes[1].value);
     }
 
     #[test]
