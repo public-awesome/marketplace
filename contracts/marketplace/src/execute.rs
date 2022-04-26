@@ -577,8 +577,12 @@ fn finalize_sale(
     price: Coin,
 ) -> StdResult<(Vec<CosmosMsg>, Vec<SubMsg>)> {
     // Payout bid
-    let mut msgs: Vec<CosmosMsg> =
-        payout(deps.as_ref(), collection.clone(), price, funds_recipient)?;
+    let mut msgs: Vec<CosmosMsg> = payout(
+        deps.as_ref(),
+        collection.clone(),
+        price.clone(),
+        funds_recipient,
+    )?;
 
     // Create transfer cw721 msg
     let cw721_transfer_msg = Cw721ExecuteMsg::TransferNft {
@@ -597,6 +601,7 @@ fn finalize_sale(
     let msg = SaleFinalizedHookMsg {
         collection: collection.to_string(),
         token_id,
+        price,
         seller: seller.to_string(),
         buyer: recipient.to_string(),
     };
