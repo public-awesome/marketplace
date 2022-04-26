@@ -96,13 +96,55 @@
       "additionalProperties": false
     },
     {
-      "description": "Remove a hook",
+      "description": "Add a new hook to be informed of all listings",
+      "type": "object",
+      "required": [
+        "add_listed_hook"
+      ],
+      "properties": {
+        "add_listed_hook": {
+          "type": "object",
+          "required": [
+            "hook"
+          ],
+          "properties": {
+            "hook": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove a trade hook",
       "type": "object",
       "required": [
         "remove_sale_finalized_hook"
       ],
       "properties": {
         "remove_sale_finalized_hook": {
+          "type": "object",
+          "required": [
+            "hook"
+          ],
+          "properties": {
+            "hook": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove a listing hook",
+      "type": "object",
+      "required": [
+        "remove_listed_hook"
+      ],
+      "properties": {
+        "remove_listed_hook": {
           "type": "object",
           "required": [
             "hook"
