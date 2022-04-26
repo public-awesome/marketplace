@@ -1,7 +1,7 @@
 use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
     CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, CurrentAskResponse,
-    ParamResponse, QueryMsg,
+    ParamsResponse, QueryMsg,
 };
 use crate::state::{
     ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, SALE_FINALIZED_HOOKS,
@@ -95,10 +95,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_params(deps: Deps) -> StdResult<ParamResponse> {
+pub fn query_params(deps: Deps) -> StdResult<ParamsResponse> {
     let config = SUDO_PARAMS.load(deps.storage)?;
 
-    Ok(ParamResponse { params: config })
+    Ok(ParamsResponse { params: config })
 }
 
 pub fn query_asks(
