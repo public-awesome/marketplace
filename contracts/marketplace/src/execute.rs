@@ -24,6 +24,7 @@ const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const REPLY_SALE_FINALIZED_HOOK: u64 = 1;
+const REPLY_LISTED_HOOK: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -648,17 +649,29 @@ fn finalize_ask(
     };
 
     let submsg = LISTED_HOOKS.prepare_hooks(deps.storage, |h| {
-        msg.clone().into_cosmos_msg(h).map(SubMsg::new)
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.clone().into_binary()?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_LISTED_HOOK))
     })?;
     Ok(submsg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    println!("reply msg id: {:?}", msg.id);
     match msg.id {
         REPLY_SALE_FINALIZED_HOOK => {
             let res = Response::new()
                 .add_attribute("action", "sale_finalized_hook_failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        REPLY_LISTED_HOOK => {
+            let res = Response::new()
+                .add_attribute("action", "listed_hook_failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }

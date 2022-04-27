@@ -1460,10 +1460,17 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
+        // Add sales hook
         let add_hook_msg = SudoMsg::AddSaleFinalizedHook {
             hook: "hook".to_string(),
         };
         let _res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+
+        // Add listed hook
+        let add_listed_hook_msg = SudoMsg::AddListedHook {
+            hook: "listed_hook".to_string(),
+        };
+        let _res = router.wasm_sudo(marketplace.clone(), &add_listed_hook_msg);
 
         // Mint NFT for creator
         mint_nft_for_creator(&mut router, &creator, &collection);
@@ -1487,6 +1494,10 @@ mod tests {
         // Now set_ask succeeds
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
+        assert_eq!(
+            "listed_hook_failed",
+            res.unwrap().events[3].attributes[1].value
+        );
         // Bidder makes bid that meets the ask criteria
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
@@ -1520,7 +1531,7 @@ mod tests {
     }
 
     #[test]
-    fn try_add_remove_listing_hooks() {
+    fn try_add_remove_listed_hooks() {
         let mut router = custom_mock_app();
         // Setup intial accounts
         let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
