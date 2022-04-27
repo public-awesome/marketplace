@@ -609,7 +609,7 @@ fn finalize_sale(
     let submsg = SALE_FINALIZED_HOOKS.prepare_hooks(deps.storage, |h| {
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: to_binary(&msg)?,
+            msg: msg.clone().into_binary()?,
             funds: vec![],
         };
         Ok(SubMsg::reply_on_error(execute, REPLY_SALE_FINALIZED_HOOK))
