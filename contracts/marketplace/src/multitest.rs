@@ -37,7 +37,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, ParamResponse, SudoMsg};
+    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, ParamsResponse, SudoMsg};
     use crate::state::Bid;
 
     use super::*;
@@ -1409,7 +1409,7 @@ mod tests {
         assert!(res.is_ok());
 
         let query_params_msg = QueryMsg::Params {};
-        let res: ParamResponse = router
+        let res: ParamsResponse = router
             .wrap()
             .query_wasm_smart(marketplace, &query_params_msg)
             .unwrap();

@@ -289,7 +289,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Get the config for the contract Return type: `ParamResponse`",
+      "description": "Get the config for the contract Return type: `ParamsResponse`",
       "type": "object",
       "required": [
         "params"
