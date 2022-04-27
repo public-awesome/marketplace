@@ -224,15 +224,23 @@ pub struct CollectionBidsResponse {
 pub struct SaleFinalizedHookMsg {
     pub collection: String,
     pub token_id: u32,
+    pub price: Coin,
     pub seller: String,
     pub buyer: String,
 }
 
 impl SaleFinalizedHookMsg {
-    pub fn new(collection: String, token_id: u32, seller: String, buyer: String) -> Self {
+    pub fn new(
+        collection: String,
+        token_id: u32,
+        price: Coin,
+        seller: String,
+        buyer: String,
+    ) -> Self {
         SaleFinalizedHookMsg {
             collection,
             token_id,
+            price,
             seller,
             buyer,
         }

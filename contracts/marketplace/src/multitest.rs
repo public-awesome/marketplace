@@ -21,7 +21,8 @@ pub fn contract_nft_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
         crate::execute::instantiate,
         crate::query::query,
     )
-    .with_sudo(crate::sudo::sudo);
+    .with_sudo(crate::sudo::sudo)
+    .with_reply(crate::execute::reply);
     Box::new(contract)
 }
 
@@ -1492,13 +1493,30 @@ mod tests {
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
-        // Error because the "hook" contract is not deployed
-        let _err = router
-            .execute_contract(bidder, marketplace, &set_bid_msg, &coins(100, NATIVE_DENOM))
-            .unwrap_err();
 
-        // If the bid is accepted, the sale would be finalized
-        // assert_eq!("sale_finalized", res.events[1].attributes[1].value);
+        // Bid succeeds even though the hook contract cannot be found
+        let res = router.execute_contract(
+            bidder.clone(),
+            marketplace,
+            &set_bid_msg,
+            &coins(100, NATIVE_DENOM),
+        );
+        assert!(res.is_ok());
+        assert_eq!(
+            "sale_finalized_hook_failed",
+            res.unwrap().events[7].attributes[1].value
+        );
+
+        // NFT is still transferred despite a sale finalized hook failing
+        let query_owner_msg = Cw721QueryMsg::OwnerOf {
+            token_id: TOKEN_ID.to_string(),
+            include_expired: None,
+        };
+        let res: OwnerOfResponse = router
+            .wrap()
+            .query_wasm_smart(collection, &query_owner_msg)
+            .unwrap();
+        assert_eq!(res.owner, bidder.to_string());
     }
 
     #[test]

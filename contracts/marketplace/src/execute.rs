@@ -8,7 +8,7 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order,
+    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Reply,
     StdResult, Storage, Timestamp, WasmMsg,
 };
 use cw2::set_contract_version;
@@ -22,6 +22,8 @@ use sg_std::{CosmosMsg, Response, SubMsg, NATIVE_DENOM};
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+const REPLY_SALE_FINALIZED_HOOK: u64 = 1;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -575,8 +577,12 @@ fn finalize_sale(
     price: Coin,
 ) -> StdResult<(Vec<CosmosMsg>, Vec<SubMsg>)> {
     // Payout bid
-    let mut msgs: Vec<CosmosMsg> =
-        payout(deps.as_ref(), collection.clone(), price, funds_recipient)?;
+    let mut msgs: Vec<CosmosMsg> = payout(
+        deps.as_ref(),
+        collection.clone(),
+        price.clone(),
+        funds_recipient,
+    )?;
 
     // Create transfer cw721 msg
     let cw721_transfer_msg = Cw721ExecuteMsg::TransferNft {
@@ -595,15 +601,34 @@ fn finalize_sale(
     let msg = SaleFinalizedHookMsg {
         collection: collection.to_string(),
         token_id,
+        price,
         seller: seller.to_string(),
         buyer: recipient.to_string(),
     };
 
     let submsg = SALE_FINALIZED_HOOKS.prepare_hooks(deps.storage, |h| {
-        msg.clone().into_cosmos_msg(h).map(SubMsg::new)
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.clone().into_binary()?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_SALE_FINALIZED_HOOK))
     })?;
 
     Ok((msgs, submsg))
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match msg.id {
+        REPLY_SALE_FINALIZED_HOOK => {
+            let res = Response::new()
+                .add_attribute("action", "sale_finalized_hook_failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        _ => Err(ContractError::UnrecognisedReply(msg.id)),
+    }
 }
 
 /// Payout a bid

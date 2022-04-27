@@ -70,3 +70,8 @@ export interface Bid {
     price: Uint128;
     token_id: number;
 }
+export interface Coin {
+    [k: string]: unknown;
+    amount: Uint128;
+    denom: string;
+}
