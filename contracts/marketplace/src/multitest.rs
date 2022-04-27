@@ -673,15 +673,30 @@ mod tests {
         let query_asks_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
             limit: None,
+            order_asc: true,
         };
         let res: AsksResponse = router
             .wrap()
-            .query_wasm_smart(marketplace, &query_asks_msg)
+            .query_wasm_smart(marketplace.clone(), &query_asks_msg)
             .unwrap();
         assert_eq!(res.asks.len(), 3);
         assert_eq!(res.asks[0].price.u128(), 109u128);
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 111u128);
+
+        let query_asks_desc_msg = QueryMsg::AsksSortedByPrice {
+            collection: collection.to_string(),
+            limit: None,
+            order_asc: false,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_asks_desc_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 3);
+        assert_eq!(res.asks[0].price.u128(), 111u128);
+        assert_eq!(res.asks[1].price.u128(), 110u128);
+        assert_eq!(res.asks[2].price.u128(), 109u128);
     }
 
     #[test]
@@ -822,6 +837,7 @@ mod tests {
         let query_bids_msg = QueryMsg::BidsSortedByPrice {
             collection: collection.to_string(),
             limit: None,
+            order_asc: true,
         };
         let res: BidsResponse = router
             .wrap()
@@ -1579,6 +1595,7 @@ mod tests {
         let query_sorted_collection_bids = QueryMsg::CollectionBidsSortedByPrice {
             collection: collection.to_string(),
             limit: Some(10),
+            order_asc: true,
         };
         let res: CollectionBidsResponse = router
             .wrap()
