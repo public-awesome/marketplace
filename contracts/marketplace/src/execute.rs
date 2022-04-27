@@ -622,7 +622,10 @@ fn finalize_sale(
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
         REPLY_SALE_FINALIZED_HOOK => {
-            Ok(Response::new().add_attribute("action", "sale_finalized_hook_failed"))
+            let res = Response::new()
+                .add_attribute("action", "sale_finalized_hook_failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
         }
         _ => Err(ContractError::UnrecognisedReply(msg.id)),
     }
