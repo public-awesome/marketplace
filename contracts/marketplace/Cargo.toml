@@ -1,6 +1,6 @@
 [package]
 name = "sg-marketplace"
-version = "0.5.1"
+version = "0.6.0"
 authors = [
   "Shane Vitarana <s@noreply.publicawesome.com>",
   "Jake Hartnell <jake@publicawesome.com>",
@@ -52,4 +52,4 @@ sg-controllers = "0.12.1"
 [dev-dependencies]
 cosmwasm-schema = { version = "1.0.0-beta8" }
 cw-multi-test = { version = "0.13.2" }
-sg-multi-test = "0.12.0"
+sg-multi-test = "0.13.0"

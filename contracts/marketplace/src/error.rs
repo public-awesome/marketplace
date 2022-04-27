@@ -41,6 +41,9 @@ pub enum ContractError {
     #[error("Contract needs approval")]
     NeedsApproval {},
 
+    #[error("Unrecognised reply id: {0}")]
+    UnrecognisedReply(u64),
+
     #[error("{0}")]
     BidPaymentError(#[from] PaymentError),
 

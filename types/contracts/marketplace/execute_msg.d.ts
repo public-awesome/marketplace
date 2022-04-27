@@ -1,4 +1,4 @@
-import { Timestamp, Uint128 } from "./shared-types";
+import { Coin, Timestamp } from "./shared-types";
 
 export type ExecuteMsg = ({
 set_ask: {
@@ -63,9 +63,3 @@ token_id: number
 [k: string]: unknown
 }
 })
-
-export interface Coin {
-amount: Uint128
-denom: string
-[k: string]: unknown
-}

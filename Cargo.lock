@@ -647,7 +647,7 @@ dependencies = [
 
 [[package]]
 name = "sg-marketplace"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -671,9 +671,9 @@ dependencies = [
 
 [[package]]
 name = "sg-multi-test"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "377a727f43cf3deb4c8dc1543534134f7cbd47578fb42a9adf2f35e433598daf"
+checksum = "68b2c20961ef0d92d3e071c923c2ceca525dddb4a0c57991c418f31d708c346f"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
