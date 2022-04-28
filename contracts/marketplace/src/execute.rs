@@ -188,16 +188,23 @@ pub fn execute_set_ask(
         },
     )?;
 
-    // Include hook submessages finalize ask
-    // ex: listing rewards
-    let submsgs = finalize_ask(
-        deps.as_ref(),
-        collection.clone(),
+    let msg = ListedHookMsg {
+        collection: collection.to_string(),
         token_id,
-        seller.clone(),
-        funds_recipient.unwrap_or(seller),
-        coin(price.amount.u128(), NATIVE_DENOM),
-    )?;
+        seller: seller.to_string(),
+        funds_recipient: funds_recipient.unwrap_or(seller).to_string(),
+        price: price.clone(),
+    };
+
+    // Include hook submessages, i.e: listing rewards
+    let submsgs = LISTED_HOOKS.prepare_hooks(deps.storage, |h| {
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.clone().into_binary()?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_LISTED_HOOK))
+    })?;
 
     Ok(Response::new()
         .add_submessages(submsgs)
@@ -629,33 +636,6 @@ fn finalize_sale(
     })?;
 
     Ok((msgs, submsg))
-}
-
-fn finalize_ask(
-    deps: Deps,
-    collection: Addr,
-    token_id: u32,
-    seller: Addr,
-    funds_recipient: Addr,
-    price: Coin,
-) -> StdResult<Vec<SubMsg>> {
-    let msg = AskHookMsg {
-        collection: collection.to_string(),
-        token_id,
-        seller: seller.to_string(),
-        funds_recipient: funds_recipient.to_string(),
-        price,
-    };
-
-    let submsg = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
-        let execute = WasmMsg::Execute {
-            contract_addr: h.to_string(),
-            msg: msg.clone().into_binary()?,
-            funds: vec![],
-        };
-        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
-    })?;
-    Ok(submsg)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
