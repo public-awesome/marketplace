@@ -156,9 +156,8 @@ pub fn execute_set_ask(
     nonpayable(&info)?;
     price_validate(&price)?;
 
-    if expires <= env.block.time {
-        return Err(ContractError::InvalidExpiration {});
-    }
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    expires_validate(&env, expires, params.ask_expiry)?;
 
     // Only the media onwer can call this
     let owner_of_response = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
