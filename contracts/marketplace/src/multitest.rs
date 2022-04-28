@@ -201,6 +201,18 @@ mod tests {
         );
         assert!(res.is_ok());
 
+        // Should error with expiry lower than min
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: nft_contract_addr.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY - 1),
+        };
+        let res =
+            router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
+        assert!(res.is_err());
+
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
