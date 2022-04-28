@@ -188,7 +188,7 @@ pub fn execute_set_ask(
         },
     )?;
 
-    let msg = ListedHookMsg {
+    let msg = AskHookMsg {
         collection: collection.to_string(),
         token_id,
         seller: seller.to_string(),
@@ -197,13 +197,13 @@ pub fn execute_set_ask(
     };
 
     // Include hook submessages, i.e: listing rewards
-    let submsgs = LISTED_HOOKS.prepare_hooks(deps.storage, |h| {
+    let submsgs = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
             msg: msg.clone().into_binary()?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_LISTED_HOOK))
+        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
     })?;
 
     Ok(Response::new()
