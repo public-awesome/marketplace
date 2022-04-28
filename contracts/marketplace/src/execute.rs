@@ -42,7 +42,15 @@ pub fn instantiate(
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
-    Ok(Response::new().add_attribute("action", "instantiate"))
+    let mut res = Response::new().add_attribute("action", "instantiate");
+
+    if let Some(hook) = msg.sales_finalized_hook {
+        SALE_FINALIZED_HOOKS.add_hook(deps.storage, deps.api.addr_validate(&hook)?)?;
+        res = res.add_attribute("action", "add_sale_finalized_hook");
+        res = res.add_attribute("hook", hook);
+    }
+
+    Ok(res)
 }
 
 /// To mitigate clippy::too_many_arguments warning

@@ -105,6 +105,7 @@ fn setup_contract(deps: DepsMut) {
         trading_fee_percent: TRADING_FEE_PERCENT,
         ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+        sales_finalized_hook: None,
     };
     let info = mock_info(CREATOR, &[]);
     let res = instantiate(deps, mock_env(), info, msg).unwrap();
@@ -120,6 +121,7 @@ fn proper_initialization() {
         trading_fee_percent: TRADING_FEE_PERCENT,
         ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+        sales_finalized_hook: None,
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 

@@ -67,6 +67,7 @@ mod tests {
             trading_fee_percent: TRADING_FEE_PERCENT,
             ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            sales_finalized_hook: None,
         };
         let nft_marketplace_addr = router
             .instantiate_contract(
@@ -1295,6 +1296,7 @@ mod tests {
             trading_fee_percent: TRADING_FEE_PERCENT,
             ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            sales_finalized_hook: None,
         };
         let nft_marketplace_addr = router
             .instantiate_contract(
