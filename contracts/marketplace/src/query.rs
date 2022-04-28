@@ -38,9 +38,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::AsksSortedByPrice { collection, limit } => to_binary(
-            &query_asks_sorted_by_price(deps, api.addr_validate(&collection)?, limit)?,
-        ),
+        QueryMsg::AsksSortedByPrice {
+            collection,
+            limit,
+            order_asc,
+        } => to_binary(&query_asks_sorted_by_price(
+            deps,
+            api.addr_validate(&collection)?,
+            limit,
+            order_asc,
+        )?),
         QueryMsg::ListedCollections { start_after, limit } => {
             to_binary(&query_listed_collections(deps, start_after, limit)?)
         }
@@ -75,18 +82,32 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::BidsByBidder { bidder } => {
             to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
         }
-        QueryMsg::BidsSortedByPrice { collection, limit } => to_binary(
-            &query_bids_sorted_by_price(deps, api.addr_validate(&collection)?, limit)?,
-        ),
+        QueryMsg::BidsSortedByPrice {
+            collection,
+            limit,
+            order_asc,
+        } => to_binary(&query_bids_sorted_by_price(
+            deps,
+            api.addr_validate(&collection)?,
+            limit,
+            order_asc,
+        )?),
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
         QueryMsg::CollectionBid { collection, bidder } => to_binary(&query_collection_bid(
             deps,
             api.addr_validate(&collection)?,
             api.addr_validate(&bidder)?,
         )?),
-        QueryMsg::CollectionBidsSortedByPrice { collection, limit } => to_binary(
-            &query_collection_bids_sorted_by_price(deps, api.addr_validate(&collection)?, limit)?,
-        ),
+        QueryMsg::CollectionBidsSortedByPrice {
+            collection,
+            limit,
+            order_asc,
+        } => to_binary(&query_collection_bids_sorted_by_price(
+            deps,
+            api.addr_validate(&collection)?,
+            limit,
+            order_asc,
+        )?),
         QueryMsg::CollectionBidsByBidder { bidder } => to_binary(&query_collection_bids_by_bidder(
             deps,
             api.addr_validate(&bidder)?,
@@ -133,14 +154,20 @@ pub fn query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
     limit: Option<u32>,
+    order_asc: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let order = if order_asc {
+        Order::Ascending
+    } else {
+        Order::Descending
+    };
 
     let asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, order)
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
@@ -254,14 +281,21 @@ pub fn query_bids_sorted_by_price(
     deps: Deps,
     collection: Addr,
     limit: Option<u32>,
+    order_asc: bool,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let order = if order_asc {
+        Order::Ascending
+    } else {
+        Order::Descending
+    };
 
     let bids = bids()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, order)
         .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
@@ -283,14 +317,21 @@ pub fn query_collection_bids_sorted_by_price(
     deps: Deps,
     collection: Addr,
     limit: Option<u32>,
+    order_asc: bool,
 ) -> StdResult<CollectionBidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let order = if order_asc {
+        Order::Ascending
+    } else {
+        Order::Descending
+    };
 
     let bids = collection_bids()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, order)
         .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;

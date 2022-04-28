@@ -114,6 +114,7 @@ pub enum QueryMsg {
     AsksSortedByPrice {
         collection: Collection,
         limit: Option<u32>,
+        order_asc: bool,
     },
     /// Count of all asks
     /// Return type: `AskCountResponse`
@@ -150,6 +151,7 @@ pub enum QueryMsg {
     BidsSortedByPrice {
         collection: Collection,
         limit: Option<u32>,
+        order_asc: bool,
     },
     /// Get the config for the contract
     /// Return type: `ParamsResponse`
@@ -168,6 +170,7 @@ pub enum QueryMsg {
     CollectionBidsSortedByPrice {
         collection: Collection,
         limit: Option<u32>,
+        order_asc: bool,
     },
     /// Show all registered sale finalized hooks
     /// Return type: `HooksResponse`
