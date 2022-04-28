@@ -1497,14 +1497,7 @@ mod tests {
             sales_finalized_hook: Some("hook".to_string()),
         };
         let marketplace = router
-            .instantiate_contract(
-                marketplace_id,
-                creator.clone(),
-                &msg,
-                &[],
-                "Marketplace",
-                None,
-            )
+            .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)
             .unwrap();
 
         let query_hooks_msg = QueryMsg::SaleFinalizedHooks {};
