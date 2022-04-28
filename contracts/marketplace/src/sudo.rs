@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
 use crate::msg::SudoMsg;
-use crate::state::{LISTED_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS};
+use crate::state::{ASK_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS};
 use cosmwasm_std::{entry_point, Addr, DepsMut, Env};
 use sg_std::Response;
 
@@ -26,15 +26,11 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
         SudoMsg::AddSaleFinalizedHook { hook } => {
             sudo_add_sale_finalized_hook(deps, env, api.addr_validate(&hook)?)
         }
-        SudoMsg::AddListedHook { hook } => {
-            sudo_add_listed_hook(deps, env, api.addr_validate(&hook)?)
-        }
+        SudoMsg::AddAskHook { hook } => sudo_add_ask_hook(deps, env, api.addr_validate(&hook)?),
         SudoMsg::RemoveSaleFinalizedHook { hook } => {
             sudo_remove_sale_finalized_hook(deps, api.addr_validate(&hook)?)
         }
-        SudoMsg::RemoveListedHook { hook } => {
-            sudo_remove_listed_hook(deps, api.addr_validate(&hook)?)
-        }
+        SudoMsg::RemoveAskHook { hook } => sudo_remove_ask_hook(deps, api.addr_validate(&hook)?),
     }
 }
 
@@ -73,15 +69,11 @@ pub fn sudo_add_sale_finalized_hook(
     Ok(res)
 }
 
-pub fn sudo_add_listed_hook(
-    deps: DepsMut,
-    _env: Env,
-    hook: Addr,
-) -> Result<Response, ContractError> {
-    LISTED_HOOKS.add_hook(deps.storage, hook.clone())?;
+pub fn sudo_add_ask_hook(deps: DepsMut, _env: Env, hook: Addr) -> Result<Response, ContractError> {
+    ASK_HOOKS.add_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
-        .add_attribute("action", "add_listed_hook")
+        .add_attribute("action", "add_ask_hook")
         .add_attribute("hook", hook);
     Ok(res)
 }
@@ -98,11 +90,11 @@ pub fn sudo_remove_sale_finalized_hook(
     Ok(res)
 }
 
-pub fn sudo_remove_listed_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
-    LISTED_HOOKS.remove_hook(deps.storage, hook.clone())?;
+pub fn sudo_remove_ask_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
+    ASK_HOOKS.remove_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
-        .add_attribute("action", "remove_listed_hook")
+        .add_attribute("action", "remove_ask_hook")
         .add_attribute("hook", hook);
     Ok(res)
 }

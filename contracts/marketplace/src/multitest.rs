@@ -1495,10 +1495,10 @@ mod tests {
         let _res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
 
         // Add listed hook
-        let add_listed_hook_msg = SudoMsg::AddListedHook {
+        let add_ask_hook_msg = SudoMsg::AddAskHook {
             hook: "listed_hook".to_string(),
         };
-        let _res = router.wasm_sudo(marketplace.clone(), &add_listed_hook_msg);
+        let _res = router.wasm_sudo(marketplace.clone(), &add_ask_hook_msg);
 
         // Mint NFT for creator
         mint_nft_for_creator(&mut router, &creator, &collection);
@@ -1523,7 +1523,7 @@ mod tests {
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
         assert_eq!(
-            "listed_hook_failed",
+            "ask_hook_failed",
             res.unwrap().events[3].attributes[1].value
         );
         // Bidder makes bid that meets the ask criteria
@@ -1566,20 +1566,20 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let add_hook_msg = SudoMsg::AddListedHook {
+        let add_hook_msg = SudoMsg::AddAskHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
         assert!(res.is_ok());
 
-        let query_hooks_msg = QueryMsg::ListedHooks {};
+        let query_hooks_msg = QueryMsg::AskHooks {};
         let res: HooksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
             .unwrap();
         assert_eq!(res.hooks, vec!["hook".to_string()]);
 
-        let remove_hook_msg = SudoMsg::RemoveListedHook {
+        let remove_hook_msg = SudoMsg::RemoveAskHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);

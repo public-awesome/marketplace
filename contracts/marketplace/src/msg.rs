@@ -85,12 +85,12 @@ pub enum SudoMsg {
     },
     /// Add a new hook to be informed of all trades
     AddSaleFinalizedHook { hook: String },
-    /// Add a new hook to be informed of all listings
-    AddListedHook { hook: String },
+    /// Add a new hook to be informed of all asks
+    AddAskHook { hook: String },
     /// Remove a trade hook
     RemoveSaleFinalizedHook { hook: String },
-    /// Remove a listing hook
-    RemoveListedHook { hook: String },
+    /// Remove a ask hook
+    RemoveAskHook { hook: String },
 }
 
 pub type Collection = String;
@@ -179,9 +179,9 @@ pub enum QueryMsg {
     /// Show all registered sale finalized hooks
     /// Return type: `HooksResponse`
     SaleFinalizedHooks {},
-    /// Show all registered listed hooks
+    /// Show all registered ask hooks
     /// Return type: `HooksResponse`
-    ListedHooks {},
+    AskHooks {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -283,7 +283,7 @@ pub enum SaleFinalizedExecuteMsg {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub struct ListedHookMsg {
+pub struct AskHookMsg {
     pub collection: String,
     pub token_id: u32,
     pub seller: String,
@@ -291,7 +291,7 @@ pub struct ListedHookMsg {
     pub price: Coin,
 }
 
-impl ListedHookMsg {
+impl AskHookMsg {
     pub fn new(
         collection: String,
         token_id: u32,
@@ -299,7 +299,7 @@ impl ListedHookMsg {
         funds_recipient: String,
         price: Coin,
     ) -> Self {
-        ListedHookMsg {
+        AskHookMsg {
             collection,
             token_id,
             seller,
@@ -310,7 +310,7 @@ impl ListedHookMsg {
 
     /// serializes the message
     pub fn into_binary(self) -> StdResult<Binary> {
-        let msg = ListedExecuteMsg::ListedHook(self);
+        let msg = AskExecuteMsg::AskHook(self);
         to_binary(&msg)
     }
 
@@ -329,6 +329,6 @@ impl ListedHookMsg {
 // This is just a helper to properly serialize the above message
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum ListedExecuteMsg {
-    ListedHook(ListedHookMsg),
+pub enum AskExecuteMsg {
+    AskHook(AskHookMsg),
 }
