@@ -402,13 +402,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Show all registered listed hooks Return type: `HooksResponse`",
+      "description": "Show all registered ask hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [
-        "listed_hooks"
+        "ask_hooks"
       ],
       "properties": {
-        "listed_hooks": {
+        "ask_hooks": {
           "type": "object"
         }
       },
