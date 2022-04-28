@@ -76,7 +76,8 @@
         "asks_sorted_by_price": {
           "type": "object",
           "required": [
-            "collection"
+            "collection",
+            "order_asc"
           ],
           "properties": {
             "collection": {
@@ -89,6 +90,9 @@
               ],
               "format": "uint32",
               "minimum": 0.0
+            },
+            "order_asc": {
+              "type": "boolean"
             }
           }
         }
@@ -269,7 +273,8 @@
         "bids_sorted_by_price": {
           "type": "object",
           "required": [
-            "collection"
+            "collection",
+            "order_asc"
           ],
           "properties": {
             "collection": {
@@ -282,6 +287,9 @@
               ],
               "format": "uint32",
               "minimum": 0.0
+            },
+            "order_asc": {
+              "type": "boolean"
             }
           }
         }
@@ -357,7 +365,8 @@
         "collection_bids_sorted_by_price": {
           "type": "object",
           "required": [
-            "collection"
+            "collection",
+            "order_asc"
           ],
           "properties": {
             "collection": {
@@ -370,6 +379,9 @@
               ],
               "format": "uint32",
               "minimum": 0.0
+            },
+            "order_asc": {
+              "type": "boolean"
             }
           }
         }
