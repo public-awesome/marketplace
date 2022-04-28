@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{ExecuteMsg, InstantiateMsg, ListedHookMsg, SaleFinalizedHookMsg};
+use crate::msg::{AskHookMsg, ExecuteMsg, InstantiateMsg, SaleFinalizedHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, LISTED_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
+    SudoParams, TokenId, ASK_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -24,7 +24,7 @@ const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const REPLY_SALE_FINALIZED_HOOK: u64 = 1;
-const REPLY_LISTED_HOOK: u64 = 2;
+const REPLY_ASK_HOOK: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -157,9 +157,8 @@ pub fn execute_set_ask(
     nonpayable(&info)?;
     price_validate(&price)?;
 
-    if expires <= env.block.time {
-        return Err(ContractError::InvalidExpiration {});
-    }
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    expires_validate(&env, expires, params.ask_expiry)?;
 
     // Only the media onwer can call this
     let owner_of_response = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -649,9 +648,9 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }
-        REPLY_LISTED_HOOK => {
+        REPLY_ASK_HOOK => {
             let res = Response::new()
-                .add_attribute("action", "listed_hook_failed")
+                .add_attribute("action", "ask_hook_failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }

@@ -201,6 +201,18 @@ mod tests {
         );
         assert!(res.is_ok());
 
+        // Should error with expiry lower than min
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: nft_contract_addr.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY - 1),
+        };
+        let res =
+            router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
+        assert!(res.is_err());
+
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
             collection: nft_contract_addr.to_string(),
@@ -673,15 +685,30 @@ mod tests {
         let query_asks_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
             limit: None,
+            order_asc: true,
         };
         let res: AsksResponse = router
             .wrap()
-            .query_wasm_smart(marketplace, &query_asks_msg)
+            .query_wasm_smart(marketplace.clone(), &query_asks_msg)
             .unwrap();
         assert_eq!(res.asks.len(), 3);
         assert_eq!(res.asks[0].price.u128(), 109u128);
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 111u128);
+
+        let query_asks_desc_msg = QueryMsg::AsksSortedByPrice {
+            collection: collection.to_string(),
+            limit: None,
+            order_asc: false,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_asks_desc_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 3);
+        assert_eq!(res.asks[0].price.u128(), 111u128);
+        assert_eq!(res.asks[1].price.u128(), 110u128);
+        assert_eq!(res.asks[2].price.u128(), 109u128);
     }
 
     #[test]
@@ -822,6 +849,7 @@ mod tests {
         let query_bids_msg = QueryMsg::BidsSortedByPrice {
             collection: collection.to_string(),
             limit: None,
+            order_asc: true,
         };
         let res: BidsResponse = router
             .wrap()
@@ -1467,10 +1495,10 @@ mod tests {
         let _res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
 
         // Add listed hook
-        let add_listed_hook_msg = SudoMsg::AddListedHook {
+        let add_ask_hook_msg = SudoMsg::AddAskHook {
             hook: "listed_hook".to_string(),
         };
-        let _res = router.wasm_sudo(marketplace.clone(), &add_listed_hook_msg);
+        let _res = router.wasm_sudo(marketplace.clone(), &add_ask_hook_msg);
 
         // Mint NFT for creator
         mint_nft_for_creator(&mut router, &creator, &collection);
@@ -1495,7 +1523,7 @@ mod tests {
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
         assert_eq!(
-            "listed_hook_failed",
+            "ask_hook_failed",
             res.unwrap().events[3].attributes[1].value
         );
         // Bidder makes bid that meets the ask criteria
@@ -1538,20 +1566,20 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let add_hook_msg = SudoMsg::AddListedHook {
+        let add_hook_msg = SudoMsg::AddAskHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
         assert!(res.is_ok());
 
-        let query_hooks_msg = QueryMsg::ListedHooks {};
+        let query_hooks_msg = QueryMsg::AskHooks {};
         let res: HooksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
             .unwrap();
         assert_eq!(res.hooks, vec!["hook".to_string()]);
 
-        let remove_hook_msg = SudoMsg::RemoveListedHook {
+        let remove_hook_msg = SudoMsg::RemoveAskHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
@@ -1624,6 +1652,7 @@ mod tests {
         let query_sorted_collection_bids = QueryMsg::CollectionBidsSortedByPrice {
             collection: collection.to_string(),
             limit: Some(10),
+            order_asc: true,
         };
         let res: CollectionBidsResponse = router
             .wrap()

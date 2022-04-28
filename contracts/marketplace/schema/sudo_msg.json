@@ -96,13 +96,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Add a new hook to be informed of all listings",
+      "description": "Add a new hook to be informed of all asks",
       "type": "object",
       "required": [
-        "add_listed_hook"
+        "add_ask_hook"
       ],
       "properties": {
-        "add_listed_hook": {
+        "add_ask_hook": {
           "type": "object",
           "required": [
             "hook"
@@ -138,13 +138,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Remove a listing hook",
+      "description": "Remove a ask hook",
       "type": "object",
       "required": [
-        "remove_listed_hook"
+        "remove_ask_hook"
       ],
       "properties": {
-        "remove_listed_hook": {
+        "remove_ask_hook": {
           "type": "object",
           "required": [
             "hook"
