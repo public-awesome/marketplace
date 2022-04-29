@@ -36,7 +36,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let params = SudoParams {
-        trading_fee: Decimal::percent(msg.trading_fee_percent),
+        trading_fee: Decimal::percent(msg.trading_fee),
         ask_expiry: msg.ask_expiry,
         bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,

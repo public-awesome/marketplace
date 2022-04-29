@@ -6,9 +6,9 @@ use sg_std::CosmosMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    /// Fair Burn fee for winning bids (in permilles)
+    /// Fair Burn fee for winning bids
     /// i.e. 125 = 0.125%, 250 = 0.25%, 500 = 0.5%, 1000 = 1%, 2500 = 2.5%
-    pub trading_fee_percent: u64,
+    pub trading_fee: u64,
     /// Valid time range for Asks
     /// (min, max) in seconds
     pub ask_expiry: (u64, u64),

@@ -52,7 +52,7 @@ mod tests {
     const INITIAL_BALANCE: u128 = 2000;
 
     // Governance parameters
-    const TRADING_FEE_PERCENT: u64 = 200; // 2%
+    const TRADING_FEE: u64 = 200; // 2%
     const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
     const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 
@@ -65,7 +65,7 @@ mod tests {
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            trading_fee_percent: TRADING_FEE_PERCENT,
+            trading_fee: TRADING_FEE,
             ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: None,
@@ -1294,7 +1294,7 @@ mod tests {
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            trading_fee_percent: TRADING_FEE_PERCENT,
+            trading_fee: TRADING_FEE,
             ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: None,
@@ -1492,7 +1492,7 @@ mod tests {
         let marketplace_id = router.store_code(contract_nft_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            trading_fee_percent: TRADING_FEE_PERCENT,
+            trading_fee: TRADING_FEE,
             ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: Some("hook".to_string()),
