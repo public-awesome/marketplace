@@ -15,6 +15,7 @@ start_after?: (number | null)
 asks_sorted_by_price: {
 collection: string
 limit?: (number | null)
+order_asc: boolean
 [k: string]: unknown
 }
 } | {
@@ -57,6 +58,7 @@ token_id: number
 bids_sorted_by_price: {
 collection: string
 limit?: (number | null)
+order_asc: boolean
 [k: string]: unknown
 }
 } | {
@@ -78,6 +80,7 @@ bidder: string
 collection_bids_sorted_by_price: {
 collection: string
 limit?: (number | null)
+order_asc: boolean
 [k: string]: unknown
 }
 } | {

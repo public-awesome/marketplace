@@ -50,6 +50,12 @@
         "type": "string"
       }
     },
+    "sales_finalized_hook": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "trading_fee_percent": {
       "type": "integer",
       "format": "uint32",
