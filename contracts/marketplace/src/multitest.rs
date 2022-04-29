@@ -740,8 +740,9 @@ mod tests {
             .wrap()
             .query_wasm_smart(marketplace, &query_asks_start_after_first_desc_msg)
             .unwrap();
-        println!("{:?}", res.clone().asks);
         assert_eq!(res.asks.len(), 2);
+        assert_eq!(res.asks[0].price.u128(), 110u128);
+        assert_eq!(res.asks[1].price.u128(), 109u128);
     }
 
     #[test]
