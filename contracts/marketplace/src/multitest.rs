@@ -67,6 +67,7 @@ mod tests {
             trading_fee_percent: TRADING_FEE_PERCENT,
             ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            sales_finalized_hook: None,
         };
         let nft_marketplace_addr = router
             .instantiate_contract(
@@ -1327,6 +1328,7 @@ mod tests {
             trading_fee_percent: TRADING_FEE_PERCENT,
             ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            sales_finalized_hook: None,
         };
         let nft_marketplace_addr = router
             .instantiate_contract(
@@ -1491,6 +1493,44 @@ mod tests {
         };
         let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
         assert!(res.is_ok());
+
+        let query_hooks_msg = QueryMsg::SaleFinalizedHooks {};
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
+            .unwrap();
+        assert_eq!(res.hooks, vec!["hook".to_string()]);
+
+        let remove_hook_msg = SudoMsg::RemoveSaleFinalizedHook {
+            hook: "hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
+        assert!(res.is_ok());
+
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_hooks_msg)
+            .unwrap();
+        assert!(res.hooks.is_empty());
+    }
+
+    #[test]
+    fn try_init_hook() {
+        let mut router = custom_mock_app();
+        // Setup intial accounts
+        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+        // Instantiate marketplace contract
+        let marketplace_id = router.store_code(contract_nft_marketplace());
+        let msg = crate::msg::InstantiateMsg {
+            operators: vec!["operator".to_string()],
+            trading_fee_percent: TRADING_FEE_PERCENT,
+            ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            sales_finalized_hook: Some("hook".to_string()),
+        };
+        let marketplace = router
+            .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)
+            .unwrap();
 
         let query_hooks_msg = QueryMsg::SaleFinalizedHooks {};
         let res: HooksResponse = router

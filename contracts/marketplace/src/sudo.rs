@@ -24,7 +24,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             operators,
         ),
         SudoMsg::AddSaleFinalizedHook { hook } => {
-            sudo_add_sale_finalized_hook(deps, env, api.addr_validate(&hook)?)
+            sudo_add_sale_finalized_hook(deps, api.addr_validate(&hook)?)
         }
         SudoMsg::AddAskHook { hook } => sudo_add_ask_hook(deps, env, api.addr_validate(&hook)?),
         SudoMsg::RemoveSaleFinalizedHook { hook } => {
@@ -56,11 +56,7 @@ pub fn sudo_update_params(
     Ok(Response::new().add_attribute("action", "update_params"))
 }
 
-pub fn sudo_add_sale_finalized_hook(
-    deps: DepsMut,
-    _env: Env,
-    hook: Addr,
-) -> Result<Response, ContractError> {
+pub fn sudo_add_sale_finalized_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
     SALE_FINALIZED_HOOKS.add_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
