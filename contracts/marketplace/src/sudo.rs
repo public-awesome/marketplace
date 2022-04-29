@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
 use crate::msg::SudoMsg;
-use crate::state::{SALE_FINALIZED_HOOKS, SUDO_PARAMS};
+use crate::state::{ASK_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS};
 use cosmwasm_std::{entry_point, Addr, DepsMut, Env};
 use sg_std::Response;
 
@@ -26,9 +26,11 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
         SudoMsg::AddSaleFinalizedHook { hook } => {
             sudo_add_sale_finalized_hook(deps, env, api.addr_validate(&hook)?)
         }
+        SudoMsg::AddAskHook { hook } => sudo_add_ask_hook(deps, env, api.addr_validate(&hook)?),
         SudoMsg::RemoveSaleFinalizedHook { hook } => {
             sudo_remove_sale_finalized_hook(deps, api.addr_validate(&hook)?)
         }
+        SudoMsg::RemoveAskHook { hook } => sudo_remove_ask_hook(deps, api.addr_validate(&hook)?),
     }
 }
 
@@ -67,6 +69,15 @@ pub fn sudo_add_sale_finalized_hook(
     Ok(res)
 }
 
+pub fn sudo_add_ask_hook(deps: DepsMut, _env: Env, hook: Addr) -> Result<Response, ContractError> {
+    ASK_HOOKS.add_hook(deps.storage, hook.clone())?;
+
+    let res = Response::new()
+        .add_attribute("action", "add_ask_hook")
+        .add_attribute("hook", hook);
+    Ok(res)
+}
+
 pub fn sudo_remove_sale_finalized_hook(
     deps: DepsMut,
     hook: Addr,
@@ -75,6 +86,15 @@ pub fn sudo_remove_sale_finalized_hook(
 
     let res = Response::new()
         .add_attribute("action", "remove_sale_finalized_hook")
+        .add_attribute("hook", hook);
+    Ok(res)
+}
+
+pub fn sudo_remove_ask_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
+    ASK_HOOKS.remove_hook(deps.storage, hook.clone())?;
+
+    let res = Response::new()
+        .add_attribute("action", "remove_ask_hook")
         .add_attribute("hook", hook);
     Ok(res)
 }

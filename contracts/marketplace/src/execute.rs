@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{ExecuteMsg, InstantiateMsg, SaleFinalizedHookMsg};
+use crate::msg::{AskHookMsg, ExecuteMsg, InstantiateMsg, SaleFinalizedHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
+    SudoParams, TokenId, ASK_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -24,6 +24,7 @@ const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const REPLY_SALE_FINALIZED_HOOK: u64 = 1;
+const REPLY_ASK_HOOK: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -172,21 +173,41 @@ pub fn execute_set_ask(
         return Err(ContractError::NeedsApproval {});
     }
 
+    let seller = info.sender;
     asks().save(
         deps.storage,
         ask_key(collection.clone(), token_id),
         &Ask {
             collection: collection.clone(),
             token_id,
-            seller: info.sender,
+            seller: seller.clone(),
             price: price.amount,
-            funds_recipient,
+            funds_recipient: funds_recipient.clone(),
             expires,
             active: true,
         },
     )?;
 
+    let msg = AskHookMsg {
+        collection: collection.to_string(),
+        token_id,
+        seller: seller.to_string(),
+        funds_recipient: funds_recipient.unwrap_or(seller).to_string(),
+        price: price.clone(),
+    };
+
+    // Include hook submessages, i.e: listing rewards
+    let submsgs = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.clone().into_binary()?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
+    })?;
+
     Ok(Response::new()
+        .add_submessages(submsgs)
         .add_attribute("action", "set_ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
@@ -619,10 +640,17 @@ fn finalize_sale(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    println!("reply msg id: {:?}", msg.id);
     match msg.id {
         REPLY_SALE_FINALIZED_HOOK => {
             let res = Response::new()
                 .add_attribute("action", "sale_finalized_hook_failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        REPLY_ASK_HOOK => {
+            let res = Response::new()
+                .add_attribute("action", "ask_hook_failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }

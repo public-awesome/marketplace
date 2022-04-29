@@ -16,6 +16,8 @@ pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");
 
 pub const SALE_FINALIZED_HOOKS: Hooks = Hooks::new("sale-finalized-hooks");
 
+pub const ASK_HOOKS: Hooks = Hooks::new("ask-hooks");
+
 pub type TokenId = u32;
 
 /// Represents an ask on the marketplace
