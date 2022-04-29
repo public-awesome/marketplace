@@ -167,7 +167,7 @@ pub fn query_asks_sorted_by_price(
         Order::Descending
     };
 
-    let start_after_key = if let Some(ask) = start_after {
+    let start_key = if let Some(ask) = start_after {
         Some(Bound::exclusive((
             ask.price.u128(),
             ask_key(collection.clone(), ask.token_id),
@@ -176,11 +176,19 @@ pub fn query_asks_sorted_by_price(
         None
     };
 
+    // order ASC, start_key is min. [1,2,3], start after 1, get [2,3]
+    // order DESC, start_key is max. [1,2,3] start before 3, get [1,2]
+    let (min, max) = if order_asc {
+        (start_key, None)
+    } else {
+        (None, start_key)
+    };
+
     let asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, start_after_key, None, order)
+        .range(deps.storage, min, max, order)
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
