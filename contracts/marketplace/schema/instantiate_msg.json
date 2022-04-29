@@ -10,6 +10,7 @@
   ],
   "properties": {
     "ask_expiry": {
+      "description": "Valid time range for Asks (min, max) in seconds",
       "type": "array",
       "items": [
         {
@@ -27,6 +28,7 @@
       "minItems": 2
     },
     "bid_expiry": {
+      "description": "Valid time range for Bids (min, max) in seconds",
       "type": "array",
       "items": [
         {
@@ -57,8 +59,9 @@
       ]
     },
     "trading_fee_percent": {
+      "description": "Fair Burn fee for winning bids (in permilles) i.e. 125 = 0.125%, 250 = 0.25%, 500 = 0.5%, 1000 = 1%, 2500 = 2.5%",
       "type": "integer",
-      "format": "uint32",
+      "format": "uint64",
       "minimum": 0.0
     }
   }
