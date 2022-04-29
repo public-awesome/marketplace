@@ -8,7 +8,7 @@ use sg_std::CosmosMsg;
 pub struct InstantiateMsg {
     /// Fair Burn fee for winning bids
     /// 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
-    pub trading_fee: u64,
+    pub trading_fee_basis_points: u64,
     /// Valid time range for Asks
     /// (min, max) in seconds
     pub ask_expiry: (u64, u64),
@@ -85,7 +85,7 @@ pub enum SudoMsg {
     /// Update the contract parameters
     /// Can only be called by governance
     UpdateParams {
-        trading_fee: Option<u64>,
+        trading_fee_basis_points: Option<u64>,
         ask_expiry: Option<(u64, u64)>,
         bid_expiry: Option<(u64, u64)>,
         operators: Option<Vec<String>>,

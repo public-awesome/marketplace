@@ -8,7 +8,7 @@ use sg_controllers::Hooks;
 pub struct SudoParams {
     /// Fair Burn fee for winning bids
     /// 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
-    pub trading_fee: Decimal,
+    pub trading_fee_basis_points: Decimal,
     /// Valid time range for Asks
     /// (min, max) in seconds
     pub ask_expiry: (u64, u64),

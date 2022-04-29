@@ -11,11 +11,18 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
 
     match msg {
         SudoMsg::UpdateParams {
-            trading_fee,
+            trading_fee_basis_points,
             ask_expiry,
             bid_expiry,
             operators,
-        } => sudo_update_params(deps, env, trading_fee, ask_expiry, bid_expiry, operators),
+        } => sudo_update_params(
+            deps,
+            env,
+            trading_fee_basis_points,
+            ask_expiry,
+            bid_expiry,
+            operators,
+        ),
         SudoMsg::AddSaleFinalizedHook { hook } => {
             sudo_add_sale_finalized_hook(deps, api.addr_validate(&hook)?)
         }
@@ -38,9 +45,9 @@ pub fn sudo_update_params(
 ) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
 
-    params.trading_fee = trading_fee
+    params.trading_fee_basis_points = trading_fee
         .map(Decimal::percent)
-        .unwrap_or(params.trading_fee);
+        .unwrap_or(params.trading_fee_basis_points);
     params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
     params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
     if let Some(operators) = operators {
