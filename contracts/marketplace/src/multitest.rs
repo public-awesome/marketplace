@@ -1449,7 +1449,7 @@ mod tests {
     }
 
     #[test]
-    fn try_add_remove_hooks() {
+    fn try_add_remove_sales_hooks() {
         let mut router = custom_mock_app();
         // Setup intial accounts
         let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
@@ -1528,10 +1528,17 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
+        // Add sales hook
         let add_hook_msg = SudoMsg::AddSaleFinalizedHook {
             hook: "hook".to_string(),
         };
         let _res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+
+        // Add listed hook
+        let add_ask_hook_msg = SudoMsg::AddAskHook {
+            hook: "listed_hook".to_string(),
+        };
+        let _res = router.wasm_sudo(marketplace.clone(), &add_ask_hook_msg);
 
         // Mint NFT for creator
         mint_nft_for_creator(&mut router, &creator, &collection);
@@ -1555,6 +1562,10 @@ mod tests {
         // Now set_ask succeeds
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
+        assert_eq!(
+            "ask_hook_failed",
+            res.unwrap().events[3].attributes[1].value
+        );
         // Bidder makes bid that meets the ask criteria
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
@@ -1585,6 +1596,40 @@ mod tests {
             .query_wasm_smart(collection, &query_owner_msg)
             .unwrap();
         assert_eq!(res.owner, bidder.to_string());
+    }
+
+    #[test]
+    fn try_add_remove_listed_hooks() {
+        let mut router = custom_mock_app();
+        // Setup intial accounts
+        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+        // Instantiate and configure contracts
+        let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+        let add_hook_msg = SudoMsg::AddAskHook {
+            hook: "hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+        assert!(res.is_ok());
+
+        let query_hooks_msg = QueryMsg::AskHooks {};
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
+            .unwrap();
+        assert_eq!(res.hooks, vec!["hook".to_string()]);
+
+        let remove_hook_msg = SudoMsg::RemoveAskHook {
+            hook: "hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
+        assert!(res.is_ok());
+
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_hooks_msg)
+            .unwrap();
+        assert!(res.hooks.is_empty());
     }
 
     #[test]

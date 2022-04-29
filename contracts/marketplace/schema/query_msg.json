@@ -400,6 +400,19 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Show all registered ask hooks Return type: `HooksResponse`",
+      "type": "object",
+      "required": [
+        "ask_hooks"
+      ],
+      "properties": {
+        "ask_hooks": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
     }
   ]
 }
