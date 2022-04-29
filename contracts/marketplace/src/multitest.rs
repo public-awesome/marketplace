@@ -1045,7 +1045,6 @@ mod tests {
         // Now set_ask succeeds
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
-        println!("{:?}", res);
         assert!(res.is_ok());
 
         // Bidder makes bid with a random token in the same amount as the ask

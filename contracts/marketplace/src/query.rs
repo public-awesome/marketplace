@@ -176,8 +176,8 @@ pub fn query_asks_sorted_by_price(
         None
     };
 
-    // order ASC, start_key is min. [1,2,3], start after 1, get [2,3]
-    // order DESC, start_key is max. [1,2,3] start before 3, get [1,2]
+    // order ASC, start_key is min. ex: [1,2,3], start after 1, get [2,3]
+    // order DESC, start_key is max. ex: [1,2,3] start before 3, get [1,2]
     let (min, max) = if order_asc {
         (start_key, None)
     } else {
