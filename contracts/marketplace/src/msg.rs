@@ -7,7 +7,9 @@ use sg_std::CosmosMsg;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
     pub trading_fee_percent: u32,
+    /// (min, max) in seconds
     pub ask_expiry: (u64, u64),
+    /// (min, max) in seconds
     pub bid_expiry: (u64, u64),
     /// Operators are entites that are responsible for maintaining the active state of Asks.
     /// They listen to NFT transfer events, and update the active state of Asks.
