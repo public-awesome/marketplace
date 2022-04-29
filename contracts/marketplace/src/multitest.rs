@@ -697,12 +697,29 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 111u128);
 
+        let query_asks_start_after_first_msg = QueryMsg::AsksSortedByPrice {
+            collection: collection.to_string(),
+            start_after: Some(res.asks[0].clone()),
+            limit: None,
+            order_asc: true,
+        };
+
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_asks_start_after_first_msg)
+            .unwrap();
+        println!("{:?}", res.clone().asks);
+        assert_eq!(res.asks.len(), 2);
+        assert_eq!(res.asks[0].price.u128(), 110u128);
+        assert_eq!(res.asks[1].price.u128(), 111u128);
+
         let query_asks_desc_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
             start_after: None,
             limit: None,
             order_asc: false,
         };
+
         let res: AsksResponse = router
             .wrap()
             .query_wasm_smart(marketplace, &query_asks_desc_msg)

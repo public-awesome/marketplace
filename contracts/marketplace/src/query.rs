@@ -170,7 +170,7 @@ pub fn query_asks_sorted_by_price(
     let start_after_key = if let Some(ask) = start_after {
         Some(Bound::exclusive((
             ask.price.u128(),
-            (ask.seller, ask.token_id),
+            ask_key(collection.clone(), ask.token_id),
         )))
     } else {
         None
