@@ -120,7 +120,13 @@ pub enum QueryMsg {
         collection: Collection,
         start_after: Option<Ask>,
         limit: Option<u32>,
-        order_asc: bool,
+    },
+    /// Get all asks for a collection sorted by price in reverse
+    /// Return type: `AsksResponse`
+    ReverseAsksSortedByPrice {
+        collection: Collection,
+        start_before: Option<Ask>,
+        limit: Option<u32>,
     },
     /// Count of all asks
     /// Return type: `AskCountResponse`

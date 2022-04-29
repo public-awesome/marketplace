@@ -687,7 +687,6 @@ mod tests {
             collection: collection.to_string(),
             start_after: None,
             limit: None,
-            order_asc: true,
         };
         let res: AsksResponse = router
             .wrap()
@@ -702,7 +701,6 @@ mod tests {
             collection: collection.to_string(),
             start_after: Some(res.asks[0].clone()),
             limit: None,
-            order_asc: true,
         };
 
         let res: AsksResponse = router
@@ -713,32 +711,30 @@ mod tests {
         assert_eq!(res.asks[0].price.u128(), 110u128);
         assert_eq!(res.asks[1].price.u128(), 111u128);
 
-        let query_asks_desc_msg = QueryMsg::AsksSortedByPrice {
+        let reverse_query_asks_msg = QueryMsg::ReverseAsksSortedByPrice {
             collection: collection.to_string(),
-            start_after: None,
+            start_before: None,
             limit: None,
-            order_asc: false,
         };
 
         let res: AsksResponse = router
             .wrap()
-            .query_wasm_smart(marketplace.clone(), &query_asks_desc_msg)
+            .query_wasm_smart(marketplace.clone(), &reverse_query_asks_msg)
             .unwrap();
         assert_eq!(res.asks.len(), 3);
         assert_eq!(res.asks[0].price.u128(), 111u128);
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 109u128);
 
-        let query_asks_start_after_first_desc_msg = QueryMsg::AsksSortedByPrice {
+        let reverse_query_asks_start_before_first_desc_msg = QueryMsg::ReverseAsksSortedByPrice {
             collection: collection.to_string(),
-            start_after: Some(res.asks[0].clone()),
+            start_before: Some(res.asks[0].clone()),
             limit: None,
-            order_asc: false,
         };
 
         let res: AsksResponse = router
             .wrap()
-            .query_wasm_smart(marketplace, &query_asks_start_after_first_desc_msg)
+            .query_wasm_smart(marketplace, &reverse_query_asks_start_before_first_desc_msg)
             .unwrap();
         assert_eq!(res.asks.len(), 2);
         assert_eq!(res.asks[0].price.u128(), 110u128);

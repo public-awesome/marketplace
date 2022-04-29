@@ -42,13 +42,21 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             collection,
             start_after,
             limit,
-            order_asc,
         } => to_binary(&query_asks_sorted_by_price(
             deps,
             api.addr_validate(&collection)?,
             start_after,
             limit,
-            order_asc,
+        )?),
+        QueryMsg::ReverseAsksSortedByPrice {
+            collection,
+            start_before,
+            limit,
+        } => to_binary(&reverse_query_asks_sorted_by_price(
+            deps,
+            api.addr_validate(&collection)?,
+            start_before,
+            limit,
         )?),
         QueryMsg::ListedCollections { start_after, limit } => {
             to_binary(&query_listed_collections(deps, start_after, limit)?)
@@ -158,16 +166,10 @@ pub fn query_asks_sorted_by_price(
     collection: Addr,
     start_after: Option<Ask>,
     limit: Option<u32>,
-    order_asc: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let order = if order_asc {
-        Order::Ascending
-    } else {
-        Order::Descending
-    };
 
-    let start_key = if let Some(ask) = start_after {
+    let start = if let Some(ask) = start_after {
         Some(Bound::exclusive((
             ask.price.u128(),
             ask_key(collection.clone(), ask.token_id),
@@ -176,19 +178,40 @@ pub fn query_asks_sorted_by_price(
         None
     };
 
-    // order ASC, start_key is min. ex: [1,2,3], start after 1, get [2,3]
-    // order DESC, start_key is max. ex: [1,2,3] start before 3, get [1,2]
-    let (min, max) = if order_asc {
-        (start_key, None)
+    let asks = asks()
+        .idx
+        .collection_price
+        .sub_prefix(collection)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|res| res.map(|item| item.1))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(AsksResponse { asks })
+}
+
+pub fn reverse_query_asks_sorted_by_price(
+    deps: Deps,
+    collection: Addr,
+    start_before: Option<Ask>,
+    limit: Option<u32>,
+) -> StdResult<AsksResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let end = if let Some(ask) = start_before {
+        Some(Bound::exclusive((
+            ask.price.u128(),
+            ask_key(collection.clone(), ask.token_id),
+        )))
     } else {
-        (None, start_key)
+        None
     };
 
     let asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, min, max, order)
+        .range(deps.storage, None, end, Order::Descending)
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
