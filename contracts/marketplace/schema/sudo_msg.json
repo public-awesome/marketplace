@@ -61,12 +61,12 @@
                 "type": "string"
               }
             },
-            "trading_fee_percent": {
+            "trading_fee_basis_points": {
               "type": [
                 "integer",
                 "null"
               ],
-              "format": "uint32",
+              "format": "uint64",
               "minimum": 0.0
             }
           }

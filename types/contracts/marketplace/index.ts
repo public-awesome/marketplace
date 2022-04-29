@@ -23,8 +23,7 @@ export * from "./listed_collections_response";
 export * from "./marketplace_contract";
 // dedup emptied this file
 // export * from "./param_response";
-// dedup emptied this file
-// export * from "./params_response";
+export * from "./params_response";
 export * from "./query_msg";
 export * from "./sale_finalized_hook_msg";
 export * from "./sale_finalized_hooks_response";

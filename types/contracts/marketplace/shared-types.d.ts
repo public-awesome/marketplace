@@ -1,5 +1,3 @@
-import { Addr } from "./shared-types";
-
 /**
  * A human readable address.
  *
@@ -76,26 +74,4 @@ export interface Coin {
     [k: string]: unknown;
     amount: Uint128;
     denom: string;
-}
-export interface ParamsResponse {
-    [k: string]: unknown;
-    params: SudoParams;
-}
-export interface ParamsResponse_1 {
-    [k: string]: unknown;
-    params: SudoParams_1;
-}
-export interface SudoParams {
-    [k: string]: unknown;
-    ask_expiry: [number, number];
-    bid_expiry: [number, number];
-    operators: Addr[];
-    trading_fee_percent: number;
-}
-export interface SudoParams_1 {
-    [k: string]: unknown;
-    ask_expiry: [number, number];
-    bid_expiry: [number, number];
-    operators: Addr[];
-    trading_fee_percent: number;
 }

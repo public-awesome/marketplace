@@ -87,4 +87,8 @@ order_asc: boolean
 sale_finalized_hooks: {
 [k: string]: unknown
 }
+} | {
+ask_hooks: {
+[k: string]: unknown
+}
 })
