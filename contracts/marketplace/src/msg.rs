@@ -117,6 +117,7 @@ pub enum QueryMsg {
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
         collection: Collection,
+        start_after: Option<Ask>,
         limit: Option<u32>,
         order_asc: bool,
     },

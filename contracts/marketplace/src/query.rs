@@ -4,7 +4,7 @@ use crate::msg::{
     ParamsResponse, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, ASK_HOOKS,
+    ask_key, asks, bids, collection_bid_key, collection_bids, Ask, TokenId, ASK_HOOKS,
     SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
@@ -40,11 +40,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         )?),
         QueryMsg::AsksSortedByPrice {
             collection,
+            start_after,
             limit,
             order_asc,
         } => to_binary(&query_asks_sorted_by_price(
             deps,
             api.addr_validate(&collection)?,
+            start_after,
             limit,
             order_asc,
         )?),
@@ -154,6 +156,7 @@ pub fn query_asks(
 pub fn query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
+    start_after: Option<Ask>,
     limit: Option<u32>,
     order_asc: bool,
 ) -> StdResult<AsksResponse> {
@@ -164,11 +167,20 @@ pub fn query_asks_sorted_by_price(
         Order::Descending
     };
 
+    let start_after_key = if let Some(ask) = start_after {
+        Some(Bound::exclusive((
+            ask.price.u128(),
+            (ask.seller, ask.token_id),
+        )))
+    } else {
+        None
+    };
+
     let asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, None, None, order)
+        .range(deps.storage, start_after_key, None, order)
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;

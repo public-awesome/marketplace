@@ -684,6 +684,7 @@ mod tests {
 
         let query_asks_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
+            start_after: None,
             limit: None,
             order_asc: true,
         };
@@ -698,6 +699,7 @@ mod tests {
 
         let query_asks_desc_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
+            start_after: None,
             limit: None,
             order_asc: false,
         };
