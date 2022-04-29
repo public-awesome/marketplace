@@ -50,8 +50,9 @@ mod tests {
     const TOKEN_ID: u32 = 123;
     const CREATION_FEE: u128 = 1_000_000_000;
     const INITIAL_BALANCE: u128 = 2000;
+
     // Governance parameters
-    const TRADING_FEE_PERCENT: u32 = 2; // 2%
+    const TRADING_FEE_PERCENT: u64 = 200; // 2%
     const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
     const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 
@@ -1430,7 +1431,7 @@ mod tests {
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
         let update_config_msg = SudoMsg::UpdateParams {
-            trading_fee_percent: Some(5),
+            trading_fee: Some(5),
             ask_expiry: Some((1, 2)),
             bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
@@ -1443,7 +1444,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(marketplace, &query_params_msg)
             .unwrap();
-        assert_eq!(res.params.trading_fee_percent, 5);
+        assert_eq!(res.params.trading_fee, Decimal::percent(5));
         assert_eq!(res.params.ask_expiry, (1, 2));
         assert_eq!(res.params.operators, vec!["operator".to_string()]);
     }

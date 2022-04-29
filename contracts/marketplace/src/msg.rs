@@ -6,9 +6,13 @@ use sg_std::CosmosMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
-    pub trading_fee_percent: u32,
+    /// Fair Burn fee for winning bids (in permilles)
+    /// i.e. 125 = 0.125%, 250 = 0.25%, 500 = 0.5%, 1000 = 1%, 2500 = 2.5%
+    pub trading_fee_percent: u64,
+    /// Valid time range for Asks
     /// (min, max) in seconds
     pub ask_expiry: (u64, u64),
+    /// Valid time range for Bids
     /// (min, max) in seconds
     pub bid_expiry: (u64, u64),
     /// Operators are entites that are responsible for maintaining the active state of Asks.
@@ -81,7 +85,7 @@ pub enum SudoMsg {
     /// Update the contract parameters
     /// Can only be called by governance
     UpdateParams {
-        trading_fee_percent: Option<u32>,
+        trading_fee: Option<u64>,
         ask_expiry: Option<(u64, u64)>,
         bid_expiry: Option<(u64, u64)>,
         operators: Option<Vec<String>>,

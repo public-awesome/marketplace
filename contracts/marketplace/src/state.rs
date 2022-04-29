@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -6,13 +6,17 @@ use sg_controllers::Hooks;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SudoParams {
-    // TODO: what if its 2.5%?
-    pub trading_fee_percent: u32,
+    /// Fair Burn fee for winning bids
+    /// 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
+    pub trading_fee: Decimal,
+    /// Valid time range for Asks
     /// (min, max) in seconds
     pub ask_expiry: (u64, u64),
+    /// Valid time range for Bids
     /// (min, max) in seconds
     pub bid_expiry: (u64, u64),
     /// Operators are entites that are responsible for maintaining the active state of Asks
+    /// They listen to NFT transfer events, and update the active state of Asks
     pub operators: Vec<Addr>,
 }
 

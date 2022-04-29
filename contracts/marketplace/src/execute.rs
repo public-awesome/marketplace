@@ -9,7 +9,7 @@ use crate::state::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Reply,
-    StdResult, Storage, Timestamp, WasmMsg,
+    StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
@@ -36,7 +36,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let params = SudoParams {
-        trading_fee_percent: msg.trading_fee_percent,
+        trading_fee: Decimal::percent(msg.trading_fee_percent),
         ask_expiry: msg.ask_expiry,
         bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,
@@ -679,8 +679,7 @@ fn payout(
     let mut msgs: Vec<CosmosMsg> = vec![];
 
     // Append Fair Burn message
-    let fee_percent = Decimal::percent(config.trading_fee_percent as u64);
-    let network_fee = payment.amount * fee_percent;
+    let network_fee = payment.amount * config.trading_fee / Uint128::from(100u128);
     msgs.append(&mut fair_burn(network_fee.u128(), None));
 
     // Check if token supports Royalties

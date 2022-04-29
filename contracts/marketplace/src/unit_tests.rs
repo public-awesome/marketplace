@@ -14,8 +14,9 @@ use sg_std::NATIVE_DENOM;
 const CREATOR: &str = "creator";
 const COLLECTION: &str = "collection";
 const TOKEN_ID: u32 = 123;
+
 // Governance parameters
-const TRADING_FEE_PERCENT: u32 = 2; // 2%
+const TRADING_FEE_PERCENT: u64 = 200; // 2%
 const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
 const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 

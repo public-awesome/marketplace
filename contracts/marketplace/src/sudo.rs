@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::helpers::map_validate;
 use crate::msg::SudoMsg;
 use crate::state::{ASK_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS};
-use cosmwasm_std::{entry_point, Addr, DepsMut, Env};
+use cosmwasm_std::{entry_point, Addr, Decimal, DepsMut, Env};
 use sg_std::Response;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -11,18 +11,11 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
 
     match msg {
         SudoMsg::UpdateParams {
-            trading_fee_percent,
+            trading_fee,
             ask_expiry,
             bid_expiry,
             operators,
-        } => sudo_update_params(
-            deps,
-            env,
-            trading_fee_percent,
-            ask_expiry,
-            bid_expiry,
-            operators,
-        ),
+        } => sudo_update_params(deps, env, trading_fee, ask_expiry, bid_expiry, operators),
         SudoMsg::AddSaleFinalizedHook { hook } => {
             sudo_add_sale_finalized_hook(deps, api.addr_validate(&hook)?)
         }
@@ -38,14 +31,16 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
 pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
-    trading_fee_percent: Option<u32>,
+    trading_fee: Option<u64>,
     ask_expiry: Option<(u64, u64)>,
     bid_expiry: Option<(u64, u64)>,
     operators: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
 
-    params.trading_fee_percent = trading_fee_percent.unwrap_or(params.trading_fee_percent);
+    params.trading_fee = trading_fee
+        .map(Decimal::percent)
+        .unwrap_or(params.trading_fee);
     params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
     params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
     if let Some(operators) = operators {
