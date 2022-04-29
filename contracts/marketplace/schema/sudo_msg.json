@@ -61,7 +61,7 @@
                 "type": "string"
               }
             },
-            "trading_fee": {
+            "trading_fee_basis_points": {
               "type": [
                 "integer",
                 "null"

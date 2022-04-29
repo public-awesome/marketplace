@@ -26,6 +26,6 @@ operators: Addr[]
 /**
  * Fair Burn fee for winning bids 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
  */
-trading_fee: Decimal
+trading_fee_basis_points: Decimal
 [k: string]: unknown
 }

@@ -3,7 +3,7 @@ update_params: {
 ask_expiry?: ([number, number] | null)
 bid_expiry?: ([number, number] | null)
 operators?: (string[] | null)
-trading_fee?: (number | null)
+trading_fee_basis_points?: (number | null)
 [k: string]: unknown
 }
 } | {
