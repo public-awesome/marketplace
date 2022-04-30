@@ -14,7 +14,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
-use cw_utils::{must_pay, nonpayable};
+use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{CosmosMsg, Response, SubMsg, NATIVE_DENOM};
@@ -82,7 +82,7 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             price,
-            funds_recipient.map(|addr| api.addr_validate(&addr).unwrap()),
+            maybe_addr(api, funds_recipient)?,
             expires,
         ),
         ExecuteMsg::RemoveAsk {
