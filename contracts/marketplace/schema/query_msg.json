@@ -76,8 +76,7 @@
         "asks_sorted_by_price": {
           "type": "object",
           "required": [
-            "collection",
-            "order_asc"
+            "collection"
           ],
           "properties": {
             "collection": {
@@ -91,10 +90,46 @@
               "format": "uint32",
               "minimum": 0.0
             },
-            "order_asc": {
-              "type": "boolean"
-            },
             "start_after": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Ask"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get all asks for a collection sorted by price in reverse Return type: `AsksResponse`",
+      "type": "object",
+      "required": [
+        "reverse_asks_sorted_by_price"
+      ],
+      "properties": {
+        "reverse_asks_sorted_by_price": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_before": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Ask"
