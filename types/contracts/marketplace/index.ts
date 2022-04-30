@@ -1,4 +1,5 @@
 export * from "./ask_count_response";
+export * from "./ask_response";
 // dedup emptied this file
 // export * from "./ask";
 export * from "./asks_by_seller_response";
