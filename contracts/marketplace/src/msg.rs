@@ -1,5 +1,5 @@
 use crate::state::{Ask, Bid, CollectionBid, SudoParams, TokenId};
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_std::CosmosMsg;
@@ -104,6 +104,19 @@ pub type Collection = String;
 pub type Bidder = String;
 pub type Seller = String;
 
+/// Offsets for pagination
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Offset {
+    pub price: Uint128,
+    pub token_id: TokenId,
+}
+
+impl Offset {
+    pub fn new(price: Uint128, token_id: TokenId) -> Self {
+        Offset { price, token_id }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
@@ -124,8 +137,15 @@ pub enum QueryMsg {
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
         collection: Collection,
+        start_after: Option<Offset>,
         limit: Option<u32>,
-        order_asc: bool,
+    },
+    /// Get all asks for a collection sorted by price in reverse
+    /// Return type: `AsksResponse`
+    ReverseAsksSortedByPrice {
+        collection: Collection,
+        start_before: Option<Offset>,
+        limit: Option<u32>,
     },
     /// Count of all asks
     /// Return type: `AskCountResponse`

@@ -37,7 +37,9 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, ParamsResponse, SudoMsg};
+    use crate::msg::{
+        AsksResponse, BidResponse, CollectionsResponse, Offset, ParamsResponse, SudoMsg,
+    };
     use crate::state::Bid;
 
     use super::*;
@@ -686,8 +688,8 @@ mod tests {
 
         let query_asks_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
+            start_after: None,
             limit: None,
-            order_asc: true,
         };
         let res: AsksResponse = router
             .wrap()
@@ -698,19 +700,50 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 111u128);
 
-        let query_asks_desc_msg = QueryMsg::AsksSortedByPrice {
+        let start_after = Offset::new(res.asks[0].price, res.asks[0].token_id);
+        let query_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
+            start_after: Some(start_after),
             limit: None,
-            order_asc: false,
         };
+
         let res: AsksResponse = router
             .wrap()
-            .query_wasm_smart(marketplace, &query_asks_desc_msg)
+            .query_wasm_smart(marketplace.clone(), &query_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 2);
+        assert_eq!(res.asks[0].price.u128(), 110u128);
+        assert_eq!(res.asks[1].price.u128(), 111u128);
+
+        let reverse_query_asks_msg = QueryMsg::ReverseAsksSortedByPrice {
+            collection: collection.to_string(),
+            start_before: None,
+            limit: None,
+        };
+
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &reverse_query_asks_msg)
             .unwrap();
         assert_eq!(res.asks.len(), 3);
         assert_eq!(res.asks[0].price.u128(), 111u128);
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 109u128);
+
+        let start_before = Offset::new(res.asks[0].price, res.asks[0].token_id);
+        let reverse_query_asks_start_before_first_desc_msg = QueryMsg::ReverseAsksSortedByPrice {
+            collection: collection.to_string(),
+            start_before: Some(start_before),
+            limit: None,
+        };
+
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &reverse_query_asks_start_before_first_desc_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 2);
+        assert_eq!(res.asks[0].price.u128(), 110u128);
+        assert_eq!(res.asks[1].price.u128(), 109u128);
     }
 
     #[test]
@@ -1013,7 +1046,6 @@ mod tests {
         // Now set_ask succeeds
         let res =
             router.execute_contract(creator.clone(), nft_marketplace_addr.clone(), &set_ask, &[]);
-        println!("{:?}", res);
         assert!(res.is_ok());
 
         // Bidder makes bid with a random token in the same amount as the ask

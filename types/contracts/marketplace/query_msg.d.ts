@@ -1,3 +1,5 @@
+import { Uint128 } from "./shared-types";
+
 export type QueryMsg = ({
 current_ask: {
 collection: string
@@ -15,7 +17,14 @@ start_after?: (number | null)
 asks_sorted_by_price: {
 collection: string
 limit?: (number | null)
-order_asc: boolean
+start_after?: (Offset | null)
+[k: string]: unknown
+}
+} | {
+reverse_asks_sorted_by_price: {
+collection: string
+limit?: (number | null)
+start_before?: (Offset | null)
 [k: string]: unknown
 }
 } | {
@@ -92,3 +101,12 @@ ask_hooks: {
 [k: string]: unknown
 }
 })
+
+/**
+ * Offsets for pagination
+ */
+export interface Offset {
+price: Uint128
+token_id: number
+[k: string]: unknown
+}

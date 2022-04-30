@@ -76,8 +76,7 @@
         "asks_sorted_by_price": {
           "type": "object",
           "required": [
-            "collection",
-            "order_asc"
+            "collection"
           ],
           "properties": {
             "collection": {
@@ -91,8 +90,54 @@
               "format": "uint32",
               "minimum": 0.0
             },
-            "order_asc": {
-              "type": "boolean"
+            "start_after": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get all asks for a collection sorted by price in reverse Return type: `AsksResponse`",
+      "type": "object",
+      "required": [
+        "reverse_asks_sorted_by_price"
+      ],
+      "properties": {
+        "reverse_asks_sorted_by_price": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_before": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Offset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
@@ -414,5 +459,29 @@
       },
       "additionalProperties": false
     }
-  ]
+  ],
+  "definitions": {
+    "Offset": {
+      "description": "Offsets for pagination",
+      "type": "object",
+      "required": [
+        "price",
+        "token_id"
+      ],
+      "properties": {
+        "price": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "token_id": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    },
+    "Uint128": {
+      "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+      "type": "string"
+    }
+  }
 }

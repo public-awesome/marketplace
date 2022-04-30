@@ -1,6 +1,6 @@
 use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
-    CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, CurrentAskResponse,
+    CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, CurrentAskResponse, Offset,
     ParamsResponse, QueryMsg,
 };
 use crate::state::{
@@ -40,13 +40,23 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         )?),
         QueryMsg::AsksSortedByPrice {
             collection,
+            start_after,
             limit,
-            order_asc,
         } => to_binary(&query_asks_sorted_by_price(
             deps,
             api.addr_validate(&collection)?,
+            start_after,
             limit,
-            order_asc,
+        )?),
+        QueryMsg::ReverseAsksSortedByPrice {
+            collection,
+            start_before,
+            limit,
+        } => to_binary(&reverse_query_asks_sorted_by_price(
+            deps,
+            api.addr_validate(&collection)?,
+            start_before,
+            limit,
         )?),
         QueryMsg::ListedCollections { start_after, limit } => {
             to_binary(&query_listed_collections(deps, start_after, limit)?)
@@ -154,21 +164,50 @@ pub fn query_asks(
 pub fn query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
+    start_after: Option<Offset>,
     limit: Option<u32>,
-    order_asc: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let order = if order_asc {
-        Order::Ascending
-    } else {
-        Order::Descending
-    };
+
+    let start = start_after.map(|offset| {
+        Bound::exclusive((
+            offset.price.u128(),
+            ask_key(collection.clone(), offset.token_id),
+        ))
+    });
 
     let asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, None, None, order)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|res| res.map(|item| item.1))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(AsksResponse { asks })
+}
+
+pub fn reverse_query_asks_sorted_by_price(
+    deps: Deps,
+    collection: Addr,
+    start_before: Option<Offset>,
+    limit: Option<u32>,
+) -> StdResult<AsksResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let end = start_before.map(|offset| {
+        Bound::exclusive((
+            offset.price.u128(),
+            ask_key(collection.clone(), offset.token_id),
+        ))
+    });
+
+    let asks = asks()
+        .idx
+        .collection_price
+        .sub_prefix(collection)
+        .range(deps.storage, None, end, Order::Descending)
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
