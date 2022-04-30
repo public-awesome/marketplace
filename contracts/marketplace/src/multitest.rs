@@ -1177,7 +1177,7 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-        approve(&mut router, &owner, &collection, &marketplace, TOKEN_ID);
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // An ask is made by the owner
         let set_ask = ExecuteMsg::SetAsk {
@@ -1188,9 +1188,52 @@ mod tests {
             reserve_for: Some(bidder.to_string()),
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
-        let res = router.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
-        println!("{:?}", res);
+        let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
+
+        // Non-bidder makes bid that meets the ask price
+        let set_bid_msg = ExecuteMsg::SetBid {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        let err = router
+            .execute_contract(
+                owner,
+                marketplace.clone(),
+                &set_bid_msg,
+                &coins(100, NATIVE_DENOM),
+            )
+            .unwrap_err();
+        assert_eq!(
+            err.downcast::<ContractError>().unwrap(),
+            ContractError::TokenReserved {}
+        );
+
+        // Bidder makes bid that meets ask price
+        let set_bid_msg = ExecuteMsg::SetBid {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        let res = router.execute_contract(
+            bidder.clone(),
+            marketplace,
+            &set_bid_msg,
+            &coins(100, NATIVE_DENOM),
+        );
+        assert!(res.is_ok());
+
+        // Check NFT is transferred to bidder (with reserved address)
+        let query_owner_msg = Cw721QueryMsg::OwnerOf {
+            token_id: TOKEN_ID.to_string(),
+            include_expired: None,
+        };
+        let res: OwnerOfResponse = router
+            .wrap()
+            .query_wasm_smart(collection, &query_owner_msg)
+            .unwrap();
+        assert_eq!(res.owner, bidder.to_string());
     }
 
     #[test]
