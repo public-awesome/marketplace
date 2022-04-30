@@ -1024,7 +1024,7 @@ mod tests {
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
-            bidder,
+            bidder.clone(),
             marketplace.clone(),
             &set_bid_msg,
             &coins(100, NATIVE_DENOM),
@@ -1033,10 +1033,21 @@ mod tests {
 
         let res: BidsResponse = router
             .wrap()
-            .query_wasm_smart(marketplace, &query_bids_msg)
+            .query_wasm_smart(marketplace.clone(), &query_bids_msg)
             .unwrap();
         assert_eq!(res.bids[0].token_id, TOKEN_ID);
         assert_eq!(res.bids[0].price.u128(), 100u128);
+
+        let query_bids_msg = QueryMsg::BidsByBidderPaginated {
+            bidder: bidder.to_string(),
+            start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID - 1)),
+            limit: None,
+        };
+        let res: BidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_bids_msg)
+            .unwrap();
+        assert_eq!(res.bids.len(), 1);
     }
 
     #[test]

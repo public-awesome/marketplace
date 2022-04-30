@@ -131,7 +131,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             bidder,
             start_after,
             limit,
-        } => todo!(),
+        } => to_binary(&query_bids_by_bidder_pg(
+            deps,
+            api.addr_validate(&bidder)?,
+            start_after,
+            limit,
+        )?),
     }
 }
 
