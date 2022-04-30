@@ -61,9 +61,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         )?),
-        QueryMsg::AsksBySeller { seller } => {
-            to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
-        }
+        QueryMsg::AsksBySeller {
+            seller,
+            start_after,
+            limit,
+        } => to_binary(&query_asks_by_seller(
+            deps,
+            api.addr_validate(&seller)?,
+            start_after,
+            limit,
+        )?),
         QueryMsg::AskCount { collection } => {
             to_binary(&query_ask_count(deps, api.addr_validate(&collection)?)?)
         }
@@ -124,16 +131,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::AskHooks {} => to_binary(&ASK_HOOKS.query_hooks(deps)?),
         QueryMsg::SaleFinalizedHooks {} => to_binary(&SALE_FINALIZED_HOOKS.query_hooks(deps)?),
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
-        QueryMsg::AsksBySellerPaginated {
-            seller,
-            start_after,
-            limit,
-        } => to_binary(&query_asks_by_seller_pg(
-            deps,
-            api.addr_validate(&seller)?,
-            start_after,
-            limit,
-        )?),
     }
 }
 
@@ -252,19 +249,7 @@ pub fn query_ask_count(deps: Deps, collection: Addr) -> StdResult<AskCountRespon
     Ok(AskCountResponse { count })
 }
 
-pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse> {
-    let asks = asks()
-        .idx
-        .seller
-        .prefix(seller)
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|res| res.map(|item| item.1))
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(AsksResponse { asks })
-}
-
-pub fn query_asks_by_seller_pg(
+pub fn query_asks_by_seller(
     deps: Deps,
     seller: Addr,
     start_after: Option<CollectionOffset>,

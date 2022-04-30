@@ -768,6 +768,8 @@ mod tests {
         // owner1 should only have 1 token
         let query_asks_msg = QueryMsg::AsksBySeller {
             seller: owner.to_string(),
+            start_after: None,
+            limit: None,
         };
         let res: AsksResponse = router
             .wrap()
@@ -778,6 +780,8 @@ mod tests {
         // owner2 should have 2 token
         let query_asks_msg = QueryMsg::AsksBySeller {
             seller: owner2.to_string(),
+            start_after: None,
+            limit: None,
         };
         let res: AsksResponse = router
             .wrap()
@@ -786,7 +790,7 @@ mod tests {
         assert_eq!(res.asks.len(), 2);
 
         // owner2 should have 0 tokens when paginated by a non-existing collection
-        let query_asks_msg = QueryMsg::AsksBySellerPaginated {
+        let query_asks_msg = QueryMsg::AsksBySeller {
             seller: owner2.to_string(),
             start_after: Some(CollectionOffset::new(
                 "non-existing-collection".to_string(),
@@ -801,7 +805,7 @@ mod tests {
         assert_eq!(res.asks.len(), 0);
 
         // owner2 should have 2 tokens when paginated by a existing collection
-        let query_asks_msg = QueryMsg::AsksBySellerPaginated {
+        let query_asks_msg = QueryMsg::AsksBySeller {
             seller: owner2.to_string(),
             start_after: Some(CollectionOffset::new(collection.to_string(), 0)),
             limit: None,
@@ -813,7 +817,7 @@ mod tests {
         assert_eq!(res.asks.len(), 2);
 
         // owner2 should have 1 token when paginated by a existing collection starting after a token
-        let query_asks_msg = QueryMsg::AsksBySellerPaginated {
+        let query_asks_msg = QueryMsg::AsksBySeller {
             seller: owner2.to_string(),
             start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID + 1)),
             limit: None,

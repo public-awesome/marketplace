@@ -173,10 +173,7 @@ pub enum QueryMsg {
     AskCount { collection: Collection },
     /// Get all asks by seller
     /// Return type: `AsksResponse`
-    AsksBySeller { seller: Seller },
-    /// Get all asks by seller
-    /// Return type: `AsksResponse`
-    AsksBySellerPaginated {
+    AsksBySeller {
         seller: Seller,
         start_after: Option<CollectionOffset>,
         limit: Option<u32>,
