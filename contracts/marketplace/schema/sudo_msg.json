@@ -13,44 +13,24 @@
           "type": "object",
           "properties": {
             "ask_expiry": {
-              "type": [
-                "array",
-                "null"
-              ],
-              "items": [
+              "anyOf": [
                 {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
+                  "$ref": "#/definitions/ExpiryRange"
                 },
                 {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
+                  "type": "null"
                 }
-              ],
-              "maxItems": 2,
-              "minItems": 2
+              ]
             },
             "bid_expiry": {
-              "type": [
-                "array",
-                "null"
-              ],
-              "items": [
+              "anyOf": [
                 {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
+                  "$ref": "#/definitions/ExpiryRange"
                 },
                 {
-                  "type": "integer",
-                  "format": "uint64",
-                  "minimum": 0.0
+                  "type": "null"
                 }
-              ],
-              "maxItems": 2,
-              "minItems": 2
+              ]
             },
             "operators": {
               "type": [
@@ -158,5 +138,26 @@
       },
       "additionalProperties": false
     }
-  ]
+  ],
+  "definitions": {
+    "ExpiryRange": {
+      "type": "object",
+      "required": [
+        "max",
+        "min"
+      ],
+      "properties": {
+        "max": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
 }

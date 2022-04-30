@@ -1,7 +1,9 @@
+import { ExpiryRange } from "./shared-types";
+
 export type SudoMsg = ({
 update_params: {
-ask_expiry?: ([number, number] | null)
-bid_expiry?: ([number, number] | null)
+ask_expiry?: (ExpiryRange | null)
+bid_expiry?: (ExpiryRange | null)
 operators?: (string[] | null)
 trading_fee_basis_points?: (number | null)
 [k: string]: unknown

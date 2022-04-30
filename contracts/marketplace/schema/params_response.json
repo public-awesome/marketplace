@@ -19,6 +19,25 @@
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
       "type": "string"
     },
+    "ExpiryRange": {
+      "type": "object",
+      "required": [
+        "max",
+        "min"
+      ],
+      "properties": {
+        "max": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      }
+    },
     "SudoParams": {
       "type": "object",
       "required": [
@@ -30,39 +49,19 @@
       "properties": {
         "ask_expiry": {
           "description": "Valid time range for Asks (min, max) in seconds",
-          "type": "array",
-          "items": [
+          "allOf": [
             {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
+              "$ref": "#/definitions/ExpiryRange"
             }
-          ],
-          "maxItems": 2,
-          "minItems": 2
+          ]
         },
         "bid_expiry": {
           "description": "Valid time range for Bids (min, max) in seconds",
-          "type": "array",
-          "items": [
+          "allOf": [
             {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
-            },
-            {
-              "type": "integer",
-              "format": "uint64",
-              "minimum": 0.0
+              "$ref": "#/definitions/ExpiryRange"
             }
-          ],
-          "maxItems": 2,
-          "minItems": 2
+          ]
         },
         "operators": {
           "description": "Operators are entites that are responsible for maintaining the active state of Asks They listen to NFT transfer events, and update the active state of Asks",

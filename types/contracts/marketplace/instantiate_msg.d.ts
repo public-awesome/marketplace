@@ -1,12 +1,14 @@
+import { ExpiryRange } from "./shared-types";
+
 export interface InstantiateMsg {
 /**
  * Valid time range for Asks (min, max) in seconds
  */
-ask_expiry: [number, number]
+ask_expiry: ExpiryRange
 /**
  * Valid time range for Bids (min, max) in seconds
  */
-bid_expiry: [number, number]
+bid_expiry: ExpiryRange
 /**
  * Operators are entites that are responsible for maintaining the active state of Asks. They listen to NFT transfer events, and update the active state of Asks.
  */
