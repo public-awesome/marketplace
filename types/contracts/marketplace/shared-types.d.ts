@@ -75,3 +75,8 @@ export interface Coin {
     amount: Uint128;
     denom: string;
 }
+export interface ExpiryRange {
+    [k: string]: unknown;
+    max: number;
+    min: number;
+}

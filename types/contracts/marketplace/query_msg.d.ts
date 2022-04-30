@@ -1,7 +1,13 @@
 import { Uint128 } from "./shared-types";
 
 export type QueryMsg = ({
-current_ask: {
+collections: {
+limit?: (number | null)
+start_after?: (string | null)
+[k: string]: unknown
+}
+} | {
+ask: {
 collection: string
 token_id: number
 [k: string]: unknown
@@ -38,12 +44,6 @@ seller: string
 [k: string]: unknown
 }
 } | {
-listed_collections: {
-limit?: (number | null)
-start_after?: (string | null)
-[k: string]: unknown
-}
-} | {
 bid: {
 bidder: string
 collection: string
@@ -71,10 +71,6 @@ order_asc: boolean
 [k: string]: unknown
 }
 } | {
-params: {
-[k: string]: unknown
-}
-} | {
 collection_bid: {
 bidder: string
 collection: string
@@ -93,11 +89,15 @@ order_asc: boolean
 [k: string]: unknown
 }
 } | {
+ask_hooks: {
+[k: string]: unknown
+}
+} | {
 sale_finalized_hooks: {
 [k: string]: unknown
 }
 } | {
-ask_hooks: {
+params: {
 [k: string]: unknown
 }
 })

@@ -4,6 +4,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_controllers::Hooks;
 
+use crate::helpers::ExpiryRange;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SudoParams {
     /// Fair Burn fee for winning bids
@@ -11,10 +13,10 @@ pub struct SudoParams {
     pub trading_fee_basis_points: Decimal,
     /// Valid time range for Asks
     /// (min, max) in seconds
-    pub ask_expiry: (u64, u64),
+    pub ask_expiry: ExpiryRange,
     /// Valid time range for Bids
     /// (min, max) in seconds
-    pub bid_expiry: (u64, u64),
+    pub bid_expiry: ExpiryRange,
     /// Operators are entites that are responsible for maintaining the active state of Asks
     /// They listen to NFT transfer events, and update the active state of Asks
     pub operators: Vec<Addr>,

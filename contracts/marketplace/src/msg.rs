@@ -1,4 +1,7 @@
-use crate::state::{Ask, Bid, CollectionBid, SudoParams, TokenId};
+use crate::{
+    helpers::ExpiryRange,
+    state::{Ask, Bid, CollectionBid, SudoParams, TokenId},
+};
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -11,10 +14,10 @@ pub struct InstantiateMsg {
     pub trading_fee_basis_points: u64,
     /// Valid time range for Asks
     /// (min, max) in seconds
-    pub ask_expiry: (u64, u64),
+    pub ask_expiry: ExpiryRange,
     /// Valid time range for Bids
     /// (min, max) in seconds
-    pub bid_expiry: (u64, u64),
+    pub bid_expiry: ExpiryRange,
     /// Operators are entites that are responsible for maintaining the active state of Asks.
     /// They listen to NFT transfer events, and update the active state of Asks.
     pub operators: Vec<String>,
@@ -86,8 +89,8 @@ pub enum SudoMsg {
     /// Can only be called by governance
     UpdateParams {
         trading_fee_basis_points: Option<u64>,
-        ask_expiry: Option<(u64, u64)>,
-        bid_expiry: Option<(u64, u64)>,
+        ask_expiry: Option<ExpiryRange>,
+        bid_expiry: Option<ExpiryRange>,
         operators: Option<Vec<String>>,
     },
     /// Add a new hook to be informed of all trades
