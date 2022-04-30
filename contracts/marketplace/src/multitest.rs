@@ -582,7 +582,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(
                 nft_marketplace_addr,
-                &QueryMsg::ListedCollections {
+                &QueryMsg::Collections {
                     start_after: None,
                     limit: None,
                 },

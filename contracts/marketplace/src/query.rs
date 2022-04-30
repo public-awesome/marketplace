@@ -1,7 +1,7 @@
 use crate::msg::{
-    AskCountResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
-    CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, CurrentAskResponse, Offset,
-    ParamsResponse, QueryMsg,
+    AskCountResponse, AskResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
+    CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, Offset, ParamsResponse,
+    QueryMsg,
 };
 use crate::state::{
     ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, ASK_HOOKS,
@@ -20,7 +20,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     let api = deps.api;
 
     match msg {
-        QueryMsg::CurrentAsk {
+        QueryMsg::Collections { start_after, limit } => {
+            to_binary(&query_collections(deps, start_after, limit)?)
+        }
+        QueryMsg::Ask {
             collection,
             token_id,
         } => to_binary(&query_current_ask(
@@ -58,9 +61,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         )?),
-        QueryMsg::ListedCollections { start_after, limit } => {
-            to_binary(&query_listed_collections(deps, start_after, limit)?)
-        }
         QueryMsg::AsksBySeller { seller } => {
             to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
         }
@@ -102,7 +102,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             limit,
             order_asc,
         )?),
-        QueryMsg::Params {} => to_binary(&query_params(deps)?),
         QueryMsg::CollectionBid { collection, bidder } => to_binary(&query_collection_bid(
             deps,
             api.addr_validate(&collection)?,
@@ -122,8 +121,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps,
             api.addr_validate(&bidder)?,
         )?),
-        QueryMsg::SaleFinalizedHooks {} => to_binary(&SALE_FINALIZED_HOOKS.query_hooks(deps)?),
         QueryMsg::AskHooks {} => to_binary(&ASK_HOOKS.query_hooks(deps)?),
+        QueryMsg::SaleFinalizedHooks {} => to_binary(&SALE_FINALIZED_HOOKS.query_hooks(deps)?),
+        QueryMsg::Params {} => to_binary(&query_params(deps)?),
     }
 }
 
@@ -238,7 +238,7 @@ pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse>
     Ok(AsksResponse { asks: asks? })
 }
 
-pub fn query_listed_collections(
+pub fn query_collections(
     deps: Deps,
     start_after: Option<Collection>,
     limit: Option<u32>,
@@ -266,10 +266,10 @@ pub fn query_current_ask(
     deps: Deps,
     collection: Addr,
     token_id: TokenId,
-) -> StdResult<CurrentAskResponse> {
+) -> StdResult<AskResponse> {
     let ask = asks().may_load(deps.storage, ask_key(collection, token_id))?;
 
-    Ok(CurrentAskResponse { ask })
+    Ok(AskResponse { ask })
 }
 
 pub fn query_bid(

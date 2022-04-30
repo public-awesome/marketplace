@@ -120,9 +120,15 @@ impl Offset {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    /// List of collections that have asks on them
+    /// Return type: `CollectionsResponse`
+    Collections {
+        start_after: Option<Collection>,
+        limit: Option<u32>,
+    },
     /// Get the current ask for specific NFT
     /// Return type: `CurrentAskResponse`
-    CurrentAsk {
+    Ask {
         collection: Collection,
         token_id: TokenId,
     },
@@ -133,14 +139,14 @@ pub enum QueryMsg {
         start_after: Option<TokenId>,
         limit: Option<u32>,
     },
-    /// Get all asks for a collection sorted by price
+    /// Get all asks for a collection, sorted by price
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
         collection: Collection,
         start_after: Option<Offset>,
         limit: Option<u32>,
     },
-    /// Get all asks for a collection sorted by price in reverse
+    /// Get all asks for a collection, sorted by price in reverse
     /// Return type: `AsksResponse`
     ReverseAsksSortedByPrice {
         collection: Collection,
@@ -153,12 +159,6 @@ pub enum QueryMsg {
     /// Get all asks by seller
     /// Return type: `AsksResponse`
     AsksBySeller { seller: Seller },
-    /// List of collections that have asks on them
-    /// Return type: `CollectionsResponse`
-    ListedCollections {
-        start_after: Option<Collection>,
-        limit: Option<u32>,
-    },
     /// Get data for a specific bid
     /// Return type: `BidResponse`
     Bid {
@@ -177,16 +177,13 @@ pub enum QueryMsg {
         start_after: Option<Bidder>,
         limit: Option<u32>,
     },
-    /// Get all bids for a collection sorted by price
+    /// Get all bids for a collection, sorted by price
     /// Return type: `BidsResponse`
     BidsSortedByPrice {
         collection: Collection,
         limit: Option<u32>,
         order_asc: bool,
     },
-    /// Get the config for the contract
-    /// Return type: `ParamsResponse`
-    Params {},
     /// Get data for a specific collection bid
     /// Return type: `CollectionBidResponse`
     CollectionBid {
@@ -203,16 +200,19 @@ pub enum QueryMsg {
         limit: Option<u32>,
         order_asc: bool,
     },
-    /// Show all registered sale finalized hooks
-    /// Return type: `HooksResponse`
-    SaleFinalizedHooks {},
     /// Show all registered ask hooks
     /// Return type: `HooksResponse`
     AskHooks {},
+    /// Show all registered sale finalized hooks
+    /// Return type: `HooksResponse`
+    SaleFinalizedHooks {},
+    /// Get the config for the contract
+    /// Return type: `ParamsResponse`
+    Params {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CurrentAskResponse {
+pub struct AskResponse {
     pub ask: Option<Ask>,
 }
 

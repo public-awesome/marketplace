@@ -1,7 +1,7 @@
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use sg_marketplace::msg::{
-    AskCountResponse, AsksResponse, BidResponse, BidsResponse, CollectionBidResponse,
-    CollectionsResponse, CurrentAskResponse, ExecuteMsg, InstantiateMsg, ParamsResponse, QueryMsg,
+    AskCountResponse, AskResponse, AsksResponse, BidResponse, BidsResponse, CollectionBidResponse,
+    CollectionsResponse, ExecuteMsg, InstantiateMsg, ParamsResponse, QueryMsg,
     SaleFinalizedHookMsg, SudoMsg,
 };
 use sg_marketplace::MarketplaceContract;
@@ -23,7 +23,7 @@ fn main() {
     export_schema(&schema_for!(BidResponse), &out_dir);
     export_schema(&schema_for!(BidsResponse), &out_dir);
     export_schema(&schema_for!(CollectionsResponse), &out_dir);
-    export_schema(&schema_for!(CurrentAskResponse), &out_dir);
+    export_schema(&schema_for!(AskResponse), &out_dir);
     export_schema(&schema_for!(AskCountResponse), &out_dir);
     export_schema(&schema_for!(ParamsResponse), &out_dir);
     export_schema(&schema_for!(CollectionBidResponse), &out_dir);
