@@ -89,8 +89,8 @@ pub enum SudoMsg {
     /// Can only be called by governance
     UpdateParams {
         trading_fee_basis_points: Option<u64>,
-        ask_expiry: Option<(u64, u64)>,
-        bid_expiry: Option<(u64, u64)>,
+        ask_expiry: Option<ExpiryRange>,
+        bid_expiry: Option<ExpiryRange>,
         operators: Option<Vec<String>>,
     },
     /// Add a new hook to be informed of all trades

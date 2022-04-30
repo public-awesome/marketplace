@@ -39,8 +39,8 @@ pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
     trading_fee: Option<u64>,
-    ask_expiry: Option<(u64, u64)>,
-    bid_expiry: Option<(u64, u64)>,
+    ask_expiry: Option<ExpiryRange>,
+    bid_expiry: Option<ExpiryRange>,
     operators: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
@@ -48,19 +48,11 @@ pub fn sudo_update_params(
     params.trading_fee_basis_points = trading_fee
         .map(Decimal::percent)
         .unwrap_or(params.trading_fee_basis_points);
-
-    params.ask_expiry = ask_expiry
-        .map(ExpiryRange::new)
-        .unwrap_or(params.ask_expiry);
-
-    params.bid_expiry = bid_expiry
-        .map(ExpiryRange::new)
-        .unwrap_or(params.bid_expiry);
-
+    params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
+    params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
     if let Some(operators) = operators {
         params.operators = map_validate(deps.api, &operators)?;
     }
-
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "update_params"))
