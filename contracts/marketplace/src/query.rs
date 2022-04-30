@@ -1,7 +1,7 @@
 use crate::msg::{
     AskCountResponse, AskResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
-    CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, Offset, ParamsResponse,
-    QueryMsg,
+    CollectionBidResponse, CollectionBidsResponse, CollectionOffset, CollectionsResponse,
+    ParamsResponse, PriceOffset, QueryMsg,
 };
 use crate::state::{
     ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, ASK_HOOKS,
@@ -180,7 +180,7 @@ pub fn query_asks(
 pub fn query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
-    start_after: Option<Offset>,
+    start_after: Option<PriceOffset>,
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -207,7 +207,7 @@ pub fn query_asks_sorted_by_price(
 pub fn reverse_query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
-    start_before: Option<Offset>,
+    start_before: Option<PriceOffset>,
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -248,6 +248,38 @@ pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse>
         .seller
         .prefix(seller)
         .range(deps.storage, None, None, Order::Ascending)
+        .map(|res| {
+            res.map(|item| {
+                println!("{:?}", item.0);
+                item.1
+            })
+        })
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(AsksResponse { asks })
+}
+
+pub fn query_asks_by_seller_pg(
+    deps: Deps,
+    seller: Addr,
+    start_after: Option<CollectionOffset>,
+    limit: Option<u32>,
+) -> StdResult<AsksResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let start = start_after.map(|offset| {
+        Bound::exclusive(ask_key(
+            deps.api.addr_validate(&offset.collection).unwrap(),
+            offset.token_id,
+        ))
+    });
+
+    let asks = asks()
+        .idx
+        .seller
+        .prefix(seller)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
 

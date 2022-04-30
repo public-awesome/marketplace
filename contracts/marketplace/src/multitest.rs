@@ -15,7 +15,7 @@ fn custom_mock_app() -> StargazeApp {
     StargazeApp::default()
 }
 
-pub fn contract_nft_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
+pub fn contract_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
     let contract = ContractWrapper::new(
         crate::execute::execute,
         crate::execute::instantiate,
@@ -38,8 +38,8 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 #[cfg(test)]
 mod tests {
     use crate::msg::{
-        AskCountResponse, AsksResponse, BidResponse, CollectionsResponse, Offset, ParamsResponse,
-        SudoMsg,
+        AskCountResponse, AsksResponse, BidResponse, CollectionsResponse, ParamsResponse,
+        PriceOffset, SudoMsg,
     };
     use crate::state::Bid;
 
@@ -65,7 +65,7 @@ mod tests {
         creator: &Addr,
     ) -> Result<(Addr, Addr), ContractError> {
         // Instantiate marketplace contract
-        let marketplace_id = router.store_code(contract_nft_marketplace());
+        let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
@@ -83,6 +83,7 @@ mod tests {
                 None,
             )
             .unwrap();
+        println!("marketplace: {:?}", marketplace);
 
         // Setup media contract
         let sg721_id = router.store_code(contract_sg721());
@@ -111,6 +112,7 @@ mod tests {
                 None,
             )
             .unwrap();
+        println!("collection: {:?}", collection);
 
         Ok((marketplace, collection))
     }
@@ -618,7 +620,7 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 111u128);
 
-        let start_after = Offset::new(res.asks[0].price, res.asks[0].token_id);
+        let start_after = PriceOffset::new(res.asks[0].price, res.asks[0].token_id);
         let query_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
             start_after: Some(start_after),
@@ -648,7 +650,7 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 109u128);
 
-        let start_before = Offset::new(res.asks[0].price, res.asks[0].token_id);
+        let start_before = PriceOffset::new(res.asks[0].price, res.asks[0].token_id);
         let reverse_query_asks_start_before_first_desc_msg = QueryMsg::ReverseAsksSortedByPrice {
             collection: collection.to_string(),
             start_before: Some(start_before),
@@ -781,7 +783,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
             .unwrap();
-        assert_eq!(res.asks.len(), 2);
+        assert_eq!(res.asks.len(), 3);
     }
 
     #[test]
@@ -1269,7 +1271,7 @@ mod tests {
         let (curator, bidder, creator) = setup_accounts(&mut router).unwrap();
 
         // Instantiate marketplace contract
-        let marketplace_id = router.store_code(contract_nft_marketplace());
+        let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
@@ -1441,7 +1443,7 @@ mod tests {
         // Setup intial accounts
         let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
         // Instantiate marketplace contract
-        let marketplace_id = router.store_code(contract_nft_marketplace());
+        let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
