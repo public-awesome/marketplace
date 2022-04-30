@@ -1,10 +1,10 @@
 use crate::msg::{
     AskCountResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
-    CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, CurrentAskResponse,
+    CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, CurrentAskResponse, Offset,
     ParamsResponse, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bids, collection_bid_key, collection_bids, Offset, TokenId, ASK_HOOKS,
+    ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, ASK_HOOKS,
     SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
@@ -169,14 +169,12 @@ pub fn query_asks_sorted_by_price(
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let start = if let Some(offset) = start_after {
-        Some(Bound::exclusive((
-            offset.price,
+    let start = start_after.map(|offset| {
+        Bound::exclusive((
+            offset.price.u128(),
             ask_key(collection.clone(), offset.token_id),
-        )))
-    } else {
-        None
-    };
+        ))
+    });
 
     let asks = asks()
         .idx
@@ -198,14 +196,12 @@ pub fn reverse_query_asks_sorted_by_price(
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let end = if let Some(offset) = start_before {
-        Some(Bound::exclusive((
-            offset.price,
+    let end = start_before.map(|offset| {
+        Bound::exclusive((
+            offset.price.u128(),
             ask_key(collection.clone(), offset.token_id),
-        )))
-    } else {
-        None
-    };
+        ))
+    });
 
     let asks = asks()
         .idx

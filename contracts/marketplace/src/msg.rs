@@ -1,5 +1,5 @@
-use crate::state::{Ask, Bid, CollectionBid, Offset, SudoParams, TokenId};
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, WasmMsg};
+use crate::state::{Ask, Bid, CollectionBid, SudoParams, TokenId};
+use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_std::CosmosMsg;
@@ -103,6 +103,19 @@ pub enum SudoMsg {
 pub type Collection = String;
 pub type Bidder = String;
 pub type Seller = String;
+
+/// Offsets for pagination
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Offset {
+    pub price: Uint128,
+    pub token_id: TokenId,
+}
+
+impl Offset {
+    pub fn new(price: Uint128, token_id: TokenId) -> Self {
+        Offset { price, token_id }
+    }
+}
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]

@@ -37,8 +37,10 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
-    use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, ParamsResponse, SudoMsg};
-    use crate::state::{Bid, Offset};
+    use crate::msg::{
+        AsksResponse, BidResponse, CollectionsResponse, Offset, ParamsResponse, SudoMsg,
+    };
+    use crate::state::Bid;
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
@@ -698,13 +700,8 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 111u128);
 
-        let start_after = Offset::new(res.asks[0].price.u128(), res.asks[0].token_id);
-        println!(
-            "{:?}{:?}",
-            start_after.clone().price,
-            start_after.clone().token_id
-        );
-        let query_asks_start_after_first_msg = QueryMsg::AsksSortedByPrice {
+        let start_after = Offset::new(res.asks[0].price, res.asks[0].token_id);
+        let query_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
             start_after: Some(start_after),
             limit: None,
@@ -712,7 +709,7 @@ mod tests {
 
         let res: AsksResponse = router
             .wrap()
-            .query_wasm_smart(marketplace.clone(), &query_asks_start_after_first_msg)
+            .query_wasm_smart(marketplace.clone(), &query_msg)
             .unwrap();
         assert_eq!(res.asks.len(), 2);
         assert_eq!(res.asks[0].price.u128(), 110u128);
@@ -733,7 +730,7 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 109u128);
 
-        let start_before = Offset::new(res.asks[0].price.u128(), res.asks[0].token_id);
+        let start_before = Offset::new(res.asks[0].price, res.asks[0].token_id);
         let reverse_query_asks_start_before_first_desc_msg = QueryMsg::ReverseAsksSortedByPrice {
             collection: collection.to_string(),
             start_before: Some(start_before),
