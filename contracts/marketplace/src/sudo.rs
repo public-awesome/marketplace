@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::helpers::map_validate;
+use crate::helpers::{map_validate, ExpiryRange};
 use crate::msg::SudoMsg;
 use crate::state::{ASK_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS};
 use cosmwasm_std::{entry_point, Addr, Decimal, DepsMut, Env};
@@ -48,11 +48,19 @@ pub fn sudo_update_params(
     params.trading_fee_basis_points = trading_fee
         .map(Decimal::percent)
         .unwrap_or(params.trading_fee_basis_points);
-    params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
-    params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
+
+    params.ask_expiry = ask_expiry
+        .map(ExpiryRange::new)
+        .unwrap_or(params.ask_expiry);
+
+    params.bid_expiry = bid_expiry
+        .map(ExpiryRange::new)
+        .unwrap_or(params.bid_expiry);
+
     if let Some(operators) = operators {
         params.operators = map_validate(deps.api, &operators)?;
     }
+
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "update_params"))

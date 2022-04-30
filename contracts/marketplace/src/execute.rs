@@ -321,7 +321,7 @@ pub fn execute_set_bid(
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
-    expires_validate(&env, expires, params.bid_expiry)?;
+    params.bid_expiry.is_valid(&env.block, expires)?;
 
     let bidder = info.sender;
     let mut res = Response::new();
@@ -498,7 +498,7 @@ pub fn execute_set_collection_bid(
     let price = must_pay(&info, NATIVE_DENOM)?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
-    expires_validate(&env, expires, params.bid_expiry)?;
+    params.bid_expiry.is_valid(&env.block, expires)?;
 
     let bidder = info.sender;
     let mut res = Response::new();
@@ -719,20 +719,6 @@ fn payout(
     }
 
     Ok(msgs)
-}
-
-fn expires_validate(
-    env: &Env,
-    expires: Timestamp,
-    expiry: (u64, u64),
-) -> Result<(), ContractError> {
-    if expires <= env.block.time.plus_seconds(expiry.0)
-        || expires > env.block.time.plus_seconds(expiry.1)
-    {
-        return Err(ContractError::InvalidExpiration {});
-    }
-
-    Ok(())
 }
 
 fn price_validate(price: &Coin) -> Result<(), ContractError> {

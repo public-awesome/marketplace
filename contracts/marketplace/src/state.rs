@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -16,7 +16,7 @@ pub struct SudoParams {
     pub ask_expiry: ExpiryRange,
     /// Valid time range for Bids
     /// (min, max) in seconds
-    pub bid_expiry: (u64, u64),
+    pub bid_expiry: ExpiryRange,
     /// Operators are entites that are responsible for maintaining the active state of Asks
     /// They listen to NFT transfer events, and update the active state of Asks
     pub operators: Vec<Addr>,

@@ -3,6 +3,7 @@ use std::vec;
 
 use crate::error::ContractError;
 use crate::execute::{execute, instantiate};
+use crate::helpers::ExpiryRange;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::query::{query_ask_count, query_asks_by_seller, query_bids_by_bidder};
 use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid};
@@ -104,8 +105,8 @@ fn setup_contract(deps: DepsMut) {
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
         trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
-        ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
-        bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+        ask_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
+        bid_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
         sales_finalized_hook: None,
     };
     let info = mock_info(CREATOR, &[]);
@@ -120,8 +121,8 @@ fn proper_initialization() {
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
         trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
-        ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
-        bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+        ask_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
+        bid_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
         sales_finalized_hook: None,
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));

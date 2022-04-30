@@ -37,6 +37,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::helpers::ExpiryRange;
     use crate::msg::{AsksResponse, BidResponse, CollectionsResponse, ParamsResponse, SudoMsg};
     use crate::state::Bid;
 
@@ -66,8 +67,8 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
-            ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
-            bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            ask_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: None,
         };
         let nft_marketplace_addr = router
@@ -1295,8 +1296,8 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
-            ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
-            bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            ask_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: None,
         };
         let nft_marketplace_addr = router
@@ -1445,7 +1446,7 @@ mod tests {
             .query_wasm_smart(marketplace, &query_params_msg)
             .unwrap();
         assert_eq!(res.params.trading_fee_basis_points, Decimal::percent(5));
-        assert_eq!(res.params.ask_expiry, (1, 2));
+        assert_eq!(res.params.ask_expiry, ExpiryRange(1, 2));
         assert_eq!(res.params.operators, vec!["operator".to_string()]);
     }
 
@@ -1493,8 +1494,8 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
-            ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
-            bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            ask_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: ExpiryRange(MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: Some("hook".to_string()),
         };
         let marketplace = router

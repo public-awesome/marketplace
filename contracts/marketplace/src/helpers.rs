@@ -45,8 +45,8 @@ pub enum ExpiryRangeError {
 pub struct ExpiryRange(pub u64, pub u64);
 
 impl ExpiryRange {
-    pub fn new(min: u64, max: u64) -> Self {
-        ExpiryRange(min, max)
+    pub fn new(range: (u64, u64)) -> Self {
+        ExpiryRange(range.0, range.1)
     }
 
     /// Validates if given expires time is within the allowable range
