@@ -188,6 +188,13 @@ pub enum QueryMsg {
     /// Get all bids by a bidder
     /// Return type: `BidsResponse`
     BidsByBidder { bidder: Bidder },
+    /// Get all bids by a bidder
+    /// Return type: `BidsResponse`
+    BidsByBidderPaginated {
+        bidder: Bidder,
+        start_after: Option<CollectionOffset>,
+        limit: Option<u32>,
+    },
     /// Get all bids for a specific NFT
     /// Return type: `BidsResponse`
     Bids {
