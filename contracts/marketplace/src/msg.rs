@@ -174,6 +174,13 @@ pub enum QueryMsg {
     /// Get all asks by seller
     /// Return type: `AsksResponse`
     AsksBySeller { seller: Seller },
+    /// Get all asks by seller
+    /// Return type: `AsksResponse`
+    AsksBySellerPaginated {
+        seller: Seller,
+        start_after: Option<CollectionOffset>,
+        limit: Option<u32>,
+    },
     /// Get data for a specific bid
     /// Return type: `BidResponse`
     Bid {

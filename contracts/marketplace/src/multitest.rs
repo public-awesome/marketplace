@@ -38,8 +38,8 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 #[cfg(test)]
 mod tests {
     use crate::msg::{
-        AskCountResponse, AsksResponse, BidResponse, CollectionsResponse, ParamsResponse,
-        PriceOffset, SudoMsg,
+        AskCountResponse, AsksResponse, BidResponse, CollectionOffset, CollectionsResponse,
+        ParamsResponse, PriceOffset, SudoMsg,
     };
     use crate::state::Bid;
 
@@ -783,7 +783,46 @@ mod tests {
             .wrap()
             .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
             .unwrap();
-        assert_eq!(res.asks.len(), 3);
+        assert_eq!(res.asks.len(), 2);
+
+        // owner2 should have 0 tokens when paginated by a non-existing collection
+        let query_asks_msg = QueryMsg::AsksBySellerPaginated {
+            seller: owner2.to_string(),
+            start_after: Some(CollectionOffset::new(
+                "non-existing-collection".to_string(),
+                TOKEN_ID,
+            )),
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 0);
+
+        // owner2 should have 2 tokens when paginated by a existing collection
+        let query_asks_msg = QueryMsg::AsksBySellerPaginated {
+            seller: owner2.to_string(),
+            start_after: Some(CollectionOffset::new(collection.to_string(), 0)),
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 2);
+
+        // owner2 should have 1 token when paginated by a existing collection starting after a token
+        let query_asks_msg = QueryMsg::AsksBySellerPaginated {
+            seller: owner2.to_string(),
+            start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID + 1)),
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 1);
     }
 
     #[test]

@@ -124,6 +124,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::AskHooks {} => to_binary(&ASK_HOOKS.query_hooks(deps)?),
         QueryMsg::SaleFinalizedHooks {} => to_binary(&SALE_FINALIZED_HOOKS.query_hooks(deps)?),
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
+        QueryMsg::AsksBySellerPaginated {
+            seller,
+            start_after,
+            limit,
+        } => to_binary(&query_asks_by_seller_pg(
+            deps,
+            api.addr_validate(&seller)?,
+            start_after,
+            limit,
+        )?),
     }
 }
 
@@ -248,12 +258,7 @@ pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse>
         .seller
         .prefix(seller)
         .range(deps.storage, None, None, Order::Ascending)
-        .map(|res| {
-            res.map(|item| {
-                println!("{:?}", item.0);
-                item.1
-            })
-        })
+        .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(AsksResponse { asks })
