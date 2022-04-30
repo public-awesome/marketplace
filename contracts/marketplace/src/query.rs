@@ -258,13 +258,24 @@ pub fn query_asks_by_seller(
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start = start_after.map(|token_id| Bound::exclusive(ask_key(seller.clone(), token_id)));
+
+    let start = start_after.map(|token_id| Bound::exclusive((seller.clone(), token_id)));
+    println!("start: {:?}", start);
 
     let asks: StdResult<Vec<_>> = asks()
         .idx
         .seller
         .prefix(seller)
-        .range(deps.storage, start, None, Order::Ascending)
+        .range(
+            deps.storage,
+            // Some(Bound::exclusive((
+            //     collection,
+            //     start_after.unwrap_or_default(),
+            // ))),
+            start,
+            None,
+            Order::Ascending,
+        )
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect();
