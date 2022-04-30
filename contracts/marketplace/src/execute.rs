@@ -214,12 +214,14 @@ pub fn execute_set_ask(
         Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
     })?;
 
-    Ok(Response::new()
+    let res = Response::new()
         .add_submessages(submsgs)
         .add_attribute("action", "set_ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("price", price.to_string()))
+        .add_attribute("price", price.to_string());
+
+    Ok(res)
 }
 
 /// Removes the ask on a particular media
@@ -247,11 +249,13 @@ pub fn execute_remove_ask(
         msgs.push(remove_and_refund_bid(deps.storage, bid.clone())?)
     }
 
-    Ok(Response::new()
+    let res = Response::new()
         .add_attribute("action", "remove_ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_messages(msgs))
+        .add_messages(msgs);
+
+    Ok(res)
 }
 
 /// Updates the the active state of the ask.
@@ -279,11 +283,13 @@ pub fn execute_update_ask_state(
     ask.active = active;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
-    Ok(Response::new()
+    let res = Response::new()
         .add_attribute("action", "update_ask_state")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("active", active.to_string()))
+        .add_attribute("active", active.to_string());
+
+    Ok(res)
 }
 
 /// Updates the ask price on a particular NFT
@@ -302,11 +308,13 @@ pub fn execute_update_ask(
     ask.price = price.amount;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
-    Ok(Response::new()
+    let res = Response::new()
         .add_attribute("action", "update_ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("price", price.to_string()))
+        .add_attribute("price", price.to_string());
+
+    Ok(res)
 }
 
 /// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
@@ -388,12 +396,14 @@ pub fn execute_set_bid(
             .add_submessages(submsgs);
     }
 
-    Ok(res
+    res = res
         .add_attribute("action", "set_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
-        .add_attribute("bid_price", bid_price.to_string()))
+        .add_attribute("bid_price", bid_price.to_string());
+
+    Ok(res)
 }
 
 /// Removes a bid made by the bidder. Bidders can only remove their own bids
@@ -414,12 +424,14 @@ pub fn execute_remove_bid(
         bid_key(collection.clone(), token_id, bidder.clone()),
     )?;
 
-    Ok(Response::new()
+    let res = Response::new()
         .add_message(remove_and_refund_bid(deps.storage, bid)?)
         .add_attribute("action", "remove_bid")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("bidder", bidder))
+        .add_attribute("bidder", bidder);
+
+    Ok(res)
 }
 
 fn remove_and_refund_bid(store: &mut dyn Storage, bid: Bid) -> Result<BankMsg, ContractError> {
@@ -478,13 +490,15 @@ pub fn execute_accept_bid(
         coin(bid.price.u128(), NATIVE_DENOM),
     )?;
 
-    Ok(Response::new()
+    let res = Response::new()
         .add_attribute("action", "accept_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_messages(msgs)
-        .add_submessages(submsgs))
+        .add_submessages(submsgs);
+
+    Ok(res)
 }
 
 /// Place a collection bid (limit order) across an entire collection
@@ -527,11 +541,13 @@ pub fn execute_set_collection_bid(
         },
     )?;
 
-    Ok(res
+    res = res
         .add_attribute("action", "set_collection_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("bidder", bidder)
-        .add_attribute("bid_price", price.to_string()))
+        .add_attribute("bid_price", price.to_string());
+
+    Ok(res)
 }
 
 /// Owner of an item in a collection can accept a collection bid which transfers funds as well as a token
@@ -570,13 +586,15 @@ pub fn execute_accept_collection_bid(
         coin(bid.price.u128(), NATIVE_DENOM),
     )?;
 
-    Ok(Response::new()
+    let res = Response::new()
         .add_attribute("action", "accept_collection_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_messages(msgs)
-        .add_submessages(submsgs))
+        .add_submessages(submsgs);
+
+    Ok(res)
 }
 
 /// Checks to enfore only nft owner can call
