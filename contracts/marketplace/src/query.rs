@@ -272,12 +272,12 @@ pub fn query_asks_by_seller_pg(
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let start = start_after.map(|offset| {
-        Bound::exclusive(ask_key(
-            deps.api.addr_validate(&offset.collection).unwrap(),
-            offset.token_id,
-        ))
-    });
+    let start = if let Some(start) = start_after {
+        let collection = deps.api.addr_validate(&start.collection)?;
+        Some(Bound::exclusive(ask_key(collection, start.token_id)))
+    } else {
+        None
+    };
 
     let asks = asks()
         .idx
