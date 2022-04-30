@@ -122,7 +122,7 @@
             "start_after": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Offset"
+                  "$ref": "#/definitions/PriceOffset"
                 },
                 {
                   "type": "null"
@@ -161,7 +161,7 @@
             "start_before": {
               "anyOf": [
                 {
-                  "$ref": "#/definitions/Offset"
+                  "$ref": "#/definitions/PriceOffset"
                 },
                 {
                   "type": "null"
@@ -207,8 +207,26 @@
             "seller"
           ],
           "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
             "seller": {
               "type": "string"
+            },
+            "start_after": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/CollectionOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
@@ -261,6 +279,24 @@
           "properties": {
             "bidder": {
               "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/CollectionOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
@@ -461,7 +497,24 @@
     }
   ],
   "definitions": {
-    "Offset": {
+    "CollectionOffset": {
+      "type": "object",
+      "required": [
+        "collection",
+        "token_id"
+      ],
+      "properties": {
+        "collection": {
+          "type": "string"
+        },
+        "token_id": {
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    },
+    "PriceOffset": {
       "description": "Offsets for pagination",
       "type": "object",
       "required": [

@@ -23,14 +23,14 @@ start_after?: (number | null)
 asks_sorted_by_price: {
 collection: string
 limit?: (number | null)
-start_after?: (Offset | null)
+start_after?: (PriceOffset | null)
 [k: string]: unknown
 }
 } | {
 reverse_asks_sorted_by_price: {
 collection: string
 limit?: (number | null)
-start_before?: (Offset | null)
+start_before?: (PriceOffset | null)
 [k: string]: unknown
 }
 } | {
@@ -40,7 +40,9 @@ collection: string
 }
 } | {
 asks_by_seller: {
+limit?: (number | null)
 seller: string
+start_after?: (CollectionOffset | null)
 [k: string]: unknown
 }
 } | {
@@ -53,6 +55,8 @@ token_id: number
 } | {
 bids_by_bidder: {
 bidder: string
+limit?: (number | null)
+start_after?: (CollectionOffset | null)
 [k: string]: unknown
 }
 } | {
@@ -105,8 +109,13 @@ params: {
 /**
  * Offsets for pagination
  */
-export interface Offset {
+export interface PriceOffset {
 price: Uint128
+token_id: number
+[k: string]: unknown
+}
+export interface CollectionOffset {
+collection: string
 token_id: number
 [k: string]: unknown
 }

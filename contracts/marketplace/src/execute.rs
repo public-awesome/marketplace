@@ -666,7 +666,6 @@ fn finalize_sale(
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    println!("reply msg id: {:?}", msg.id);
     match msg.id {
         REPLY_SALE_FINALIZED_HOOK => {
             let res = Response::new()

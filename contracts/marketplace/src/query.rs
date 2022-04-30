@@ -1,10 +1,10 @@
 use crate::msg::{
     AskCountResponse, AskResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
-    CollectionBidResponse, CollectionBidsResponse, CollectionsResponse, Offset, ParamsResponse,
-    QueryMsg,
+    CollectionBidResponse, CollectionBidsResponse, CollectionOffset, CollectionsResponse,
+    ParamsResponse, PriceOffset, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bids, collection_bid_key, collection_bids, TokenId, ASK_HOOKS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, TokenId, ASK_HOOKS,
     SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
@@ -26,11 +26,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::Ask {
             collection,
             token_id,
-        } => to_binary(&query_current_ask(
-            deps,
-            api.addr_validate(&collection)?,
-            token_id,
-        )?),
+        } => to_binary(&query_ask(deps, api.addr_validate(&collection)?, token_id)?),
         QueryMsg::Asks {
             collection,
             start_after,
@@ -61,9 +57,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         )?),
-        QueryMsg::AsksBySeller { seller } => {
-            to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
-        }
+        QueryMsg::AsksBySeller {
+            seller,
+            start_after,
+            limit,
+        } => to_binary(&query_asks_by_seller(
+            deps,
+            api.addr_validate(&seller)?,
+            start_after,
+            limit,
+        )?),
         QueryMsg::AskCount { collection } => {
             to_binary(&query_ask_count(deps, api.addr_validate(&collection)?)?)
         }
@@ -89,9 +92,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::BidsByBidder { bidder } => {
-            to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
-        }
+        QueryMsg::BidsByBidder {
+            bidder,
+            start_after,
+            limit,
+        } => to_binary(&query_bids_by_bidder(
+            deps,
+            api.addr_validate(&bidder)?,
+            start_after,
+            limit,
+        )?),
         QueryMsg::BidsSortedByPrice {
             collection,
             limit,
@@ -180,7 +190,7 @@ pub fn query_asks(
 pub fn query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
-    start_after: Option<Offset>,
+    start_after: Option<PriceOffset>,
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -207,7 +217,7 @@ pub fn query_asks_sorted_by_price(
 pub fn reverse_query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
-    start_before: Option<Offset>,
+    start_before: Option<PriceOffset>,
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -242,23 +252,34 @@ pub fn query_ask_count(deps: Deps, collection: Addr) -> StdResult<AskCountRespon
     Ok(AskCountResponse { count })
 }
 
-pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse> {
+pub fn query_asks_by_seller(
+    deps: Deps,
+    seller: Addr,
+    start_after: Option<CollectionOffset>,
+    limit: Option<u32>,
+) -> StdResult<AsksResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let start = if let Some(start) = start_after {
+        let collection = deps.api.addr_validate(&start.collection)?;
+        Some(Bound::exclusive(ask_key(collection, start.token_id)))
+    } else {
+        None
+    };
+
     let asks = asks()
         .idx
         .seller
         .prefix(seller)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(AsksResponse { asks })
 }
 
-pub fn query_current_ask(
-    deps: Deps,
-    collection: Addr,
-    token_id: TokenId,
-) -> StdResult<AskResponse> {
+pub fn query_ask(deps: Deps, collection: Addr, token_id: TokenId) -> StdResult<AskResponse> {
     let ask = asks().may_load(deps.storage, ask_key(collection, token_id))?;
 
     Ok(AskResponse { ask })
@@ -275,12 +296,31 @@ pub fn query_bid(
     Ok(BidResponse { bid })
 }
 
-pub fn query_bids_by_bidder(deps: Deps, bidder: Addr) -> StdResult<BidsResponse> {
+pub fn query_bids_by_bidder(
+    deps: Deps,
+    bidder: Addr,
+    start_after: Option<CollectionOffset>,
+    limit: Option<u32>,
+) -> StdResult<BidsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let start = if let Some(start) = start_after {
+        let collection = deps.api.addr_validate(&start.collection)?;
+        Some(Bound::exclusive(bid_key(
+            collection,
+            start.token_id,
+            bidder.clone(),
+        )))
+    } else {
+        None
+    };
+
     let bids = bids()
         .idx
         .bidder
         .prefix(bidder)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
 

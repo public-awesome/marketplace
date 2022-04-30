@@ -109,14 +109,29 @@ pub type Seller = String;
 
 /// Offsets for pagination
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Offset {
+pub struct PriceOffset {
     pub price: Uint128,
     pub token_id: TokenId,
 }
 
-impl Offset {
+impl PriceOffset {
     pub fn new(price: Uint128, token_id: TokenId) -> Self {
-        Offset { price, token_id }
+        PriceOffset { price, token_id }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CollectionOffset {
+    pub collection: String,
+    pub token_id: TokenId,
+}
+
+impl CollectionOffset {
+    pub fn new(collection: String, token_id: TokenId) -> Self {
+        CollectionOffset {
+            collection,
+            token_id,
+        }
     }
 }
 
@@ -146,14 +161,14 @@ pub enum QueryMsg {
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
         collection: Collection,
-        start_after: Option<Offset>,
+        start_after: Option<PriceOffset>,
         limit: Option<u32>,
     },
     /// Get all asks for a collection, sorted by price in reverse
     /// Return type: `AsksResponse`
     ReverseAsksSortedByPrice {
         collection: Collection,
-        start_before: Option<Offset>,
+        start_before: Option<PriceOffset>,
         limit: Option<u32>,
     },
     /// Count of all asks
@@ -161,7 +176,11 @@ pub enum QueryMsg {
     AskCount { collection: Collection },
     /// Get all asks by seller
     /// Return type: `AsksResponse`
-    AsksBySeller { seller: Seller },
+    AsksBySeller {
+        seller: Seller,
+        start_after: Option<CollectionOffset>,
+        limit: Option<u32>,
+    },
     /// Get data for a specific bid
     /// Return type: `BidResponse`
     Bid {
@@ -171,7 +190,11 @@ pub enum QueryMsg {
     },
     /// Get all bids by a bidder
     /// Return type: `BidsResponse`
-    BidsByBidder { bidder: Bidder },
+    BidsByBidder {
+        bidder: Bidder,
+        start_after: Option<CollectionOffset>,
+        limit: Option<u32>,
+    },
     /// Get all bids for a specific NFT
     /// Return type: `BidsResponse`
     Bids {

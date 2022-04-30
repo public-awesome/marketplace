@@ -15,7 +15,7 @@ fn custom_mock_app() -> StargazeApp {
     StargazeApp::default()
 }
 
-pub fn contract_nft_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
+pub fn contract_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
     let contract = ContractWrapper::new(
         crate::execute::execute,
         crate::execute::instantiate,
@@ -39,8 +39,8 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 mod tests {
     use crate::helpers::ExpiryRange;
     use crate::msg::{
-        AskCountResponse, AsksResponse, BidResponse, CollectionsResponse, Offset, ParamsResponse,
-        SudoMsg,
+        AskCountResponse, AsksResponse, BidResponse, CollectionOffset, CollectionsResponse,
+        ParamsResponse, PriceOffset, SudoMsg,
     };
     use crate::state::Bid;
 
@@ -66,7 +66,7 @@ mod tests {
         creator: &Addr,
     ) -> Result<(Addr, Addr), ContractError> {
         // Instantiate marketplace contract
-        let marketplace_id = router.store_code(contract_nft_marketplace());
+        let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
@@ -84,6 +84,7 @@ mod tests {
                 None,
             )
             .unwrap();
+        println!("marketplace: {:?}", marketplace);
 
         // Setup media contract
         let sg721_id = router.store_code(contract_sg721());
@@ -112,6 +113,7 @@ mod tests {
                 None,
             )
             .unwrap();
+        println!("collection: {:?}", collection);
 
         Ok((marketplace, collection))
     }
@@ -619,7 +621,7 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 111u128);
 
-        let start_after = Offset::new(res.asks[0].price, res.asks[0].token_id);
+        let start_after = PriceOffset::new(res.asks[0].price, res.asks[0].token_id);
         let query_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
             start_after: Some(start_after),
@@ -649,7 +651,7 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 109u128);
 
-        let start_before = Offset::new(res.asks[0].price, res.asks[0].token_id);
+        let start_before = PriceOffset::new(res.asks[0].price, res.asks[0].token_id);
         let reverse_query_asks_start_before_first_desc_msg = QueryMsg::ReverseAsksSortedByPrice {
             collection: collection.to_string(),
             start_before: Some(start_before),
@@ -767,6 +769,8 @@ mod tests {
         // owner1 should only have 1 token
         let query_asks_msg = QueryMsg::AsksBySeller {
             seller: owner.to_string(),
+            start_after: None,
+            limit: None,
         };
         let res: AsksResponse = router
             .wrap()
@@ -777,12 +781,53 @@ mod tests {
         // owner2 should have 2 token
         let query_asks_msg = QueryMsg::AsksBySeller {
             seller: owner2.to_string(),
+            start_after: None,
+            limit: None,
         };
         let res: AsksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
             .unwrap();
         assert_eq!(res.asks.len(), 2);
+
+        // owner2 should have 0 tokens when paginated by a non-existing collection
+        let query_asks_msg = QueryMsg::AsksBySeller {
+            seller: owner2.to_string(),
+            start_after: Some(CollectionOffset::new(
+                "non-existing-collection".to_string(),
+                TOKEN_ID,
+            )),
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 0);
+
+        // owner2 should have 2 tokens when paginated by a existing collection
+        let query_asks_msg = QueryMsg::AsksBySeller {
+            seller: owner2.to_string(),
+            start_after: Some(CollectionOffset::new(collection.to_string(), 0)),
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 2);
+
+        // owner2 should have 1 token when paginated by a existing collection starting after a token
+        let query_asks_msg = QueryMsg::AsksBySeller {
+            seller: owner2.to_string(),
+            start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID + 1)),
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 1);
     }
 
     #[test]
@@ -980,7 +1025,7 @@ mod tests {
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
-            bidder,
+            bidder.clone(),
             marketplace.clone(),
             &set_bid_msg,
             &coins(100, NATIVE_DENOM),
@@ -989,10 +1034,21 @@ mod tests {
 
         let res: BidsResponse = router
             .wrap()
-            .query_wasm_smart(marketplace, &query_bids_msg)
+            .query_wasm_smart(marketplace.clone(), &query_bids_msg)
             .unwrap();
         assert_eq!(res.bids[0].token_id, TOKEN_ID);
         assert_eq!(res.bids[0].price.u128(), 100u128);
+
+        let query_bids_msg = QueryMsg::BidsByBidder {
+            bidder: bidder.to_string(),
+            start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID - 1)),
+            limit: None,
+        };
+        let res: BidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_bids_msg)
+            .unwrap();
+        assert_eq!(res.bids.len(), 1);
     }
 
     #[test]
@@ -1270,7 +1326,7 @@ mod tests {
         let (curator, bidder, creator) = setup_accounts(&mut router).unwrap();
 
         // Instantiate marketplace contract
-        let marketplace_id = router.store_code(contract_nft_marketplace());
+        let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
@@ -1442,7 +1498,7 @@ mod tests {
         // Setup intial accounts
         let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
         // Instantiate marketplace contract
-        let marketplace_id = router.store_code(contract_nft_marketplace());
+        let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
