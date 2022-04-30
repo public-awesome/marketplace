@@ -1166,6 +1166,34 @@ mod tests {
     }
 
     #[test]
+    fn try_reserved_ask() {
+        let mut router = custom_mock_app();
+
+        // Setup intial accounts
+        let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+        // Instantiate and configure contracts
+        let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+        // Mint NFT for creator
+        mint(&mut router, &creator, &collection, TOKEN_ID);
+        approve(&mut router, &owner, &collection, &marketplace, TOKEN_ID);
+
+        // An ask is made by the owner
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(100, NATIVE_DENOM),
+            funds_recipient: None,
+            reserve_for: Some(bidder.to_string()),
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        let res = router.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+        println!("{:?}", res);
+        assert!(res.is_ok());
+    }
+
+    #[test]
     fn remove_bid_refund() {
         let mut router = custom_mock_app();
 
