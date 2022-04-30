@@ -61,9 +61,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         )?),
-        QueryMsg::AsksBySeller { seller } => {
-            to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
-        }
+        QueryMsg::AsksBySeller {
+            seller,
+            start_after,
+            limit,
+        } => to_binary(&query_asks_by_seller(
+            deps,
+            api.addr_validate(&seller)?,
+            start_after,
+            limit,
+        )?),
         QueryMsg::AskCount { collection } => {
             to_binary(&query_ask_count(deps, api.addr_validate(&collection)?)?)
         }
@@ -127,10 +134,28 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-pub fn query_params(deps: Deps) -> StdResult<ParamsResponse> {
-    let config = SUDO_PARAMS.load(deps.storage)?;
+pub fn query_collections(
+    deps: Deps,
+    start_after: Option<Collection>,
+    limit: Option<u32>,
+) -> StdResult<CollectionsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let start_addr = maybe_addr(deps.api, start_after)?;
 
-    Ok(ParamsResponse { params: config })
+    let collections: StdResult<Vec<_>> = asks()
+        .prefix_range(
+            deps.storage,
+            start_addr.map(PrefixBound::exclusive),
+            None,
+            Order::Ascending,
+        )
+        .take(limit)
+        .map(|item| item.map(|(key, _)| key.0))
+        .collect();
+
+    Ok(CollectionsResponse {
+        collections: collections?,
+    })
 }
 
 pub fn query_asks(
@@ -226,40 +251,25 @@ pub fn query_ask_count(deps: Deps, collection: Addr) -> StdResult<AskCountRespon
     Ok(AskCountResponse { count })
 }
 
-pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse> {
+pub fn query_asks_by_seller(
+    deps: Deps,
+    seller: Addr,
+    start_after: Option<TokenId>,
+    limit: Option<u32>,
+) -> StdResult<AsksResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let start = start_after.map(|token_id| Bound::exclusive(ask_key(seller.clone(), token_id)));
+
     let asks: StdResult<Vec<_>> = asks()
         .idx
         .seller
         .prefix(seller)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect();
 
     Ok(AsksResponse { asks: asks? })
-}
-
-pub fn query_collections(
-    deps: Deps,
-    start_after: Option<Collection>,
-    limit: Option<u32>,
-) -> StdResult<CollectionsResponse> {
-    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start_addr = maybe_addr(deps.api, start_after)?;
-
-    let collections: StdResult<Vec<_>> = asks()
-        .prefix_range(
-            deps.storage,
-            start_addr.map(PrefixBound::exclusive),
-            None,
-            Order::Ascending,
-        )
-        .take(limit)
-        .map(|item| item.map(|(key, _)| key.0))
-        .collect();
-
-    Ok(CollectionsResponse {
-        collections: collections?,
-    })
 }
 
 pub fn query_current_ask(
@@ -392,4 +402,10 @@ pub fn query_collection_bids_by_bidder(
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(CollectionBidsResponse { bids })
+}
+
+pub fn query_params(deps: Deps) -> StdResult<ParamsResponse> {
+    let config = SUDO_PARAMS.load(deps.storage)?;
+
+    Ok(ParamsResponse { params: config })
 }
