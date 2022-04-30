@@ -1,4 +1,4 @@
-use crate::state::{Ask, Bid, CollectionBid, SudoParams, TokenId};
+use crate::state::{Ask, Bid, CollectionBid, Offset, SudoParams, TokenId};
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -124,14 +124,14 @@ pub enum QueryMsg {
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
         collection: Collection,
-        start_after: Option<Ask>,
+        start_after: Option<Offset>,
         limit: Option<u32>,
     },
     /// Get all asks for a collection sorted by price in reverse
     /// Return type: `AsksResponse`
     ReverseAsksSortedByPrice {
         collection: Collection,
-        start_before: Option<Ask>,
+        start_before: Option<Offset>,
         limit: Option<u32>,
     },
     /// Count of all asks
