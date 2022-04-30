@@ -178,6 +178,22 @@ mod tests {
         assert!(res.is_ok());
     }
 
+    fn approve(
+        router: &mut StargazeApp,
+        creator: &Addr,
+        collection: &Addr,
+        marketplace: &Addr,
+        token_id: u32,
+    ) {
+        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+            spender: marketplace.to_string(),
+            token_id: token_id.to_string(),
+            expires: None,
+        };
+        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
+        assert!(res.is_ok());
+    }
+
     #[test]
     fn try_set_accept_bid() {
         let mut router = custom_mock_app();
@@ -190,15 +206,7 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-
-        // Creator Authorizes NFT
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // Should error with expiry lower than min
         let set_ask = ExecuteMsg::SetAsk {
@@ -328,15 +336,7 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-
-        // Creator Authorizes NFT
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
@@ -398,15 +398,7 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-
-        // Creator Authorizes NFT
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
@@ -458,15 +450,7 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-
-        // Creator Authorizes NFT
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // test before ask is made, without using pagination
         let query_asks_msg = QueryMsg::Asks {
@@ -547,59 +531,25 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
-        // Mint NFT for creator
+        // Mint NFTs for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-
-        let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
-            token_id: (TOKEN_ID + 1).to_string(),
-            owner: creator.clone().to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Empty {},
-        });
-        let res = router.execute_contract(
-            creator.clone(),
-            collection.clone(),
-            &mint_for_creator_msg,
-            &[],
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+        mint(&mut router, &creator, &collection, TOKEN_ID + 1);
+        approve(
+            &mut router,
+            &creator,
+            &collection,
+            &marketplace,
+            TOKEN_ID + 1,
         );
-        assert!(res.is_ok());
-
-        let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
-            token_id: (TOKEN_ID + 2).to_string(),
-            owner: creator.clone().to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Empty {},
-        });
-        let res = router.execute_contract(
-            creator.clone(),
-            collection.clone(),
-            &mint_for_creator_msg,
-            &[],
+        mint(&mut router, &creator, &collection, TOKEN_ID + 2);
+        approve(
+            &mut router,
+            &creator,
+            &collection,
+            &marketplace,
+            TOKEN_ID + 2,
         );
-        assert!(res.is_ok());
-
-        // Creator Authorizes NFTs
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: (TOKEN_ID + 1).to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: (TOKEN_ID + 2).to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
@@ -729,30 +679,15 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
         mint(&mut router, &creator2, &collection, TOKEN_ID + 1);
-
-        // Creator Authorizes NFTs
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: (TOKEN_ID + 1).to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator2.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: (TOKEN_ID + 2).to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator2.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(
+            &mut router,
+            &creator,
+            &collection,
+            &marketplace,
+            TOKEN_ID + 1,
+        );
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
@@ -809,57 +744,23 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-
-        let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
-            token_id: (TOKEN_ID + 1).to_string(),
-            owner: creator.clone().to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Empty {},
-        });
-        let res = router.execute_contract(
-            creator.clone(),
-            collection.clone(),
-            &mint_for_creator_msg,
-            &[],
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+        mint(&mut router, &creator, &collection, TOKEN_ID + 1);
+        approve(
+            &mut router,
+            &creator,
+            &collection,
+            &marketplace,
+            TOKEN_ID + 1,
         );
-        assert!(res.is_ok());
-
-        let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
-            token_id: (TOKEN_ID + 2).to_string(),
-            owner: creator.clone().to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Empty {},
-        });
-        let res = router.execute_contract(
-            creator.clone(),
-            collection.clone(),
-            &mint_for_creator_msg,
-            &[],
+        mint(&mut router, &creator, &collection, TOKEN_ID + 2);
+        approve(
+            &mut router,
+            &creator,
+            &collection,
+            &marketplace,
+            TOKEN_ID + 2,
         );
-        assert!(res.is_ok());
-
-        // Creator Authorizes NFTs
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: (TOKEN_ID + 1).to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: (TOKEN_ID + 2).to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
@@ -993,14 +894,8 @@ mod tests {
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-        // Creator Authorizes NFT
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
             collection: collection.to_string(),
@@ -1072,13 +967,7 @@ mod tests {
         assert!(res.is_err());
 
         // Creator Authorizes NFT
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // Now set_ask succeeds
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -1163,15 +1052,7 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-
-        // Creator Authorizes NFT
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
@@ -1238,15 +1119,7 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-
-        // Creator Authorizes NFT
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // An ask is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
@@ -1392,28 +1265,8 @@ mod tests {
             .unwrap();
 
         // Mint NFT for creator
-        let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
-            token_id: TOKEN_ID.to_string(),
-            owner: creator.to_string(),
-            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-            extension: Empty {},
-        });
-        let res = router.execute_contract(
-            creator.clone(),
-            collection.clone(),
-            &mint_for_creator_msg,
-            &[],
-        );
-        assert!(res.is_ok());
-
-        // Creator Authorizes NFT
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        mint(&mut router, &creator, &collection, TOKEN_ID);
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // An ask is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
@@ -1692,15 +1545,7 @@ mod tests {
 
         // Mint NFT for creator
         mint(&mut router, &creator, &collection, TOKEN_ID);
-
-        // Creator Authorizes NFTs
-        let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-            spender: marketplace.to_string(),
-            token_id: TOKEN_ID.to_string(),
-            expires: None,
-        };
-        let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-        assert!(res.is_ok());
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
         // A collection bid is made by the bidder
         let set_collection_bid = ExecuteMsg::SetCollectionBid {
