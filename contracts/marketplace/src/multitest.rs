@@ -73,7 +73,7 @@ mod tests {
             bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: None,
         };
-        let nft_marketplace_addr = router
+        let marketplace = router
             .instantiate_contract(
                 marketplace_id,
                 creator.clone(),
@@ -101,7 +101,7 @@ mod tests {
                 }),
             },
         };
-        let nft_contract_addr = router
+        let collection = router
             .instantiate_contract(
                 sg721_id,
                 creator.clone(),
@@ -112,7 +112,7 @@ mod tests {
             )
             .unwrap();
 
-        Ok((nft_marketplace_addr, nft_contract_addr))
+        Ok((marketplace, collection))
     }
 
     // Intializes accounts with balances
@@ -166,6 +166,28 @@ mod tests {
         let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
             token_id: token_id.to_string(),
             owner: creator.clone().to_string(),
+            token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
+            extension: Empty {},
+        });
+        let res = router.execute_contract(
+            creator.clone(),
+            collection.clone(),
+            &mint_for_creator_msg,
+            &[],
+        );
+        assert!(res.is_ok());
+    }
+
+    fn mint_for(
+        router: &mut StargazeApp,
+        owner: &Addr,
+        creator: &Addr,
+        collection: &Addr,
+        token_id: u32,
+    ) {
+        let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
+            token_id: token_id.to_string(),
+            owner: owner.to_string(),
             token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
             extension: Empty {},
         });
@@ -661,13 +683,13 @@ mod tests {
         let mut router = custom_mock_app();
 
         // Setup intial accounts
-        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+        let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
-        let creator2: Addr = Addr::unchecked("creator2");
+        let owner2: Addr = Addr::unchecked("owner2");
         router
             .sudo(CwSudoMsg::Bank({
                 BankSudo::Mint {
-                    to_address: creator2.to_string(),
+                    to_address: owner2.to_string(),
                     amount: coins(CREATION_FEE, NATIVE_DENOM),
                 }
             }))
@@ -678,18 +700,26 @@ mod tests {
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
         // Mint NFT for creator
-        mint(&mut router, &creator, &collection, TOKEN_ID);
-        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-        mint(&mut router, &creator2, &collection, TOKEN_ID + 1);
+        mint_for(&mut router, &owner, &creator, &collection, TOKEN_ID);
+        approve(&mut router, &owner, &collection, &marketplace, TOKEN_ID);
+        mint_for(&mut router, &owner2, &creator, &collection, TOKEN_ID + 1);
         approve(
             &mut router,
-            &creator,
+            &owner2,
             &collection,
             &marketplace,
             TOKEN_ID + 1,
         );
+        mint_for(&mut router, &owner2, &creator, &collection, TOKEN_ID + 2);
+        approve(
+            &mut router,
+            &owner2,
+            &collection,
+            &marketplace,
+            TOKEN_ID + 2,
+        );
 
-        // An asking price is made by the creator
+        // Owner1 lists their token for sale
         let set_ask = ExecuteMsg::SetAsk {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
@@ -697,9 +727,10 @@ mod tests {
             funds_recipient: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
-        let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+        let res = router.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
-        // An asking price is made by the creator2
+
+        // Owner2 lists their token for sale
         let set_ask = ExecuteMsg::SetAsk {
             collection: collection.to_string(),
             token_id: TOKEN_ID + 1,
@@ -707,9 +738,10 @@ mod tests {
             funds_recipient: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
-        let res = router.execute_contract(creator2.clone(), marketplace.clone(), &set_ask, &[]);
+        let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
-        // An asking price is made by the creator2
+
+        // Owner2 lists another token for sale
         let set_ask = ExecuteMsg::SetAsk {
             collection: collection.to_string(),
             token_id: TOKEN_ID + 2,
@@ -717,19 +749,54 @@ mod tests {
             funds_recipient: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
-        let res = router.execute_contract(creator2.clone(), marketplace.clone(), &set_ask, &[]);
+        let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
 
+        let res: AskCountResponse = router
+            .wrap()
+            .query_wasm_smart(
+                marketplace.clone(),
+                &QueryMsg::AskCount {
+                    collection: collection.to_string(),
+                },
+            )
+            .unwrap();
+        assert_eq!(res.count, 3);
+
+        // owner1 should only have 1 token
         let query_asks_msg = QueryMsg::AsksBySeller {
-            seller: creator.to_string(),
+            seller: owner.to_string(),
             start_after: None,
             limit: None,
         };
         let res: AsksResponse = router
             .wrap()
-            .query_wasm_smart(marketplace, &query_asks_msg)
+            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
             .unwrap();
         assert_eq!(res.asks.len(), 1);
+
+        // owner2 should have 2 token
+        let query_asks_msg = QueryMsg::AsksBySeller {
+            seller: owner2.to_string(),
+            start_after: None,
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 2);
+
+        let query_asks_msg = QueryMsg::AsksBySeller {
+            seller: owner2.to_string(),
+            start_after: Some(TOKEN_ID - 5),
+            limit: None,
+        };
+        let res: AsksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
+            .unwrap();
+        assert_eq!(res.asks.len(), 0);
     }
 
     #[test]
