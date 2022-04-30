@@ -38,6 +38,7 @@ pub struct Ask {
     pub seller: Addr,
     pub price: Uint128,
     pub funds_recipient: Option<Addr>,
+    pub reserve_for: Option<Addr>,
     pub expires: Timestamp,
     pub active: bool,
 }

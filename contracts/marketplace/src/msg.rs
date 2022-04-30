@@ -33,6 +33,7 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         price: Coin,
         funds_recipient: Option<String>,
+        reserve_for: Option<String>,
         expires: Timestamp,
     },
     /// Remove an existing ask from the marketplace

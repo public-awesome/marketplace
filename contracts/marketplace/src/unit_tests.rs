@@ -33,6 +33,7 @@ fn ask_indexed_map() {
         seller: seller.clone(),
         price: Uint128::from(500u128),
         funds_recipient: None,
+        reserve_for: None,
         expires: Timestamp::from_seconds(0),
         active: true,
     };
@@ -46,6 +47,7 @@ fn ask_indexed_map() {
         seller: seller.clone(),
         price: Uint128::from(500u128),
         funds_recipient: None,
+        reserve_for: None,
         expires: Timestamp::from_seconds(0),
         active: true,
     };
@@ -179,6 +181,7 @@ fn try_set_ask() {
         token_id: TOKEN_ID,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
+        reserve_for: None,
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),
@@ -195,6 +198,7 @@ fn try_set_ask() {
         token_id: TOKEN_ID,
         price: coin(100, "osmo".to_string()),
         funds_recipient: None,
+        reserve_for: None,
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),

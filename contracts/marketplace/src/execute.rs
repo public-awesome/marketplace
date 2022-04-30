@@ -76,6 +76,7 @@ pub fn execute(
             token_id,
             price,
             funds_recipient,
+            reserve_for,
             expires,
         } => execute_set_ask(
             ExecuteEnv { deps, env, info },
@@ -83,6 +84,7 @@ pub fn execute(
             token_id,
             price,
             maybe_addr(api, funds_recipient)?,
+            maybe_addr(api, reserve_for)?,
             expires,
         ),
         ExecuteMsg::RemoveAsk {
@@ -159,6 +161,7 @@ pub fn execute_set_ask(
     token_id: TokenId,
     price: Coin,
     funds_recipient: Option<Addr>,
+    reserve_for: Option<Addr>,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
@@ -191,6 +194,7 @@ pub fn execute_set_ask(
             seller: seller.clone(),
             price: price.amount,
             funds_recipient: funds_recipient.clone(),
+            reserve_for,
             expires,
             active: true,
         },
@@ -367,7 +371,14 @@ pub fn execute_set_bid(
             },
         )?;
     } else {
-        // Bid meets ask criteria so finalize sale
+        // Bid meets ask criteria, so check if token is reserved
+        if let Some(reserved_for) = ask.reserve_for {
+            if reserved_for != bidder {
+                return Err(ContractError::TokenReserved {});
+            }
+        }
+
+        // finalize sale if reserve address matches bidder, or doesn't exist
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
         let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(

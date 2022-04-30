@@ -239,6 +239,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY - 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -250,6 +251,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -369,6 +371,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -431,6 +434,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -495,6 +499,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -582,6 +587,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -592,6 +598,7 @@ mod tests {
             token_id: TOKEN_ID + 1,
             price: coin(109, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -602,6 +609,7 @@ mod tests {
             token_id: TOKEN_ID + 2,
             price: coin(111, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -728,6 +736,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
@@ -739,6 +748,7 @@ mod tests {
             token_id: TOKEN_ID + 1,
             price: coin(109, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
@@ -750,6 +760,7 @@ mod tests {
             token_id: TOKEN_ID + 2,
             price: coin(111, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
@@ -866,6 +877,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -876,6 +888,7 @@ mod tests {
             token_id: TOKEN_ID + 1,
             price: coin(109, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -886,6 +899,7 @@ mod tests {
             token_id: TOKEN_ID + 2,
             price: coin(111, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -1000,6 +1014,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -1070,6 +1085,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -1169,6 +1185,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -1236,6 +1253,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(200, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -1383,6 +1401,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
@@ -1559,6 +1578,7 @@ mod tests {
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
+            reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         // Creator Authorizes NFT
