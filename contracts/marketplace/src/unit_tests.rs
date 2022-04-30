@@ -14,8 +14,9 @@ use sg_std::NATIVE_DENOM;
 const CREATOR: &str = "creator";
 const COLLECTION: &str = "collection";
 const TOKEN_ID: u32 = 123;
+
 // Governance parameters
-const TRADING_FEE_PERCENT: u32 = 2; // 2%
+const TRADING_FEE_BASIS_POINTS: u64 = 200; // 2%
 const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
 const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 
@@ -102,7 +103,7 @@ fn bid_indexed_map() {
 fn setup_contract(deps: DepsMut) {
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_percent: TRADING_FEE_PERCENT,
+        trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
         ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
         sales_finalized_hook: None,
@@ -118,7 +119,7 @@ fn proper_initialization() {
 
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_percent: TRADING_FEE_PERCENT,
+        trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
         ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
         sales_finalized_hook: None,

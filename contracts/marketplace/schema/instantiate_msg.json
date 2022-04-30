@@ -6,10 +6,11 @@
     "ask_expiry",
     "bid_expiry",
     "operators",
-    "trading_fee_percent"
+    "trading_fee_basis_points"
   ],
   "properties": {
     "ask_expiry": {
+      "description": "Valid time range for Asks (min, max) in seconds",
       "type": "array",
       "items": [
         {
@@ -27,6 +28,7 @@
       "minItems": 2
     },
     "bid_expiry": {
+      "description": "Valid time range for Bids (min, max) in seconds",
       "type": "array",
       "items": [
         {
@@ -56,9 +58,10 @@
         "null"
       ]
     },
-    "trading_fee_percent": {
+    "trading_fee_basis_points": {
+      "description": "Fair Burn fee for winning bids 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250",
       "type": "integer",
-      "format": "uint32",
+      "format": "uint64",
       "minimum": 0.0
     }
   }
