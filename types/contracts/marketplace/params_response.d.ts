@@ -1,4 +1,5 @@
-import { Addr } from "./shared-types";
+import { Addr, ExpiryRange } from "./shared-types";
+
 /**
  * A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0
  * 
@@ -14,11 +15,11 @@ export interface SudoParams {
 /**
  * Valid time range for Asks (min, max) in seconds
  */
-ask_expiry: [number, number]
+ask_expiry: ExpiryRange
 /**
  * Valid time range for Bids (min, max) in seconds
  */
-bid_expiry: [number, number]
+bid_expiry: ExpiryRange
 /**
  * Operators are entites that are responsible for maintaining the active state of Asks They listen to NFT transfer events, and update the active state of Asks
  */

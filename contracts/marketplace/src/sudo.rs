@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::helpers::map_validate;
+use crate::helpers::{map_validate, ExpiryRange};
 use crate::msg::SudoMsg;
 use crate::state::{ASK_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS};
 use cosmwasm_std::{entry_point, Addr, Decimal, DepsMut, Env};
@@ -39,8 +39,8 @@ pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
     trading_fee: Option<u64>,
-    ask_expiry: Option<(u64, u64)>,
-    bid_expiry: Option<(u64, u64)>,
+    ask_expiry: Option<ExpiryRange>,
+    bid_expiry: Option<ExpiryRange>,
     operators: Option<Vec<String>>,
 ) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;

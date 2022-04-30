@@ -37,6 +37,7 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 #[cfg(test)]
 mod tests {
+    use crate::helpers::ExpiryRange;
     use crate::msg::{
         AskCountResponse, AsksResponse, BidResponse, CollectionOffset, CollectionsResponse,
         ParamsResponse, PriceOffset, SudoMsg,
@@ -69,8 +70,8 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
-            ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
-            bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: None,
         };
         let marketplace = router
@@ -1329,8 +1330,8 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
-            ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
-            bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: None,
         };
         let marketplace = router
@@ -1440,7 +1441,7 @@ mod tests {
 
         let update_config_msg = SudoMsg::UpdateParams {
             trading_fee_basis_points: Some(5),
-            ask_expiry: Some((1, 2)),
+            ask_expiry: Some(ExpiryRange::new(1, 2)),
             bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
         };
@@ -1453,7 +1454,7 @@ mod tests {
             .query_wasm_smart(marketplace, &query_params_msg)
             .unwrap();
         assert_eq!(res.params.trading_fee_basis_points, Decimal::percent(5));
-        assert_eq!(res.params.ask_expiry, (1, 2));
+        assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
         assert_eq!(res.params.operators, vec!["operator".to_string()]);
     }
 
@@ -1501,8 +1502,8 @@ mod tests {
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
-            ask_expiry: (MIN_EXPIRY, MAX_EXPIRY),
-            bid_expiry: (MIN_EXPIRY, MAX_EXPIRY),
+            ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             sales_finalized_hook: Some("hook".to_string()),
         };
         let marketplace = router

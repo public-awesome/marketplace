@@ -3,6 +3,8 @@ use cw_utils::PaymentError;
 use sg_controllers::HookError;
 use thiserror::Error;
 
+use crate::helpers::ExpiryRangeError;
+
 #[derive(Error, Debug, PartialEq)]
 pub enum ContractError {
     #[error("{0}")]
@@ -49,4 +51,7 @@ pub enum ContractError {
 
     #[error("{0}")]
     Hook(#[from] HookError),
+
+    #[error("{0}")]
+    ExpiryRange(#[from] ExpiryRangeError),
 }
