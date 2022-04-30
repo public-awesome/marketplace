@@ -3,13 +3,42 @@
   "title": "QueryMsg",
   "oneOf": [
     {
+      "description": "List of collections that have asks on them Return type: `CollectionsResponse`",
+      "type": "object",
+      "required": [
+        "collections"
+      ],
+      "properties": {
+        "collections": {
+          "type": "object",
+          "properties": {
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Get the current ask for specific NFT Return type: `CurrentAskResponse`",
       "type": "object",
       "required": [
-        "current_ask"
+        "ask"
       ],
       "properties": {
-        "current_ask": {
+        "ask": {
           "type": "object",
           "required": [
             "collection",
@@ -67,7 +96,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Get all asks for a collection sorted by price Return type: `AsksResponse`",
+      "description": "Get all asks for a collection, sorted by price Return type: `AsksResponse`",
       "type": "object",
       "required": [
         "asks_sorted_by_price"
@@ -106,7 +135,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Get all asks for a collection sorted by price in reverse Return type: `AsksResponse`",
+      "description": "Get all asks for a collection, sorted by price in reverse Return type: `AsksResponse`",
       "type": "object",
       "required": [
         "reverse_asks_sorted_by_price"
@@ -180,35 +209,6 @@
           "properties": {
             "seller": {
               "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "List of collections that have asks on them Return type: `CollectionsResponse`",
-      "type": "object",
-      "required": [
-        "listed_collections"
-      ],
-      "properties": {
-        "listed_collections": {
-          "type": "object",
-          "properties": {
-            "limit": {
-              "type": [
-                "integer",
-                "null"
-              ],
-              "format": "uint32",
-              "minimum": 0.0
-            },
-            "start_after": {
-              "type": [
-                "string",
-                "null"
-              ]
             }
           }
         }
@@ -309,7 +309,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Get all bids for a collection sorted by price Return type: `BidsResponse`",
+      "description": "Get all bids for a collection, sorted by price Return type: `BidsResponse`",
       "type": "object",
       "required": [
         "bids_sorted_by_price"
@@ -337,19 +337,6 @@
               "type": "boolean"
             }
           }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Get the config for the contract Return type: `ParamsResponse`",
-      "type": "object",
-      "required": [
-        "params"
-      ],
-      "properties": {
-        "params": {
-          "type": "object"
         }
       },
       "additionalProperties": false
@@ -434,6 +421,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Show all registered ask hooks Return type: `HooksResponse`",
+      "type": "object",
+      "required": [
+        "ask_hooks"
+      ],
+      "properties": {
+        "ask_hooks": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Show all registered sale finalized hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [
@@ -447,13 +447,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Show all registered ask hooks Return type: `HooksResponse`",
+      "description": "Get the config for the contract Return type: `ParamsResponse`",
       "type": "object",
       "required": [
-        "ask_hooks"
+        "params"
       ],
       "properties": {
-        "ask_hooks": {
+        "params": {
           "type": "object"
         }
       },
