@@ -135,7 +135,7 @@ pub fn query_collections(
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
     let start_addr = maybe_addr(deps.api, start_after)?;
 
-    let collections: StdResult<Vec<_>> = asks()
+    let collections = asks()
         .prefix_range(
             deps.storage,
             start_addr.map(PrefixBound::exclusive),
@@ -144,11 +144,9 @@ pub fn query_collections(
         )
         .take(limit)
         .map(|item| item.map(|(key, _)| key.0))
-        .collect();
+        .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(CollectionsResponse {
-        collections: collections?,
-    })
+    Ok(CollectionsResponse { collections })
 }
 
 pub fn query_asks(
@@ -159,7 +157,7 @@ pub fn query_asks(
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let asks: StdResult<Vec<_>> = asks()
+    let asks = asks()
         .idx
         .collection
         .prefix(collection.clone())
@@ -174,9 +172,9 @@ pub fn query_asks(
         )
         .take(limit)
         .map(|res| res.map(|item| item.1))
-        .collect();
+        .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(AsksResponse { asks: asks? })
+    Ok(AsksResponse { asks })
 }
 
 pub fn query_asks_sorted_by_price(
@@ -245,15 +243,15 @@ pub fn query_ask_count(deps: Deps, collection: Addr) -> StdResult<AskCountRespon
 }
 
 pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse> {
-    let asks: StdResult<Vec<_>> = asks()
+    let asks = asks()
         .idx
         .seller
         .prefix(seller)
         .range(deps.storage, None, None, Order::Ascending)
         .map(|res| res.map(|item| item.1))
-        .collect();
+        .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(AsksResponse { asks: asks? })
+    Ok(AsksResponse { asks })
 }
 
 pub fn query_current_ask(
