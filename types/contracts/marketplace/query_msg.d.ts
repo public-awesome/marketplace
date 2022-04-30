@@ -1,7 +1,13 @@
 import { Uint128 } from "./shared-types";
 
 export type QueryMsg = ({
-current_ask: {
+collections: {
+limit?: (number | null)
+start_after?: (string | null)
+[k: string]: unknown
+}
+} | {
+ask: {
 collection: string
 token_id: number
 [k: string]: unknown
@@ -17,14 +23,14 @@ start_after?: (number | null)
 asks_sorted_by_price: {
 collection: string
 limit?: (number | null)
-start_after?: (Offset | null)
+start_after?: (PriceOffset | null)
 [k: string]: unknown
 }
 } | {
 reverse_asks_sorted_by_price: {
 collection: string
 limit?: (number | null)
-start_before?: (Offset | null)
+start_before?: (PriceOffset | null)
 [k: string]: unknown
 }
 } | {
@@ -34,13 +40,9 @@ collection: string
 }
 } | {
 asks_by_seller: {
-seller: string
-[k: string]: unknown
-}
-} | {
-listed_collections: {
 limit?: (number | null)
-start_after?: (string | null)
+seller: string
+start_after?: (CollectionOffset | null)
 [k: string]: unknown
 }
 } | {
@@ -53,6 +55,8 @@ token_id: number
 } | {
 bids_by_bidder: {
 bidder: string
+limit?: (number | null)
+start_after?: (CollectionOffset | null)
 [k: string]: unknown
 }
 } | {
@@ -68,10 +72,6 @@ bids_sorted_by_price: {
 collection: string
 limit?: (number | null)
 order_asc: boolean
-[k: string]: unknown
-}
-} | {
-params: {
 [k: string]: unknown
 }
 } | {
@@ -93,11 +93,15 @@ order_asc: boolean
 [k: string]: unknown
 }
 } | {
+ask_hooks: {
+[k: string]: unknown
+}
+} | {
 sale_finalized_hooks: {
 [k: string]: unknown
 }
 } | {
-ask_hooks: {
+params: {
 [k: string]: unknown
 }
 })
@@ -105,8 +109,13 @@ ask_hooks: {
 /**
  * Offsets for pagination
  */
-export interface Offset {
+export interface PriceOffset {
 price: Uint128
+token_id: number
+[k: string]: unknown
+}
+export interface CollectionOffset {
+collection: string
 token_id: number
 [k: string]: unknown
 }

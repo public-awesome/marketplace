@@ -92,9 +92,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::BidsByBidder { bidder } => {
-            to_binary(&query_bids_by_bidder(deps, api.addr_validate(&bidder)?)?)
-        }
+        QueryMsg::BidsByBidder {
+            bidder,
+            start_after,
+            limit,
+        } => to_binary(&query_bids_by_bidder(
+            deps,
+            api.addr_validate(&bidder)?,
+            start_after,
+            limit,
+        )?),
         QueryMsg::BidsSortedByPrice {
             collection,
             limit,
@@ -127,16 +134,6 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::AskHooks {} => to_binary(&ASK_HOOKS.query_hooks(deps)?),
         QueryMsg::SaleFinalizedHooks {} => to_binary(&SALE_FINALIZED_HOOKS.query_hooks(deps)?),
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
-        QueryMsg::BidsByBidderPaginated {
-            bidder,
-            start_after,
-            limit,
-        } => to_binary(&query_bids_by_bidder_pg(
-            deps,
-            api.addr_validate(&bidder)?,
-            start_after,
-            limit,
-        )?),
     }
 }
 
@@ -299,19 +296,7 @@ pub fn query_bid(
     Ok(BidResponse { bid })
 }
 
-pub fn query_bids_by_bidder(deps: Deps, bidder: Addr) -> StdResult<BidsResponse> {
-    let bids = bids()
-        .idx
-        .bidder
-        .prefix(bidder)
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|item| item.map(|(_, b)| b))
-        .collect::<StdResult<Vec<_>>>()?;
-
-    Ok(BidsResponse { bids })
-}
-
-pub fn query_bids_by_bidder_pg(
+pub fn query_bids_by_bidder(
     deps: Deps,
     bidder: Addr,
     start_after: Option<CollectionOffset>,

@@ -1038,7 +1038,7 @@ mod tests {
         assert_eq!(res.bids[0].token_id, TOKEN_ID);
         assert_eq!(res.bids[0].price.u128(), 100u128);
 
-        let query_bids_msg = QueryMsg::BidsByBidderPaginated {
+        let query_bids_msg = QueryMsg::BidsByBidder {
             bidder: bidder.to_string(),
             start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID - 1)),
             limit: None,

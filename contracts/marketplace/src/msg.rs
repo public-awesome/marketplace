@@ -187,10 +187,7 @@ pub enum QueryMsg {
     },
     /// Get all bids by a bidder
     /// Return type: `BidsResponse`
-    BidsByBidder { bidder: Bidder },
-    /// Get all bids by a bidder
-    /// Return type: `BidsResponse`
-    BidsByBidderPaginated {
+    BidsByBidder {
         bidder: Bidder,
         start_after: Option<CollectionOffset>,
         limit: Option<u32>,

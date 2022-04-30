@@ -95,7 +95,7 @@ fn bid_indexed_map() {
     let res = bids().load(deps.as_ref().storage, key);
     assert_eq!(res.unwrap(), bid);
 
-    let res = query_bids_by_bidder(deps.as_ref(), bidder).unwrap();
+    let res = query_bids_by_bidder(deps.as_ref(), bidder, None, None).unwrap();
     assert_eq!(res.bids.len(), 2);
     assert_eq!(res.bids[0], bid);
 }
