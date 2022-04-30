@@ -166,7 +166,7 @@ pub fn execute_set_ask(
     price_validate(&price)?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
-    expires_validate(&env, expires, params.ask_expiry)?;
+    params.ask_expiry.is_valid(&env.block, expires)?;
 
     // Only the media onwer can call this
     let owner_of_response = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;

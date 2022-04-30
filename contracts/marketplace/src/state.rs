@@ -4,6 +4,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_controllers::Hooks;
 
+use crate::helpers::ExpiryRange;
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct SudoParams {
     /// Fair Burn fee for winning bids
@@ -11,28 +13,13 @@ pub struct SudoParams {
     pub trading_fee_basis_points: Decimal,
     /// Valid time range for Asks
     /// (min, max) in seconds
-    pub ask_expiry: (u64, u64),
+    pub ask_expiry: ExpiryRange,
     /// Valid time range for Bids
     /// (min, max) in seconds
     pub bid_expiry: (u64, u64),
     /// Operators are entites that are responsible for maintaining the active state of Asks
     /// They listen to NFT transfer events, and update the active state of Asks
     pub operators: Vec<Addr>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct ExpiryRange(pub u64, pub u64);
-
-impl ExpiryRange {
-    pub fn new(min: u64, max: u64) -> Self {
-        ExpiryRange(min, max)
-    }
-
-    /// Validates if given expires time is within the allowable range
-    pub fn is_valid(&self, block: &BlockInfo, expires: Timestamp) -> bool {
-        let now = block.time;
-        expires > now.plus_seconds(self.0) && expires <= now.plus_seconds(self.1)
-    }
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");

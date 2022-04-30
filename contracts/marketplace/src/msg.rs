@@ -1,4 +1,7 @@
-use crate::state::{Ask, Bid, CollectionBid, SudoParams, TokenId};
+use crate::{
+    helpers::ExpiryRange,
+    state::{Ask, Bid, CollectionBid, SudoParams, TokenId},
+};
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -11,7 +14,7 @@ pub struct InstantiateMsg {
     pub trading_fee_basis_points: u64,
     /// Valid time range for Asks
     /// (min, max) in seconds
-    pub ask_expiry: (u64, u64),
+    pub ask_expiry: ExpiryRange,
     /// Valid time range for Bids
     /// (min, max) in seconds
     pub bid_expiry: (u64, u64),
