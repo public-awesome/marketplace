@@ -46,18 +46,6 @@ pub type AskKey = (Addr, TokenId);
 pub fn ask_key(collection: Addr, token_id: TokenId) -> AskKey {
     (collection, token_id)
 }
-/// Offsets for pagination
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct Offset {
-    pub price: u128,
-    pub token_id: TokenId,
-}
-
-impl Offset {
-    pub fn new(price: u128, token_id: TokenId) -> Self {
-        Offset { price, token_id }
-    }
-}
 
 /// Defines indices for accessing Asks
 pub struct AskIndicies<'a> {
