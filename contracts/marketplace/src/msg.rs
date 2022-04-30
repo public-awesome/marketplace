@@ -158,11 +158,7 @@ pub enum QueryMsg {
     AskCount { collection: Collection },
     /// Get all asks by seller
     /// Return type: `AsksResponse`
-    AsksBySeller {
-        seller: Seller,
-        start_after: Option<TokenId>,
-        limit: Option<u32>,
-    },
+    AsksBySeller { seller: Seller },
     /// Get data for a specific bid
     /// Return type: `BidResponse`
     Bid {

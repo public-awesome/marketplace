@@ -766,8 +766,6 @@ mod tests {
         // owner1 should only have 1 token
         let query_asks_msg = QueryMsg::AsksBySeller {
             seller: owner.to_string(),
-            start_after: None,
-            limit: None,
         };
         let res: AsksResponse = router
             .wrap()
@@ -778,25 +776,12 @@ mod tests {
         // owner2 should have 2 token
         let query_asks_msg = QueryMsg::AsksBySeller {
             seller: owner2.to_string(),
-            start_after: None,
-            limit: None,
         };
         let res: AsksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
             .unwrap();
         assert_eq!(res.asks.len(), 2);
-
-        let query_asks_msg = QueryMsg::AsksBySeller {
-            seller: owner2.to_string(),
-            start_after: Some(TOKEN_ID - 5),
-            limit: None,
-        };
-        let res: AsksResponse = router
-            .wrap()
-            .query_wasm_smart(marketplace.to_string(), &query_asks_msg)
-            .unwrap();
-        assert_eq!(res.asks.len(), 0);
     }
 
     #[test]

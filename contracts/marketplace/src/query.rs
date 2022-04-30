@@ -61,16 +61,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         )?),
-        QueryMsg::AsksBySeller {
-            seller,
-            start_after,
-            limit,
-        } => to_binary(&query_asks_by_seller(
-            deps,
-            api.addr_validate(&seller)?,
-            start_after,
-            limit,
-        )?),
+        QueryMsg::AsksBySeller { seller } => {
+            to_binary(&query_asks_by_seller(deps, api.addr_validate(&seller)?)?)
+        }
         QueryMsg::AskCount { collection } => {
             to_binary(&query_ask_count(deps, api.addr_validate(&collection)?)?)
         }
@@ -251,32 +244,12 @@ pub fn query_ask_count(deps: Deps, collection: Addr) -> StdResult<AskCountRespon
     Ok(AskCountResponse { count })
 }
 
-pub fn query_asks_by_seller(
-    deps: Deps,
-    seller: Addr,
-    start_after: Option<TokenId>,
-    limit: Option<u32>,
-) -> StdResult<AsksResponse> {
-    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-
-    let start = start_after.map(|token_id| Bound::exclusive((seller.clone(), token_id)));
-    println!("start: {:?}", start);
-
+pub fn query_asks_by_seller(deps: Deps, seller: Addr) -> StdResult<AsksResponse> {
     let asks: StdResult<Vec<_>> = asks()
         .idx
         .seller
         .prefix(seller)
-        .range(
-            deps.storage,
-            // Some(Bound::exclusive((
-            //     collection,
-            //     start_after.unwrap_or_default(),
-            // ))),
-            start,
-            None,
-            Order::Ascending,
-        )
-        .take(limit)
+        .range(deps.storage, None, None, Order::Ascending)
         .map(|res| res.map(|item| item.1))
         .collect();
 
