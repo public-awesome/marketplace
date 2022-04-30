@@ -8,8 +8,8 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Reply,
-    StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, Event, MessageInfo, Order,
+    Reply, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
@@ -218,12 +218,12 @@ pub fn execute_set_ask(
         Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
     })?;
 
-    let res = Response::new()
-        .add_submessages(submsgs)
-        .add_attribute("action", "set_ask")
+    let event = Event::new("set_ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("price", price.to_string());
+
+    let res = Response::new().add_submessages(submsgs).add_event(event);
 
     Ok(res)
 }
@@ -253,11 +253,11 @@ pub fn execute_remove_ask(
         msgs.push(remove_and_refund_bid(deps.storage, bid.clone())?)
     }
 
-    let res = Response::new()
-        .add_attribute("action", "remove_ask")
+    let event = Event::new("remove_ask")
         .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string())
-        .add_messages(msgs);
+        .add_attribute("token_id", token_id.to_string());
+
+    let res = Response::new().add_messages(msgs).add_event(event);
 
     Ok(res)
 }
@@ -287,11 +287,12 @@ pub fn execute_update_ask_state(
     ask.active = active;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
-    let res = Response::new()
-        .add_attribute("action", "update_ask_state")
+    let event = Event::new("update_ask_state")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("active", active.to_string());
+
+    let res = Response::new().add_event(event);
 
     Ok(res)
 }
@@ -312,11 +313,12 @@ pub fn execute_update_ask(
     ask.price = price.amount;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
-    let res = Response::new()
-        .add_attribute("action", "update_ask")
+    let event = Event::new("update_ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("price", price.to_string());
+
+    let res = Response::new().add_event(event);
 
     Ok(res)
 }
@@ -400,12 +402,13 @@ pub fn execute_set_bid(
             .add_submessages(submsgs);
     }
 
-    res = res
-        .add_attribute("action", "set_bid")
+    let event = Event::new("set_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_attribute("bid_price", bid_price.to_string());
+
+    res = res.add_event(event);
 
     Ok(res)
 }
@@ -428,12 +431,14 @@ pub fn execute_remove_bid(
         bid_key(collection.clone(), token_id, bidder.clone()),
     )?;
 
-    let res = Response::new()
-        .add_message(remove_and_refund_bid(deps.storage, bid)?)
-        .add_attribute("action", "remove_bid")
+    let event = Event::new("remove_bid")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder);
+
+    let res = Response::new()
+        .add_message(remove_and_refund_bid(deps.storage, bid)?)
+        .add_event(event);
 
     Ok(res)
 }
@@ -494,13 +499,15 @@ pub fn execute_accept_bid(
         coin(bid.price.u128(), NATIVE_DENOM),
     )?;
 
-    let res = Response::new()
-        .add_attribute("action", "accept_bid")
+    let event = Event::new("accept_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("bidder", bidder)
+        .add_attribute("bidder", bidder);
+
+    let res = Response::new()
         .add_messages(msgs)
-        .add_submessages(submsgs);
+        .add_submessages(submsgs)
+        .add_event(event);
 
     Ok(res)
 }
@@ -545,11 +552,12 @@ pub fn execute_set_collection_bid(
         },
     )?;
 
-    res = res
-        .add_attribute("action", "set_collection_bid")
+    let event = Event::new("set_collection_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("bidder", bidder)
         .add_attribute("bid_price", price.to_string());
+
+    res = res.add_event(event);
 
     Ok(res)
 }
@@ -590,13 +598,15 @@ pub fn execute_accept_collection_bid(
         coin(bid.price.u128(), NATIVE_DENOM),
     )?;
 
-    let res = Response::new()
-        .add_attribute("action", "accept_collection_bid")
+    let event = Event::new("accept_collection_bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("bidder", bidder)
+        .add_attribute("bidder", bidder);
+
+    let res = Response::new()
         .add_messages(msgs)
-        .add_submessages(submsgs);
+        .add_submessages(submsgs)
+        .add_event(event);
 
     Ok(res)
 }
