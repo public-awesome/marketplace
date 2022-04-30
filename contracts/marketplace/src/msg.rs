@@ -2,7 +2,7 @@ use crate::{
     helpers::ExpiryRange,
     state::{Ask, Bid, CollectionBid, SudoParams, TokenId},
 };
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128, WasmMsg};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_std::CosmosMsg;
@@ -107,12 +107,31 @@ pub type Collection = String;
 pub type Bidder = String;
 pub type Seller = String;
 
+/// Offsets for pagination
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Offset {
+    pub price: Uint128,
+    pub token_id: TokenId,
+}
+
+impl Offset {
+    pub fn new(price: Uint128, token_id: TokenId) -> Self {
+        Offset { price, token_id }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
+    /// List of collections that have asks on them
+    /// Return type: `CollectionsResponse`
+    Collections {
+        start_after: Option<Collection>,
+        limit: Option<u32>,
+    },
     /// Get the current ask for specific NFT
     /// Return type: `CurrentAskResponse`
-    CurrentAsk {
+    Ask {
         collection: Collection,
         token_id: TokenId,
     },
@@ -123,12 +142,19 @@ pub enum QueryMsg {
         start_after: Option<TokenId>,
         limit: Option<u32>,
     },
-    /// Get all asks for a collection sorted by price
+    /// Get all asks for a collection, sorted by price
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
         collection: Collection,
+        start_after: Option<Offset>,
         limit: Option<u32>,
-        order_asc: bool,
+    },
+    /// Get all asks for a collection, sorted by price in reverse
+    /// Return type: `AsksResponse`
+    ReverseAsksSortedByPrice {
+        collection: Collection,
+        start_before: Option<Offset>,
+        limit: Option<u32>,
     },
     /// Count of all asks
     /// Return type: `AskCountResponse`
@@ -136,12 +162,6 @@ pub enum QueryMsg {
     /// Get all asks by seller
     /// Return type: `AsksResponse`
     AsksBySeller { seller: Seller },
-    /// List of collections that have asks on them
-    /// Return type: `CollectionsResponse`
-    ListedCollections {
-        start_after: Option<Collection>,
-        limit: Option<u32>,
-    },
     /// Get data for a specific bid
     /// Return type: `BidResponse`
     Bid {
@@ -160,16 +180,13 @@ pub enum QueryMsg {
         start_after: Option<Bidder>,
         limit: Option<u32>,
     },
-    /// Get all bids for a collection sorted by price
+    /// Get all bids for a collection, sorted by price
     /// Return type: `BidsResponse`
     BidsSortedByPrice {
         collection: Collection,
         limit: Option<u32>,
         order_asc: bool,
     },
-    /// Get the config for the contract
-    /// Return type: `ParamsResponse`
-    Params {},
     /// Get data for a specific collection bid
     /// Return type: `CollectionBidResponse`
     CollectionBid {
@@ -186,16 +203,19 @@ pub enum QueryMsg {
         limit: Option<u32>,
         order_asc: bool,
     },
-    /// Show all registered sale finalized hooks
-    /// Return type: `HooksResponse`
-    SaleFinalizedHooks {},
     /// Show all registered ask hooks
     /// Return type: `HooksResponse`
     AskHooks {},
+    /// Show all registered sale finalized hooks
+    /// Return type: `HooksResponse`
+    SaleFinalizedHooks {},
+    /// Get the config for the contract
+    /// Return type: `ParamsResponse`
+    Params {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct CurrentAskResponse {
+pub struct AskResponse {
     pub ask: Option<Ask>,
 }
 
