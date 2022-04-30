@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
+use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -18,6 +18,24 @@ pub struct SudoParams {
     /// Operators are entites that are responsible for maintaining the active state of Asks
     /// They listen to NFT transfer events, and update the active state of Asks
     pub operators: Vec<Addr>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct ExpiryRange {
+    pub min: u64,
+    pub max: u64,
+}
+
+impl ExpiryRange {
+    pub fn new(min: u64, max: u64) -> Self {
+        ExpiryRange { min, max }
+    }
+
+    /// Validates if given expires time is within the allowable range
+    pub fn is_valid(&self, block: &BlockInfo, expires: Timestamp) -> bool {
+        let now = block.time;
+        expires > now.plus_seconds(self.min) && expires <= now.plus_seconds(self.max)
+    }
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");
