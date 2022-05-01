@@ -332,24 +332,10 @@ pub fn execute_set_bid(
 ) -> Result<Response, ContractError> {
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     let bidder = info.sender;
-
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.bid_expiry.is_valid(&env.block, expires)?;
 
-    let mut res = Response::new();
-
-    // Check bidder has existing bid, if so remove existing bid
-    if let Some(existing_bid) =
-        bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?
-    {
-        bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-        let exec_refund_bidder = BankMsg::Send {
-            to_address: bidder.to_string(),
-            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
-        };
-        res = res.add_message(exec_refund_bidder)
-    };
-
+    // Ask validation
     let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     if ask.expires <= env.block.time {
         return Err(ContractError::AskExpired {});
@@ -362,6 +348,19 @@ pub fn execute_set_bid(
             return Err(ContractError::TokenReserved {});
         }
     }
+
+    // Check bidder has existing bid, if so remove existing bid
+    let mut res = Response::new();
+    if let Some(existing_bid) =
+        bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?
+    {
+        bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
+        let exec_refund_bidder = BankMsg::Send {
+            to_address: bidder.to_string(),
+            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
+        };
+        res = res.add_message(exec_refund_bidder)
+    };
 
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
