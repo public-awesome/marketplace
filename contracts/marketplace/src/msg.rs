@@ -120,6 +120,24 @@ impl PriceOffset {
     }
 }
 
+/// Offsets for bid price pagination
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct BidPriceOffset {
+    pub price: Uint128,
+    pub token_id: TokenId,
+    pub bidder: Addr,
+}
+
+impl BidPriceOffset {
+    pub fn new(price: Uint128, token_id: TokenId, bidder: Addr) -> Self {
+        BidPriceOffset {
+            price,
+            token_id,
+            bidder,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CollectionOffset {
     pub collection: String,
@@ -207,6 +225,7 @@ pub enum QueryMsg {
     /// Return type: `BidsResponse`
     BidsSortedByPrice {
         collection: Collection,
+        start_after: Option<BidPriceOffset>,
         limit: Option<u32>,
     },
     /// Get data for a specific collection bid

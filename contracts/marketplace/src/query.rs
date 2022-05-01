@@ -1,10 +1,10 @@
 use crate::msg::{
-    AskCountResponse, AskResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
-    CollectionBidResponse, CollectionBidsResponse, CollectionOffset, CollectionsResponse,
-    ParamsResponse, PriceOffset, QueryMsg,
+    AskCountResponse, AskResponse, AsksResponse, BidPriceOffset, BidResponse, Bidder, BidsResponse,
+    Collection, CollectionBidResponse, CollectionBidsResponse, CollectionOffset,
+    CollectionsResponse, ParamsResponse, PriceOffset, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, TokenId, ASK_HOOKS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, TokenId, ASK_HOOKS,
     SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
@@ -102,9 +102,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::BidsSortedByPrice { collection, limit } => to_binary(
-            &query_bids_sorted_by_price(deps, api.addr_validate(&collection)?, limit)?,
-        ),
+        QueryMsg::BidsSortedByPrice {
+            collection,
+            start_after,
+            limit,
+        } => to_binary(&query_bids_sorted_by_price(
+            deps,
+            api.addr_validate(&collection)?,
+            start_after,
+            limit,
+        )?),
         QueryMsg::CollectionBid { collection, bidder } => to_binary(&query_collection_bid(
             deps,
             api.addr_validate(&collection)?,
@@ -345,15 +352,23 @@ pub fn query_bids(
 pub fn query_bids_sorted_by_price(
     deps: Deps,
     collection: Addr,
+    start_after: Option<BidPriceOffset>,
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let start: Option<Bound<(u128, BidKey)>> = start_after.map(|offset| {
+        Bound::exclusive((
+            offset.price.u128(),
+            bid_key(collection.clone(), offset.token_id, offset.bidder),
+        ))
+    });
 
     let bids = bids()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
