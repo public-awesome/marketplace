@@ -352,8 +352,10 @@ pub fn execute_set_bid(
         }
     }
 
-    // Check bidder has existing bid, if so remove existing bid
+    let mut event = Event::new("set_bid");
     let mut res = Response::new();
+
+    // Check bidder has existing bid, if so remove existing bid
     if let Some(existing_bid) =
         bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?
     {
@@ -397,21 +399,17 @@ pub fn execute_set_bid(
             coin(ask.price.u128(), NATIVE_DENOM),
         )?;
 
-        res = res
-            .add_attribute("action", "sale_finalized")
-            .add_messages(msgs)
-            .add_submessages(submsgs);
+        event = event.add_attribute("action", "sales_finalized");
+        res = res.add_messages(msgs).add_submessages(submsgs);
     }
 
-    let event = Event::new("set_bid")
+    event = event
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_attribute("bid_price", bid_price.to_string());
 
-    res = res.add_event(event);
-
-    Ok(res)
+    Ok(res.add_event(event))
 }
 
 /// Removes a bid made by the bidder. Bidders can only remove their own bids
