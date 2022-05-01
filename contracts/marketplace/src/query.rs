@@ -1,7 +1,7 @@
 use crate::msg::{
-    AskCountResponse, AskResponse, AsksResponse, BidPriceOffset, BidResponse, Bidder, BidsResponse,
-    Collection, CollectionBidResponse, CollectionBidsResponse, CollectionOffset,
-    CollectionsResponse, ParamsResponse, PriceOffset, QueryMsg,
+    AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse, Bidder,
+    BidsResponse, Collection, CollectionBidResponse, CollectionBidsResponse, CollectionOffset,
+    CollectionsResponse, ParamsResponse, QueryMsg,
 };
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, TokenId, ASK_HOOKS,
@@ -190,7 +190,7 @@ pub fn query_asks(
 pub fn query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
-    start_after: Option<PriceOffset>,
+    start_after: Option<AskOffset>,
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -217,7 +217,7 @@ pub fn query_asks_sorted_by_price(
 pub fn reverse_query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
-    start_before: Option<PriceOffset>,
+    start_before: Option<AskOffset>,
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -352,7 +352,7 @@ pub fn query_bids(
 pub fn query_bids_sorted_by_price(
     deps: Deps,
     collection: Addr,
-    start_after: Option<BidPriceOffset>,
+    start_after: Option<BidOffset>,
     limit: Option<u32>,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;

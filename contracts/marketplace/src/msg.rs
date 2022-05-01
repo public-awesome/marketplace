@@ -107,37 +107,37 @@ pub type Collection = String;
 pub type Bidder = String;
 pub type Seller = String;
 
-/// Offsets for pagination
+/// Offset for ask pagination
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct PriceOffset {
+pub struct AskOffset {
     pub price: Uint128,
     pub token_id: TokenId,
 }
 
-impl PriceOffset {
+impl AskOffset {
     pub fn new(price: Uint128, token_id: TokenId) -> Self {
-        PriceOffset { price, token_id }
+        AskOffset { price, token_id }
     }
 }
 
-/// Offsets for bid price pagination
+/// Offset for bid pagination
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct BidPriceOffset {
+pub struct BidOffset {
     pub price: Uint128,
     pub token_id: TokenId,
     pub bidder: Addr,
 }
 
-impl BidPriceOffset {
+impl BidOffset {
     pub fn new(price: Uint128, token_id: TokenId, bidder: Addr) -> Self {
-        BidPriceOffset {
+        BidOffset {
             price,
             token_id,
             bidder,
         }
     }
 }
-
+/// Offset for collection pagination
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct CollectionOffset {
     pub collection: String,
@@ -179,14 +179,14 @@ pub enum QueryMsg {
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
         collection: Collection,
-        start_after: Option<PriceOffset>,
+        start_after: Option<AskOffset>,
         limit: Option<u32>,
     },
     /// Get all asks for a collection, sorted by price in reverse
     /// Return type: `AsksResponse`
     ReverseAsksSortedByPrice {
         collection: Collection,
-        start_before: Option<PriceOffset>,
+        start_before: Option<AskOffset>,
         limit: Option<u32>,
     },
     /// Count of all asks
@@ -225,7 +225,7 @@ pub enum QueryMsg {
     /// Return type: `BidsResponse`
     BidsSortedByPrice {
         collection: Collection,
-        start_after: Option<BidPriceOffset>,
+        start_after: Option<BidOffset>,
         limit: Option<u32>,
     },
     /// Get data for a specific collection bid
