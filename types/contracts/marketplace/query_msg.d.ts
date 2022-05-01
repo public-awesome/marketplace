@@ -1,4 +1,4 @@
-import { Uint128 } from "./shared-types";
+import { Addr, Uint128 } from "./shared-types";
 
 export type QueryMsg = ({
 collections: {
@@ -23,14 +23,14 @@ start_after?: (number | null)
 asks_sorted_by_price: {
 collection: string
 limit?: (number | null)
-start_after?: (PriceOffset | null)
+start_after?: (AskOffset | null)
 [k: string]: unknown
 }
 } | {
 reverse_asks_sorted_by_price: {
 collection: string
 limit?: (number | null)
-start_before?: (PriceOffset | null)
+start_before?: (AskOffset | null)
 [k: string]: unknown
 }
 } | {
@@ -71,7 +71,7 @@ token_id: number
 bids_sorted_by_price: {
 collection: string
 limit?: (number | null)
-order_asc: boolean
+start_after?: (BidOffset | null)
 [k: string]: unknown
 }
 } | {
@@ -107,15 +107,27 @@ params: {
 })
 
 /**
- * Offsets for pagination
+ * Offset for ask pagination
  */
-export interface PriceOffset {
+export interface AskOffset {
 price: Uint128
 token_id: number
 [k: string]: unknown
 }
+/**
+ * Offset for collection pagination
+ */
 export interface CollectionOffset {
 collection: string
+token_id: number
+[k: string]: unknown
+}
+/**
+ * Offset for bid pagination
+ */
+export interface BidOffset {
+bidder: Addr
+price: Uint128
 token_id: number
 [k: string]: unknown
 }

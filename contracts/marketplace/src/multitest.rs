@@ -39,8 +39,8 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 mod tests {
     use crate::helpers::ExpiryRange;
     use crate::msg::{
-        AskCountResponse, AsksResponse, BidPriceOffset, BidResponse, CollectionOffset,
-        CollectionsResponse, ParamsResponse, PriceOffset, SudoMsg,
+        AskCountResponse, AskOffset, AsksResponse, BidOffset, BidResponse, CollectionOffset,
+        CollectionsResponse, ParamsResponse, SudoMsg,
     };
     use crate::state::Bid;
 
@@ -621,7 +621,7 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 111u128);
 
-        let start_after = PriceOffset::new(res.asks[0].price, res.asks[0].token_id);
+        let start_after = AskOffset::new(res.asks[0].price, res.asks[0].token_id);
         let query_msg = QueryMsg::AsksSortedByPrice {
             collection: collection.to_string(),
             start_after: Some(start_after),
@@ -651,7 +651,7 @@ mod tests {
         assert_eq!(res.asks[1].price.u128(), 110u128);
         assert_eq!(res.asks[2].price.u128(), 109u128);
 
-        let start_before = PriceOffset::new(res.asks[0].price, res.asks[0].token_id);
+        let start_before = AskOffset::new(res.asks[0].price, res.asks[0].token_id);
         let reverse_query_asks_start_before_first_desc_msg = QueryMsg::ReverseAsksSortedByPrice {
             collection: collection.to_string(),
             start_before: Some(start_before),
@@ -983,7 +983,7 @@ mod tests {
         assert_eq!(res.bids[3].price.u128(), 7u128);
 
         // test start_after query
-        let start_after = BidPriceOffset {
+        let start_after = BidOffset {
             price: res.bids[2].price,
             token_id: res.bids[2].token_id,
             bidder: res.bids[2].bidder.clone(),
