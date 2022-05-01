@@ -331,11 +331,11 @@ pub fn execute_set_bid(
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
+    let bidder = info.sender;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.bid_expiry.is_valid(&env.block, expires)?;
 
-    let bidder = info.sender;
     let mut res = Response::new();
 
     // Check bidder has existing bid, if so remove existing bid
@@ -357,6 +357,12 @@ pub fn execute_set_bid(
     if !ask.active {
         return Err(ContractError::AskNotActive {});
     }
+    if let Some(reserved_for) = ask.reserve_for {
+        if reserved_for != bidder {
+            return Err(ContractError::TokenReserved {});
+        }
+    }
+
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
         bids().save(
@@ -371,13 +377,6 @@ pub fn execute_set_bid(
             },
         )?;
     } else {
-        // Bid meets ask criteria, so check if token is reserved
-        if let Some(reserved_for) = ask.reserve_for {
-            if reserved_for != bidder {
-                return Err(ContractError::TokenReserved {});
-            }
-        }
-
         // finalize sale if reserve address matches bidder, or doesn't exist
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
