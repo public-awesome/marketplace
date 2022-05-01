@@ -102,16 +102,9 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::BidsSortedByPrice {
-            collection,
-            limit,
-            order_asc,
-        } => to_binary(&query_bids_sorted_by_price(
-            deps,
-            api.addr_validate(&collection)?,
-            limit,
-            order_asc,
-        )?),
+        QueryMsg::BidsSortedByPrice { collection, limit } => to_binary(
+            &query_bids_sorted_by_price(deps, api.addr_validate(&collection)?, limit)?,
+        ),
         QueryMsg::CollectionBid { collection, bidder } => to_binary(&query_collection_bid(
             deps,
             api.addr_validate(&collection)?,
@@ -353,21 +346,14 @@ pub fn query_bids_sorted_by_price(
     deps: Deps,
     collection: Addr,
     limit: Option<u32>,
-    order_asc: bool,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-
-    let order = if order_asc {
-        Order::Ascending
-    } else {
-        Order::Descending
-    };
 
     let bids = bids()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, None, None, order)
+        .range(deps.storage, None, None, Order::Ascending)
         .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;

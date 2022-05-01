@@ -208,7 +208,6 @@ pub enum QueryMsg {
     BidsSortedByPrice {
         collection: Collection,
         limit: Option<u32>,
-        order_asc: bool,
     },
     /// Get data for a specific collection bid
     /// Return type: `CollectionBidResponse`

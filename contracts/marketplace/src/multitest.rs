@@ -934,7 +934,6 @@ mod tests {
         let query_bids_msg = QueryMsg::BidsSortedByPrice {
             collection: collection.to_string(),
             limit: None,
-            order_asc: true,
         };
         let res: BidsResponse = router
             .wrap()
