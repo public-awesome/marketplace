@@ -93,11 +93,11 @@ order_asc: boolean
 [k: string]: unknown
 }
 } | {
-ask_hooks: {
+ask_created_hooks: {
 [k: string]: unknown
 }
 } | {
-sale_finalized_hooks: {
+ask_filled_hooks: {
 [k: string]: unknown
 }
 } | {

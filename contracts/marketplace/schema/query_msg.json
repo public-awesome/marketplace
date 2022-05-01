@@ -466,10 +466,10 @@
       "description": "Show all registered ask hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [
-        "ask_hooks"
+        "ask_created_hooks"
       ],
       "properties": {
-        "ask_hooks": {
+        "ask_created_hooks": {
           "type": "object"
         }
       },
@@ -479,10 +479,10 @@
       "description": "Show all registered sale finalized hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [
-        "sale_finalized_hooks"
+        "ask_filled_hooks"
       ],
       "properties": {
-        "sale_finalized_hooks": {
+        "ask_filled_hooks": {
           "type": "object"
         }
       },

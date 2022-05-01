@@ -55,55 +55,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Add a new hook to be informed of all trades",
-      "type": "object",
-      "required": [
-        "add_sale_finalized_hook"
-      ],
-      "properties": {
-        "add_sale_finalized_hook": {
-          "type": "object",
-          "required": [
-            "hook"
-          ],
-          "properties": {
-            "hook": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
       "description": "Add a new hook to be informed of all asks",
       "type": "object",
       "required": [
-        "add_ask_hook"
+        "add_ask_created_hook"
       ],
       "properties": {
-        "add_ask_hook": {
-          "type": "object",
-          "required": [
-            "hook"
-          ],
-          "properties": {
-            "hook": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "description": "Remove a trade hook",
-      "type": "object",
-      "required": [
-        "remove_sale_finalized_hook"
-      ],
-      "properties": {
-        "remove_sale_finalized_hook": {
+        "add_ask_created_hook": {
           "type": "object",
           "required": [
             "hook"
@@ -121,10 +79,52 @@
       "description": "Remove a ask hook",
       "type": "object",
       "required": [
-        "remove_ask_hook"
+        "remove_ask_created_hook"
       ],
       "properties": {
-        "remove_ask_hook": {
+        "remove_ask_created_hook": {
+          "type": "object",
+          "required": [
+            "hook"
+          ],
+          "properties": {
+            "hook": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Add a new hook to be informed of all trades",
+      "type": "object",
+      "required": [
+        "add_ask_filled_hook"
+      ],
+      "properties": {
+        "add_ask_filled_hook": {
+          "type": "object",
+          "required": [
+            "hook"
+          ],
+          "properties": {
+            "hook": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove a trade hook",
+      "type": "object",
+      "required": [
+        "remove_ask_filled_hook"
+      ],
+      "properties": {
+        "remove_ask_filled_hook": {
           "type": "object",
           "required": [
             "hook"
