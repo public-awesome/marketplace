@@ -1,10 +1,10 @@
 use crate::msg::{
-    AskCountResponse, AskResponse, AsksResponse, BidResponse, Bidder, BidsResponse, Collection,
-    CollectionBidResponse, CollectionBidsResponse, CollectionOffset, CollectionsResponse,
-    ParamsResponse, PriceOffset, QueryMsg,
+    AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse, Bidder,
+    BidsResponse, Collection, CollectionBidResponse, CollectionBidsResponse, CollectionOffset,
+    CollectionsResponse, ParamsResponse, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, TokenId, ASK_HOOKS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, TokenId, ASK_HOOKS,
     SALE_FINALIZED_HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
@@ -104,13 +104,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         )?),
         QueryMsg::BidsSortedByPrice {
             collection,
+            start_after,
             limit,
-            order_asc,
         } => to_binary(&query_bids_sorted_by_price(
             deps,
             api.addr_validate(&collection)?,
+            start_after,
             limit,
-            order_asc,
         )?),
         QueryMsg::CollectionBid { collection, bidder } => to_binary(&query_collection_bid(
             deps,
@@ -190,7 +190,7 @@ pub fn query_asks(
 pub fn query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
-    start_after: Option<PriceOffset>,
+    start_after: Option<AskOffset>,
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -217,7 +217,7 @@ pub fn query_asks_sorted_by_price(
 pub fn reverse_query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
-    start_before: Option<PriceOffset>,
+    start_before: Option<AskOffset>,
     limit: Option<u32>,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
@@ -352,22 +352,23 @@ pub fn query_bids(
 pub fn query_bids_sorted_by_price(
     deps: Deps,
     collection: Addr,
+    start_after: Option<BidOffset>,
     limit: Option<u32>,
-    order_asc: bool,
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let order = if order_asc {
-        Order::Ascending
-    } else {
-        Order::Descending
-    };
+    let start: Option<Bound<(u128, BidKey)>> = start_after.map(|offset| {
+        Bound::exclusive((
+            offset.price.u128(),
+            bid_key(collection.clone(), offset.token_id, offset.bidder),
+        ))
+    });
 
     let bids = bids()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, None, None, order)
+        .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
