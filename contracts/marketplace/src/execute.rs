@@ -12,7 +12,7 @@ use cosmwasm_std::{
     StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
+use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
 use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg1::fair_burn;
@@ -379,14 +379,9 @@ pub fn execute_set_bid(
         // finalize sale if reserve address matches bidder, or doesn't exist
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
-        let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
-            collection.clone(),
-            &Cw721QueryMsg::OwnerOf {
-                token_id: token_id.to_string(),
-                include_expired: None,
-            },
-        )?;
-        let owner = deps.api.addr_validate(&cw721_res.owner)?;
+        let owner = Cw721Contract(collection.clone())
+            .owner_of(&deps.querier, token_id.to_string(), false)
+            .map(|res| deps.api.addr_validate(&res.owner))??;
 
         // Include messages needed to finalize nft transfer and payout
         let (msgs, submsgs) = finalize_sale(
