@@ -376,7 +376,7 @@ pub fn execute_set_bid(
             },
         )?;
     } else {
-        // finalize sale if reserve address matches bidder, or doesn't exist
+        // Bid meets ask criteria so fulfill bid
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
         let owner = Cw721Contract(collection.clone())
