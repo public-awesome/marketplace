@@ -72,7 +72,7 @@ mod tests {
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
             ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-            sales_finalized_hook: None,
+            ask_filled_hook: None,
         };
         let marketplace = router
             .instantiate_contract(
@@ -1156,7 +1156,7 @@ mod tests {
             .unwrap();
 
         // Bid is accepted, sale has been finalized
-        assert_eq!("sale_finalized", res.events[1].attributes[1].value);
+        assert_eq!("ask_filled", res.events[1].attributes[1].value);
 
         // Check money is transfered
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
@@ -1439,7 +1439,7 @@ mod tests {
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
             ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-            sales_finalized_hook: None,
+            ask_filled_hook: None,
         };
         let marketplace = router
             .instantiate_contract(
@@ -1574,20 +1574,20 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let add_hook_msg = SudoMsg::AddSaleFinalizedHook {
+        let add_hook_msg = SudoMsg::AddAskFilledHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
         assert!(res.is_ok());
 
-        let query_hooks_msg = QueryMsg::SaleFinalizedHooks {};
+        let query_hooks_msg = QueryMsg::AskFilledHooks {};
         let res: HooksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
             .unwrap();
         assert_eq!(res.hooks, vec!["hook".to_string()]);
 
-        let remove_hook_msg = SudoMsg::RemoveSaleFinalizedHook {
+        let remove_hook_msg = SudoMsg::RemoveAskFilledHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
@@ -1612,20 +1612,20 @@ mod tests {
             trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
             ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-            sales_finalized_hook: Some("hook".to_string()),
+            ask_filled_hook: Some("hook".to_string()),
         };
         let marketplace = router
             .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)
             .unwrap();
 
-        let query_hooks_msg = QueryMsg::SaleFinalizedHooks {};
+        let query_hooks_msg = QueryMsg::AskFilledHooks {};
         let res: HooksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
             .unwrap();
         assert_eq!(res.hooks, vec!["hook".to_string()]);
 
-        let remove_hook_msg = SudoMsg::RemoveSaleFinalizedHook {
+        let remove_hook_msg = SudoMsg::RemoveAskFilledHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
@@ -1647,13 +1647,13 @@ mod tests {
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
         // Add sales hook
-        let add_hook_msg = SudoMsg::AddSaleFinalizedHook {
+        let add_hook_msg = SudoMsg::AddAskFilledHook {
             hook: "hook".to_string(),
         };
         let _res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
 
         // Add listed hook
-        let add_ask_hook_msg = SudoMsg::AddAskHook {
+        let add_ask_hook_msg = SudoMsg::AddAskCreatedHook {
             hook: "listed_hook".to_string(),
         };
         let _res = router.wasm_sudo(marketplace.clone(), &add_ask_hook_msg);
@@ -1682,7 +1682,7 @@ mod tests {
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
         assert_eq!(
-            "ask_hook_failed",
+            "ask_created_hook_failed",
             res.unwrap().events[3].attributes[1].value
         );
         // Bidder makes bid that meets the ask criteria
@@ -1701,7 +1701,7 @@ mod tests {
         );
         assert!(res.is_ok());
         assert_eq!(
-            "sale_finalized_hook_failed",
+            "ask_filled_hook_failed",
             res.unwrap().events[7].attributes[1].value
         );
 
@@ -1725,20 +1725,20 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let add_hook_msg = SudoMsg::AddAskHook {
+        let add_hook_msg = SudoMsg::AddAskCreatedHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
         assert!(res.is_ok());
 
-        let query_hooks_msg = QueryMsg::AskHooks {};
+        let query_hooks_msg = QueryMsg::AskCreatedHooks {};
         let res: HooksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
             .unwrap();
         assert_eq!(res.hooks, vec!["hook".to_string()]);
 
-        let remove_hook_msg = SudoMsg::RemoveAskHook {
+        let remove_hook_msg = SudoMsg::RemoveAskCreatedHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);

@@ -21,7 +21,7 @@ pub struct InstantiateMsg {
     /// Operators are entites that are responsible for maintaining the active state of Asks.
     /// They listen to NFT transfer events, and update the active state of Asks.
     pub operators: Vec<String>,
-    pub sales_finalized_hook: Option<String>,
+    pub ask_filled_hook: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -94,14 +94,14 @@ pub enum SudoMsg {
         bid_expiry: Option<ExpiryRange>,
         operators: Option<Vec<String>>,
     },
-    /// Add a new hook to be informed of all trades
-    AddSaleFinalizedHook { hook: String },
     /// Add a new hook to be informed of all asks
-    AddAskHook { hook: String },
-    /// Remove a trade hook
-    RemoveSaleFinalizedHook { hook: String },
+    AddAskCreatedHook { hook: String },
     /// Remove a ask hook
-    RemoveAskHook { hook: String },
+    RemoveAskCreatedHook { hook: String },
+    /// Add a new hook to be informed of all trades
+    AddAskFilledHook { hook: String },
+    /// Remove a trade hook
+    RemoveAskFilledHook { hook: String },
 }
 
 pub type Collection = String;
@@ -247,10 +247,10 @@ pub enum QueryMsg {
     },
     /// Show all registered ask hooks
     /// Return type: `HooksResponse`
-    AskHooks {},
+    AskCreatedHooks {},
     /// Show all registered sale finalized hooks
     /// Return type: `HooksResponse`
-    SaleFinalizedHooks {},
+    AskFilledHooks {},
     /// Get the config for the contract
     /// Return type: `ParamsResponse`
     Params {},
@@ -303,7 +303,7 @@ pub struct CollectionBidsResponse {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub struct SaleFinalizedHookMsg {
+pub struct AskFilledHookMsg {
     pub collection: String,
     pub token_id: u32,
     pub price: Coin,
@@ -311,7 +311,7 @@ pub struct SaleFinalizedHookMsg {
     pub buyer: String,
 }
 
-impl SaleFinalizedHookMsg {
+impl AskFilledHookMsg {
     pub fn new(
         collection: String,
         token_id: u32,
@@ -319,7 +319,7 @@ impl SaleFinalizedHookMsg {
         seller: String,
         buyer: String,
     ) -> Self {
-        SaleFinalizedHookMsg {
+        AskFilledHookMsg {
             collection,
             token_id,
             price,
@@ -330,7 +330,7 @@ impl SaleFinalizedHookMsg {
 
     /// serializes the message
     pub fn into_binary(self) -> StdResult<Binary> {
-        let msg = SaleFinalizedExecuteMsg::SaleFinalizedHook(self);
+        let msg = AskFilledExecuteMsg::AskFilledHook(self);
         to_binary(&msg)
     }
 
@@ -349,13 +349,13 @@ impl SaleFinalizedHookMsg {
 // This is just a helper to properly serialize the above message
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum SaleFinalizedExecuteMsg {
-    SaleFinalizedHook(SaleFinalizedHookMsg),
+pub enum AskFilledExecuteMsg {
+    AskFilledHook(AskFilledHookMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub struct AskHookMsg {
+pub struct AskCreatedHookMsg {
     pub collection: String,
     pub token_id: u32,
     pub seller: String,
@@ -363,7 +363,7 @@ pub struct AskHookMsg {
     pub price: Coin,
 }
 
-impl AskHookMsg {
+impl AskCreatedHookMsg {
     pub fn new(
         collection: String,
         token_id: u32,
@@ -371,7 +371,7 @@ impl AskHookMsg {
         funds_recipient: String,
         price: Coin,
     ) -> Self {
-        AskHookMsg {
+        AskCreatedHookMsg {
             collection,
             token_id,
             seller,
@@ -382,7 +382,7 @@ impl AskHookMsg {
 
     /// serializes the message
     pub fn into_binary(self) -> StdResult<Binary> {
-        let msg = AskExecuteMsg::AskHook(self);
+        let msg = AskCreatedExecuteMsg::AskCreatedHook(self);
         to_binary(&msg)
     }
 
@@ -401,6 +401,6 @@ impl AskHookMsg {
 // This is just a helper to properly serialize the above message
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum AskExecuteMsg {
-    AskHook(AskHookMsg),
+pub enum AskCreatedExecuteMsg {
+    AskCreatedHook(AskCreatedHookMsg),
 }
