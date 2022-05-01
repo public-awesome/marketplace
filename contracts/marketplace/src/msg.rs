@@ -228,6 +228,13 @@ pub enum QueryMsg {
         start_after: Option<BidOffset>,
         limit: Option<u32>,
     },
+    /// Get all bids for a collection, sorted by price in reverse
+    /// Return type: `BidsResponse`
+    ReverseBidsSortedByPrice {
+        collection: Collection,
+        start_before: Option<BidOffset>,
+        limit: Option<u32>,
+    },
     /// Get data for a specific collection bid
     /// Return type: `CollectionBidResponse`
     CollectionBid {
