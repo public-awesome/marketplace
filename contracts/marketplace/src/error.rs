@@ -43,6 +43,9 @@ pub enum ContractError {
     #[error("Contract needs approval")]
     NeedsApproval {},
 
+    #[error("Token reserved")]
+    TokenReserved {},
+
     #[error("Unrecognised reply id: {0}")]
     UnrecognisedReply(u64),
 
