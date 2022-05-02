@@ -1865,6 +1865,38 @@ mod tests {
         assert_eq!(res.bids.len(), 1);
         assert_eq!(res.bids[0].price.u128(), 180u128);
 
+        // test querying all sorted collection bids by bidder in reverse
+        let reverse_query_sorted_collection_bids = QueryMsg::ReverseCollectionBidsSortedByPrice {
+            collection: collection.to_string(),
+            start_before: None,
+            limit: Some(10),
+        };
+        let res: CollectionBidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &reverse_query_sorted_collection_bids)
+            .unwrap();
+        assert_eq!(res.bids.len(), 2);
+        assert_eq!(res.bids[0].price.u128(), 180u128);
+        assert_eq!(res.bids[1].price.u128(), 150u128);
+
+        // test start_before
+        let start_before = CollectionBidOffset::new(
+            res.bids[0].price,
+            collection.to_string(),
+            res.bids[0].bidder.to_string(),
+        );
+        let reverse_query_sorted_collection_bids = QueryMsg::ReverseCollectionBidsSortedByPrice {
+            collection: collection.to_string(),
+            start_before: Some(start_before),
+            limit: Some(10),
+        };
+        let res: CollectionBidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &reverse_query_sorted_collection_bids)
+            .unwrap();
+        assert_eq!(res.bids.len(), 1);
+        assert_eq!(res.bids[0].price.u128(), 150u128);
+
         // A collection bid is accepted
         let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
             collection: collection.to_string(),

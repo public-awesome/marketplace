@@ -263,6 +263,13 @@ pub enum QueryMsg {
         start_after: Option<CollectionBidOffset>,
         limit: Option<u32>,
     },
+    /// Get all collection bids for a collection sorted by price in reverse
+    /// Return type: `CollectionBidsResponse`
+    ReverseCollectionBidsSortedByPrice {
+        collection: Collection,
+        start_before: Option<CollectionBidOffset>,
+        limit: Option<u32>,
+    },
     /// Show all registered ask hooks
     /// Return type: `HooksResponse`
     AskCreatedHooks {},
