@@ -153,6 +153,26 @@ impl CollectionOffset {
     }
 }
 
+/// Offset for collection bid pagination
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct CollectionBidOffset {
+    pub price: Uint128,
+    pub collection: Collection,
+    pub token_id: TokenId,
+    pub bidder: Bidder,
+}
+
+impl CollectionBidOffset {
+    pub fn new(price: Uint128, collection: String, token_id: TokenId, bidder: Bidder) -> Self {
+        CollectionBidOffset {
+            price,
+            collection,
+            token_id,
+            bidder,
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum QueryMsg {
@@ -241,8 +261,8 @@ pub enum QueryMsg {
     /// Return type: `CollectionBidsResponse`
     CollectionBidsSortedByPrice {
         collection: Collection,
+        start_after: Option<CollectionBidOffset>,
         limit: Option<u32>,
-        order_asc: bool,
     },
     /// Show all registered ask hooks
     /// Return type: `HooksResponse`

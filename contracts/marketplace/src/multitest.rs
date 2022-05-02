@@ -1711,8 +1711,8 @@ mod tests {
         // test querying all sorted collection bids by bidder
         let query_sorted_collection_bids = QueryMsg::CollectionBidsSortedByPrice {
             collection: collection.to_string(),
+            start_after: None,
             limit: Some(10),
-            order_asc: true,
         };
         let res: CollectionBidsResponse = router
             .wrap()
