@@ -33,6 +33,12 @@
             "price": {
               "$ref": "#/definitions/Coin"
             },
+            "reserve_for": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
             "token_id": {
               "type": "integer",
               "format": "uint32",

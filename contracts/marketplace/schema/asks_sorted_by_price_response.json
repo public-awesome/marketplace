@@ -52,6 +52,16 @@
         "price": {
           "$ref": "#/definitions/Uint128"
         },
+        "reserve_for": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "seller": {
           "$ref": "#/definitions/Addr"
         },

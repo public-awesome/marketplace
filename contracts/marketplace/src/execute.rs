@@ -12,7 +12,7 @@ use cosmwasm_std::{
     StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
+use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
 use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg1::fair_burn;
@@ -76,6 +76,7 @@ pub fn execute(
             token_id,
             price,
             funds_recipient,
+            reserve_for,
             expires,
         } => execute_set_ask(
             ExecuteEnv { deps, env, info },
@@ -83,6 +84,7 @@ pub fn execute(
             token_id,
             price,
             maybe_addr(api, funds_recipient)?,
+            maybe_addr(api, reserve_for)?,
             expires,
         ),
         ExecuteMsg::RemoveAsk {
@@ -159,6 +161,7 @@ pub fn execute_set_ask(
     token_id: TokenId,
     price: Coin,
     funds_recipient: Option<Addr>,
+    reserve_for: Option<Addr>,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
@@ -191,6 +194,7 @@ pub fn execute_set_ask(
             seller: seller.clone(),
             price: price.amount,
             funds_recipient: funds_recipient.clone(),
+            reserve_for,
             expires,
             active: true,
         },
@@ -327,14 +331,26 @@ pub fn execute_set_bid(
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
-
+    let bidder = info.sender;
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.bid_expiry.is_valid(&env.block, expires)?;
 
-    let bidder = info.sender;
-    let mut res = Response::new();
+    // Ask validation
+    let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
+    if ask.expires <= env.block.time {
+        return Err(ContractError::AskExpired {});
+    }
+    if !ask.active {
+        return Err(ContractError::AskNotActive {});
+    }
+    if let Some(reserved_for) = ask.reserve_for {
+        if reserved_for != bidder {
+            return Err(ContractError::TokenReserved {});
+        }
+    }
 
     // Check bidder has existing bid, if so remove existing bid
+    let mut res = Response::new();
     if let Some(existing_bid) =
         bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?
     {
@@ -346,13 +362,6 @@ pub fn execute_set_bid(
         res = res.add_message(exec_refund_bidder)
     };
 
-    let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    if ask.expires <= env.block.time {
-        return Err(ContractError::AskExpired {});
-    }
-    if !ask.active {
-        return Err(ContractError::AskNotActive {});
-    }
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
         bids().save(
@@ -367,17 +376,12 @@ pub fn execute_set_bid(
             },
         )?;
     } else {
-        // Bid meets ask criteria so finalize sale
+        // Bid meets ask criteria so fulfill bid
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
-        let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
-            collection.clone(),
-            &Cw721QueryMsg::OwnerOf {
-                token_id: token_id.to_string(),
-                include_expired: None,
-            },
-        )?;
-        let owner = deps.api.addr_validate(&cw721_res.owner)?;
+        let owner = Cw721Contract(collection.clone())
+            .owner_of(&deps.querier, token_id.to_string(), false)
+            .map(|res| deps.api.addr_validate(&res.owner))??;
 
         // Include messages needed to finalize nft transfer and payout
         let (msgs, submsgs) = fill_ask(
