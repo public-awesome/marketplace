@@ -158,16 +158,14 @@ impl CollectionOffset {
 pub struct CollectionBidOffset {
     pub price: Uint128,
     pub collection: Collection,
-    pub token_id: TokenId,
     pub bidder: Bidder,
 }
 
 impl CollectionBidOffset {
-    pub fn new(price: Uint128, collection: String, token_id: TokenId, bidder: Bidder) -> Self {
+    pub fn new(price: Uint128, collection: String, bidder: Bidder) -> Self {
         CollectionBidOffset {
             price,
             collection,
-            token_id,
             bidder,
         }
     }
