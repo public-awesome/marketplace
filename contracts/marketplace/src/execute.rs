@@ -8,8 +8,8 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, MessageInfo, Order, Reply,
-    StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, Event, MessageInfo, Order,
+    Reply, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
@@ -43,12 +43,12 @@ pub fn instantiate(
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
-    let mut res = Response::new().add_attribute("action", "instantiate");
+    let mut res = Response::new();
 
     if let Some(hook) = msg.ask_filled_hook {
         ASK_FILLED_HOOKS.add_hook(deps.storage, deps.api.addr_validate(&hook)?)?;
-        res = res.add_attribute("action", "add_ask_filled_hook");
-        res = res.add_attribute("hook", hook);
+        res.events
+            .push(Event::new("ask_filled_hook").add_attribute("hook", hook));
     }
 
     Ok(res)
