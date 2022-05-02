@@ -214,14 +214,12 @@ pub fn execute_set_ask(
         Ok(SubMsg::reply_on_error(execute, REPLY_ASK_CREATED_HOOK))
     })?;
 
-    let res = Response::new()
-        .add_submessages(submsgs)
-        .add_attribute("action", "set_ask")
+    let event = Event::new("set_ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("price", price.to_string());
 
-    Ok(res)
+    Ok(Response::new().add_submessages(submsgs).add_event(event))
 }
 
 /// Removes the ask on a particular media
@@ -249,13 +247,11 @@ pub fn execute_remove_ask(
         msgs.push(remove_and_refund_bid(deps.storage, bid.clone())?)
     }
 
-    let res = Response::new()
-        .add_attribute("action", "remove_ask")
+    let event = Event::new("remove_ask")
         .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string())
-        .add_messages(msgs);
+        .add_attribute("token_id", token_id.to_string());
 
-    Ok(res)
+    Ok(Response::new().add_messages(msgs).add_event(event))
 }
 
 /// Updates the the active state of the ask.
@@ -283,13 +279,12 @@ pub fn execute_update_ask_state(
     ask.active = active;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
-    let res = Response::new()
-        .add_attribute("action", "update_ask_state")
+    let event = Event::new("update_ask_state")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("active", active.to_string());
 
-    Ok(res)
+    Ok(Response::new().add_event(event))
 }
 
 /// Updates the ask price on a particular NFT
@@ -308,13 +303,12 @@ pub fn execute_update_ask(
     ask.price = price.amount;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
-    let res = Response::new()
-        .add_attribute("action", "update_ask")
+    let event = Event::new("update_ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("price", price.to_string());
 
-    Ok(res)
+    Ok(Response::new().add_event(event))
 }
 
 /// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
