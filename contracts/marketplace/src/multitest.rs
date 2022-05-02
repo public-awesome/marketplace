@@ -1714,7 +1714,7 @@ mod tests {
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
-            bidder2.clone(),
+            bidder2,
             marketplace.clone(),
             &set_collection_bid,
             &coins(180, NATIVE_DENOM),
@@ -1758,7 +1758,7 @@ mod tests {
 
         // test start_after
         let start_after = CollectionBidOffset::new(
-            res.bids[0].price.clone(),
+            res.bids[0].price,
             collection.to_string(),
             res.bids[0].bidder.to_string(),
         );
