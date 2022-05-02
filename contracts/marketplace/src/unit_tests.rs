@@ -33,6 +33,7 @@ fn ask_indexed_map() {
         seller: seller.clone(),
         price: Uint128::from(500u128),
         funds_recipient: None,
+        reserve_for: None,
         expires: Timestamp::from_seconds(0),
         active: true,
     };
@@ -46,6 +47,7 @@ fn ask_indexed_map() {
         seller: seller.clone(),
         price: Uint128::from(500u128),
         funds_recipient: None,
+        reserve_for: None,
         expires: Timestamp::from_seconds(0),
         active: true,
     };
@@ -107,7 +109,7 @@ fn setup_contract(deps: DepsMut) {
         trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        sales_finalized_hook: None,
+        ask_filled_hook: None,
     };
     let info = mock_info(CREATOR, &[]);
     let res = instantiate(deps, mock_env(), info, msg).unwrap();
@@ -123,7 +125,7 @@ fn proper_initialization() {
         trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        sales_finalized_hook: None,
+        ask_filled_hook: None,
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 
@@ -179,6 +181,7 @@ fn try_set_ask() {
         token_id: TOKEN_ID,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
+        reserve_for: None,
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),
@@ -195,6 +198,7 @@ fn try_set_ask() {
         token_id: TOKEN_ID,
         price: coin(100, "osmo".to_string()),
         funds_recipient: None,
+        reserve_for: None,
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),

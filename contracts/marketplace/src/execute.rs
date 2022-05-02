@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{AskHookMsg, ExecuteMsg, InstantiateMsg, SaleFinalizedHookMsg};
+use crate::msg::{AskCreatedHookMsg, AskFilledHookMsg, ExecuteMsg, InstantiateMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, ASK_HOOKS, SALE_FINALIZED_HOOKS, SUDO_PARAMS,
+    SudoParams, TokenId, ASK_CREATED_HOOKS, ASK_FILLED_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -12,7 +12,7 @@ use cosmwasm_std::{
     StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
-use cw721::{Cw721ExecuteMsg, Cw721QueryMsg, OwnerOfResponse};
+use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
 use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg1::fair_burn;
@@ -23,8 +23,8 @@ use sg_std::{CosmosMsg, Response, SubMsg, NATIVE_DENOM};
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const REPLY_SALE_FINALIZED_HOOK: u64 = 1;
-const REPLY_ASK_HOOK: u64 = 2;
+const REPLY_ASK_FILLED_HOOK: u64 = 1;
+const REPLY_ASK_CREATED_HOOK: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -45,9 +45,9 @@ pub fn instantiate(
 
     let mut res = Response::new().add_attribute("action", "instantiate");
 
-    if let Some(hook) = msg.sales_finalized_hook {
-        SALE_FINALIZED_HOOKS.add_hook(deps.storage, deps.api.addr_validate(&hook)?)?;
-        res = res.add_attribute("action", "add_sale_finalized_hook");
+    if let Some(hook) = msg.ask_filled_hook {
+        ASK_FILLED_HOOKS.add_hook(deps.storage, deps.api.addr_validate(&hook)?)?;
+        res = res.add_attribute("action", "add_ask_filled_hook");
         res = res.add_attribute("hook", hook);
     }
 
@@ -76,6 +76,7 @@ pub fn execute(
             token_id,
             price,
             funds_recipient,
+            reserve_for,
             expires,
         } => execute_set_ask(
             ExecuteEnv { deps, env, info },
@@ -83,6 +84,7 @@ pub fn execute(
             token_id,
             price,
             maybe_addr(api, funds_recipient)?,
+            maybe_addr(api, reserve_for)?,
             expires,
         ),
         ExecuteMsg::RemoveAsk {
@@ -159,6 +161,7 @@ pub fn execute_set_ask(
     token_id: TokenId,
     price: Coin,
     funds_recipient: Option<Addr>,
+    reserve_for: Option<Addr>,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
@@ -191,12 +194,13 @@ pub fn execute_set_ask(
             seller: seller.clone(),
             price: price.amount,
             funds_recipient: funds_recipient.clone(),
+            reserve_for,
             expires,
             active: true,
         },
     )?;
 
-    let msg = AskHookMsg {
+    let msg = AskCreatedHookMsg {
         collection: collection.to_string(),
         token_id,
         seller: seller.to_string(),
@@ -205,13 +209,13 @@ pub fn execute_set_ask(
     };
 
     // Include hook submessages, i.e: listing rewards
-    let submsgs = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
+    let submsgs = ASK_CREATED_HOOKS.prepare_hooks(deps.storage, |h| {
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
             msg: msg.clone().into_binary()?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
+        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_CREATED_HOOK))
     })?;
 
     let res = Response::new()
@@ -327,14 +331,26 @@ pub fn execute_set_bid(
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
-
+    let bidder = info.sender;
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.bid_expiry.is_valid(&env.block, expires)?;
 
-    let bidder = info.sender;
-    let mut res = Response::new();
+    // Ask validation
+    let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
+    if ask.expires <= env.block.time {
+        return Err(ContractError::AskExpired {});
+    }
+    if !ask.active {
+        return Err(ContractError::AskNotActive {});
+    }
+    if let Some(reserved_for) = ask.reserve_for {
+        if reserved_for != bidder {
+            return Err(ContractError::TokenReserved {});
+        }
+    }
 
     // Check bidder has existing bid, if so remove existing bid
+    let mut res = Response::new();
     if let Some(existing_bid) =
         bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?
     {
@@ -346,13 +362,6 @@ pub fn execute_set_bid(
         res = res.add_message(exec_refund_bidder)
     };
 
-    let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    if ask.expires <= env.block.time {
-        return Err(ContractError::AskExpired {});
-    }
-    if !ask.active {
-        return Err(ContractError::AskNotActive {});
-    }
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
         bids().save(
@@ -367,20 +376,15 @@ pub fn execute_set_bid(
             },
         )?;
     } else {
-        // Bid meets ask criteria so finalize sale
+        // Bid meets ask criteria so fulfill bid
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
-        let cw721_res: cw721::OwnerOfResponse = deps.querier.query_wasm_smart(
-            collection.clone(),
-            &Cw721QueryMsg::OwnerOf {
-                token_id: token_id.to_string(),
-                include_expired: None,
-            },
-        )?;
-        let owner = deps.api.addr_validate(&cw721_res.owner)?;
+        let owner = Cw721Contract(collection.clone())
+            .owner_of(&deps.querier, token_id.to_string(), false)
+            .map(|res| deps.api.addr_validate(&res.owner))??;
 
         // Include messages needed to finalize nft transfer and payout
-        let (msgs, submsgs) = finalize_sale(
+        let (msgs, submsgs) = fill_ask(
             deps,
             collection.clone(),
             token_id,
@@ -391,7 +395,7 @@ pub fn execute_set_bid(
         )?;
 
         res = res
-            .add_attribute("action", "sale_finalized")
+            .add_attribute("action", "ask_filled")
             .add_messages(msgs)
             .add_submessages(submsgs);
     }
@@ -480,7 +484,7 @@ pub fn execute_accept_bid(
     bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
 
     // Transfer funds and NFT
-    let (msgs, submsgs) = finalize_sale(
+    let (msgs, submsgs) = fill_ask(
         deps,
         collection.clone(),
         token_id,
@@ -576,7 +580,7 @@ pub fn execute_accept_collection_bid(
     )?;
 
     // Transfer funds and NFT
-    let (msgs, submsgs) = finalize_sale(
+    let (msgs, submsgs) = fill_ask(
         deps,
         collection.clone(),
         token_id,
@@ -613,7 +617,7 @@ fn only_owner(
 }
 
 /// Transfers funds and NFT, updates bid
-fn finalize_sale(
+fn fill_ask(
     deps: DepsMut,
     collection: Addr,
     token_id: u32,
@@ -644,7 +648,7 @@ fn finalize_sale(
 
     msgs.append(&mut vec![exec_cw721_transfer.into()]);
 
-    let msg = SaleFinalizedHookMsg {
+    let msg = AskFilledHookMsg {
         collection: collection.to_string(),
         token_id,
         price,
@@ -652,13 +656,13 @@ fn finalize_sale(
         buyer: recipient.to_string(),
     };
 
-    let submsg = SALE_FINALIZED_HOOKS.prepare_hooks(deps.storage, |h| {
+    let submsg = ASK_FILLED_HOOKS.prepare_hooks(deps.storage, |h| {
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
             msg: msg.clone().into_binary()?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_SALE_FINALIZED_HOOK))
+        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_FILLED_HOOK))
     })?;
 
     Ok((msgs, submsg))
@@ -667,15 +671,15 @@ fn finalize_sale(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
-        REPLY_SALE_FINALIZED_HOOK => {
+        REPLY_ASK_FILLED_HOOK => {
             let res = Response::new()
-                .add_attribute("action", "sale_finalized_hook_failed")
+                .add_attribute("action", "ask_filled_hook_failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }
-        REPLY_ASK_HOOK => {
+        REPLY_ASK_CREATED_HOOK => {
             let res = Response::new()
-                .add_attribute("action", "ask_hook_failed")
+                .add_attribute("action", "ask_created_hook_failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }

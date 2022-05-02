@@ -22,11 +22,10 @@ pub struct SudoParams {
     pub operators: Vec<Addr>,
 }
 
-pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo_params");
+pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");
 
-pub const SALE_FINALIZED_HOOKS: Hooks = Hooks::new("sale-finalized-hooks");
-
-pub const ASK_HOOKS: Hooks = Hooks::new("ask-hooks");
+pub const ASK_CREATED_HOOKS: Hooks = Hooks::new("ask-created-hooks");
+pub const ASK_FILLED_HOOKS: Hooks = Hooks::new("ask-filled-hooks");
 
 pub type TokenId = u32;
 
@@ -38,6 +37,7 @@ pub struct Ask {
     pub seller: Addr,
     pub price: Uint128,
     pub funds_recipient: Option<Addr>,
+    pub reserve_for: Option<Addr>,
     pub expires: Timestamp,
     pub active: bool,
 }

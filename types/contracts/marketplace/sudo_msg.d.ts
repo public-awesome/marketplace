@@ -9,22 +9,22 @@ trading_fee_basis_points?: (number | null)
 [k: string]: unknown
 }
 } | {
-add_sale_finalized_hook: {
+add_ask_created_hook: {
 hook: string
 [k: string]: unknown
 }
 } | {
-add_ask_hook: {
+remove_ask_created_hook: {
 hook: string
 [k: string]: unknown
 }
 } | {
-remove_sale_finalized_hook: {
+add_ask_filled_hook: {
 hook: string
 [k: string]: unknown
 }
 } | {
-remove_ask_hook: {
+remove_ask_filled_hook: {
 hook: string
 [k: string]: unknown
 }
