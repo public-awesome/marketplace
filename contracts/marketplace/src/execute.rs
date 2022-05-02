@@ -43,15 +43,11 @@ pub fn instantiate(
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
-    let mut res = Response::new();
-
     if let Some(hook) = msg.ask_filled_hook {
         ASK_FILLED_HOOKS.add_hook(deps.storage, deps.api.addr_validate(&hook)?)?;
-        res.events
-            .push(Event::new("ask_filled_hook").add_attribute("hook", hook));
     }
 
-    Ok(res)
+    Ok(Response::new())
 }
 
 /// To mitigate clippy::too_many_arguments warning
