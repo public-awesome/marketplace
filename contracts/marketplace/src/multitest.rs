@@ -1840,7 +1840,7 @@ mod tests {
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
-            bidder2,
+            bidder2.clone(),
             marketplace.clone(),
             &set_collection_bid,
             &coins(180, NATIVE_DENOM),
@@ -1928,6 +1928,25 @@ mod tests {
         let res: CollectionBidsResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &reverse_query_sorted_collection_bids)
+            .unwrap();
+        assert_eq!(res.bids.len(), 1);
+        assert_eq!(res.bids[0].price.u128(), 150u128);
+
+        // test removing collection bid
+        let remove_collection_bid = ExecuteMsg::RemoveCollectionBid {
+            collection: collection.to_string(),
+        };
+        let res =
+            router.execute_contract(bidder2, marketplace.clone(), &remove_collection_bid, &[]);
+        assert!(res.is_ok());
+        let query_sorted_collection_bids = QueryMsg::CollectionBidsSortedByPrice {
+            collection: collection.to_string(),
+            start_after: None,
+            limit: Some(10),
+        };
+        let res: CollectionBidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_sorted_collection_bids)
             .unwrap();
         assert_eq!(res.bids.len(), 1);
         assert_eq!(res.bids[0].price.u128(), 150u128);
