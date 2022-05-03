@@ -36,6 +36,7 @@ fn ask_indexed_map() {
         reserve_for: None,
         expires: Timestamp::from_seconds(0),
         is_active: true,
+        finders_fee_basis_points: Some(0),
     };
     let key = ask_key(collection.clone(), TOKEN_ID);
     let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
@@ -50,6 +51,7 @@ fn ask_indexed_map() {
         reserve_for: None,
         expires: Timestamp::from_seconds(0),
         is_active: true,
+        finders_fee_basis_points: Some(0),
     };
     let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
     let res = asks().save(deps.as_mut().storage, key2, &ask2);
@@ -146,6 +148,7 @@ fn try_set_bid() {
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         expires: Timestamp::from_seconds(0),
+        finder: None,
     };
 
     // Broke bidder calls Set Bid and gets an error
@@ -159,6 +162,7 @@ fn try_set_bid() {
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         expires: mock_env().block.time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
     };
 
     // Bidder calls SetBid before an Ask is set, so it should fail
@@ -185,6 +189,7 @@ fn try_set_ask() {
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),
+        finders_fee_basis_points: Some(0),
     };
 
     // Reject if not called by the media owner
@@ -202,6 +207,7 @@ fn try_set_ask() {
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),
+        finders_fee_basis_points: Some(0),
     };
     let err = execute(
         deps.as_mut(),

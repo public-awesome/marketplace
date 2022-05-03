@@ -59,6 +59,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         expires: Timestamp,
+        finder: Option<String>,
     },
     /// Remove an existing bid from an ask
     RemoveBid {
@@ -70,6 +71,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         bidder: String,
+        finder: Option<String>,
     },
     /// Place a bid (limit order) across an entire collection
     SetCollectionBid {
@@ -81,6 +83,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         bidder: String,
+        finder: Option<String>,
     },
 }
 

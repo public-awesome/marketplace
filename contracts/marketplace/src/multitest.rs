@@ -261,6 +261,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY - 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_err());
@@ -273,6 +274,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -315,6 +317,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -340,6 +343,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             bidder: bidder.to_string(),
+            finder: None,
         };
         let res =
             router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
@@ -393,6 +397,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -402,6 +407,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder,
@@ -456,6 +462,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -521,6 +528,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -609,6 +617,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -620,6 +629,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -631,6 +641,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -758,6 +769,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -770,6 +782,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -782,6 +795,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -899,6 +913,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -910,6 +925,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -921,6 +937,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -930,6 +947,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -943,6 +961,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID + 1,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -956,6 +975,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID + 2,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder,
@@ -997,6 +1017,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder2,
@@ -1089,6 +1110,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1111,6 +1133,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -1160,6 +1183,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_err());
@@ -1185,6 +1209,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         router
             .execute_contract(
@@ -1200,6 +1225,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router
             .execute_contract(
@@ -1260,6 +1286,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: Some(bidder.to_string()),
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1269,6 +1296,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let err = router
             .execute_contract(
@@ -1288,6 +1316,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -1331,6 +1360,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1340,6 +1370,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
 
         let res = router.execute_contract(
@@ -1399,6 +1430,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1408,6 +1440,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -1436,6 +1469,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -1547,6 +1581,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1556,6 +1591,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
         let res = router.execute_contract(
             bidder.clone(),
@@ -1724,6 +1760,7 @@ mod tests {
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(0),
         };
         // Creator Authorizes NFT
         let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
@@ -1745,6 +1782,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
         };
 
         // Bid succeeds even though the hook contract cannot be found
@@ -1937,6 +1975,7 @@ mod tests {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             bidder: bidder.to_string(),
+            finder: None,
         };
         let res =
             router.execute_contract(creator.clone(), marketplace, &accept_collection_bid, &[]);

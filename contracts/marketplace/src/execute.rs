@@ -104,6 +104,7 @@ pub fn execute(
             collection,
             token_id,
             expires,
+            finder,
         } => execute_set_bid(
             deps,
             env,
@@ -111,6 +112,7 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             expires,
+            maybe_addr(api, finder)?,
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -120,6 +122,7 @@ pub fn execute(
             collection,
             token_id,
             bidder,
+            finder,
         } => execute_accept_bid(
             deps,
             env,
@@ -127,6 +130,7 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             api.addr_validate(&bidder)?,
+            maybe_addr(api, finder)?,
         ),
         ExecuteMsg::UpdateAskPrice {
             collection,
@@ -141,6 +145,7 @@ pub fn execute(
             collection,
             token_id,
             bidder,
+            finder,
         } => execute_accept_collection_bid(
             deps,
             env,
@@ -148,6 +153,7 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             api.addr_validate(&bidder)?,
+            maybe_addr(api, finder)?,
         ),
     }
 }
@@ -327,6 +333,7 @@ pub fn execute_set_bid(
     collection: Addr,
     token_id: TokenId,
     expires: Timestamp,
+    finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     let bidder = info.sender;
@@ -378,7 +385,7 @@ pub fn execute_set_bid(
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
         // Include messages needed to finalize nft transfer and payout
-        fill_ask(deps, ask, bid_price, bidder.clone(), &mut res)?;
+        fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
     }
 
     let event = Event::new("set-bid")
@@ -442,6 +449,7 @@ pub fn execute_accept_bid(
     collection: Addr,
     token_id: TokenId,
     bidder: Addr,
+    finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -469,7 +477,7 @@ pub fn execute_accept_bid(
     let mut res = Response::new();
 
     // Transfer funds and NFT
-    fill_ask(deps, ask, bid.price, bidder.clone(), &mut res)?;
+    fill_ask(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
 
     let event = Event::new("accept-bid")
         .add_attribute("collection", collection.to_string())
@@ -537,6 +545,7 @@ pub fn execute_accept_collection_bid(
     collection: Addr,
     token_id: TokenId,
     bidder: Addr,
+    finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -570,7 +579,7 @@ pub fn execute_accept_collection_bid(
     };
 
     // Transfer funds and NFT
-    fill_ask(deps, ask, bid.price, bidder.clone(), &mut res)?;
+    fill_ask(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
 
     let event = Event::new("accept-collection-bid")
         .add_attribute("collection", collection.to_string())
@@ -603,6 +612,7 @@ fn fill_ask(
     ask: Ask,
     price: Uint128,
     buyer: Addr,
+    finder: Option<Addr>,
     res: &mut Response,
 ) -> StdResult<()> {
     // Payout bid
