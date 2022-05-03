@@ -31,6 +31,7 @@ pub const ASK_FILLED_HOOKS: Hooks = Hooks::new("ask-filled-hooks");
 
 pub type TokenId = u32;
 
+// TODO: add auction type (enum with fixed-price, auction, ...)
 /// Represents an ask on the marketplace
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Ask {

@@ -35,6 +35,8 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    // FIXME: add validations for ask + bid expiry
+
     let params = SudoParams {
         trading_fee_bps: Decimal::percent(msg.trading_fee_bps),
         ask_expiry: msg.ask_expiry,
@@ -256,6 +258,8 @@ pub fn execute_remove_ask(
 
     asks().remove(deps.storage, (collection.clone(), token_id))?;
 
+    // TODO: remove removing the bids... (they just turn into offers)
+
     let bids_to_remove = bids()
         .idx
         .collection_token_id
@@ -288,6 +292,12 @@ pub fn execute_update_ask_is_active(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
+    // TODO: check if the owner is the same as the ask seller
+    // if owner is ask seller, then change is_active to true
+    // if not, set is_active to false
+    // if its already active, and owner is seller, then don't change anything, vice versa
+    // https://github.com/public-awesome/marketplace/issues/133
+
     let params = SUDO_PARAMS.load(deps.storage)?;
     if !params
         .operators
@@ -296,6 +306,9 @@ pub fn execute_update_ask_is_active(
     {
         return Err(ContractError::Unauthorized {});
     }
+
+    // TODO: use update instead?
+    // asks().update(store, key, action)
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     ask.is_active = is_active;
@@ -309,6 +322,7 @@ pub fn execute_update_ask_is_active(
     Ok(Response::new().add_event(event))
 }
 
+// TODO: maybe this can go away?
 /// Updates the ask price on a particular NFT
 pub fn execute_update_ask_price(
     deps: DepsMut,
@@ -364,6 +378,8 @@ pub fn execute_set_bid(
 
     // Check bidder has existing bid, if so remove existing bid
     let mut res = Response::new();
+
+    // TODO: change a match
     if let Some(existing_bid) =
         bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?
     {
@@ -389,10 +405,13 @@ pub fn execute_set_bid(
             },
         )?;
     } else {
+        // TODO: only run this for fixed-priced asks
+
         // Bid meets ask criteria so fulfill bid
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
         // Include messages needed to finalize nft transfer and payout
+        // TODO: set minimum bid price
         fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
     }
 
@@ -423,6 +442,7 @@ pub fn execute_remove_bid(
         deps.storage,
         bid_key(collection.clone(), token_id, bidder.clone()),
     )?;
+    // TODO: make sure bidder is the same as the bidder in the bid
 
     let event = Event::new("remove-bid")
         .add_attribute("collection", collection)
@@ -435,6 +455,10 @@ pub fn execute_remove_bid(
 
     Ok(res)
 }
+
+// TODO: function for operator to remove stale bids
+// stale bid = X seconds (sudo param) after bid expires
+// operator gets Y%, bidder gets 1-Y%
 
 fn remove_and_refund_bid(store: &mut dyn Storage, bid: Bid) -> Result<BankMsg, ContractError> {
     // Remove bid
@@ -512,6 +536,7 @@ pub fn execute_set_collection_bid(
     let bidder = info.sender;
     let mut res = Response::new();
 
+    // TODO: refactor into match
     // Check bidder has existing bid, if so remove existing bid
     if let Some(existing_bid) = collection_bids().may_load(
         deps.storage,
@@ -620,6 +645,8 @@ pub fn execute_accept_collection_bid(
 
     let mut res = Response::new();
 
+    // TODO: accept finders fee for bid?
+
     // Create a temporary Ask
     let ask = Ask {
         collection: collection.clone(),
@@ -632,6 +659,8 @@ pub fn execute_accept_collection_bid(
         reserve_for: None,
         finders_fee_bps: None,
     };
+
+    // TODO: have `fill_bid`?
 
     // Transfer funds and NFT
     fill_ask(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
@@ -753,13 +782,12 @@ fn payout(
     finders_fee_bps: Option<u64>,
     res: &mut Response,
 ) -> StdResult<()> {
-    let config = SUDO_PARAMS.load(deps.storage)?;
+    let params = SUDO_PARAMS.load(deps.storage)?;
 
     // Append Fair Burn message
-    let network_fee = payment * config.trading_fee_bps / Uint128::from(100u128);
+    let network_fee = payment * params.trading_fee_bps / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
-    // Check if token supports royalties
     let collection_info: CollectionInfoResponse = deps
         .querier
         .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
@@ -789,12 +817,15 @@ fn payout(
                 amount: vec![amount.clone()],
             }));
 
+            // TODO: add royalty payment to e2e test
+
             let event = Event::new("royalty-payout")
                 .add_attribute("collection", collection.to_string())
                 .add_attribute("amount", amount.to_string())
                 .add_attribute("recipient", royalty.payment_address.to_string());
             res.events.push(event);
 
+            // TODO: rename to seller?
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
