@@ -135,6 +135,9 @@ pub fn execute(
             collection,
             expires,
         } => execute_set_collection_bid(deps, env, info, api.addr_validate(&collection)?, expires),
+        ExecuteMsg::RemoveCollectionBid { collection } => {
+            execute_remove_collection_bid(deps, env, info, api.addr_validate(&collection)?)
+        }
         ExecuteMsg::AcceptCollectionBid {
             collection,
             token_id,
@@ -521,6 +524,39 @@ pub fn execute_set_collection_bid(
         .add_attribute("bidder", bidder)
         .add_attribute("bid_price", price.to_string())
         .add_attribute("expires", expires.to_string());
+
+    Ok(res.add_event(event))
+}
+
+/// Remove an existing collection bid (limit order)
+pub fn execute_remove_collection_bid(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    collection: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
+    let bidder = info.sender;
+    let mut res = Response::new();
+
+    // Check bidder has existing bid, if so remove existing bid
+    if let Some(existing_bid) = collection_bids().may_load(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )? {
+        collection_bids().remove(deps.storage, (collection.clone(), bidder.clone()))?;
+        let exec_refund_bidder = BankMsg::Send {
+            to_address: bidder.to_string(),
+            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
+        };
+        res = res.add_message(exec_refund_bidder)
+    } else {
+        return Err(ContractError::BidNotFound {});
+    };
+    let event = Event::new("remove-collection-bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("bidder", bidder);
 
     Ok(res.add_event(event))
 }
