@@ -6,6 +6,7 @@ collection: string
 expires: Timestamp
 funds_recipient?: (string | null)
 price: Coin
+reserve_for?: (string | null)
 token_id: number
 [k: string]: unknown
 }

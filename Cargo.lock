@@ -664,7 +664,7 @@ dependencies = [
  "sg-controllers",
  "sg-multi-test",
  "sg-std",
- "sg1",
+ "sg1 0.13.0",
  "sg721",
  "thiserror",
 ]
@@ -712,6 +712,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "sg1"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f84da5448efc51fb2484fa1aa3d29402b1cd2fc26d42f4e2cefa73090a85d2da"
+dependencies = [
+ "cosmwasm-std",
+ "cw-utils",
+ "serde",
+ "sg-std",
+ "thiserror",
+]
+
+[[package]]
 name = "sg721"
 version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -727,7 +740,7 @@ dependencies = [
  "schemars",
  "serde",
  "sg-std",
- "sg1",
+ "sg1 0.12.1",
  "thiserror",
  "url",
 ]
