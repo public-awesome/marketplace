@@ -776,7 +776,7 @@ fn payout(
     };
 
     match collection_info.royalty_info {
-        // If token supports royalities, payout shares
+        // If token supports royalities, payout shares to royalty recipient
         Some(royalty) => {
             let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
             res.messages.push(SubMsg::new(BankMsg::Send {
@@ -790,25 +790,25 @@ fn payout(
                 .add_attribute("recipient", royalty.payment_address.to_string());
             res.events.push(event);
 
-            let owner_share_msg = BankMsg::Send {
+            let seller_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
                     (payment * (Decimal::one() - royalty.share) - network_fee).u128() - finders_fee,
                     NATIVE_DENOM.to_string(),
                 )],
             };
-            res.messages.push(SubMsg::new(owner_share_msg));
+            res.messages.push(SubMsg::new(seller_share_msg));
         }
         None => {
-            // If token doesn't support royalties, pay owner in full
-            let owner_share_msg = BankMsg::Send {
+            // If token doesn't support royalties, pay seller in full
+            let seller_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
                     (payment - network_fee).u128() - finders_fee,
                     NATIVE_DENOM.to_string(),
                 )],
             };
-            res.messages.push(SubMsg::new(owner_share_msg));
+            res.messages.push(SubMsg::new(seller_share_msg));
         }
     }
 
