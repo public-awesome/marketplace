@@ -20,6 +20,7 @@ const TOKEN_ID: u32 = 123;
 const TRADING_FEE_BASIS_POINTS: u64 = 200; // 2%
 const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
 const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
+const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
 
 #[test]
 fn ask_indexed_map() {
@@ -36,6 +37,7 @@ fn ask_indexed_map() {
         reserve_for: None,
         expires: Timestamp::from_seconds(0),
         is_active: true,
+        finders_fee_bps: Some(0),
     };
     let key = ask_key(collection.clone(), TOKEN_ID);
     let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
@@ -50,6 +52,7 @@ fn ask_indexed_map() {
         reserve_for: None,
         expires: Timestamp::from_seconds(0),
         is_active: true,
+        finders_fee_bps: Some(0),
     };
     let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
     let res = asks().save(deps.as_mut().storage, key2, &ask2);
@@ -106,10 +109,11 @@ fn bid_indexed_map() {
 fn setup_contract(deps: DepsMut) {
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
+        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         ask_filled_hook: None,
+        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
     };
     let info = mock_info(CREATOR, &[]);
     let res = instantiate(deps, mock_env(), info, msg).unwrap();
@@ -122,10 +126,11 @@ fn proper_initialization() {
 
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
+        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         ask_filled_hook: None,
+        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 
@@ -146,6 +151,7 @@ fn try_set_bid() {
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         expires: Timestamp::from_seconds(0),
+        finder: None,
     };
 
     // Broke bidder calls Set Bid and gets an error
@@ -159,6 +165,7 @@ fn try_set_bid() {
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         expires: mock_env().block.time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
     };
 
     // Bidder calls SetBid before an Ask is set, so it should fail
@@ -185,6 +192,7 @@ fn try_set_ask() {
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),
+        finders_fee_basis_points: Some(0),
     };
 
     // Reject if not called by the media owner
@@ -202,6 +210,7 @@ fn try_set_ask() {
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),
+        finders_fee_basis_points: Some(0),
     };
     let err = execute(
         deps.as_mut(),

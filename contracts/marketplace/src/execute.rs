@@ -2,8 +2,8 @@ use crate::error::ContractError;
 use crate::helpers::map_validate;
 use crate::msg::{AskCreatedHookMsg, AskFilledHookMsg, ExecuteMsg, InstantiateMsg};
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, ASK_CREATED_HOOKS, ASK_FILLED_HOOKS, SUDO_PARAMS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, AskKey, Bid,
+    CollectionBid, SudoParams, TokenId, ASK_CREATED_HOOKS, ASK_FILLED_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -36,10 +36,11 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let params = SudoParams {
-        trading_fee_basis_points: Decimal::percent(msg.trading_fee_basis_points),
+        trading_fee_bps: Decimal::percent(msg.trading_fee_bps),
         ask_expiry: msg.ask_expiry,
         bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,
+        max_finders_fee_bps: Decimal::percent(msg.max_finders_fee_bps),
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -73,14 +74,15 @@ pub fn execute(
             price,
             funds_recipient,
             reserve_for,
+            finders_fee_basis_points,
             expires,
         } => execute_set_ask(
             ExecuteEnv { deps, env, info },
-            api.addr_validate(&collection)?,
-            token_id,
+            ask_key(api.addr_validate(&collection)?, token_id),
             price,
             maybe_addr(api, funds_recipient)?,
             maybe_addr(api, reserve_for)?,
+            finders_fee_basis_points,
             expires,
         ),
         ExecuteMsg::RemoveAsk {
@@ -102,6 +104,7 @@ pub fn execute(
             collection,
             token_id,
             expires,
+            finder,
         } => execute_set_bid(
             deps,
             env,
@@ -109,6 +112,7 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             expires,
+            maybe_addr(api, finder)?,
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -118,6 +122,7 @@ pub fn execute(
             collection,
             token_id,
             bidder,
+            finder,
         } => execute_accept_bid(
             deps,
             env,
@@ -125,6 +130,7 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             api.addr_validate(&bidder)?,
+            maybe_addr(api, finder)?,
         ),
         ExecuteMsg::UpdateAskPrice {
             collection,
@@ -142,6 +148,7 @@ pub fn execute(
             collection,
             token_id,
             bidder,
+            finder,
         } => execute_accept_collection_bid(
             deps,
             env,
@@ -149,6 +156,7 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             api.addr_validate(&bidder)?,
+            maybe_addr(api, finder)?,
         ),
     }
 }
@@ -156,11 +164,11 @@ pub fn execute(
 /// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
 pub fn execute_set_ask(
     env: ExecuteEnv,
-    collection: Addr,
-    token_id: TokenId,
+    ask_key: AskKey,
     price: Coin,
     funds_recipient: Option<Addr>,
     reserve_for: Option<Addr>,
+    finders_fee_bps: Option<u64>,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
@@ -170,8 +178,14 @@ pub fn execute_set_ask(
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_expiry.is_valid(&env.block, expires)?;
 
+    if let Some(fee) = finders_fee_bps {
+        if Decimal::percent(fee) > params.max_finders_fee_bps {
+            return Err(ContractError::InvalidFindersFeeBps(fee));
+        };
+    }
+
     // Only the media onwer can call this
-    let owner_of_response = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    let owner_of_response = only_owner(deps.as_ref(), &info, ask_key.clone().0, ask_key.1)?;
     // Check that approval has been set for marketplace contract
     if owner_of_response
         .approvals
@@ -186,22 +200,23 @@ pub fn execute_set_ask(
     let seller = info.sender;
     asks().save(
         deps.storage,
-        ask_key(collection.clone(), token_id),
+        ask_key.clone(),
         &Ask {
-            collection: collection.clone(),
-            token_id,
+            collection: ask_key.clone().0,
+            token_id: ask_key.1,
             seller: seller.clone(),
             price: price.amount,
             funds_recipient: funds_recipient.clone(),
             reserve_for,
+            finders_fee_bps,
             expires,
             is_active: true,
         },
     )?;
 
     let msg = AskCreatedHookMsg {
-        collection: collection.to_string(),
-        token_id,
+        collection: ask_key.0.to_string(),
+        token_id: ask_key.1,
         seller: seller.to_string(),
         funds_recipient: funds_recipient
             .unwrap_or_else(|| seller.clone())
@@ -220,8 +235,8 @@ pub fn execute_set_ask(
     })?;
 
     let event = Event::new("set-ask")
-        .add_attribute("collection", collection)
-        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("collection", ask_key.0.to_string())
+        .add_attribute("token_id", ask_key.1.to_string())
         .add_attribute("seller", seller)
         .add_attribute("price", price.to_string())
         .add_attribute("expires", expires.to_string());
@@ -326,6 +341,7 @@ pub fn execute_set_bid(
     collection: Addr,
     token_id: TokenId,
     expires: Timestamp,
+    finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     let bidder = info.sender;
@@ -377,7 +393,7 @@ pub fn execute_set_bid(
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
         // Include messages needed to finalize nft transfer and payout
-        fill_ask(deps, ask, bid_price, bidder.clone(), &mut res)?;
+        fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
     }
 
     let event = Event::new("set-bid")
@@ -441,6 +457,7 @@ pub fn execute_accept_bid(
     collection: Addr,
     token_id: TokenId,
     bidder: Addr,
+    finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -468,7 +485,7 @@ pub fn execute_accept_bid(
     let mut res = Response::new();
 
     // Transfer funds and NFT
-    fill_ask(deps, ask, bid.price, bidder.clone(), &mut res)?;
+    fill_ask(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
 
     let event = Event::new("accept-bid")
         .add_attribute("collection", collection.to_string())
@@ -583,6 +600,7 @@ pub fn execute_accept_collection_bid(
     collection: Addr,
     token_id: TokenId,
     bidder: Addr,
+    finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
@@ -612,10 +630,11 @@ pub fn execute_accept_collection_bid(
         seller: info.sender.clone(),
         funds_recipient: None,
         reserve_for: None,
+        finders_fee_bps: None,
     };
 
     // Transfer funds and NFT
-    fill_ask(deps, ask, bid.price, bidder.clone(), &mut res)?;
+    fill_ask(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
 
     let event = Event::new("accept-collection-bid")
         .add_attribute("collection", collection.to_string())
@@ -648,6 +667,7 @@ fn fill_ask(
     ask: Ask,
     price: Uint128,
     buyer: Addr,
+    finder: Option<Addr>,
     res: &mut Response,
 ) -> StdResult<()> {
     // Payout bid
@@ -658,6 +678,8 @@ fn fill_ask(
         ask.funds_recipient
             .clone()
             .unwrap_or_else(|| ask.seller.clone()),
+        finder,
+        ask.finders_fee_bps,
         res,
     )?;
 
@@ -727,18 +749,36 @@ fn payout(
     collection: Addr,
     payment: Uint128,
     payment_recipient: Addr,
+    finder: Option<Addr>,
+    finders_fee_bps: Option<u64>,
     res: &mut Response,
 ) -> StdResult<()> {
     let config = SUDO_PARAMS.load(deps.storage)?;
 
     // Append Fair Burn message
-    let network_fee = payment * config.trading_fee_basis_points / Uint128::from(100u128);
+    let network_fee = payment * config.trading_fee_bps / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
-    // Check if token supports Royalties
+    // Check if token supports royalties
     let collection_info: CollectionInfoResponse = deps
         .querier
         .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
+
+    let finders_fee = match finder {
+        Some(finder) => {
+            let finders_fee = finders_fee_bps
+                .map(|fee| (payment * Decimal::percent(fee) / Uint128::from(100u128)).u128())
+                .unwrap_or(0);
+            if finders_fee > 0 {
+                res.messages.push(SubMsg::new(BankMsg::Send {
+                    to_address: finder.to_string(),
+                    amount: vec![coin(finders_fee, NATIVE_DENOM)],
+                }));
+            }
+            finders_fee
+        }
+        None => 0,
+    };
 
     match collection_info.royalty_info {
         // If token supports royalities, payout shares
@@ -758,7 +798,7 @@ fn payout(
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
-                    (payment * (Decimal::one() - royalty.share) - network_fee).u128(),
+                    (payment * (Decimal::one() - royalty.share) - network_fee).u128() - finders_fee,
                     NATIVE_DENOM.to_string(),
                 )],
             };
@@ -769,7 +809,7 @@ fn payout(
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
-                    (payment - network_fee).u128(),
+                    (payment - network_fee).u128() - finders_fee,
                     NATIVE_DENOM.to_string(),
                 )],
             };

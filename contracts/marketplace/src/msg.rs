@@ -11,7 +11,7 @@ use sg_std::CosmosMsg;
 pub struct InstantiateMsg {
     /// Fair Burn fee for winning bids
     /// 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
-    pub trading_fee_basis_points: u64,
+    pub trading_fee_bps: u64,
     /// Valid time range for Asks
     /// (min, max) in seconds
     pub ask_expiry: ExpiryRange,
@@ -22,6 +22,8 @@ pub struct InstantiateMsg {
     /// They listen to NFT transfer events, and update the active state of Asks.
     pub operators: Vec<String>,
     pub ask_filled_hook: Option<String>,
+    /// Max basis points for the finders fee
+    pub max_finders_fee_bps: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -34,6 +36,7 @@ pub enum ExecuteMsg {
         price: Coin,
         funds_recipient: Option<String>,
         reserve_for: Option<String>,
+        finders_fee_basis_points: Option<u64>,
         expires: Timestamp,
     },
     /// Remove an existing ask from the marketplace
@@ -58,6 +61,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         expires: Timestamp,
+        finder: Option<String>,
     },
     /// Remove an existing bid from an ask
     RemoveBid {
@@ -69,6 +73,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         bidder: String,
+        finder: Option<String>,
     },
     /// Place a bid (limit order) across an entire collection
     SetCollectionBid {
@@ -82,6 +87,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         bidder: String,
+        finder: Option<String>,
     },
 }
 
@@ -91,10 +97,11 @@ pub enum SudoMsg {
     /// Update the contract parameters
     /// Can only be called by governance
     UpdateParams {
-        trading_fee_basis_points: Option<u64>,
+        trading_fee_bps: Option<u64>,
         ask_expiry: Option<ExpiryRange>,
         bid_expiry: Option<ExpiryRange>,
         operators: Option<Vec<String>>,
+        max_finders_fee_bps: Option<u64>,
     },
     /// Add a new hook to be informed of all asks
     AddAskCreatedHook { hook: String },

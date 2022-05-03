@@ -10,7 +10,7 @@ use crate::helpers::ExpiryRange;
 pub struct SudoParams {
     /// Fair Burn fee for winning bids
     /// 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
-    pub trading_fee_basis_points: Decimal,
+    pub trading_fee_bps: Decimal,
     /// Valid time range for Asks
     /// (min, max) in seconds
     pub ask_expiry: ExpiryRange,
@@ -20,6 +20,8 @@ pub struct SudoParams {
     /// Operators are entites that are responsible for maintaining the active state of Asks
     /// They listen to NFT transfer events, and update the active state of Asks
     pub operators: Vec<Addr>,
+    /// Max value for the finders fee
+    pub max_finders_fee_bps: Decimal,
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");
@@ -38,6 +40,7 @@ pub struct Ask {
     pub price: Uint128,
     pub funds_recipient: Option<Addr>,
     pub reserve_for: Option<Addr>,
+    pub finders_fee_bps: Option<u64>,
     pub expires: Timestamp,
     pub is_active: bool,
 }

@@ -58,6 +58,7 @@ export interface Ask {
     [k: string]: unknown;
     collection: Addr;
     expires: Timestamp;
+    finders_fee_bps?: (number | null);
     funds_recipient?: (Addr | null);
     is_active: boolean;
     price: Uint128;

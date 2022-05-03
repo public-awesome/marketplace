@@ -36,6 +36,14 @@
         "expires": {
           "$ref": "#/definitions/Timestamp"
         },
+        "finders_fee_bps": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
         "funds_recipient": {
           "anyOf": [
             {

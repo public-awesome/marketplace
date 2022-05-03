@@ -43,8 +43,9 @@
       "required": [
         "ask_expiry",
         "bid_expiry",
+        "max_finders_fee_bps",
         "operators",
-        "trading_fee_basis_points"
+        "trading_fee_bps"
       ],
       "properties": {
         "ask_expiry": {
@@ -63,6 +64,14 @@
             }
           ]
         },
+        "max_finders_fee_bps": {
+          "description": "Max value for the finders fee",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal"
+            }
+          ]
+        },
         "operators": {
           "description": "Operators are entites that are responsible for maintaining the active state of Asks They listen to NFT transfer events, and update the active state of Asks",
           "type": "array",
@@ -70,7 +79,7 @@
             "$ref": "#/definitions/Addr"
           }
         },
-        "trading_fee_basis_points": {
+        "trading_fee_bps": {
           "description": "Fair Burn fee for winning bids 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250",
           "allOf": [
             {
