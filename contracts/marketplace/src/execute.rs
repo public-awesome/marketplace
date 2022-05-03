@@ -504,15 +504,19 @@ pub fn execute_set_collection_bid(
     let mut res = Response::new();
 
     // Check bidder has existing bid, if so remove existing bid
-    if let Some(existing_bid) = collection_bids().may_load(
+    let existing_bid = collection_bids().may_load(
         deps.storage,
         collection_bid_key(collection.clone(), bidder.clone()),
-    )? {
-        res = res.add_message(remove_and_refund_collection_bid(
-            deps.storage,
-            existing_bid,
-        )?);
-    };
+    )?;
+    match existing_bid {
+        Some(existing_bid) => {
+            res = res.add_message(remove_and_refund_collection_bid(
+                deps.storage,
+                existing_bid,
+            )?);
+        }
+        None => (),
+    }
 
     collection_bids().save(
         deps.storage,
@@ -744,10 +748,10 @@ fn payout(
     finders_fee_bps: Option<u64>,
     res: &mut Response,
 ) -> StdResult<()> {
-    let config = SUDO_PARAMS.load(deps.storage)?;
+    let params = SUDO_PARAMS.load(deps.storage)?;
 
     // Append Fair Burn message
-    let network_fee = payment * config.trading_fee_bps / Uint128::from(100u128);
+    let network_fee = payment * params.trading_fee_bps / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
     // Check if token supports royalties
