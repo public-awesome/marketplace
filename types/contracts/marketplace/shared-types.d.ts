@@ -61,6 +61,7 @@ export interface Ask {
     expires: Timestamp;
     funds_recipient?: (Addr | null);
     price: Uint128;
+    reserve_for?: (Addr | null);
     seller: Addr;
     token_id: number;
 }
