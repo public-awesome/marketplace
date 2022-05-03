@@ -623,6 +623,8 @@ fn fill_ask(
         ask.funds_recipient
             .clone()
             .unwrap_or_else(|| ask.seller.clone()),
+        finder,
+        ask.finders_fee_basis_points,
         res,
     )?;
 
@@ -692,6 +694,8 @@ fn payout(
     collection: Addr,
     payment: Uint128,
     payment_recipient: Addr,
+    finder: Option<Addr>,
+    finders_fee_bps: Option<u64>,
     res: &mut Response,
 ) -> StdResult<()> {
     let config = SUDO_PARAMS.load(deps.storage)?;
@@ -700,10 +704,22 @@ fn payout(
     let network_fee = payment * config.trading_fee_basis_points / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
-    // Check if token supports Royalties
+    // Check if token supports royalties
     let collection_info: CollectionInfoResponse = deps
         .querier
         .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
+
+    let finders_fee = finders_fee_bps
+        .map(|fee| (payment * Decimal::percent(fee) / Uint128::from(100u128)).u128())
+        .unwrap_or(0);
+    if let Some(finder) = finder {
+        if finders_fee > 0 {
+            res.messages.push(SubMsg::new(BankMsg::Send {
+                to_address: finder.to_string(),
+                amount: vec![coin(finders_fee, NATIVE_DENOM)],
+            }));
+        }
+    }
 
     match collection_info.royalty_info {
         // If token supports royalities, payout shares
@@ -723,7 +739,7 @@ fn payout(
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
-                    (payment * (Decimal::one() - royalty.share) - network_fee).u128(),
+                    (payment * (Decimal::one() - royalty.share) - network_fee).u128() - finders_fee,
                     NATIVE_DENOM.to_string(),
                 )],
             };
@@ -734,7 +750,7 @@ fn payout(
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
-                    (payment - network_fee).u128(),
+                    (payment - network_fee).u128() - finders_fee,
                     NATIVE_DENOM.to_string(),
                 )],
             };
