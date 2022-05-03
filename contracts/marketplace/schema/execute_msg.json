@@ -253,6 +253,27 @@
       "additionalProperties": false
     },
     {
+      "description": "Remove a bid (limit order) across an entire collection",
+      "type": "object",
+      "required": [
+        "remove_collection_bid"
+      ],
+      "properties": {
+        "remove_collection_bid": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Accept a collection bid",
       "type": "object",
       "required": [
