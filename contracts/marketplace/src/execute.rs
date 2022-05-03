@@ -709,17 +709,21 @@ fn payout(
         .querier
         .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
 
-    let finders_fee = finders_fee_bps
-        .map(|fee| (payment * Decimal::percent(fee) / Uint128::from(100u128)).u128())
-        .unwrap_or(0);
-    if let Some(finder) = finder {
-        if finders_fee > 0 {
-            res.messages.push(SubMsg::new(BankMsg::Send {
-                to_address: finder.to_string(),
-                amount: vec![coin(finders_fee, NATIVE_DENOM)],
-            }));
+    let finders_fee = match finder {
+        Some(finder) => {
+            let finders_fee = finders_fee_bps
+                .map(|fee| (payment * Decimal::percent(fee) / Uint128::from(100u128)).u128())
+                .unwrap_or(0);
+            if finders_fee > 0 {
+                res.messages.push(SubMsg::new(BankMsg::Send {
+                    to_address: finder.to_string(),
+                    amount: vec![coin(finders_fee, NATIVE_DENOM)],
+                }));
+            }
+            finders_fee
         }
-    }
+        None => 0,
+    };
 
     match collection_info.royalty_info {
         // If token supports royalities, payout shares

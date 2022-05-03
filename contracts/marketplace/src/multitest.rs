@@ -1339,6 +1339,63 @@ mod tests {
     }
 
     #[test]
+    fn try_ask_with_finders_fee() {
+        let mut router = custom_mock_app();
+
+        // Setup intial accounts
+        let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+        // Instantiate and configure contracts
+        let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+        // Mint NFT for creator
+        mint(&mut router, &creator, &collection, TOKEN_ID);
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+        // An ask is made by the creator
+        let set_ask = ExecuteMsg::SetAsk {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(100, NATIVE_DENOM),
+            funds_recipient: None,
+            reserve_for: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_basis_points: Some(500), // 5%
+        };
+        let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+        assert!(res.is_ok());
+
+        let finder = Addr::unchecked("finder".to_string());
+
+        // Bidder makes bid that meets ask price
+        let set_bid_msg = ExecuteMsg::SetBid {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: Some(finder.to_string()),
+        };
+        let res = router.execute_contract(
+            bidder.clone(),
+            marketplace,
+            &set_bid_msg,
+            &coins(100, NATIVE_DENOM),
+        );
+        assert!(res.is_ok());
+
+        // Check money is transfered
+        let creator_balances = router.wrap().query_all_balances(creator).unwrap();
+        // 100  - 2 (network fee) - 5 (finders fee)
+        assert_eq!(creator_balances, coins(100 - 2 - 5, NATIVE_DENOM));
+        let bidder_balances = router.wrap().query_all_balances(bidder).unwrap();
+        assert_eq!(
+            bidder_balances,
+            vec![coin(INITIAL_BALANCE - 100, NATIVE_DENOM),]
+        );
+        let finder_balances = router.wrap().query_all_balances(finder).unwrap();
+        assert_eq!(finder_balances, coins(5, NATIVE_DENOM));
+    }
+
+    #[test]
     fn remove_bid_refund() {
         let mut router = custom_mock_app();
 
