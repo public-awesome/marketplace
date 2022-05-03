@@ -220,7 +220,8 @@ pub fn execute_set_ask(
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("seller", seller)
-        .add_attribute("price", price.to_string());
+        .add_attribute("price", price.to_string())
+        .add_attribute("expires", expires.to_string());
 
     Ok(Response::new().add_submessages(submsgs).add_event(event))
 }
@@ -380,7 +381,8 @@ pub fn execute_set_bid(
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
-        .add_attribute("bid_price", bid_price.to_string());
+        .add_attribute("bid_price", bid_price.to_string())
+        .add_attribute("expires", expires.to_string());
 
     Ok(res.add_event(event))
 }
@@ -468,7 +470,8 @@ pub fn execute_accept_bid(
     let event = Event::new("accept-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("bidder", bidder);
+        .add_attribute("bidder", bidder)
+        .add_attribute("price", bid.price.to_string());
 
     Ok(res.add_event(event))
 }
@@ -516,7 +519,8 @@ pub fn execute_set_collection_bid(
     let event = Event::new("set-collection-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("bidder", bidder)
-        .add_attribute("bid_price", price.to_string());
+        .add_attribute("bid_price", price.to_string())
+        .add_attribute("expires", expires.to_string());
 
     Ok(res.add_event(event))
 }
