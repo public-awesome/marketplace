@@ -108,7 +108,7 @@ fn bid_indexed_map() {
 fn setup_contract(deps: DepsMut) {
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
+        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         ask_filled_hook: None,
@@ -124,7 +124,7 @@ fn proper_initialization() {
 
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
+        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         ask_filled_hook: None,

@@ -69,7 +69,7 @@ mod tests {
         let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
+            trading_fee_bps: TRADING_FEE_BASIS_POINTS,
             ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             ask_filled_hook: None,
@@ -1582,7 +1582,7 @@ mod tests {
         let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
+            trading_fee_bps: TRADING_FEE_BASIS_POINTS,
             ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             ask_filled_hook: None,
@@ -1709,7 +1709,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(marketplace, &query_params_msg)
             .unwrap();
-        assert_eq!(res.params.trading_fee_basis_points, Decimal::percent(5));
+        assert_eq!(res.params.trading_fee_bps, Decimal::percent(5));
         assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
         assert_eq!(res.params.operators, vec!["operator".to_string()]);
     }
@@ -1757,7 +1757,7 @@ mod tests {
         let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            trading_fee_basis_points: TRADING_FEE_BASIS_POINTS,
+            trading_fee_bps: TRADING_FEE_BASIS_POINTS,
             ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             ask_filled_hook: Some("hook".to_string()),

@@ -36,7 +36,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let params = SudoParams {
-        trading_fee_basis_points: Decimal::percent(msg.trading_fee_basis_points),
+        trading_fee_bps: Decimal::percent(msg.trading_fee_bps),
         ask_expiry: msg.ask_expiry,
         bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,
@@ -699,7 +699,7 @@ fn payout(
     let config = SUDO_PARAMS.load(deps.storage)?;
 
     // Append Fair Burn message
-    let network_fee = payment * config.trading_fee_basis_points / Uint128::from(100u128);
+    let network_fee = payment * config.trading_fee_bps / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
     // Check if token supports royalties

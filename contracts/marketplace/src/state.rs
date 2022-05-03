@@ -10,7 +10,7 @@ use crate::helpers::ExpiryRange;
 pub struct SudoParams {
     /// Fair Burn fee for winning bids
     /// 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
-    pub trading_fee_basis_points: Decimal,
+    pub trading_fee_bps: Decimal,
     /// Valid time range for Asks
     /// (min, max) in seconds
     pub ask_expiry: ExpiryRange,

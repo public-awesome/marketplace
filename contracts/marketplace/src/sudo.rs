@@ -49,9 +49,9 @@ pub fn sudo_update_params(
 ) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
 
-    params.trading_fee_basis_points = trading_fee
+    params.trading_fee_bps = trading_fee
         .map(Decimal::percent)
-        .unwrap_or(params.trading_fee_basis_points);
+        .unwrap_or(params.trading_fee_bps);
     params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
     params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
     if let Some(operators) = operators {
