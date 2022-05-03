@@ -41,14 +41,14 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
     },
-    /// Admin operation to change the active state of an ask when an NFT is transferred
-    UpdateAskState {
+    /// Priviledged operation to change the active state of an ask when an NFT is transferred
+    UpdateAskIsActive {
         collection: String,
         token_id: TokenId,
-        active: bool,
+        is_active: bool,
     },
     /// Update the price of an existing ask
-    UpdateAsk {
+    UpdateAskPrice {
         collection: String,
         token_id: TokenId,
         price: Coin,

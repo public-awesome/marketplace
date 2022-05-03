@@ -87,16 +87,16 @@ pub fn execute(
             collection,
             token_id,
         } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, token_id),
-        ExecuteMsg::UpdateAskState {
+        ExecuteMsg::UpdateAskIsActive {
             collection,
             token_id,
-            active,
-        } => execute_update_ask_state(
+            is_active,
+        } => execute_update_ask_is_active(
             deps,
             info,
             api.addr_validate(&collection)?,
             token_id,
-            active,
+            is_active,
         ),
         ExecuteMsg::SetBid {
             collection,
@@ -126,11 +126,11 @@ pub fn execute(
             token_id,
             api.addr_validate(&bidder)?,
         ),
-        ExecuteMsg::UpdateAsk {
+        ExecuteMsg::UpdateAskPrice {
             collection,
             token_id,
             price,
-        } => execute_update_ask(deps, info, api.addr_validate(&collection)?, token_id, price),
+        } => execute_update_ask_price(deps, info, api.addr_validate(&collection)?, token_id, price),
         ExecuteMsg::SetCollectionBid {
             collection,
             expires,
@@ -264,12 +264,12 @@ pub fn execute_remove_ask(
 /// Updates the the active state of the ask.
 /// This is a privileged operation called by an operator to update the active state of an Ask
 /// when an NFT transfer happens.
-pub fn execute_update_ask_state(
+pub fn execute_update_ask_is_active(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
-    active: bool,
+    is_active: bool,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -283,19 +283,19 @@ pub fn execute_update_ask_state(
     }
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    ask.is_active = active;
+    ask.is_active = is_active;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
     let event = Event::new("update-ask-state")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("active", active.to_string());
+        .add_attribute("is_active", is_active.to_string());
 
     Ok(Response::new().add_event(event))
 }
 
 /// Updates the ask price on a particular NFT
-pub fn execute_update_ask(
+pub fn execute_update_ask_price(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,

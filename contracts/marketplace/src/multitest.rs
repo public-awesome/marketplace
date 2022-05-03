@@ -278,10 +278,10 @@ mod tests {
         assert!(res.is_ok());
 
         // Should error on non-admin trying to update active state
-        let update_ask_state = ExecuteMsg::UpdateAskState {
+        let update_ask_state = ExecuteMsg::UpdateAskIsActive {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
-            active: false,
+            is_active: false,
         };
         router
             .execute_contract(creator.clone(), marketplace.clone(), &update_ask_state, &[])
@@ -297,10 +297,10 @@ mod tests {
         assert!(res.is_ok());
 
         // Reset active state
-        let update_ask_state = ExecuteMsg::UpdateAskState {
+        let update_ask_state = ExecuteMsg::UpdateAskIsActive {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
-            active: true,
+            is_active: true,
         };
         let res = router.execute_contract(
             Addr::unchecked("operator"),
@@ -460,7 +460,7 @@ mod tests {
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
 
-        let update_ask = ExecuteMsg::UpdateAsk {
+        let update_ask = ExecuteMsg::UpdateAskPrice {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(200, NATIVE_DENOM),
@@ -468,7 +468,7 @@ mod tests {
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[]);
         assert!(res.is_ok());
 
-        let update_ask = ExecuteMsg::UpdateAsk {
+        let update_ask = ExecuteMsg::UpdateAskPrice {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(200, "bobo"),
@@ -477,7 +477,7 @@ mod tests {
             .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
             .unwrap_err();
 
-        let update_ask = ExecuteMsg::UpdateAsk {
+        let update_ask = ExecuteMsg::UpdateAskPrice {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(0, NATIVE_DENOM),
