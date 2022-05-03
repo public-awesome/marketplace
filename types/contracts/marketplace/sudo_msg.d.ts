@@ -4,8 +4,9 @@ export type SudoMsg = ({
 update_params: {
 ask_expiry?: (ExpiryRange | null)
 bid_expiry?: (ExpiryRange | null)
+max_finders_fee_bps?: (number | null)
 operators?: (string[] | null)
-trading_fee_basis_points?: (number | null)
+trading_fee_bps?: (number | null)
 [k: string]: unknown
 }
 } | {

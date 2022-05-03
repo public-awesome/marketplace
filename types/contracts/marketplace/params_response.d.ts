@@ -21,12 +21,16 @@ ask_expiry: ExpiryRange
  */
 bid_expiry: ExpiryRange
 /**
+ * Max value for the finders fee
+ */
+max_finders_fee_bps: Decimal
+/**
  * Operators are entites that are responsible for maintaining the active state of Asks They listen to NFT transfer events, and update the active state of Asks
  */
 operators: Addr[]
 /**
  * Fair Burn fee for winning bids 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
  */
-trading_fee_basis_points: Decimal
+trading_fee_bps: Decimal
 [k: string]: unknown
 }
