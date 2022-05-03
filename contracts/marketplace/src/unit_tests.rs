@@ -9,7 +9,7 @@ use crate::query::{query_ask_count, query_asks_by_seller, query_bids_by_bidder};
 use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid};
 
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-use cosmwasm_std::{coin, coins, Addr, DepsMut, StdError, Timestamp, Uint128};
+use cosmwasm_std::{coin, coins, Addr, DepsMut, Timestamp, Uint128};
 use sg_std::NATIVE_DENOM;
 
 const CREATOR: &str = "creator";
@@ -168,14 +168,9 @@ fn try_set_bid() {
         finder: None,
     };
 
-    // Bidder calls SetBid before an Ask is set, so it should fail
-    let err = execute(deps.as_mut(), mock_env(), bidder, set_bid_msg).unwrap_err();
-    assert_eq!(
-        err,
-        ContractError::Std(StdError::NotFound {
-            kind: "sg_marketplace::state::Ask".to_string()
-        })
-    );
+    // Bidder calls SetBid before an Ask is set, still succeeds
+    let res = execute(deps.as_mut(), mock_env(), bidder, set_bid_msg);
+    assert!(res.is_ok());
 }
 
 #[test]

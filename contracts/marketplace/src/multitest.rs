@@ -378,6 +378,83 @@ mod tests {
     }
 
     #[test]
+    fn try_set_accept_bid_no_ask() {
+        let mut router = custom_mock_app();
+
+        // Setup intial accounts
+        let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+        // Instantiate and configure contracts
+        let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+        // Mint NFT for creator
+        mint(&mut router, &creator, &collection, TOKEN_ID);
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+        // Bidder makes bid
+        let set_bid_msg = ExecuteMsg::SetBid {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
+        };
+        let res = router.execute_contract(
+            bidder.clone(),
+            marketplace.clone(),
+            &set_bid_msg,
+            &coins(100, NATIVE_DENOM),
+        );
+        assert!(res.is_ok());
+
+        // Check contract has been paid
+        let contract_balances = router
+            .wrap()
+            .query_all_balances(marketplace.clone())
+            .unwrap();
+        assert_eq!(contract_balances, coins(100, NATIVE_DENOM));
+
+        // Check creator hasn't been paid yet
+        let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
+        assert_eq!(creator_native_balances, vec![]);
+
+        // Creator accepts bid
+        let accept_bid_msg = ExecuteMsg::AcceptBid {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            bidder: bidder.to_string(),
+            finder: None,
+        };
+        let res =
+            router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
+        assert!(res.is_ok());
+
+        // Check money is transfered
+        let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
+        // 100  - 2 (fee)
+        assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+        let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
+        assert_eq!(
+            bidder_native_balances,
+            coins(INITIAL_BALANCE - 100, NATIVE_DENOM)
+        );
+
+        // Check NFT is transferred
+        let query_owner_msg = Cw721QueryMsg::OwnerOf {
+            token_id: TOKEN_ID.to_string(),
+            include_expired: None,
+        };
+        let res: OwnerOfResponse = router
+            .wrap()
+            .query_wasm_smart(collection, &query_owner_msg)
+            .unwrap();
+        assert_eq!(res.owner, bidder.to_string());
+
+        // Check contract has zero balance
+        let contract_balances = router.wrap().query_all_balances(marketplace).unwrap();
+        assert_eq!(contract_balances, []);
+    }
+
+    #[test]
     fn try_update_ask() {
         let mut router = custom_mock_app();
 
