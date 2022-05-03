@@ -384,6 +384,45 @@
       "additionalProperties": false
     },
     {
+      "description": "Get all bids for a collection, sorted by price in reverse Return type: `BidsResponse`",
+      "type": "object",
+      "required": [
+        "reverse_bids_sorted_by_price"
+      ],
+      "properties": {
+        "reverse_bids_sorted_by_price": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_before": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/BidOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Get data for a specific collection bid Return type: `CollectionBidResponse`",
       "type": "object",
       "required": [

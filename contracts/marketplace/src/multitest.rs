@@ -1029,10 +1029,45 @@ mod tests {
         };
         let res: BidsResponse = router
             .wrap()
-            .query_wasm_smart(marketplace, &query_start_after_bids_msg)
+            .query_wasm_smart(marketplace.clone(), &query_start_after_bids_msg)
             .unwrap();
         assert_eq!(res.bids.len(), 1);
         assert_eq!(res.bids[0].price.u128(), 7u128);
+
+        // test reverse bids query
+        let reverse_query_bids_msg = QueryMsg::ReverseBidsSortedByPrice {
+            collection: collection.to_string(),
+            limit: None,
+            start_before: None,
+        };
+        let res: BidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &reverse_query_bids_msg)
+            .unwrap();
+        assert_eq!(res.bids.len(), 4);
+        assert_eq!(res.bids[0].price.u128(), 7u128);
+        assert_eq!(res.bids[1].price.u128(), 6u128);
+        assert_eq!(res.bids[2].price.u128(), 5u128);
+        assert_eq!(res.bids[3].price.u128(), 4u128);
+
+        // test start_before reverse bids query
+        let start_before = BidOffset {
+            price: res.bids[1].price,
+            token_id: res.bids[1].token_id,
+            bidder: res.bids[1].bidder.clone(),
+        };
+        let reverse_query_start_before_bids_msg = QueryMsg::ReverseBidsSortedByPrice {
+            collection: collection.to_string(),
+            limit: None,
+            start_before: Some(start_before),
+        };
+        let res: BidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &reverse_query_start_before_bids_msg)
+            .unwrap();
+        assert_eq!(res.bids.len(), 2);
+        assert_eq!(res.bids[0].price.u128(), 5u128);
+        assert_eq!(res.bids[1].price.u128(), 4u128);
     }
 
     #[test]
