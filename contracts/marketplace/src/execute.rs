@@ -594,9 +594,9 @@ fn fill_ask(
     // Payout bid
     payout(
         deps.as_ref(),
-        &ask.collection,
+        ask.collection.clone(),
         price,
-        &ask.funds_recipient
+        ask.funds_recipient
             .clone()
             .unwrap_or_else(|| ask.seller.clone()),
         res,
@@ -622,7 +622,6 @@ fn fill_ask(
         seller: ask.seller.to_string(),
         buyer: buyer.to_string(),
     };
-
     let mut submsgs = ASK_FILLED_HOOKS.prepare_hooks(deps.storage, |h| {
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
@@ -631,7 +630,6 @@ fn fill_ask(
         };
         Ok(SubMsg::reply_on_error(execute, REPLY_ASK_FILLED_HOOK))
     })?;
-
     res.messages.append(&mut submsgs);
 
     let event = Event::new("fill-ask")
@@ -667,9 +665,9 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
 /// Payout a bid
 fn payout(
     deps: Deps,
-    collection: &Addr,
+    collection: Addr,
     payment: Uint128,
-    payment_recipient: &Addr,
+    payment_recipient: Addr,
     res: &mut Response,
 ) -> StdResult<()> {
     let config = SUDO_PARAMS.load(deps.storage)?;
