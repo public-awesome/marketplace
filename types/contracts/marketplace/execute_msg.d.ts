@@ -17,14 +17,14 @@ token_id: number
 [k: string]: unknown
 }
 } | {
-update_ask_state: {
-active: boolean
+update_ask_is_active: {
 collection: string
+is_active: boolean
 token_id: number
 [k: string]: unknown
 }
 } | {
-update_ask: {
+update_ask_price: {
 collection: string
 price: Coin
 token_id: number

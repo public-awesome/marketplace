@@ -77,25 +77,25 @@
       "additionalProperties": false
     },
     {
-      "description": "Admin operation to change the active state of an ask when an NFT is transferred",
+      "description": "Priviledged operation to change the active state of an ask when an NFT is transferred",
       "type": "object",
       "required": [
-        "update_ask_state"
+        "update_ask_is_active"
       ],
       "properties": {
-        "update_ask_state": {
+        "update_ask_is_active": {
           "type": "object",
           "required": [
-            "active",
             "collection",
+            "is_active",
             "token_id"
           ],
           "properties": {
-            "active": {
-              "type": "boolean"
-            },
             "collection": {
               "type": "string"
+            },
+            "is_active": {
+              "type": "boolean"
             },
             "token_id": {
               "type": "integer",
@@ -111,10 +111,10 @@
       "description": "Update the price of an existing ask",
       "type": "object",
       "required": [
-        "update_ask"
+        "update_ask_price"
       ],
       "properties": {
-        "update_ask": {
+        "update_ask_price": {
           "type": "object",
           "required": [
             "collection",
