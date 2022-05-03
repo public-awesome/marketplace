@@ -508,6 +508,45 @@
       "additionalProperties": false
     },
     {
+      "description": "Get all collection bids for a collection sorted by price in reverse Return type: `CollectionBidsResponse`",
+      "type": "object",
+      "required": [
+        "reverse_collection_bids_sorted_by_price"
+      ],
+      "properties": {
+        "reverse_collection_bids_sorted_by_price": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_before": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/CollectionBidOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Show all registered ask hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [

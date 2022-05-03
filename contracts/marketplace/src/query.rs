@@ -137,6 +137,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
+        QueryMsg::ReverseCollectionBidsSortedByPrice {
+            collection,
+            start_before,
+            limit,
+        } => to_binary(&reverse_query_collection_bids_sorted_by_price(
+            deps,
+            api.addr_validate(&collection)?,
+            start_before,
+            limit,
+        )?),
         QueryMsg::CollectionBidsByBidder { bidder } => to_binary(&query_collection_bids_by_bidder(
             deps,
             api.addr_validate(&bidder)?,
@@ -440,6 +450,30 @@ pub fn query_collection_bids_sorted_by_price(
         .collection_price
         .sub_prefix(collection)
         .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(CollectionBidsResponse { bids })
+}
+
+pub fn reverse_query_collection_bids_sorted_by_price(
+    deps: Deps,
+    collection: Addr,
+    start_before: Option<CollectionBidOffset>,
+    limit: Option<u32>,
+) -> StdResult<CollectionBidsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let end = start_before.map(|offset| {
+        let bidder = deps.api.addr_validate(&offset.bidder).unwrap();
+        Bound::exclusive((offset.price.u128(), (collection.clone(), bidder)))
+    });
+
+    let bids = collection_bids()
+        .idx
+        .collection_price
+        .sub_prefix(collection)
+        .range(deps.storage, None, end, Order::Descending)
         .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
