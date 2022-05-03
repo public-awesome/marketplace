@@ -34,6 +34,7 @@ pub enum ExecuteMsg {
         price: Coin,
         funds_recipient: Option<String>,
         reserve_for: Option<String>,
+        finders_fee_basis_points: Option<u64>,
         expires: Timestamp,
     },
     /// Remove an existing ask from the marketplace

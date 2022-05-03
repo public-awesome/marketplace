@@ -73,6 +73,7 @@ pub fn execute(
             price,
             funds_recipient,
             reserve_for,
+            finders_fee_basis_points,
             expires,
         } => execute_set_ask(
             ExecuteEnv { deps, env, info },
@@ -81,6 +82,7 @@ pub fn execute(
             price,
             maybe_addr(api, funds_recipient)?,
             maybe_addr(api, reserve_for)?,
+            finders_fee_basis_points,
             expires,
         ),
         ExecuteMsg::RemoveAsk {
@@ -158,6 +160,7 @@ pub fn execute_set_ask(
     price: Coin,
     funds_recipient: Option<Addr>,
     reserve_for: Option<Addr>,
+    finders_fee_basis_points: Option<u64>,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
@@ -191,6 +194,7 @@ pub fn execute_set_ask(
             price: price.amount,
             funds_recipient: funds_recipient.clone(),
             reserve_for,
+            finders_fee_basis_points,
             expires,
             is_active: true,
         },
@@ -562,6 +566,7 @@ pub fn execute_accept_collection_bid(
         seller: info.sender.clone(),
         funds_recipient: None,
         reserve_for: None,
+        finders_fee_basis_points: None,
     };
 
     // Transfer funds and NFT
