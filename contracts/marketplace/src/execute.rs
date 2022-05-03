@@ -688,26 +688,29 @@ fn payout(
     // Check if token supports Royalties
     let collection_info: CollectionInfoResponse = deps
         .querier
-        .query_wasm_smart(collection, &Sg721QueryMsg::CollectionInfo {})?;
+        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
 
     match collection_info.royalty_info {
         // If token supports royalities, payout shares
         Some(royalty) => {
-            let royalty_share_msg = BankMsg::Send {
+            let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
+            res.messages.push(SubMsg::new(BankMsg::Send {
                 to_address: royalty.payment_address.to_string(),
-                amount: vec![Coin {
-                    amount: payment * royalty.share,
-                    denom: NATIVE_DENOM.to_string(),
-                }],
-            };
-            res.messages.push(SubMsg::new(royalty_share_msg));
+                amount: vec![amount.clone()],
+            }));
+
+            let event = Event::new("royalty-payout")
+                .add_attribute("collection", collection.to_string())
+                .add_attribute("amount", amount.to_string())
+                .add_attribute("recipient", royalty.payment_address.to_string());
+            res.events.push(event);
 
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
-                amount: vec![Coin {
-                    amount: payment * (Decimal::one() - royalty.share) - network_fee,
-                    denom: NATIVE_DENOM.to_string(),
-                }],
+                amount: vec![coin(
+                    (payment * (Decimal::one() - royalty.share) - network_fee).u128(),
+                    NATIVE_DENOM.to_string(),
+                )],
             };
             res.messages.push(SubMsg::new(owner_share_msg));
         }
@@ -715,10 +718,10 @@ fn payout(
             // If token doesn't support royalties, pay owner in full
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
-                amount: vec![Coin {
-                    amount: payment - network_fee,
-                    denom: NATIVE_DENOM.to_string(),
-                }],
+                amount: vec![coin(
+                    (payment - network_fee).u128(),
+                    NATIVE_DENOM.to_string(),
+                )],
             };
             res.messages.push(SubMsg::new(owner_share_msg));
         }

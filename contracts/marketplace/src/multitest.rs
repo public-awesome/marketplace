@@ -1211,7 +1211,7 @@ mod tests {
             .unwrap();
 
         // Bid is accepted, sale has been finalized
-        assert_eq!(res.events[2].ty, "wasm-fill-ask");
+        assert_eq!(res.events[3].ty, "wasm-fill-ask");
 
         // Check money is transfered
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
@@ -1757,7 +1757,7 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(
             "ask-filled-hook-failed",
-            res.unwrap().events[9].attributes[1].value
+            res.unwrap().events[10].attributes[1].value
         );
 
         // NFT is still transferred despite a sale finalized hook failing
