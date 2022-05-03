@@ -36,7 +36,7 @@ fn ask_indexed_map() {
         reserve_for: None,
         expires: Timestamp::from_seconds(0),
         is_active: true,
-        finders_fee_basis_points: Some(0),
+        finders_fee_bps: Some(0),
     };
     let key = ask_key(collection.clone(), TOKEN_ID);
     let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
@@ -51,7 +51,7 @@ fn ask_indexed_map() {
         reserve_for: None,
         expires: Timestamp::from_seconds(0),
         is_active: true,
-        finders_fee_basis_points: Some(0),
+        finders_fee_bps: Some(0),
     };
     let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
     let res = asks().save(deps.as_mut().storage, key2, &ask2);

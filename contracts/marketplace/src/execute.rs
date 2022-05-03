@@ -200,7 +200,7 @@ pub fn execute_set_ask(
             price: price.amount,
             funds_recipient: funds_recipient.clone(),
             reserve_for,
-            finders_fee_basis_points,
+            finders_fee_bps: finders_fee_basis_points,
             expires,
             is_active: true,
         },
@@ -575,7 +575,7 @@ pub fn execute_accept_collection_bid(
         seller: info.sender.clone(),
         funds_recipient: None,
         reserve_for: None,
-        finders_fee_basis_points: None,
+        finders_fee_bps: None,
     };
 
     // Transfer funds and NFT
@@ -624,7 +624,7 @@ fn fill_ask(
             .clone()
             .unwrap_or_else(|| ask.seller.clone()),
         finder,
-        ask.finders_fee_basis_points,
+        ask.finders_fee_bps,
         res,
     )?;
 
