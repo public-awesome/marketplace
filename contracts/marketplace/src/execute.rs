@@ -354,16 +354,13 @@ pub fn execute_set_bid(
     // Check bidder has existing bid, if so remove existing bid
     let existing_bid =
         bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-    match existing_bid {
-        Some(existing_bid) => {
-            bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-            let exec_refund_bidder = BankMsg::Send {
-                to_address: bidder.to_string(),
-                amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
-            };
-            res = res.add_message(exec_refund_bidder)
-        }
-        None => (),
+    if let Some(existing_bid) = existing_bid {
+        bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
+        let exec_refund_bidder = BankMsg::Send {
+            to_address: bidder.to_string(),
+            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
+        };
+        res = res.add_message(exec_refund_bidder)
     }
 
     if ask.price != bid_price {
@@ -508,14 +505,11 @@ pub fn execute_set_collection_bid(
         deps.storage,
         collection_bid_key(collection.clone(), bidder.clone()),
     )?;
-    match existing_bid {
-        Some(existing_bid) => {
-            res = res.add_message(remove_and_refund_collection_bid(
-                deps.storage,
-                existing_bid,
-            )?);
-        }
-        None => (),
+    if let Some(existing_bid) = existing_bid {
+        res = res.add_message(remove_and_refund_collection_bid(
+            deps.storage,
+            existing_bid,
+        )?);
     }
 
     collection_bids().save(
