@@ -200,7 +200,9 @@ pub fn execute_set_ask(
         collection: collection.to_string(),
         token_id,
         seller: seller.to_string(),
-        funds_recipient: funds_recipient.unwrap_or(seller).to_string(),
+        funds_recipient: funds_recipient
+            .unwrap_or_else(|| seller.clone())
+            .to_string(),
         price: price.clone(),
     };
 
@@ -217,6 +219,7 @@ pub fn execute_set_ask(
     let event = Event::new("set-ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
+        .add_attribute("seller", seller)
         .add_attribute("price", price.to_string());
 
     Ok(Response::new().add_submessages(submsgs).add_event(event))
