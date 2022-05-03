@@ -35,7 +35,7 @@ fn ask_indexed_map() {
         funds_recipient: None,
         reserve_for: None,
         expires: Timestamp::from_seconds(0),
-        active: true,
+        is_active: true,
     };
     let key = ask_key(collection.clone(), TOKEN_ID);
     let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
@@ -49,7 +49,7 @@ fn ask_indexed_map() {
         funds_recipient: None,
         reserve_for: None,
         expires: Timestamp::from_seconds(0),
-        active: true,
+        is_active: true,
     };
     let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
     let res = asks().save(deps.as_mut().storage, key2, &ask2);

@@ -39,7 +39,7 @@ pub struct Ask {
     pub funds_recipient: Option<Addr>,
     pub reserve_for: Option<Addr>,
     pub expires: Timestamp,
-    pub active: bool,
+    pub is_active: bool,
 }
 
 /// Primary key for asks: (collection, token_id)
