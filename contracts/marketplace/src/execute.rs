@@ -135,6 +135,9 @@ pub fn execute(
             collection,
             expires,
         } => execute_set_collection_bid(deps, env, info, api.addr_validate(&collection)?, expires),
+        ExecuteMsg::RemoveCollectionBid { collection } => {
+            execute_remove_collection_bid(deps, env, info, api.addr_validate(&collection)?)
+        }
         ExecuteMsg::AcceptCollectionBid {
             collection,
             token_id,
@@ -497,12 +500,10 @@ pub fn execute_set_collection_bid(
         deps.storage,
         collection_bid_key(collection.clone(), bidder.clone()),
     )? {
-        collection_bids().remove(deps.storage, (collection.clone(), bidder.clone()))?;
-        let exec_refund_bidder = BankMsg::Send {
-            to_address: bidder.to_string(),
-            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
-        };
-        res = res.add_message(exec_refund_bidder)
+        res = res.add_message(remove_and_refund_collection_bid(
+            deps.storage,
+            existing_bid,
+        )?);
     };
 
     collection_bids().save(
@@ -523,6 +524,55 @@ pub fn execute_set_collection_bid(
         .add_attribute("expires", expires.to_string());
 
     Ok(res.add_event(event))
+}
+
+/// Remove an existing collection bid (limit order)
+pub fn execute_remove_collection_bid(
+    deps: DepsMut,
+    _env: Env,
+    info: MessageInfo,
+    collection: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
+    let bidder = info.sender;
+
+    // Check bidder has existing bid, if so remove existing bid
+    let collection_bid = collection_bids().load(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )?;
+
+    let event = Event::new("remove-collection-bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("bidder", bidder);
+
+    let res = Response::new()
+        .add_message(remove_and_refund_collection_bid(
+            deps.storage,
+            collection_bid,
+        )?)
+        .add_event(event);
+    Ok(res)
+}
+
+fn remove_and_refund_collection_bid(
+    store: &mut dyn Storage,
+    collection_bid: CollectionBid,
+) -> Result<BankMsg, ContractError> {
+    // Remove bid
+    collection_bids().remove(
+        store,
+        (collection_bid.collection, collection_bid.bidder.clone()),
+    )?;
+
+    // Refund bidder
+    let msg = BankMsg::Send {
+        to_address: collection_bid.bidder.to_string(),
+        amount: vec![coin(collection_bid.price.u128(), NATIVE_DENOM)],
+    };
+
+    Ok(msg)
 }
 
 /// Owner of an item in a collection can accept a collection bid which transfers funds as well as a token
