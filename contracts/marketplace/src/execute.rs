@@ -555,7 +555,7 @@ pub fn execute_accept_collection_bid(
         price: bid.price,
         expires: bid.expires,
         active: true,
-        seller: info.sender,
+        seller: info.sender.clone(),
         funds_recipient: None,
         reserve_for: None,
     };
@@ -566,7 +566,9 @@ pub fn execute_accept_collection_bid(
     let event = Event::new("accept-collection-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("bidder", bidder);
+        .add_attribute("bidder", bidder)
+        .add_attribute("seller", info.sender.to_string())
+        .add_attribute("price", bid.price.to_string());
 
     Ok(res.add_event(event))
 }
