@@ -80,10 +80,10 @@
       "description": "Admin operation to change the active state of an ask when an NFT is transferred",
       "type": "object",
       "required": [
-        "update_ask_state"
+        "update_ask_active_state"
       ],
       "properties": {
-        "update_ask_state": {
+        "update_ask_active_state": {
           "type": "object",
           "required": [
             "active",

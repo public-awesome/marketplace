@@ -87,7 +87,7 @@ pub fn execute(
             collection,
             token_id,
         } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, token_id),
-        ExecuteMsg::UpdateAskState {
+        ExecuteMsg::UpdateAskActiveState {
             collection,
             token_id,
             active,

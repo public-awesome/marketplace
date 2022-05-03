@@ -42,7 +42,7 @@ pub enum ExecuteMsg {
         token_id: TokenId,
     },
     /// Admin operation to change the active state of an ask when an NFT is transferred
-    UpdateAskState {
+    UpdateAskActiveState {
         collection: String,
         token_id: TokenId,
         active: bool,

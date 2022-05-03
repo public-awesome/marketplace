@@ -278,7 +278,7 @@ mod tests {
         assert!(res.is_ok());
 
         // Should error on non-admin trying to update active state
-        let update_ask_state = ExecuteMsg::UpdateAskState {
+        let update_ask_state = ExecuteMsg::UpdateAskActiveState {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             active: false,
@@ -297,7 +297,7 @@ mod tests {
         assert!(res.is_ok());
 
         // Reset active state
-        let update_ask_state = ExecuteMsg::UpdateAskState {
+        let update_ask_state = ExecuteMsg::UpdateAskActiveState {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             active: true,
