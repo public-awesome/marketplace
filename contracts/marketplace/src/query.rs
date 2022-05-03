@@ -1,7 +1,7 @@
 use crate::msg::{
     AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse, Bidder,
-    BidsResponse, Collection, CollectionBidResponse, CollectionBidsResponse, CollectionOffset,
-    CollectionsResponse, ParamsResponse, QueryMsg,
+    BidsResponse, Collection, CollectionBidOffset, CollectionBidResponse, CollectionBidsResponse,
+    CollectionOffset, CollectionsResponse, ParamsResponse, QueryMsg,
 };
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, TokenId,
@@ -119,13 +119,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         )?),
         QueryMsg::CollectionBidsSortedByPrice {
             collection,
+            start_after,
             limit,
-            order_asc,
         } => to_binary(&query_collection_bids_sorted_by_price(
             deps,
             api.addr_validate(&collection)?,
+            start_after,
             limit,
-            order_asc,
         )?),
         QueryMsg::CollectionBidsByBidder { bidder } => to_binary(&query_collection_bids_by_bidder(
             deps,
@@ -389,22 +389,20 @@ pub fn query_collection_bid(
 pub fn query_collection_bids_sorted_by_price(
     deps: Deps,
     collection: Addr,
+    start_after: Option<CollectionBidOffset>,
     limit: Option<u32>,
-    order_asc: bool,
 ) -> StdResult<CollectionBidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-
-    let order = if order_asc {
-        Order::Ascending
-    } else {
-        Order::Descending
-    };
+    let start = start_after.map(|offset| {
+        let bidder = deps.api.addr_validate(&offset.bidder).unwrap();
+        Bound::exclusive((offset.price.u128(), (collection.clone(), bidder)))
+    });
 
     let bids = collection_bids()
         .idx
         .collection_price
         .sub_prefix(collection)
-        .range(deps.storage, None, None, order)
+        .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;

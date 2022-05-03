@@ -39,8 +39,8 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
 mod tests {
     use crate::helpers::ExpiryRange;
     use crate::msg::{
-        AskCountResponse, AskOffset, AsksResponse, BidOffset, BidResponse, CollectionOffset,
-        CollectionsResponse, ParamsResponse, SudoMsg,
+        AskCountResponse, AskOffset, AsksResponse, BidOffset, BidResponse, CollectionBidOffset,
+        CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
     };
     use crate::state::Bid;
 
@@ -162,6 +162,26 @@ mod tests {
         assert_eq!(creator_native_balances, creator_funds);
 
         Ok((owner, bidder, creator))
+    }
+
+    fn setup_second_bidder_account(router: &mut StargazeApp) -> Result<Addr, ContractError> {
+        let bidder2: Addr = Addr::unchecked("bidder2");
+        let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
+        router
+            .sudo(CwSudoMsg::Bank({
+                BankSudo::Mint {
+                    to_address: bidder2.to_string(),
+                    amount: funds.clone(),
+                }
+            }))
+            .map_err(|err| println!("{:?}", err))
+            .ok();
+
+        // Check native balances
+        let bidder_native_balances = router.wrap().query_all_balances(bidder2.clone()).unwrap();
+        assert_eq!(bidder_native_balances, funds);
+
+        Ok(bidder2)
     }
 
     // Mints an NFT for a creator
@@ -1757,6 +1777,7 @@ mod tests {
 
         // Setup intial accounts
         let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+        let bidder2 = setup_second_bidder_account(&mut router).unwrap();
 
         // Instantiate and configure contracts
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
@@ -1775,6 +1796,19 @@ mod tests {
             marketplace.clone(),
             &set_collection_bid,
             &coins(150, NATIVE_DENOM),
+        );
+        assert!(res.is_ok());
+
+        // A collection bid is made by bidder2
+        let set_collection_bid = ExecuteMsg::SetCollectionBid {
+            collection: collection.to_string(),
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        };
+        let res = router.execute_contract(
+            bidder2,
+            marketplace.clone(),
+            &set_collection_bid,
+            &coins(180, NATIVE_DENOM),
         );
         assert!(res.is_ok());
 
@@ -1802,14 +1836,34 @@ mod tests {
         // test querying all sorted collection bids by bidder
         let query_sorted_collection_bids = QueryMsg::CollectionBidsSortedByPrice {
             collection: collection.to_string(),
+            start_after: None,
             limit: Some(10),
-            order_asc: true,
         };
         let res: CollectionBidsResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &query_sorted_collection_bids)
             .unwrap();
+        assert_eq!(res.bids.len(), 2);
         assert_eq!(res.bids[0].price.u128(), 150u128);
+        assert_eq!(res.bids[1].price.u128(), 180u128);
+
+        // test start_after
+        let start_after = CollectionBidOffset::new(
+            res.bids[0].price,
+            collection.to_string(),
+            res.bids[0].bidder.to_string(),
+        );
+        let query_sorted_collection_bids = QueryMsg::CollectionBidsSortedByPrice {
+            collection: collection.to_string(),
+            start_after: Some(start_after),
+            limit: Some(10),
+        };
+        let res: CollectionBidsResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_sorted_collection_bids)
+            .unwrap();
+        assert_eq!(res.bids.len(), 1);
+        assert_eq!(res.bids[0].price.u128(), 180u128);
 
         // A collection bid is accepted
         let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
