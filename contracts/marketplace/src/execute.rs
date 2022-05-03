@@ -2,8 +2,8 @@ use crate::error::ContractError;
 use crate::helpers::map_validate;
 use crate::msg::{AskCreatedHookMsg, AskFilledHookMsg, ExecuteMsg, InstantiateMsg};
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SudoParams, TokenId, ASK_CREATED_HOOKS, ASK_FILLED_HOOKS, SUDO_PARAMS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, AskKey, Bid,
+    CollectionBid, SudoParams, TokenId, ASK_CREATED_HOOKS, ASK_FILLED_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -77,8 +77,7 @@ pub fn execute(
             expires,
         } => execute_set_ask(
             ExecuteEnv { deps, env, info },
-            api.addr_validate(&collection)?,
-            token_id,
+            ask_key(api.addr_validate(&collection)?, token_id),
             price,
             maybe_addr(api, funds_recipient)?,
             maybe_addr(api, reserve_for)?,
@@ -161,8 +160,7 @@ pub fn execute(
 /// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
 pub fn execute_set_ask(
     env: ExecuteEnv,
-    collection: Addr,
-    token_id: TokenId,
+    ask_key: AskKey,
     price: Coin,
     funds_recipient: Option<Addr>,
     reserve_for: Option<Addr>,
@@ -177,7 +175,7 @@ pub fn execute_set_ask(
     params.ask_expiry.is_valid(&env.block, expires)?;
 
     // Only the media onwer can call this
-    let owner_of_response = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    let owner_of_response = only_owner(deps.as_ref(), &info, ask_key.clone().0, ask_key.1)?;
     // Check that approval has been set for marketplace contract
     if owner_of_response
         .approvals
@@ -192,10 +190,10 @@ pub fn execute_set_ask(
     let seller = info.sender;
     asks().save(
         deps.storage,
-        ask_key(collection.clone(), token_id),
+        ask_key.clone(),
         &Ask {
-            collection: collection.clone(),
-            token_id,
+            collection: ask_key.clone().0,
+            token_id: ask_key.1,
             seller: seller.clone(),
             price: price.amount,
             funds_recipient: funds_recipient.clone(),
@@ -207,8 +205,8 @@ pub fn execute_set_ask(
     )?;
 
     let msg = AskCreatedHookMsg {
-        collection: collection.to_string(),
-        token_id,
+        collection: ask_key.0.to_string(),
+        token_id: ask_key.1,
         seller: seller.to_string(),
         funds_recipient: funds_recipient
             .unwrap_or_else(|| seller.clone())
@@ -227,8 +225,8 @@ pub fn execute_set_ask(
     })?;
 
     let event = Event::new("set-ask")
-        .add_attribute("collection", collection)
-        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("collection", ask_key.0.to_string())
+        .add_attribute("token_id", ask_key.1.to_string())
         .add_attribute("seller", seller)
         .add_attribute("price", price.to_string())
         .add_attribute("expires", expires.to_string());
