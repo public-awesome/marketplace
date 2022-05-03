@@ -80,6 +80,8 @@ pub enum ExecuteMsg {
         collection: String,
         expires: Timestamp,
     },
+    /// Remove a bid (limit order) across an entire collection
+    RemoveCollectionBid { collection: String },
     /// Accept a collection bid
     AcceptCollectionBid {
         collection: String,
