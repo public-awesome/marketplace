@@ -478,8 +478,7 @@
         "collection_bids_sorted_by_price": {
           "type": "object",
           "required": [
-            "collection",
-            "order_asc"
+            "collection"
           ],
           "properties": {
             "collection": {
@@ -493,8 +492,15 @@
               "format": "uint32",
               "minimum": 0.0
             },
-            "order_asc": {
-              "type": "boolean"
+            "start_after": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/CollectionBidOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
@@ -583,6 +589,26 @@
           "type": "integer",
           "format": "uint32",
           "minimum": 0.0
+        }
+      }
+    },
+    "CollectionBidOffset": {
+      "description": "Offset for collection bid pagination",
+      "type": "object",
+      "required": [
+        "bidder",
+        "collection",
+        "price"
+      ],
+      "properties": {
+        "bidder": {
+          "type": "string"
+        },
+        "collection": {
+          "type": "string"
+        },
+        "price": {
+          "$ref": "#/definitions/Uint128"
         }
       }
     },
