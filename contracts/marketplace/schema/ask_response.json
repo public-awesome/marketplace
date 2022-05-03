@@ -23,17 +23,14 @@
       "description": "Represents an ask on the marketplace",
       "type": "object",
       "required": [
-        "active",
         "collection",
         "expires",
+        "is_active",
         "price",
         "seller",
         "token_id"
       ],
       "properties": {
-        "active": {
-          "type": "boolean"
-        },
         "collection": {
           "$ref": "#/definitions/Addr"
         },
@@ -49,6 +46,9 @@
               "type": "null"
             }
           ]
+        },
+        "is_active": {
+          "type": "boolean"
         },
         "price": {
           "$ref": "#/definitions/Uint128"

@@ -75,6 +75,13 @@ start_after?: (BidOffset | null)
 [k: string]: unknown
 }
 } | {
+reverse_bids_sorted_by_price: {
+collection: string
+limit?: (number | null)
+start_before?: (BidOffset | null)
+[k: string]: unknown
+}
+} | {
 collection_bid: {
 bidder: string
 collection: string
@@ -89,7 +96,14 @@ bidder: string
 collection_bids_sorted_by_price: {
 collection: string
 limit?: (number | null)
-order_asc: boolean
+start_after?: (CollectionBidOffset | null)
+[k: string]: unknown
+}
+} | {
+reverse_collection_bids_sorted_by_price: {
+collection: string
+limit?: (number | null)
+start_before?: (CollectionBidOffset | null)
 [k: string]: unknown
 }
 } | {
@@ -129,5 +143,14 @@ export interface BidOffset {
 bidder: Addr
 price: Uint128
 token_id: number
+[k: string]: unknown
+}
+/**
+ * Offset for collection bid pagination
+ */
+export interface CollectionBidOffset {
+bidder: string
+collection: string
+price: Uint128
 [k: string]: unknown
 }
