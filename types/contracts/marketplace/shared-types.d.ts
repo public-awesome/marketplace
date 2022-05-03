@@ -56,10 +56,10 @@ export type Uint64 = string;
  */
 export interface Ask {
     [k: string]: unknown;
-    active: boolean;
     collection: Addr;
     expires: Timestamp;
     funds_recipient?: (Addr | null);
+    is_active: boolean;
     price: Uint128;
     reserve_for?: (Addr | null);
     seller: Addr;
