@@ -4,6 +4,7 @@ export type ExecuteMsg = ({
 set_ask: {
 collection: string
 expires: Timestamp
+finders_fee_basis_points?: (number | null)
 funds_recipient?: (string | null)
 price: Coin
 reserve_for?: (string | null)
@@ -34,6 +35,7 @@ token_id: number
 set_bid: {
 collection: string
 expires: Timestamp
+finder?: (string | null)
 token_id: number
 [k: string]: unknown
 }
@@ -47,6 +49,7 @@ token_id: number
 accept_bid: {
 bidder: string
 collection: string
+finder?: (string | null)
 token_id: number
 [k: string]: unknown
 }
@@ -60,6 +63,7 @@ expires: Timestamp
 accept_collection_bid: {
 bidder: string
 collection: string
+finder?: (string | null)
 token_id: number
 [k: string]: unknown
 }
