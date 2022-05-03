@@ -214,7 +214,7 @@ pub fn execute_set_ask(
         Ok(SubMsg::reply_on_error(execute, REPLY_ASK_CREATED_HOOK))
     })?;
 
-    let event = Event::new("set_ask")
+    let event = Event::new("set-ask")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("price", price.to_string());
@@ -247,7 +247,7 @@ pub fn execute_remove_ask(
         msgs.push(remove_and_refund_bid(deps.storage, bid.clone())?)
     }
 
-    let event = Event::new("remove_ask")
+    let event = Event::new("remove-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string());
 
@@ -279,7 +279,7 @@ pub fn execute_update_ask_state(
     ask.active = active;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
-    let event = Event::new("update_ask_state")
+    let event = Event::new("update-ask-state")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("active", active.to_string());
@@ -303,7 +303,7 @@ pub fn execute_update_ask(
     ask.price = price.amount;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
-    let event = Event::new("update_ask")
+    let event = Event::new("update-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("price", price.to_string());
@@ -386,7 +386,7 @@ pub fn execute_set_bid(
         )?;
     }
 
-    let event = Event::new("set_bid")
+    let event = Event::new("set-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
@@ -413,7 +413,7 @@ pub fn execute_remove_bid(
         bid_key(collection.clone(), token_id, bidder.clone()),
     )?;
 
-    let event = Event::new("remove_bid")
+    let event = Event::new("remove-bid")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder);
@@ -484,7 +484,7 @@ pub fn execute_accept_bid(
         &mut res,
     )?;
 
-    let event = Event::new("accept_bid")
+    let event = Event::new("accept-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder);
@@ -532,7 +532,7 @@ pub fn execute_set_collection_bid(
         },
     )?;
 
-    let event = Event::new("set_collection_bid")
+    let event = Event::new("set-collection-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("bidder", bidder)
         .add_attribute("bid_price", price.to_string());
@@ -579,7 +579,7 @@ pub fn execute_accept_collection_bid(
         &mut res,
     )?;
 
-    let event = Event::new("accept_collection_bid")
+    let event = Event::new("accept-collection-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder);
@@ -655,7 +655,7 @@ fn fill_ask(
 
     res.messages.append(&mut submsgs);
 
-    let event = Event::new("fill_ask")
+    let event = Event::new("fill-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("seller", seller.to_string())
@@ -671,13 +671,13 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     match msg.id {
         REPLY_ASK_FILLED_HOOK => {
             let res = Response::new()
-                .add_attribute("action", "ask_filled_hook_failed")
+                .add_attribute("action", "ask-filled-hook-failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }
         REPLY_ASK_CREATED_HOOK => {
             let res = Response::new()
-                .add_attribute("action", "ask_created_hook_failed")
+                .add_attribute("action", "ask-created-hook-failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }

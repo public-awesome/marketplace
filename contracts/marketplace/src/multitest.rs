@@ -1156,7 +1156,7 @@ mod tests {
             .unwrap();
 
         // Bid is accepted, sale has been finalized
-        assert_eq!("ask_filled", res.events[1].attributes[1].value);
+        assert_eq!(res.events[2].ty, "wasm-fill-ask");
 
         // Check money is transfered
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
@@ -1682,7 +1682,7 @@ mod tests {
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
         assert_eq!(
-            "ask_created_hook_failed",
+            "ask-created-hook-failed",
             res.unwrap().events[3].attributes[1].value
         );
         // Bidder makes bid that meets the ask criteria
@@ -1701,7 +1701,7 @@ mod tests {
         );
         assert!(res.is_ok());
         assert_eq!(
-            "ask_filled_hook_failed",
+            "ask-filled-hook-failed",
             res.unwrap().events[9].attributes[1].value
         );
 
