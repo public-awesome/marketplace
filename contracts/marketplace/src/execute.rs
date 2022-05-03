@@ -332,20 +332,6 @@ pub fn execute_set_bid(
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.bid_expiry.is_valid(&env.block, expires)?;
 
-    // Ask validation
-    let ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    if ask.expires <= env.block.time {
-        return Err(ContractError::AskExpired {});
-    }
-    if !ask.is_active {
-        return Err(ContractError::AskNotActive {});
-    }
-    if let Some(reserved_for) = ask.clone().reserve_for {
-        if reserved_for != bidder {
-            return Err(ContractError::TokenReserved {});
-        }
-    }
-
     // Check bidder has existing bid, if so remove existing bid
     let mut res = Response::new();
     if let Some(existing_bid) =
@@ -359,25 +345,58 @@ pub fn execute_set_bid(
         res = res.add_message(exec_refund_bidder)
     };
 
-    if ask.price != bid_price {
-        // Bid does not meet ask criteria, store bid
-        bids().save(
-            deps.storage,
-            (collection.clone(), token_id, bidder.clone()),
-            &Bid {
-                collection: collection.clone(),
-                token_id,
-                bidder: bidder.clone(),
-                price: bid_price,
-                expires,
-            },
-        )?;
-    } else {
-        // Bid meets ask criteria so fulfill bid
-        asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
+    // Check if an ask exists for a token
+    let ask = asks().may_load(deps.storage, ask_key(collection.clone(), token_id))?;
+    match ask {
+        Some(ask) => {
+            // Ask validation
+            if ask.expires <= env.block.time {
+                return Err(ContractError::AskExpired {});
+            }
+            if !ask.is_active {
+                return Err(ContractError::AskNotActive {});
+            }
+            if let Some(reserved_for) = ask.clone().reserve_for {
+                if reserved_for != bidder {
+                    return Err(ContractError::TokenReserved {});
+                }
+            }
 
-        // Include messages needed to finalize nft transfer and payout
-        fill_ask(deps, ask, bid_price, bidder.clone(), &mut res)?;
+            if ask.price != bid_price {
+                // Bid does not meet ask criteria, store bid
+                bids().save(
+                    deps.storage,
+                    (collection.clone(), token_id, bidder.clone()),
+                    &Bid {
+                        collection: collection.clone(),
+                        token_id,
+                        bidder: bidder.clone(),
+                        price: bid_price,
+                        expires,
+                    },
+                )?;
+            } else {
+                // Bid meets ask criteria so fulfill bid
+                asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
+
+                // Include messages needed to finalize nft transfer and payout
+                fill_ask(deps, ask, bid_price, bidder.clone(), &mut res)?;
+            }
+        }
+        None => {
+            // Ask does not exist, save bid
+            bids().save(
+                deps.storage,
+                (collection.clone(), token_id, bidder.clone()),
+                &Bid {
+                    collection: collection.clone(),
+                    token_id,
+                    bidder: bidder.clone(),
+                    price: bid_price,
+                    expires,
+                },
+            )?;
+        }
     }
 
     let event = Event::new("set-bid")
