@@ -50,12 +50,6 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         is_active: bool,
     },
-    /// Update the price of an existing ask
-    UpdateAskPrice {
-        collection: String,
-        token_id: TokenId,
-        price: Coin,
-    },
     /// Place a bid on an existing ask
     SetBid {
         collection: String,

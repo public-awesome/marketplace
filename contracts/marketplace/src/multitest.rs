@@ -378,60 +378,6 @@ mod tests {
     }
 
     #[test]
-    fn try_update_ask() {
-        let mut router = custom_mock_app();
-
-        // Setup intial accounts
-        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-
-        // Instantiate and configure contracts
-        let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-        // Mint NFT for creator
-        mint(&mut router, &creator, &collection, TOKEN_ID);
-        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-
-        // An asking price is made by the creator
-        let set_ask = ExecuteMsg::SetAsk {
-            collection: collection.to_string(),
-            token_id: TOKEN_ID,
-            price: coin(110, NATIVE_DENOM),
-            funds_recipient: None,
-            reserve_for: None,
-            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
-        };
-        let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
-        assert!(res.is_ok());
-
-        let update_ask = ExecuteMsg::UpdateAskPrice {
-            collection: collection.to_string(),
-            token_id: TOKEN_ID,
-            price: coin(200, NATIVE_DENOM),
-        };
-        let res = router.execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[]);
-        assert!(res.is_ok());
-
-        let update_ask = ExecuteMsg::UpdateAskPrice {
-            collection: collection.to_string(),
-            token_id: TOKEN_ID,
-            price: coin(200, "bobo"),
-        };
-        router
-            .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
-            .unwrap_err();
-
-        let update_ask = ExecuteMsg::UpdateAskPrice {
-            collection: collection.to_string(),
-            token_id: TOKEN_ID,
-            price: coin(0, NATIVE_DENOM),
-        };
-        router
-            .execute_contract(creator.clone(), marketplace, &update_ask, &[])
-            .unwrap_err();
-    }
-
-    #[test]
     fn try_query_asks() {
         let mut router = custom_mock_app();
 

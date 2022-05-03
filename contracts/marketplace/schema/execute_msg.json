@@ -116,37 +116,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Update the price of an existing ask",
-      "type": "object",
-      "required": [
-        "update_ask_price"
-      ],
-      "properties": {
-        "update_ask_price": {
-          "type": "object",
-          "required": [
-            "collection",
-            "price",
-            "token_id"
-          ],
-          "properties": {
-            "collection": {
-              "type": "string"
-            },
-            "price": {
-              "$ref": "#/definitions/Coin"
-            },
-            "token_id": {
-              "type": "integer",
-              "format": "uint32",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
       "description": "Place a bid on an existing ask",
       "type": "object",
       "required": [

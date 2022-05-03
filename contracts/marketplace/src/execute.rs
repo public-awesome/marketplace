@@ -135,11 +135,6 @@ pub fn execute(
             api.addr_validate(&bidder)?,
             maybe_addr(api, finder)?,
         ),
-        ExecuteMsg::UpdateAskPrice {
-            collection,
-            token_id,
-            price,
-        } => execute_update_ask_price(deps, info, api.addr_validate(&collection)?, token_id, price),
         ExecuteMsg::SetCollectionBid {
             collection,
             expires,
@@ -295,30 +290,6 @@ pub fn execute_update_ask_is_active(
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("is_active", is_active.to_string());
-
-    Ok(Response::new().add_event(event))
-}
-
-/// Updates the ask price on a particular NFT
-pub fn execute_update_ask_price(
-    deps: DepsMut,
-    info: MessageInfo,
-    collection: Addr,
-    token_id: TokenId,
-    price: Coin,
-) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-    price_validate(&price)?;
-
-    let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    ask.price = price.amount;
-    asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
-
-    let event = Event::new("update-ask")
-        .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string())
-        .add_attribute("price", price.to_string());
 
     Ok(Response::new().add_event(event))
 }
