@@ -256,24 +256,11 @@ pub fn execute_remove_ask(
 
     asks().remove(deps.storage, (collection.clone(), token_id))?;
 
-    let bids_to_remove = bids()
-        .idx
-        .collection_token_id
-        .prefix((collection.clone(), token_id))
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|item| item.map(|(_, b)| b))
-        .collect::<StdResult<Vec<_>>>()?;
-
-    let mut msgs: Vec<BankMsg> = vec![];
-    for bid in bids_to_remove.iter() {
-        msgs.push(remove_and_refund_bid(deps.storage, bid.clone())?)
-    }
-
     let event = Event::new("remove-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string());
 
-    Ok(Response::new().add_messages(msgs).add_event(event))
+    Ok(Response::new().add_event(event))
 }
 
 /// Updates the the active state of the ask.
