@@ -192,7 +192,7 @@ pub fn execute_set_ask(
             funds_recipient: funds_recipient.clone(),
             reserve_for,
             expires,
-            active: true,
+            is_active: true,
         },
     )?;
 
@@ -280,7 +280,7 @@ pub fn execute_update_ask_state(
     }
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    ask.active = active;
+    ask.is_active = active;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
     let event = Event::new("update-ask-state")
@@ -334,7 +334,7 @@ pub fn execute_set_bid(
     if ask.expires <= env.block.time {
         return Err(ContractError::AskExpired {});
     }
-    if !ask.active {
+    if !ask.is_active {
         return Err(ContractError::AskNotActive {});
     }
     if let Some(reserved_for) = ask.clone().reserve_for {
@@ -447,7 +447,7 @@ pub fn execute_accept_bid(
     if ask.expires <= env.block.time {
         return Err(ContractError::AskExpired {});
     }
-    if !ask.active {
+    if !ask.is_active {
         return Err(ContractError::AskNotActive {});
     }
 
@@ -558,7 +558,7 @@ pub fn execute_accept_collection_bid(
         token_id,
         price: bid.price,
         expires: bid.expires,
-        active: true,
+        is_active: true,
         seller: info.sender.clone(),
         funds_recipient: None,
         reserve_for: None,
