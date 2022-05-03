@@ -1702,7 +1702,7 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(
             "ask_filled_hook_failed",
-            res.unwrap().events[7].attributes[1].value
+            res.unwrap().events[9].attributes[1].value
         );
 
         // NFT is still transferred despite a sale finalized hook failing
