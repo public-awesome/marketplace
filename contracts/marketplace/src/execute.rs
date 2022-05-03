@@ -707,10 +707,10 @@ fn payout(
 
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
-                amount: vec![Coin {
-                    amount: payment * (Decimal::one() - royalty.share) - network_fee,
-                    denom: NATIVE_DENOM.to_string(),
-                }],
+                amount: vec![coin(
+                    (payment * (Decimal::one() - royalty.share) - network_fee).u128(),
+                    NATIVE_DENOM.to_string(),
+                )],
             };
             res.messages.push(SubMsg::new(owner_share_msg));
         }
@@ -718,10 +718,10 @@ fn payout(
             // If token doesn't support royalties, pay owner in full
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
-                amount: vec![Coin {
-                    amount: payment - network_fee,
-                    denom: NATIVE_DENOM.to_string(),
-                }],
+                amount: vec![coin(
+                    (payment - network_fee).u128(),
+                    NATIVE_DENOM.to_string(),
+                )],
             };
             res.messages.push(SubMsg::new(owner_share_msg));
         }
