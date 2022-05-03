@@ -333,7 +333,7 @@ pub fn execute_set_bid(
     if !ask.active {
         return Err(ContractError::AskNotActive {});
     }
-    if let Some(reserved_for) = ask.reserve_for {
+    if let Some(reserved_for) = ask.clone().reserve_for {
         if reserved_for != bidder {
             return Err(ContractError::TokenReserved {});
         }
@@ -369,21 +369,8 @@ pub fn execute_set_bid(
         // Bid meets ask criteria so fulfill bid
         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
 
-        let owner = Cw721Contract(collection.clone())
-            .owner_of(&deps.querier, token_id.to_string(), false)
-            .map(|res| deps.api.addr_validate(&res.owner))??;
-
         // Include messages needed to finalize nft transfer and payout
-        fill_ask(
-            deps,
-            collection.clone(),
-            token_id,
-            owner.clone(),
-            bidder.clone(),
-            ask.funds_recipient.unwrap_or(owner),
-            coin(ask.price.u128(), NATIVE_DENOM),
-            &mut res,
-        )?;
+        fill_ask(deps, ask, bid_price, bidder.clone(), &mut res)?;
     }
 
     let event = Event::new("set-bid")
@@ -473,16 +460,7 @@ pub fn execute_accept_bid(
     let mut res = Response::new();
 
     // Transfer funds and NFT
-    fill_ask(
-        deps,
-        collection.clone(),
-        token_id,
-        info.sender.clone(),
-        bidder.clone(),
-        ask.funds_recipient.unwrap_or(info.sender),
-        coin(bid.price.u128(), NATIVE_DENOM),
-        &mut res,
-    )?;
+    fill_ask(deps, ask, bid.price, bidder.clone(), &mut res)?;
 
     let event = Event::new("accept-bid")
         .add_attribute("collection", collection.to_string())
@@ -567,17 +545,20 @@ pub fn execute_accept_collection_bid(
 
     let mut res = Response::new();
 
-    // Transfer funds and NFT
-    fill_ask(
-        deps,
-        collection.clone(),
+    // Create a temporary Ask
+    let ask = Ask {
+        collection: collection.clone(),
         token_id,
-        info.sender.clone(),
-        bidder.clone(),
-        info.sender,
-        coin(bid.price.u128(), NATIVE_DENOM),
-        &mut res,
-    )?;
+        price: bid.price,
+        expires: bid.expires,
+        active: true,
+        seller: info.sender,
+        funds_recipient: None,
+        reserve_for: None,
+    };
+
+    // Transfer funds and NFT
+    fill_ask(deps, ask, bid.price, bidder.clone(), &mut res)?;
 
     let event = Event::new("accept-collection-bid")
         .add_attribute("collection", collection.to_string())
@@ -603,47 +584,44 @@ fn only_owner(
 }
 
 /// Transfers funds and NFT, updates bid
-#[allow(clippy::too_many_arguments)]
 fn fill_ask(
     deps: DepsMut,
-    collection: Addr,
-    token_id: u32,
-    seller: Addr,
-    recipient: Addr,
-    funds_recipient: Addr,
-    price: Coin,
+    ask: Ask,
+    price: Uint128,
+    buyer: Addr,
     res: &mut Response,
 ) -> StdResult<()> {
     // Payout bid
     payout(
         deps.as_ref(),
-        collection.clone(),
-        price.clone(),
-        funds_recipient,
+        ask.collection.clone(),
+        price,
+        ask.funds_recipient
+            .clone()
+            .unwrap_or_else(|| ask.seller.clone()),
         res,
     )?;
 
     // Create transfer cw721 msg
     let cw721_transfer_msg = Cw721ExecuteMsg::TransferNft {
-        token_id: token_id.to_string(),
-        recipient: recipient.to_string(),
+        token_id: ask.token_id.to_string(),
+        recipient: buyer.to_string(),
     };
 
     let exec_cw721_transfer = WasmMsg::Execute {
-        contract_addr: collection.to_string(),
+        contract_addr: ask.collection.to_string(),
         msg: to_binary(&cw721_transfer_msg)?,
         funds: vec![],
     };
     res.messages.push(SubMsg::new(exec_cw721_transfer));
 
     let msg = AskFilledHookMsg {
-        collection: collection.to_string(),
-        token_id,
-        price: price.clone(),
-        seller: seller.to_string(),
-        buyer: recipient.to_string(),
+        collection: ask.collection.to_string(),
+        token_id: ask.token_id,
+        price: coin(price.clone().u128(), NATIVE_DENOM),
+        seller: ask.seller.to_string(),
+        buyer: buyer.to_string(),
     };
-
     let mut submsgs = ASK_FILLED_HOOKS.prepare_hooks(deps.storage, |h| {
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
@@ -652,14 +630,13 @@ fn fill_ask(
         };
         Ok(SubMsg::reply_on_error(execute, REPLY_ASK_FILLED_HOOK))
     })?;
-
     res.messages.append(&mut submsgs);
 
     let event = Event::new("fill-ask")
-        .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string())
-        .add_attribute("seller", seller.to_string())
-        .add_attribute("buyer", recipient.to_string())
+        .add_attribute("collection", ask.collection.to_string())
+        .add_attribute("token_id", ask.token_id.to_string())
+        .add_attribute("seller", ask.seller.to_string())
+        .add_attribute("buyer", buyer.to_string())
         .add_attribute("price", price.to_string());
     res.events.push(event);
 
@@ -689,14 +666,14 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
 fn payout(
     deps: Deps,
     collection: Addr,
-    payment: Coin,
+    payment: Uint128,
     payment_recipient: Addr,
     res: &mut Response,
 ) -> StdResult<()> {
     let config = SUDO_PARAMS.load(deps.storage)?;
 
     // Append Fair Burn message
-    let network_fee = payment.amount * config.trading_fee_basis_points / Uint128::from(100u128);
+    let network_fee = payment * config.trading_fee_basis_points / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
     // Check if token supports Royalties
@@ -710,8 +687,8 @@ fn payout(
             let royalty_share_msg = BankMsg::Send {
                 to_address: royalty.payment_address.to_string(),
                 amount: vec![Coin {
-                    amount: payment.amount * royalty.share,
-                    denom: payment.denom.clone(),
+                    amount: payment * royalty.share,
+                    denom: NATIVE_DENOM.to_string(),
                 }],
             };
             res.messages.push(SubMsg::new(royalty_share_msg));
@@ -719,8 +696,8 @@ fn payout(
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![Coin {
-                    amount: payment.amount * (Decimal::one() - royalty.share) - network_fee,
-                    denom: payment.denom,
+                    amount: payment * (Decimal::one() - royalty.share) - network_fee,
+                    denom: NATIVE_DENOM.to_string(),
                 }],
             };
             res.messages.push(SubMsg::new(owner_share_msg));
@@ -730,8 +707,8 @@ fn payout(
             let owner_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![Coin {
-                    amount: payment.amount - network_fee,
-                    denom: payment.denom,
+                    amount: payment - network_fee,
+                    denom: NATIVE_DENOM.to_string(),
                 }],
             };
             res.messages.push(SubMsg::new(owner_share_msg));
