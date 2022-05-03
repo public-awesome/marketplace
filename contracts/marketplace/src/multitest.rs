@@ -56,9 +56,10 @@ mod tests {
     const INITIAL_BALANCE: u128 = 2000;
 
     // Governance parameters
-    const TRADING_FEE_BASIS_POINTS: u64 = 200; // 2%
+    const TRADING_FEE_BPS: u64 = 200; // 2%
     const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
     const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
+    const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
 
     // Instantiates all needed contracts for testing
     fn setup_contracts(
@@ -69,10 +70,11 @@ mod tests {
         let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+            trading_fee_bps: TRADING_FEE_BPS,
             ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             ask_filled_hook: None,
+            max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
         };
         let marketplace = router
             .instantiate_contract(
@@ -1582,10 +1584,11 @@ mod tests {
         let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+            trading_fee_bps: TRADING_FEE_BPS,
             ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             ask_filled_hook: None,
+            max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
         };
         let marketplace = router
             .instantiate_contract(
@@ -1696,10 +1699,11 @@ mod tests {
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
         let update_config_msg = SudoMsg::UpdateParams {
-            trading_fee_basis_points: Some(5),
+            trading_fee_bps: Some(5),
             ask_expiry: Some(ExpiryRange::new(1, 2)),
             bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
+            max_finders_fee_bps: None,
         };
         let res = router.wasm_sudo(marketplace.clone(), &update_config_msg);
         assert!(res.is_ok());
@@ -1757,10 +1761,11 @@ mod tests {
         let marketplace_id = router.store_code(contract_marketplace());
         let msg = crate::msg::InstantiateMsg {
             operators: vec!["operator".to_string()],
-            trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+            trading_fee_bps: TRADING_FEE_BPS,
             ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             ask_filled_hook: Some("hook".to_string()),
+            max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
         };
         let marketplace = router
             .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)

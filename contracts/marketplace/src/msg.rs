@@ -22,6 +22,8 @@ pub struct InstantiateMsg {
     /// They listen to NFT transfer events, and update the active state of Asks.
     pub operators: Vec<String>,
     pub ask_filled_hook: Option<String>,
+    /// Max basis points for the finders fee
+    pub max_finders_fee_bps: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -93,10 +95,11 @@ pub enum SudoMsg {
     /// Update the contract parameters
     /// Can only be called by governance
     UpdateParams {
-        trading_fee_basis_points: Option<u64>,
+        trading_fee_bps: Option<u64>,
         ask_expiry: Option<ExpiryRange>,
         bid_expiry: Option<ExpiryRange>,
         operators: Option<Vec<String>>,
+        max_finders_fee_bps: Option<u64>,
     },
     /// Add a new hook to be informed of all asks
     AddAskCreatedHook { hook: String },

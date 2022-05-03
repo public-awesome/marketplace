@@ -20,6 +20,8 @@ pub struct SudoParams {
     /// Operators are entites that are responsible for maintaining the active state of Asks
     /// They listen to NFT transfer events, and update the active state of Asks
     pub operators: Vec<Addr>,
+    /// Max value for the finders fee
+    pub max_finders_fee_bps: Decimal,
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");

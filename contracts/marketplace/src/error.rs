@@ -49,6 +49,9 @@ pub enum ContractError {
     #[error("Unrecognised reply id: {0}")]
     UnrecognisedReply(u64),
 
+    #[error("Invalid finders fee bps: {0}")]
+    InvalidFindersFeeBps(u64),
+
     #[error("{0}")]
     BidPaymentError(#[from] PaymentError),
 

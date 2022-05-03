@@ -40,6 +40,7 @@ pub fn instantiate(
         ask_expiry: msg.ask_expiry,
         bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,
+        max_finders_fee_bps: Decimal::percent(msg.max_finders_fee_bps),
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -164,7 +165,7 @@ pub fn execute_set_ask(
     price: Coin,
     funds_recipient: Option<Addr>,
     reserve_for: Option<Addr>,
-    finders_fee_basis_points: Option<u64>,
+    finders_fee_bps: Option<u64>,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let ExecuteEnv { deps, info, env } = env;
@@ -173,6 +174,12 @@ pub fn execute_set_ask(
 
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_expiry.is_valid(&env.block, expires)?;
+
+    if let Some(fee) = finders_fee_bps {
+        if Decimal::percent(fee) > params.max_finders_fee_bps {
+            return Err(ContractError::InvalidFindersFeeBps(fee));
+        };
+    }
 
     // Only the media onwer can call this
     let owner_of_response = only_owner(deps.as_ref(), &info, ask_key.clone().0, ask_key.1)?;
@@ -198,7 +205,7 @@ pub fn execute_set_ask(
             price: price.amount,
             funds_recipient: funds_recipient.clone(),
             reserve_for,
-            finders_fee_bps: finders_fee_basis_points,
+            finders_fee_bps,
             expires,
             is_active: true,
         },

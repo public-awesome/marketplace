@@ -20,6 +20,7 @@ const TOKEN_ID: u32 = 123;
 const TRADING_FEE_BASIS_POINTS: u64 = 200; // 2%
 const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
 const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
+const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
 
 #[test]
 fn ask_indexed_map() {
@@ -112,6 +113,7 @@ fn setup_contract(deps: DepsMut) {
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         ask_filled_hook: None,
+        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
     };
     let info = mock_info(CREATOR, &[]);
     let res = instantiate(deps, mock_env(), info, msg).unwrap();
@@ -128,6 +130,7 @@ fn proper_initialization() {
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         ask_filled_hook: None,
+        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 
