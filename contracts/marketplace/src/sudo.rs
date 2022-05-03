@@ -44,15 +44,15 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
 pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
-    trading_fee: Option<u64>,
+    trading_fee_bps: Option<u64>,
     ask_expiry: Option<ExpiryRange>,
     bid_expiry: Option<ExpiryRange>,
     operators: Option<Vec<String>>,
-    max_finders_fee: Option<u64>,
+    max_finders_fee_bps: Option<u64>,
 ) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
 
-    params.trading_fee_bps = trading_fee
+    params.trading_fee_bps = trading_fee_bps
         .map(Decimal::percent)
         .unwrap_or(params.trading_fee_bps);
     params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
@@ -60,7 +60,7 @@ pub fn sudo_update_params(
     if let Some(operators) = operators {
         params.operators = map_validate(deps.api, &operators)?;
     }
-    params.max_finders_fee_bps = max_finders_fee
+    params.max_finders_fee_bps = max_finders_fee_bps
         .map(Decimal::percent)
         .unwrap_or(params.max_finders_fee_bps);
     SUDO_PARAMS.save(deps.storage, &params)?;
