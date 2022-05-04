@@ -3,7 +3,7 @@ use crate::helpers::map_validate;
 use crate::msg::{AskCreatedHookMsg, AskFilledHookMsg, ExecuteMsg, InstantiateMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, ASK_FILLED_HOOKS, SUDO_PARAMS,
+    SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -23,8 +23,8 @@ use sg_std::{Response, SubMsg, NATIVE_DENOM};
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const REPLY_ASK_FILLED_HOOK: u64 = 1;
-const REPLY_ASK_CREATED_HOOK: u64 = 2;
+const REPLY_ASK_CREATED_HOOK: u64 = 1;
+const REPLY_SALE_HOOK: u64 = 2;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -48,7 +48,7 @@ pub fn instantiate(
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     if let Some(hook) = msg.ask_filled_hook {
-        ASK_FILLED_HOOKS.add_hook(deps.storage, deps.api.addr_validate(&hook)?)?;
+        SALE_HOOKS.add_hook(deps.storage, deps.api.addr_validate(&hook)?)?;
     }
 
     Ok(Response::new())
@@ -175,7 +175,7 @@ pub fn execute(
     }
 }
 
-/// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
+/// A seller may set an Ask on their NFT to list it on Marketplace
 pub fn execute_set_ask(
     deps: DepsMut,
     env: Env,
@@ -205,10 +205,8 @@ pub fn execute_set_ask(
         };
     }
 
-    // Only the media onwer can call this
-    let owner_of_response = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-    // Check that approval has been set for marketplace contract
-    if owner_of_response
+    let res = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    if res
         .approvals
         .iter()
         .map(|x| x.spender == env.contract.address)
@@ -265,7 +263,7 @@ pub fn execute_set_ask(
     Ok(Response::new().add_submessages(submsgs).add_event(event))
 }
 
-/// Removes the ask on a particular media
+/// Removes the ask on a particular NFT
 pub fn execute_remove_ask(
     deps: DepsMut,
     info: MessageInfo,
@@ -390,7 +388,7 @@ pub fn execute_set_bid(
                         return Err(ContractError::InvalidPrice {});
                     } else {
                         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
-                        fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
+                        finalize_sale(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
                     }
                 }
                 SaleType::Auction => {
@@ -527,7 +525,7 @@ pub fn execute_accept_bid(
     let mut res = Response::new();
 
     // Transfer funds and NFT
-    fill_ask(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
+    finalize_sale(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
 
     let event = Event::new("accept-bid")
         .add_attribute("collection", collection.to_string())
@@ -635,7 +633,7 @@ fn remove_and_refund_collection_bid(
     Ok(msg)
 }
 
-/// Owner of an item in a collection can accept a collection bid which transfers funds as well as a token
+/// Owner/seller of an item in a collection can accept a collection bid which transfers funds as well as a token
 pub fn execute_accept_collection_bid(
     deps: DepsMut,
     env: Env,
@@ -678,7 +676,7 @@ pub fn execute_accept_collection_bid(
     };
 
     // Transfer funds and NFT
-    fill_ask(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
+    finalize_sale(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
 
     let event = Event::new("accept-collection-bid")
         .add_attribute("collection", collection.to_string())
@@ -706,7 +704,7 @@ fn only_owner(
 }
 
 /// Transfers funds and NFT, updates bid
-fn fill_ask(
+fn finalize_sale(
     deps: DepsMut,
     ask: Ask,
     price: Uint128,
@@ -714,7 +712,6 @@ fn fill_ask(
     finder: Option<Addr>,
     res: &mut Response,
 ) -> StdResult<()> {
-    // Payout bid
     payout(
         deps.as_ref(),
         ask.collection.clone(),
@@ -727,7 +724,6 @@ fn fill_ask(
         res,
     )?;
 
-    // Create transfer cw721 msg
     let cw721_transfer_msg = Cw721ExecuteMsg::TransferNft {
         token_id: ask.token_id.to_string(),
         recipient: buyer.to_string(),
@@ -747,17 +743,17 @@ fn fill_ask(
         seller: ask.seller.to_string(),
         buyer: buyer.to_string(),
     };
-    let mut submsgs = ASK_FILLED_HOOKS.prepare_hooks(deps.storage, |h| {
+    let mut submsgs = SALE_HOOKS.prepare_hooks(deps.storage, |h| {
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
             msg: msg.clone().into_binary()?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_FILLED_HOOK))
+        Ok(SubMsg::reply_on_error(execute, REPLY_SALE_HOOK))
     })?;
     res.messages.append(&mut submsgs);
 
-    let event = Event::new("fill-ask")
+    let event = Event::new("finalize-sale")
         .add_attribute("collection", ask.collection.to_string())
         .add_attribute("token_id", ask.token_id.to_string())
         .add_attribute("seller", ask.seller.to_string())
@@ -771,9 +767,9 @@ fn fill_ask(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match msg.id {
-        REPLY_ASK_FILLED_HOOK => {
+        REPLY_SALE_HOOK => {
             let res = Response::new()
-                .add_attribute("action", "ask-filled-hook-failed")
+                .add_attribute("action", "sale-hook-failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }

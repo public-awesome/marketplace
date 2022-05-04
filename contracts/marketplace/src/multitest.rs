@@ -1266,7 +1266,7 @@ mod tests {
             .unwrap();
 
         // Bid is accepted, sale has been finalized
-        assert_eq!(res.events[3].ty, "wasm-fill-ask");
+        assert_eq!(res.events[3].ty, "wasm-finalize-sale");
 
         // Check money is transfered
         let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
@@ -1900,7 +1900,7 @@ mod tests {
         );
         assert!(res.is_ok());
         assert_eq!(
-            "ask-filled-hook-failed",
+            "sale-hook-failed",
             res.unwrap().events[10].attributes[1].value
         );
 
