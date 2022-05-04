@@ -60,6 +60,11 @@ expires: Timestamp
 [k: string]: unknown
 }
 } | {
+remove_collection_bid: {
+collection: string
+[k: string]: unknown
+}
+} | {
 accept_collection_bid: {
 bidder: string
 collection: string

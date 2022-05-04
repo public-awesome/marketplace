@@ -378,71 +378,6 @@ mod tests {
     }
 
     #[test]
-    fn check_bids_after_removing_ask() {
-        let mut router = custom_mock_app();
-
-        // Setup intial accounts
-        let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-        // Instantiate and configure contracts
-        let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-        // Mint NFT for creator
-        mint(&mut router, &creator, &collection, TOKEN_ID);
-        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-
-        // An asking price is made by the creator
-        let set_ask = ExecuteMsg::SetAsk {
-            collection: collection.to_string(),
-            token_id: TOKEN_ID,
-            price: coin(110, NATIVE_DENOM),
-            funds_recipient: None,
-            reserve_for: None,
-            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
-        };
-        let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
-        assert!(res.is_ok());
-
-        // Bidder makes bid
-        let set_bid_msg = ExecuteMsg::SetBid {
-            collection: collection.to_string(),
-            token_id: TOKEN_ID,
-            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finder: None,
-        };
-        let res = router.execute_contract(
-            bidder,
-            marketplace.clone(),
-            &set_bid_msg,
-            &coins(100, NATIVE_DENOM),
-        );
-        assert!(res.is_ok());
-
-        // Creator removes ask
-        let remove_ask_msg = ExecuteMsg::RemoveAsk {
-            collection: collection.to_string(),
-            token_id: TOKEN_ID,
-        };
-        let res =
-            router.execute_contract(creator.clone(), marketplace.clone(), &remove_ask_msg, &[]);
-        assert!(res.is_ok());
-
-        // Check if bid has be removed
-        let query_bids_msg = QueryMsg::Bids {
-            collection: collection.to_string(),
-            token_id: TOKEN_ID,
-            start_after: None,
-            limit: None,
-        };
-        let res: BidsResponse = router
-            .wrap()
-            .query_wasm_smart(marketplace, &query_bids_msg)
-            .unwrap();
-        assert_eq!(res.bids, vec![]);
-    }
-
-    #[test]
     fn try_update_ask() {
         let mut router = custom_mock_app();
 
@@ -1689,7 +1624,7 @@ mod tests {
     }
 
     #[test]
-    fn try_sudo_update_config() {
+    fn try_sudo_update_params() {
         let mut router = custom_mock_app();
 
         // Setup intial accounts
@@ -1698,14 +1633,25 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let update_config_msg = SudoMsg::UpdateParams {
+        let update_params_msg = SudoMsg::UpdateParams {
+            trading_fee_bps: Some(5),
+            ask_expiry: Some(ExpiryRange::new(100, 2)),
+            bid_expiry: None,
+            operators: Some(vec!["operator".to_string()]),
+            max_finders_fee_bps: None,
+        };
+        router
+            .wasm_sudo(marketplace.clone(), &update_params_msg)
+            .unwrap_err();
+
+        let update_params_msg = SudoMsg::UpdateParams {
             trading_fee_bps: Some(5),
             ask_expiry: Some(ExpiryRange::new(1, 2)),
             bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
             max_finders_fee_bps: None,
         };
-        let res = router.wasm_sudo(marketplace.clone(), &update_config_msg);
+        let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
         assert!(res.is_ok());
 
         let query_params_msg = QueryMsg::Params {};

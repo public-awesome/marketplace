@@ -8,8 +8,8 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, Event, MessageInfo, Order,
-    Reply, StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, Event, MessageInfo, Reply,
+    StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
@@ -34,6 +34,9 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    msg.ask_expiry.validate()?;
+    msg.bid_expiry.validate()?;
 
     let params = SudoParams {
         trading_fee_bps: Decimal::percent(msg.trading_fee_bps),
@@ -256,24 +259,11 @@ pub fn execute_remove_ask(
 
     asks().remove(deps.storage, (collection.clone(), token_id))?;
 
-    let bids_to_remove = bids()
-        .idx
-        .collection_token_id
-        .prefix((collection.clone(), token_id))
-        .range(deps.storage, None, None, Order::Ascending)
-        .map(|item| item.map(|(_, b)| b))
-        .collect::<StdResult<Vec<_>>>()?;
-
-    let mut msgs: Vec<BankMsg> = vec![];
-    for bid in bids_to_remove.iter() {
-        msgs.push(remove_and_refund_bid(deps.storage, bid.clone())?)
-    }
-
     let event = Event::new("remove-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string());
 
-    Ok(Response::new().add_messages(msgs).add_event(event))
+    Ok(Response::new().add_event(event))
 }
 
 /// Updates the the active state of the ask.
@@ -362,18 +352,19 @@ pub fn execute_set_bid(
         }
     }
 
-    // Check bidder has existing bid, if so remove existing bid
     let mut res = Response::new();
-    if let Some(existing_bid) =
-        bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?
-    {
+
+    // Check bidder has existing bid, if so remove existing bid
+    let existing_bid =
+        bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
+    if let Some(existing_bid) = existing_bid {
         bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
         let exec_refund_bidder = BankMsg::Send {
             to_address: bidder.to_string(),
             amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
         };
         res = res.add_message(exec_refund_bidder)
-    };
+    }
 
     if ask.price != bid_price {
         // Bid does not meet ask criteria, store bid
@@ -513,15 +504,16 @@ pub fn execute_set_collection_bid(
     let mut res = Response::new();
 
     // Check bidder has existing bid, if so remove existing bid
-    if let Some(existing_bid) = collection_bids().may_load(
+    let existing_bid = collection_bids().may_load(
         deps.storage,
         collection_bid_key(collection.clone(), bidder.clone()),
-    )? {
+    )?;
+    if let Some(existing_bid) = existing_bid {
         res = res.add_message(remove_and_refund_collection_bid(
             deps.storage,
             existing_bid,
         )?);
-    };
+    }
 
     collection_bids().save(
         deps.storage,
@@ -753,10 +745,10 @@ fn payout(
     finders_fee_bps: Option<u64>,
     res: &mut Response,
 ) -> StdResult<()> {
-    let config = SUDO_PARAMS.load(deps.storage)?;
+    let params = SUDO_PARAMS.load(deps.storage)?;
 
     // Append Fair Burn message
-    let network_fee = payment * config.trading_fee_bps / Uint128::from(100u128);
+    let network_fee = payment * params.trading_fee_bps / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
     // Check if token supports royalties
@@ -781,7 +773,7 @@ fn payout(
     };
 
     match collection_info.royalty_info {
-        // If token supports royalities, payout shares
+        // If token supports royalities, payout shares to royalty recipient
         Some(royalty) => {
             let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
             res.messages.push(SubMsg::new(BankMsg::Send {
@@ -795,25 +787,25 @@ fn payout(
                 .add_attribute("recipient", royalty.payment_address.to_string());
             res.events.push(event);
 
-            let owner_share_msg = BankMsg::Send {
+            let seller_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
                     (payment * (Decimal::one() - royalty.share) - network_fee).u128() - finders_fee,
                     NATIVE_DENOM.to_string(),
                 )],
             };
-            res.messages.push(SubMsg::new(owner_share_msg));
+            res.messages.push(SubMsg::new(seller_share_msg));
         }
         None => {
-            // If token doesn't support royalties, pay owner in full
-            let owner_share_msg = BankMsg::Send {
+            // If token doesn't support royalties, pay seller in full
+            let seller_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
                     (payment - network_fee).u128() - finders_fee,
                     NATIVE_DENOM.to_string(),
                 )],
             };
-            res.messages.push(SubMsg::new(owner_share_msg));
+            res.messages.push(SubMsg::new(seller_share_msg));
         }
     }
 
