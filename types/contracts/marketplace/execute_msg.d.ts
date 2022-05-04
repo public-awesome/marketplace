@@ -37,6 +37,7 @@ set_bid: {
 collection: string
 expires: Timestamp
 finder?: (string | null)
+finders_fee_bps?: (number | null)
 token_id: number
 [k: string]: unknown
 }
@@ -58,6 +59,7 @@ token_id: number
 set_collection_bid: {
 collection: string
 expires: Timestamp
+finders_fee_bps?: (number | null)
 [k: string]: unknown
 }
 } | {

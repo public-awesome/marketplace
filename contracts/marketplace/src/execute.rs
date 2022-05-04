@@ -69,6 +69,14 @@ pub struct AskInfo {
     expires: Timestamp,
 }
 
+pub struct BidInfo {
+    collection: Addr,
+    token_id: TokenId,
+    expires: Timestamp,
+    finder: Option<Addr>,
+    finders_fee_bps: Option<u64>,
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -123,14 +131,18 @@ pub fn execute(
             token_id,
             expires,
             finder,
+            finders_fee_bps,
         } => execute_set_bid(
             deps,
             env,
             info,
-            api.addr_validate(&collection)?,
-            token_id,
-            expires,
-            maybe_addr(api, finder)?,
+            BidInfo {
+                collection: api.addr_validate(&collection)?,
+                token_id,
+                expires,
+                finder: maybe_addr(api, finder)?,
+                finders_fee_bps,
+            },
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -158,7 +170,15 @@ pub fn execute(
         ExecuteMsg::SetCollectionBid {
             collection,
             expires,
-        } => execute_set_collection_bid(deps, env, info, api.addr_validate(&collection)?, expires),
+            finders_fee_bps,
+        } => execute_set_collection_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            finders_fee_bps,
+            expires,
+        ),
         ExecuteMsg::RemoveCollectionBid { collection } => {
             execute_remove_collection_bid(deps, env, info, api.addr_validate(&collection)?)
         }
@@ -221,16 +241,10 @@ pub fn execute_set_ask(
         };
     }
 
-    let res = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-    if res
-        .approvals
-        .iter()
-        .map(|x| x.spender == env.contract.address)
-        .len()
-        != 1
-    {
-        return Err(ContractError::NeedsApproval {});
-    }
+    must_approve(
+        env,
+        only_owner(deps.as_ref(), &info, collection.clone(), token_id)?,
+    )?;
 
     let seller = info.sender;
     store_ask(
@@ -352,11 +366,16 @@ pub fn execute_set_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    collection: Addr,
-    token_id: TokenId,
-    expires: Timestamp,
-    finder: Option<Addr>,
+    bid_info: BidInfo,
 ) -> Result<Response, ContractError> {
+    let BidInfo {
+        collection,
+        token_id,
+        finders_fee_bps,
+        expires,
+        finder,
+    } = bid_info;
+
     let params = SUDO_PARAMS.load(deps.storage)?;
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
@@ -417,6 +436,7 @@ pub fn execute_set_bid(
                             token_id,
                             bidder.clone(),
                             bid_price,
+                            finders_fee_bps,
                             expires,
                         ),
                     )?;
@@ -431,6 +451,7 @@ pub fn execute_set_bid(
                     token_id,
                     bidder.clone(),
                     bid_price,
+                    finders_fee_bps,
                     expires,
                 ),
             )?;
@@ -548,7 +569,7 @@ pub fn execute_accept_bid(
                 seller: info.sender,
                 funds_recipient: None,
                 reserve_for: None,
-                finders_fee_bps: None,
+                finders_fee_bps: bid.finders_fee_bps,
             }
         }
     };
@@ -583,6 +604,7 @@ pub fn execute_set_collection_bid(
     env: Env,
     info: MessageInfo,
     collection: Addr,
+    finders_fee_bps: Option<u64>,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let params = SUDO_PARAMS.load(deps.storage)?;
@@ -614,6 +636,7 @@ pub fn execute_set_collection_bid(
             collection: collection.clone(),
             bidder: bidder.clone(),
             price,
+            finders_fee_bps,
             expires,
         },
     )?;
@@ -715,7 +738,7 @@ pub fn execute_accept_collection_bid(
         seller: info.sender.clone(),
         funds_recipient: None,
         reserve_for: None,
-        finders_fee_bps: None,
+        finders_fee_bps: bid.finders_fee_bps,
     };
 
     // Transfer funds and NFT
@@ -1008,4 +1031,18 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
     }
 
     Ok(info.sender.clone())
+}
+
+fn must_approve(env: Env, res: OwnerOfResponse) -> Result<(), ContractError> {
+    if res
+        .approvals
+        .iter()
+        .map(|x| x.spender == env.contract.address)
+        .len()
+        != 1
+    {
+        return Err(ContractError::NeedsApproval {});
+    }
+
+    Ok(())
 }

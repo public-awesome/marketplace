@@ -18,6 +18,14 @@ export interface Coin {
     denom: string;
 }
 /**
+ * Offset for ask pagination
+ */
+export interface AskOffset {
+    [k: string]: unknown;
+    price: Uint128;
+    token_id: number;
+}
+/**
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.
@@ -69,6 +77,15 @@ export interface Ask {
     token_id: number;
 }
 /**
+ * Offset for bid pagination
+ */
+export interface BidOffset {
+    [k: string]: unknown;
+    bidder: Addr;
+    price: Uint128;
+    token_id: number;
+}
+/**
  * Represents a bid (offer) on the marketplace
  */
 export interface Bid {
@@ -76,7 +93,25 @@ export interface Bid {
     bidder: Addr;
     collection: Addr;
     expires: Timestamp;
+    finders_fee_bps?: (number | null);
     price: Uint128;
+    token_id: number;
+}
+/**
+ * Offset for collection bid pagination
+ */
+export interface CollectionBidOffset {
+    [k: string]: unknown;
+    bidder: string;
+    collection: string;
+    price: Uint128;
+}
+/**
+ * Offset for collection pagination
+ */
+export interface CollectionOffset {
+    [k: string]: unknown;
+    collection: string;
     token_id: number;
 }
 /**

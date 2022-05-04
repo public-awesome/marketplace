@@ -331,6 +331,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -408,6 +409,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -984,6 +986,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -998,6 +1001,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID + 1,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1012,6 +1016,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID + 2,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1062,6 +1067,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1179,6 +1185,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1256,6 +1263,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1272,6 +1280,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1344,6 +1353,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1364,6 +1374,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1421,6 +1432,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: Some(finder.to_string()),
         };
@@ -1477,6 +1489,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1548,6 +1561,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1577,6 +1591,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1614,6 +1629,7 @@ mod tests {
             bidder,
             price: Uint128::from(150u128),
             expires: (router.block_info().time.plus_seconds(MIN_EXPIRY + 1)),
+            finders_fee_bps: None,
         };
 
         let res: BidResponse = router
@@ -1704,6 +1720,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1958,6 +1975,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -2043,6 +2061,7 @@ mod tests {
         // A collection bid is made by the bidder
         let set_collection_bid = ExecuteMsg::SetCollectionBid {
             collection: collection.to_string(),
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
@@ -2056,6 +2075,7 @@ mod tests {
         // A collection bid is made by bidder2
         let set_collection_bid = ExecuteMsg::SetCollectionBid {
             collection: collection.to_string(),
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
@@ -2200,6 +2220,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -2230,5 +2251,52 @@ mod tests {
 
         let operator_balances = router.wrap().query_all_balances(operator).unwrap();
         assert_eq!(operator_balances, coins(5, NATIVE_DENOM));
+    }
+
+    #[test]
+    fn try_bid_finders_fee() {
+        let mut router = custom_mock_app();
+
+        // Setup intial accounts
+        let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+        // Instantiate and configure contracts
+        let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+        // Mint NFT for creator
+        mint(&mut router, &creator, &collection, TOKEN_ID);
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+        // Bidder makes bid with a finder's fee
+        let set_bid_msg = ExecuteMsg::SetBid {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            finders_fee_bps: Some(500),
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finder: None,
+        };
+        let res = router.execute_contract(
+            bidder.clone(),
+            marketplace.clone(),
+            &set_bid_msg,
+            &coins(100, NATIVE_DENOM),
+        );
+        assert!(res.is_ok());
+
+        let finder = Addr::unchecked("finder".to_string());
+
+        // Token owner accepts the bid with a finder address
+        let accept_bid_msg = ExecuteMsg::AcceptBid {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+            bidder: bidder.to_string(),
+            finder: Some(finder.to_string()),
+        };
+        let res =
+            router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
+        assert!(res.is_ok());
+
+        let finder_balances = router.wrap().query_all_balances(finder).unwrap();
+        assert_eq!(finder_balances, coins(5, NATIVE_DENOM));
     }
 }

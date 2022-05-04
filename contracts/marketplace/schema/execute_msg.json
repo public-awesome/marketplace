@@ -177,6 +177,14 @@
                 "null"
               ]
             },
+            "finders_fee_bps": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "token_id": {
               "type": "integer",
               "format": "uint32",
@@ -270,6 +278,14 @@
             },
             "expires": {
               "$ref": "#/definitions/Timestamp"
+            },
+            "finders_fee_bps": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
             }
           }
         }
