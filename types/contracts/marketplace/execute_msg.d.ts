@@ -1,13 +1,14 @@
-import { Coin, Timestamp } from "./shared-types";
+import { Coin, SaleType, Timestamp } from "./shared-types";
 
 export type ExecuteMsg = ({
 set_ask: {
 collection: string
 expires: Timestamp
-finders_fee_basis_points?: (number | null)
+finders_fee_bps?: (number | null)
 funds_recipient?: (string | null)
 price: Coin
 reserve_for?: (string | null)
+sale_type: SaleType
 token_id: number
 [k: string]: unknown
 }
