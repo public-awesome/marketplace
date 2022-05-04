@@ -19,6 +19,40 @@
       "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
       "type": "string"
     },
+    "Duration": {
+      "description": "Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined",
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "height"
+          ],
+          "properties": {
+            "height": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Time in seconds",
+          "type": "object",
+          "required": [
+            "time"
+          ],
+          "properties": {
+            "time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "ExpiryRange": {
       "type": "object",
       "required": [
@@ -43,9 +77,11 @@
       "required": [
         "ask_expiry",
         "bid_expiry",
+        "bid_removal_reward_percent",
         "max_finders_fee_percent",
         "min_price",
         "operators",
+        "stale_bid_duration",
         "trading_fee_percent"
       ],
       "properties": {
@@ -62,6 +98,14 @@
           "allOf": [
             {
               "$ref": "#/definitions/ExpiryRange"
+            }
+          ]
+        },
+        "bid_removal_reward_percent": {
+          "description": "Stale bid removal reward",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal"
             }
           ]
         },
@@ -87,6 +131,14 @@
           "items": {
             "$ref": "#/definitions/Addr"
           }
+        },
+        "stale_bid_duration": {
+          "description": "Duration after expiry when a bid becomes stale",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Duration"
+            }
+          ]
         },
         "trading_fee_percent": {
           "description": "Fair Burn fee for winning bids",

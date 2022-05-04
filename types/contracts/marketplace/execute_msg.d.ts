@@ -73,4 +73,11 @@ finder?: (string | null)
 token_id: number
 [k: string]: unknown
 }
+} | {
+remove_stale_bid: {
+bidder: string
+collection: string
+token_id: number
+[k: string]: unknown
+}
 })

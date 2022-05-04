@@ -14,7 +14,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
-use cw_utils::{maybe_addr, must_pay, nonpayable};
+use cw_utils::{maybe_addr, must_pay, nonpayable, Expiration};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
@@ -45,6 +45,8 @@ pub fn instantiate(
         operators: map_validate(deps.api, &msg.operators)?,
         max_finders_fee_percent: Decimal::percent(msg.max_finders_fee_bps),
         min_price: msg.min_price,
+        stale_bid_duration: msg.stale_bid_duration,
+        bid_removal_reward_percent: Decimal::percent(msg.bid_removal_reward_bps),
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -173,6 +175,18 @@ pub fn execute(
             api.addr_validate(&bidder)?,
             maybe_addr(api, finder)?,
         ),
+        ExecuteMsg::RemoveStaleBid {
+            collection,
+            token_id,
+            bidder,
+        } => execute_remove_stale_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            api.addr_validate(&bidder)?,
+        ),
     }
 }
 
@@ -294,15 +308,7 @@ pub fn execute_update_ask_is_active(
     is_active: bool,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-
-    let params = SUDO_PARAMS.load(deps.storage)?;
-    if !params
-        .operators
-        .iter()
-        .any(|a| a.as_ref() == info.sender.as_ref())
-    {
-        return Err(ContractError::Unauthorized {});
-    }
+    only_operator(deps.storage, &info)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     ask.is_active = is_active;
@@ -714,19 +720,60 @@ pub fn execute_accept_collection_bid(
     Ok(res.add_event(event))
 }
 
-/// Checks to enfore only nft owner can call
-fn only_owner(
-    deps: Deps,
-    info: &MessageInfo,
+/// Privileged operation to remove a stale bid. Operators can call this to remove and refund bids that are still in the
+/// state after they have expired. As a reward they get a governance-determined percentage of the bid price.
+pub fn execute_remove_stale_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
     collection: Addr,
-    token_id: u32,
-) -> Result<OwnerOfResponse, ContractError> {
-    let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
-    if res.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
+    token_id: TokenId,
+    bidder: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    let operator = only_operator(deps.storage, &info)?;
+
+    let bid = bids().load(
+        deps.storage,
+        bid_key(collection.clone(), token_id, bidder.clone()),
+    )?;
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    let stale_time = (Expiration::AtTime(bid.expires) + params.stale_bid_duration)?;
+    if !stale_time.is_expired(&env.block) {
+        return Err(ContractError::BidNotStale {});
     }
 
-    Ok(res)
+    let params = SUDO_PARAMS.load(deps.storage)?;
+
+    // bid is stale, refund bidder and reward operator
+    bids().remove(
+        deps.storage,
+        (bid.collection, bid.token_id, bid.bidder.clone()),
+    )?;
+
+    let reward = bid.price * params.bid_removal_reward_percent / Uint128::from(100u128);
+
+    let bidder_msg = BankMsg::Send {
+        to_address: bid.bidder.to_string(),
+        amount: vec![coin((bid.price - reward).u128(), NATIVE_DENOM)],
+    };
+    let operator_msg = BankMsg::Send {
+        to_address: operator.to_string(),
+        amount: vec![coin(reward.u128(), NATIVE_DENOM)],
+    };
+
+    let event = Event::new("remove-stale-bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("bidder", bidder.to_string())
+        .add_attribute("operator", operator.to_string())
+        .add_attribute("reward", reward.to_string());
+
+    Ok(Response::new()
+        .add_event(event)
+        .add_message(bidder_msg)
+        .add_message(operator_msg))
 }
 
 /// Transfers funds and NFT, updates bid
@@ -908,4 +955,33 @@ fn store_bid(store: &mut dyn Storage, bid: &Bid) -> StdResult<()> {
 
 fn store_ask(store: &mut dyn Storage, ask: &Ask) -> StdResult<()> {
     asks().save(store, ask_key(ask.collection.clone(), ask.token_id), ask)
+}
+
+/// Checks to enfore only NFT owner can call
+fn only_owner(
+    deps: Deps,
+    info: &MessageInfo,
+    collection: Addr,
+    token_id: u32,
+) -> Result<OwnerOfResponse, ContractError> {
+    let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
+    if res.owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    Ok(res)
+}
+
+/// Checks to enforce only privileged operators
+fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, ContractError> {
+    let params = SUDO_PARAMS.load(store)?;
+    if !params
+        .operators
+        .iter()
+        .any(|a| a.as_ref() == info.sender.as_ref())
+    {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    Ok(info.sender.clone())
 }

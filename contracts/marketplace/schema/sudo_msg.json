@@ -32,6 +32,14 @@
                 }
               ]
             },
+            "bid_removal_reward_bps": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "max_finders_fee_bps": {
               "type": [
                 "integer",
@@ -58,6 +66,14 @@
               "items": {
                 "type": "string"
               }
+            },
+            "stale_bid_duration": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint64",
+              "minimum": 0.0
             },
             "trading_fee_bps": {
               "type": [

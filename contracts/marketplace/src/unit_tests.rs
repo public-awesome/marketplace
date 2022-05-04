@@ -10,6 +10,7 @@ use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SaleType};
 
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{coin, coins, Addr, DepsMut, Timestamp, Uint128};
+use cw_utils::Duration;
 use sg_std::NATIVE_DENOM;
 
 const CREATOR: &str = "creator";
@@ -21,6 +22,7 @@ const TRADING_FEE_BASIS_POINTS: u64 = 200; // 2%
 const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
 const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
 const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
+const BID_REMOVAL_REWARD_BPS: u64 = 500; // 5%
 
 #[test]
 fn ask_indexed_map() {
@@ -117,6 +119,8 @@ fn setup_contract(deps: DepsMut) {
         sale_hook: None,
         max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
         min_price: Uint128::from(5u128),
+        stale_bid_duration: Duration::Height(100),
+        bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
     };
     let info = mock_info(CREATOR, &[]);
     let res = instantiate(deps, mock_env(), info, msg).unwrap();
@@ -135,6 +139,8 @@ fn proper_initialization() {
         sale_hook: None,
         max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
         min_price: Uint128::from(5u128),
+        stale_bid_duration: Duration::Height(100),
+        bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 

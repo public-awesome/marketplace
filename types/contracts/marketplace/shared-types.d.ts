@@ -79,6 +79,14 @@ export interface Bid {
     price: Uint128;
     token_id: number;
 }
+/**
+ * Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined
+ */
+export type Duration = ({
+    height: number
+    } | {
+    time: number
+    });
 export interface ExpiryRange {
     [k: string]: unknown;
     max: number;

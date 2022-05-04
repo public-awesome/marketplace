@@ -1,5 +1,6 @@
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_controllers::Hooks;
@@ -23,6 +24,10 @@ pub struct SudoParams {
     pub max_finders_fee_percent: Decimal,
     /// Min value for a bid
     pub min_price: Uint128,
+    /// Duration after expiry when a bid becomes stale
+    pub stale_bid_duration: Duration,
+    /// Stale bid removal reward
+    pub bid_removal_reward_percent: Decimal,
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");

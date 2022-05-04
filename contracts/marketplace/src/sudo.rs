@@ -3,6 +3,7 @@ use crate::helpers::{map_validate, ExpiryRange};
 use crate::msg::SudoMsg;
 use crate::state::{ASK_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS};
 use cosmwasm_std::{entry_point, Addr, Decimal, DepsMut, Env, Uint128};
+use cw_utils::Duration;
 use sg_std::Response;
 
 pub struct ParamInfo {
@@ -12,6 +13,8 @@ pub struct ParamInfo {
     operators: Option<Vec<String>>,
     max_finders_fee_bps: Option<u64>,
     min_price: Option<Uint128>,
+    stale_bid_duration: Option<u64>,
+    bid_removal_reward_bps: Option<u64>,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -26,6 +29,8 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             operators,
             max_finders_fee_bps,
             min_price,
+            stale_bid_duration,
+            bid_removal_reward_bps,
         } => sudo_update_params(
             deps,
             env,
@@ -36,6 +41,8 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
                 operators,
                 max_finders_fee_bps,
                 min_price,
+                stale_bid_duration,
+                bid_removal_reward_bps,
             },
         ),
         SudoMsg::AddSaleHook { hook } => sudo_add_sale_hook(deps, api.addr_validate(&hook)?),
@@ -62,6 +69,8 @@ pub fn sudo_update_params(
         operators,
         max_finders_fee_bps,
         min_price,
+        stale_bid_duration,
+        bid_removal_reward_bps,
     } = param_info;
 
     ask_expiry.as_ref().map(|a| a.validate()).transpose()?;
@@ -85,6 +94,14 @@ pub fn sudo_update_params(
         .unwrap_or(params.max_finders_fee_percent);
 
     params.min_price = min_price.unwrap_or(params.min_price);
+
+    params.stale_bid_duration = stale_bid_duration
+        .map(Duration::Time)
+        .unwrap_or(params.stale_bid_duration);
+
+    params.bid_removal_reward_percent = bid_removal_reward_bps
+        .map(Decimal::percent)
+        .unwrap_or(params.bid_removal_reward_percent);
 
     SUDO_PARAMS.save(deps.storage, &params)?;
 
