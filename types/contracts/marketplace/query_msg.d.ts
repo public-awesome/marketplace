@@ -1,4 +1,4 @@
-import { Addr, Uint128 } from "./shared-types";
+import { AskOffset, BidOffset, CollectionBidOffset, CollectionOffset } from "./shared-types";
 
 export type QueryMsg = ({
 collections: {
@@ -119,38 +119,3 @@ params: {
 [k: string]: unknown
 }
 })
-
-/**
- * Offset for ask pagination
- */
-export interface AskOffset {
-price: Uint128
-token_id: number
-[k: string]: unknown
-}
-/**
- * Offset for collection pagination
- */
-export interface CollectionOffset {
-collection: string
-token_id: number
-[k: string]: unknown
-}
-/**
- * Offset for bid pagination
- */
-export interface BidOffset {
-bidder: Addr
-price: Uint128
-token_id: number
-[k: string]: unknown
-}
-/**
- * Offset for collection bid pagination
- */
-export interface CollectionBidOffset {
-bidder: string
-collection: string
-price: Uint128
-[k: string]: unknown
-}
