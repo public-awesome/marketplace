@@ -219,9 +219,8 @@ pub fn execute_set_ask(
     }
 
     let seller = info.sender;
-    asks().save(
+    store_ask(
         deps.storage,
-        ask_key(collection.clone(), token_id),
         &Ask {
             sale_type,
             collection: collection.clone(),
@@ -845,7 +844,11 @@ fn price_validate(price: &Coin) -> Result<(), ContractError> {
 fn store_bid(store: &mut dyn Storage, bid: &Bid) -> StdResult<()> {
     bids().save(
         store,
-        (bid.collection.clone(), bid.token_id, bid.bidder.clone()),
+        bid_key(bid.collection.clone(), bid.token_id, bid.bidder.clone()),
         bid,
     )
+}
+
+fn store_ask(store: &mut dyn Storage, ask: &Ask) -> StdResult<()> {
+    asks().save(store, ask_key(ask.collection.clone(), ask.token_id), ask)
 }
