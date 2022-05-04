@@ -331,6 +331,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -408,6 +409,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -984,6 +986,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -998,6 +1001,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID + 1,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1012,6 +1016,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID + 2,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1062,6 +1067,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1179,6 +1185,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1256,6 +1263,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1272,6 +1280,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1344,6 +1353,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1364,6 +1374,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1421,6 +1432,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: Some(finder.to_string()),
         };
@@ -1477,6 +1489,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1548,6 +1561,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1577,6 +1591,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1614,6 +1629,7 @@ mod tests {
             bidder,
             price: Uint128::from(150u128),
             expires: (router.block_info().time.plus_seconds(MIN_EXPIRY + 1)),
+            finders_fee_bps: None,
         };
 
         let res: BidResponse = router
@@ -1704,6 +1720,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -1918,6 +1935,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
@@ -2156,6 +2174,7 @@ mod tests {
         let set_bid_msg = ExecuteMsg::SetBid {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };

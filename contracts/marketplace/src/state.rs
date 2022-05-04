@@ -100,6 +100,7 @@ pub struct Bid {
     pub token_id: TokenId,
     pub bidder: Addr,
     pub price: Uint128,
+    pub finders_fee_bps: Option<u64>,
     pub expires: Timestamp,
 }
 
@@ -109,6 +110,7 @@ impl Bid {
         token_id: TokenId,
         bidder: Addr,
         price: Uint128,
+        finders_fee_bps: Option<u64>,
         expires: Timestamp,
     ) -> Self {
         Bid {
@@ -116,6 +118,7 @@ impl Bid {
             token_id,
             bidder,
             price,
+            finders_fee_bps,
             expires,
         }
     }

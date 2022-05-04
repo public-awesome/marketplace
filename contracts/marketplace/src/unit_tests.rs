@@ -85,6 +85,7 @@ fn bid_indexed_map() {
         token_id: TOKEN_ID,
         bidder: bidder.clone(),
         price: Uint128::from(500u128),
+        finders_fee_bps: None,
         expires: Timestamp::from_seconds(0),
     };
     let key = bid_key(collection.clone(), TOKEN_ID, bidder.clone());
@@ -96,6 +97,7 @@ fn bid_indexed_map() {
         token_id: TOKEN_ID + 1,
         bidder: bidder.clone(),
         price: Uint128::from(500u128),
+        finders_fee_bps: None,
         expires: Timestamp::from_seconds(0),
     };
     let key2 = bid_key(collection, TOKEN_ID + 1, bidder.clone());
@@ -160,6 +162,7 @@ fn try_set_bid() {
     let set_bid_msg = ExecuteMsg::SetBid {
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
+        finders_fee_bps: None,
         expires: Timestamp::from_seconds(0),
         finder: None,
     };
@@ -174,6 +177,7 @@ fn try_set_bid() {
     let set_bid_msg = ExecuteMsg::SetBid {
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
+        finders_fee_bps: None,
         expires: mock_env().block.time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
