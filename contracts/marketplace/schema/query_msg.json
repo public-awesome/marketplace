@@ -560,6 +560,19 @@
       "additionalProperties": false
     },
     {
+      "description": "Show all registered bid hooks Return type: `HooksResponse`",
+      "type": "object",
+      "required": [
+        "bid_created_hooks"
+      ],
+      "properties": {
+        "bid_created_hooks": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Show all registered sale hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [

@@ -435,7 +435,7 @@ pub fn execute_set_bid(
         collection: collection.to_string(),
         token_id,
         bidder: bidder.to_string(),
-        price: bid_price.clone(),
+        price: bid_price,
     };
 
     // Include hook submessages, i.e: bid rewards
