@@ -28,6 +28,7 @@ pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");
 
 pub const ASK_CREATED_HOOKS: Hooks = Hooks::new("ask-created-hooks");
 pub const ASK_FILLED_HOOKS: Hooks = Hooks::new("ask-filled-hooks");
+pub const BID_CREATED_HOOKS: Hooks = Hooks::new("bid-created-hooks");
 
 pub type TokenId = u32;
 
