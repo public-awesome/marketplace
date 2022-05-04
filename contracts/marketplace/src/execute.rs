@@ -44,6 +44,7 @@ pub fn instantiate(
         bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,
         max_finders_fee_percent: Decimal::percent(msg.max_finders_fee_bps),
+        min_price: msg.min_price,
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -194,7 +195,7 @@ pub fn execute_set_ask(
     } = ask_info;
 
     nonpayable(&info)?;
-    price_validate(&price)?;
+    price_validate(deps.storage, &price)?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_expiry.is_valid(&env.block, expires)?;
@@ -325,7 +326,7 @@ pub fn execute_update_ask_price(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-    price_validate(&price)?;
+    price_validate(deps.storage, &price)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     ask.price = price.amount;
@@ -349,10 +350,13 @@ pub fn execute_set_bid(
     expires: Timestamp,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
-    let bid_price = must_pay(&info, NATIVE_DENOM)?;
-    let bidder = info.sender;
     let params = SUDO_PARAMS.load(deps.storage)?;
+    let bid_price = must_pay(&info, NATIVE_DENOM)?;
+    if bid_price < params.min_price {
+        return Err(ContractError::PriceTooSmall(bid_price));
+    }
     params.bid_expiry.is_valid(&env.block, expires)?;
+    let bidder = info.sender;
 
     let mut res = Response::new();
 
@@ -543,9 +547,11 @@ pub fn execute_set_collection_bid(
     collection: Addr,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
-    let price = must_pay(&info, NATIVE_DENOM)?;
-
     let params = SUDO_PARAMS.load(deps.storage)?;
+    let price = must_pay(&info, NATIVE_DENOM)?;
+    if price < params.min_price {
+        return Err(ContractError::PriceTooSmall(price));
+    }
     params.bid_expiry.is_valid(&env.block, expires)?;
 
     let bidder = info.sender;
@@ -859,9 +865,13 @@ fn payout(
     Ok(())
 }
 
-fn price_validate(price: &Coin) -> Result<(), ContractError> {
+fn price_validate(store: &dyn Storage, price: &Coin) -> Result<(), ContractError> {
     if price.amount.is_zero() || price.denom != NATIVE_DENOM {
         return Err(ContractError::InvalidPrice {});
+    }
+
+    if price.amount < SUDO_PARAMS.load(store)?.min_price {
+        return Err(ContractError::PriceTooSmall(price.amount));
     }
 
     Ok(())

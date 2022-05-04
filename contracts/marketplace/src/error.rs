@@ -1,4 +1,4 @@
-use cosmwasm_std::StdError;
+use cosmwasm_std::{StdError, Uint128};
 use cw_utils::PaymentError;
 use sg_controllers::HookError;
 use thiserror::Error;
@@ -39,6 +39,9 @@ pub enum ContractError {
 
     #[error("Bid not found")]
     BidNotFound {},
+
+    #[error("PriceTooSmall: {0}")]
+    PriceTooSmall(Uint128),
 
     #[error("Contract needs approval")]
     NeedsApproval {},

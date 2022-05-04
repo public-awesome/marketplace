@@ -24,6 +24,8 @@ pub struct InstantiateMsg {
     pub sale_hook: Option<String>,
     /// Max basis points for the finders fee
     pub max_finders_fee_bps: u64,
+    /// Min value for bids and asks
+    pub min_price: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -103,6 +105,7 @@ pub enum SudoMsg {
         bid_expiry: Option<ExpiryRange>,
         operators: Option<Vec<String>>,
         max_finders_fee_bps: Option<u64>,
+        min_price: Option<Uint128>,
     },
     /// Add a new hook to be informed of all asks
     AddAskCreatedHook { hook: String },

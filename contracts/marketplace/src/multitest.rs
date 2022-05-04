@@ -75,6 +75,7 @@ mod tests {
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             sale_hook: None,
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
+            min_price: Uint128::from(5u128),
         };
         let marketplace = router
             .instantiate_contract(
@@ -980,7 +981,7 @@ mod tests {
             bidder.clone(),
             marketplace.clone(),
             &set_bid_msg,
-            &coins(5, NATIVE_DENOM),
+            &coins(50, NATIVE_DENOM),
         );
         assert!(res.is_ok());
         // Bidder makes bid
@@ -994,7 +995,7 @@ mod tests {
             bidder.clone(),
             marketplace.clone(),
             &set_bid_msg,
-            &coins(7, NATIVE_DENOM),
+            &coins(70, NATIVE_DENOM),
         );
         assert!(res.is_ok());
         // Bidder makes bid
@@ -1004,11 +1005,19 @@ mod tests {
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
             finder: None,
         };
+        router
+            .execute_contract(
+                bidder.clone(),
+                marketplace.clone(),
+                &set_bid_msg,
+                &coins(1, NATIVE_DENOM),
+            )
+            .unwrap_err();
         let res = router.execute_contract(
             bidder,
             marketplace.clone(),
             &set_bid_msg,
-            &coins(6, NATIVE_DENOM),
+            &coins(60, NATIVE_DENOM),
         );
         assert!(res.is_ok());
 
@@ -1022,9 +1031,9 @@ mod tests {
             .query_wasm_smart(marketplace.clone(), &query_bids_msg)
             .unwrap();
         assert_eq!(res.bids.len(), 3);
-        assert_eq!(res.bids[0].price.u128(), 5u128);
-        assert_eq!(res.bids[1].price.u128(), 6u128);
-        assert_eq!(res.bids[2].price.u128(), 7u128);
+        assert_eq!(res.bids[0].price.u128(), 50u128);
+        assert_eq!(res.bids[1].price.u128(), 60u128);
+        assert_eq!(res.bids[2].price.u128(), 70u128);
 
         // test adding another bid to an existing ask
         let bidder2: Addr = Addr::unchecked("bidder2");
@@ -1050,7 +1059,7 @@ mod tests {
             bidder2,
             marketplace.clone(),
             &set_bid_msg,
-            &coins(4, NATIVE_DENOM),
+            &coins(40, NATIVE_DENOM),
         );
         assert!(res.is_ok());
 
@@ -1059,10 +1068,10 @@ mod tests {
             .query_wasm_smart(marketplace.clone(), &query_bids_msg)
             .unwrap();
         assert_eq!(res.bids.len(), 4);
-        assert_eq!(res.bids[0].price.u128(), 4u128);
-        assert_eq!(res.bids[1].price.u128(), 5u128);
-        assert_eq!(res.bids[2].price.u128(), 6u128);
-        assert_eq!(res.bids[3].price.u128(), 7u128);
+        assert_eq!(res.bids[0].price.u128(), 40u128);
+        assert_eq!(res.bids[1].price.u128(), 50u128);
+        assert_eq!(res.bids[2].price.u128(), 60u128);
+        assert_eq!(res.bids[3].price.u128(), 70u128);
 
         // test start_after query
         let start_after = BidOffset {
@@ -1080,7 +1089,7 @@ mod tests {
             .query_wasm_smart(marketplace.clone(), &query_start_after_bids_msg)
             .unwrap();
         assert_eq!(res.bids.len(), 1);
-        assert_eq!(res.bids[0].price.u128(), 7u128);
+        assert_eq!(res.bids[0].price.u128(), 70u128);
 
         // test reverse bids query
         let reverse_query_bids_msg = QueryMsg::ReverseBidsSortedByPrice {
@@ -1093,10 +1102,10 @@ mod tests {
             .query_wasm_smart(marketplace.clone(), &reverse_query_bids_msg)
             .unwrap();
         assert_eq!(res.bids.len(), 4);
-        assert_eq!(res.bids[0].price.u128(), 7u128);
-        assert_eq!(res.bids[1].price.u128(), 6u128);
-        assert_eq!(res.bids[2].price.u128(), 5u128);
-        assert_eq!(res.bids[3].price.u128(), 4u128);
+        assert_eq!(res.bids[0].price.u128(), 70u128);
+        assert_eq!(res.bids[1].price.u128(), 60u128);
+        assert_eq!(res.bids[2].price.u128(), 50u128);
+        assert_eq!(res.bids[3].price.u128(), 40u128);
 
         // test start_before reverse bids query
         let start_before = BidOffset {
@@ -1114,8 +1123,8 @@ mod tests {
             .query_wasm_smart(marketplace, &reverse_query_start_before_bids_msg)
             .unwrap();
         assert_eq!(res.bids.len(), 2);
-        assert_eq!(res.bids[0].price.u128(), 5u128);
-        assert_eq!(res.bids[1].price.u128(), 4u128);
+        assert_eq!(res.bids[0].price.u128(), 50u128);
+        assert_eq!(res.bids[1].price.u128(), 40u128);
     }
 
     #[test]
@@ -1620,6 +1629,7 @@ mod tests {
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             sale_hook: None,
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
+            min_price: Uint128::from(5u128),
         };
         let marketplace = router
             .instantiate_contract(
@@ -1736,6 +1746,7 @@ mod tests {
             bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
             max_finders_fee_bps: None,
+            min_price: Some(Uint128::from(5u128)),
         };
         router
             .wasm_sudo(marketplace.clone(), &update_params_msg)
@@ -1747,6 +1758,7 @@ mod tests {
             bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
             max_finders_fee_bps: None,
+            min_price: Some(Uint128::from(5u128)),
         };
         let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
         assert!(res.is_ok());
@@ -1809,6 +1821,7 @@ mod tests {
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             sale_hook: Some("hook".to_string()),
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
+            min_price: Uint128::from(5u128),
         };
         let marketplace = router
             .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)
