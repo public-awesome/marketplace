@@ -387,32 +387,23 @@ pub fn execute_set_bid(
 
     match ask.sale_type {
         SaleType::FixedPrice => {
-            if ask.price == bid_price {
+            if ask.price != bid_price {
+                return Err(ContractError::InvalidPrice {});
+            } else {
                 asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
                 fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
-            } else {
-                store_bid(
-                    deps.storage,
-                    &Bid {
-                        collection: collection.clone(),
-                        token_id,
-                        bidder: bidder.clone(),
-                        price: bid_price,
-                        expires,
-                    },
-                )?;
             }
         }
         SaleType::Auction => {
             store_bid(
                 deps.storage,
-                &Bid {
-                    collection: collection.clone(),
+                &Bid::new(
+                    collection.clone(),
                     token_id,
-                    bidder: bidder.clone(),
-                    price: bid_price,
+                    bidder.clone(),
+                    bid_price,
                     expires,
-                },
+                ),
             )?;
         }
     };

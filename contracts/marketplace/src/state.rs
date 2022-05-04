@@ -97,6 +97,24 @@ pub struct Bid {
     pub expires: Timestamp,
 }
 
+impl Bid {
+    pub fn new(
+        collection: Addr,
+        token_id: TokenId,
+        bidder: Addr,
+        price: Uint128,
+        expires: Timestamp,
+    ) -> Self {
+        Bid {
+            collection,
+            token_id,
+            bidder,
+            price,
+            expires,
+        }
+    }
+}
+
 /// Primary key for bids: (collection, token_id, bidder)
 pub type BidKey = (Addr, TokenId, Addr);
 /// Convenience bid key constructor
