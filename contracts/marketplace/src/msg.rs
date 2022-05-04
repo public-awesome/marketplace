@@ -1,6 +1,6 @@
 use crate::{
     helpers::ExpiryRange,
-    state::{Ask, Bid, CollectionBid, SudoParams, TokenId},
+    state::{Ask, Bid, CollectionBid, SaleType, SudoParams, TokenId},
 };
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128, WasmMsg};
 use schemars::JsonSchema;
@@ -31,12 +31,13 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// List an NFT on the marketplace by creating a new ask
     SetAsk {
+        sale_type: SaleType,
         collection: String,
         token_id: TokenId,
         price: Coin,
         funds_recipient: Option<String>,
         reserve_for: Option<String>,
-        finders_fee_basis_points: Option<u64>,
+        finders_fee_bps: Option<u64>,
         expires: Timestamp,
     },
     /// Remove an existing ask from the marketplace

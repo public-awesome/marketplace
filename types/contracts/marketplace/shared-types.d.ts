@@ -51,6 +51,7 @@ export type Timestamp = Uint64;
  * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  */
 export type Uint64 = string;
+export type SaleType = ("fixed_price" | "auction");
 /**
  * Represents an ask on the marketplace
  */
@@ -63,6 +64,7 @@ export interface Ask {
     is_active: boolean;
     price: Uint128;
     reserve_for?: (Addr | null);
+    sale_type: SaleType;
     seller: Addr;
     token_id: number;
 }
