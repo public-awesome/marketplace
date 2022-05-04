@@ -11,6 +11,7 @@ export interface CollectionBid {
 bidder: Addr
 collection: Addr
 expires: Timestamp
+finders_fee_bps?: (number | null)
 price: Uint128
 [k: string]: unknown
 }
