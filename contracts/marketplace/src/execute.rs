@@ -378,33 +378,44 @@ pub fn execute_set_bid(
         bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
     if let Some(existing_bid) = existing_bid {
         bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-        let exec_refund_bidder = BankMsg::Send {
+        let refund_bidder = BankMsg::Send {
             to_address: bidder.to_string(),
             amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
         };
-        res = res.add_message(exec_refund_bidder)
+        res = res.add_message(refund_bidder)
     }
 
-    if ask.price != bid_price {
-        // Bid does not meet ask criteria, store bid
-        bids().save(
-            deps.storage,
-            (collection.clone(), token_id, bidder.clone()),
-            &Bid {
-                collection: collection.clone(),
-                token_id,
-                bidder: bidder.clone(),
-                price: bid_price,
-                expires,
-            },
-        )?;
-    } else {
-        // Bid meets ask criteria so fulfill bid
-        asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
-
-        // Include messages needed to finalize nft transfer and payout
-        fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
-    }
+    match ask.sale_type {
+        SaleType::FixedPrice => {
+            if ask.price == bid_price {
+                asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
+                fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
+            } else {
+                store_bid(
+                    deps.storage,
+                    &Bid {
+                        collection: collection.clone(),
+                        token_id,
+                        bidder: bidder.clone(),
+                        price: bid_price,
+                        expires,
+                    },
+                )?;
+            }
+        }
+        SaleType::Auction => {
+            store_bid(
+                deps.storage,
+                &Bid {
+                    collection: collection.clone(),
+                    token_id,
+                    bidder: bidder.clone(),
+                    price: bid_price,
+                    expires,
+                },
+            )?;
+        }
+    };
 
     let event = Event::new("set-bid")
         .add_attribute("collection", collection.to_string())
@@ -838,4 +849,12 @@ fn price_validate(price: &Coin) -> Result<(), ContractError> {
     }
 
     Ok(())
+}
+
+fn store_bid(store: &mut dyn Storage, bid: &Bid) -> StdResult<()> {
+    bids().save(
+        store,
+        (bid.collection.clone(), bid.token_id, bid.bidder.clone()),
+        bid,
+    )
 }
