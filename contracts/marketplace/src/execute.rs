@@ -39,11 +39,11 @@ pub fn instantiate(
     msg.bid_expiry.validate()?;
 
     let params = SudoParams {
-        trading_fee_bps: Decimal::percent(msg.trading_fee_bps),
+        trading_fee_percent: Decimal::percent(msg.trading_fee_bps),
         ask_expiry: msg.ask_expiry,
         bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,
-        max_finders_fee_bps: Decimal::percent(msg.max_finders_fee_bps),
+        max_finders_fee_percent: Decimal::percent(msg.max_finders_fee_bps),
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -200,7 +200,7 @@ pub fn execute_set_ask(
     params.ask_expiry.is_valid(&env.block, expires)?;
 
     if let Some(fee) = finders_fee_bps {
-        if Decimal::percent(fee) > params.max_finders_fee_bps {
+        if Decimal::percent(fee) > params.max_finders_fee_percent {
             return Err(ContractError::InvalidFindersFeeBps(fee));
         };
     }
@@ -490,21 +490,20 @@ pub fn execute_accept_bid(
         return Err(ContractError::BidExpired {});
     }
 
-    let ask;
-    match asks().may_load(deps.storage, ask_key(collection.clone(), token_id))? {
+    let ask = match asks().may_load(deps.storage, ask_key(collection.clone(), token_id))? {
         Some(existing_ask) => {
-            ask = existing_ask;
-            if ask.expires <= env.block.time {
+            if existing_ask.expires <= env.block.time {
                 return Err(ContractError::AskExpired {});
             }
-            if !ask.is_active {
+            if !existing_ask.is_active {
                 return Err(ContractError::AskNotActive {});
             }
             asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
+            existing_ask
         }
         None => {
             // Create a temporary Ask
-            ask = Ask {
+            Ask {
                 sale_type: SaleType::Auction,
                 collection: collection.clone(),
                 token_id,
@@ -515,9 +514,9 @@ pub fn execute_accept_bid(
                 funds_recipient: None,
                 reserve_for: None,
                 finders_fee_bps: None,
-            };
+            }
         }
-    }
+    };
 
     // Remove accepted bid
     bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
@@ -796,7 +795,7 @@ fn payout(
     let params = SUDO_PARAMS.load(deps.storage)?;
 
     // Append Fair Burn message
-    let network_fee = payment * params.trading_fee_bps / Uint128::from(100u128);
+    let network_fee = payment * params.trading_fee_percent / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
     // Check if token supports royalties
