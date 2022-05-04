@@ -214,10 +214,6 @@ pub fn execute_set_ask(
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_expiry.is_valid(&env.block, expires)?;
 
-    if price.amount < params.min_price {
-        return Err(ContractError::PriceTooSmall(price.amount));
-    }
-
     if let Some(fee) = finders_fee_bps {
         if Decimal::percent(fee) > params.max_finders_fee_percent {
             return Err(ContractError::InvalidFindersFeeBps(fee));
