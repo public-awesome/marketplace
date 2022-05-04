@@ -43,9 +43,9 @@
       "required": [
         "ask_expiry",
         "bid_expiry",
-        "max_finders_fee_bps",
+        "max_finders_fee_percent",
         "operators",
-        "trading_fee_bps"
+        "trading_fee_percent"
       ],
       "properties": {
         "ask_expiry": {
@@ -64,7 +64,7 @@
             }
           ]
         },
-        "max_finders_fee_bps": {
+        "max_finders_fee_percent": {
           "description": "Max value for the finders fee",
           "allOf": [
             {
@@ -79,8 +79,8 @@
             "$ref": "#/definitions/Addr"
           }
         },
-        "trading_fee_bps": {
-          "description": "Fair Burn fee for winning bids 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250",
+        "trading_fee_percent": {
+          "description": "Fair Burn fee for winning bids",
           "allOf": [
             {
               "$ref": "#/definitions/Decimal"
