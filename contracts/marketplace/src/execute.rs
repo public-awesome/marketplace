@@ -240,16 +240,10 @@ pub fn execute_set_ask(
         };
     }
 
-    let res = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-    if res
-        .approvals
-        .iter()
-        .map(|x| x.spender == env.contract.address)
-        .len()
-        != 1
-    {
-        return Err(ContractError::NeedsApproval {});
-    }
+    has_approval(
+        env,
+        only_owner(deps.as_ref(), &info, collection.clone(), token_id)?,
+    )?;
 
     let seller = info.sender;
     store_ask(
@@ -992,4 +986,18 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
     }
 
     Ok(info.sender.clone())
+}
+
+fn has_approval(env: Env, res: OwnerOfResponse) -> Result<(), ContractError> {
+    if res
+        .approvals
+        .iter()
+        .map(|x| x.spender == env.contract.address)
+        .len()
+        != 1
+    {
+        return Err(ContractError::NeedsApproval {});
+    }
+
+    Ok(())
 }
