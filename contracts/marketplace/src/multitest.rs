@@ -46,6 +46,7 @@ mod tests {
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
+    use cw_utils::Duration;
     use sg721::msg::{InstantiateMsg as Sg721InstantiateMsg, RoyaltyInfoResponse};
     use sg721::state::CollectionInfo;
     use sg_multi_test::StargazeApp;
@@ -76,6 +77,7 @@ mod tests {
             sale_hook: None,
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
             min_price: Uint128::from(5u128),
+            stale_bid_duration: Duration::Height(100),
         };
         let marketplace = router
             .instantiate_contract(
@@ -1630,6 +1632,7 @@ mod tests {
             sale_hook: None,
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
             min_price: Uint128::from(5u128),
+            stale_bid_duration: Duration::Height(100),
         };
         let marketplace = router
             .instantiate_contract(
@@ -1747,6 +1750,7 @@ mod tests {
             operators: Some(vec!["operator".to_string()]),
             max_finders_fee_bps: None,
             min_price: Some(Uint128::from(5u128)),
+            stale_bid_duration: None,
         };
         router
             .wasm_sudo(marketplace.clone(), &update_params_msg)
@@ -1759,6 +1763,7 @@ mod tests {
             operators: Some(vec!["operator".to_string()]),
             max_finders_fee_bps: None,
             min_price: Some(Uint128::from(5u128)),
+            stale_bid_duration: None,
         };
         let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
         assert!(res.is_ok());
@@ -1822,6 +1827,7 @@ mod tests {
             sale_hook: Some("hook".to_string()),
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
             min_price: Uint128::from(5u128),
+            stale_bid_duration: Duration::Height(100),
         };
         let marketplace = router
             .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)

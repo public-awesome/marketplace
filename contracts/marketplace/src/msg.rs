@@ -3,6 +3,7 @@ use crate::{
     state::{Ask, Bid, CollectionBid, SaleType, SudoParams, TokenId},
 };
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128, WasmMsg};
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_std::CosmosMsg;
@@ -26,6 +27,8 @@ pub struct InstantiateMsg {
     pub max_finders_fee_bps: u64,
     /// Min value for bids and asks
     pub min_price: Uint128,
+    /// Duration after expiry when a bid becomes stale
+    pub stale_bid_duration: Duration,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -92,6 +95,12 @@ pub enum ExecuteMsg {
         bidder: String,
         finder: Option<String>,
     },
+    // /// Privileged operation to remove stale bids
+    // RemoveStaleBid {
+    //     collection: String,
+    //     token_id: TokenId,
+    //     bidder: String,
+    // },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -106,6 +115,7 @@ pub enum SudoMsg {
         operators: Option<Vec<String>>,
         max_finders_fee_bps: Option<u64>,
         min_price: Option<Uint128>,
+        stale_bid_duration: Option<u64>,
     },
     /// Add a new hook to be informed of all asks
     AddAskCreatedHook { hook: String },
