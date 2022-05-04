@@ -511,6 +511,7 @@ pub fn execute_accept_bid(
         None => {
             // Create a temporary Ask
             ask = Ask {
+                sale_type: SaleType::Auction,
                 collection: collection.clone(),
                 token_id,
                 price: bid.price,
