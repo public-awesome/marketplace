@@ -1,4 +1,4 @@
-import { Addr, ExpiryRange, Uint128 } from "./shared-types";
+import { Addr, Duration, ExpiryRange, Uint128 } from "./shared-types";
 
 /**
  * A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0

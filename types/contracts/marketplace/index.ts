@@ -30,6 +30,7 @@ export * from "./params_response";
 export * from "./query_msg";
 export * from "./sale_finalized_hook_msg";
 export * from "./sale_finalized_hooks_response";
+export * from "./sale_hooks_response";
 export * from "./shared-types";
 export * from "./sudo_msg";
 // dedup emptied this file
