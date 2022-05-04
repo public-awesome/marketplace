@@ -175,6 +175,7 @@ pub struct CollectionBid {
     pub collection: Addr,
     pub bidder: Addr,
     pub price: Uint128,
+    pub finders_fee_bps: Option<u64>,
     pub expires: Timestamp,
 }
 

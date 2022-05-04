@@ -169,7 +169,15 @@ pub fn execute(
         ExecuteMsg::SetCollectionBid {
             collection,
             expires,
-        } => execute_set_collection_bid(deps, env, info, api.addr_validate(&collection)?, expires),
+            finders_fee_bps,
+        } => execute_set_collection_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            finders_fee_bps,
+            expires,
+        ),
         ExecuteMsg::RemoveCollectionBid { collection } => {
             execute_remove_collection_bid(deps, env, info, api.addr_validate(&collection)?)
         }
@@ -570,6 +578,7 @@ pub fn execute_set_collection_bid(
     env: Env,
     info: MessageInfo,
     collection: Addr,
+    finders_fee_bps: Option<u64>,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let params = SUDO_PARAMS.load(deps.storage)?;
@@ -601,6 +610,7 @@ pub fn execute_set_collection_bid(
             collection: collection.clone(),
             bidder: bidder.clone(),
             price,
+            finders_fee_bps,
             expires,
         },
     )?;
@@ -702,7 +712,7 @@ pub fn execute_accept_collection_bid(
         seller: info.sender.clone(),
         funds_recipient: None,
         reserve_for: None,
-        finders_fee_bps: None,
+        finders_fee_bps: bid.finders_fee_bps,
     };
 
     // Transfer funds and NFT
