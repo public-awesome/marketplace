@@ -240,7 +240,7 @@ pub fn execute_set_ask(
         };
     }
 
-    has_approval(
+    must_approve(
         env,
         only_owner(deps.as_ref(), &info, collection.clone(), token_id)?,
     )?;
@@ -988,7 +988,7 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
     Ok(info.sender.clone())
 }
 
-fn has_approval(env: Env, res: OwnerOfResponse) -> Result<(), ContractError> {
+fn must_approve(env: Env, res: OwnerOfResponse) -> Result<(), ContractError> {
     if res
         .approvals
         .iter()
