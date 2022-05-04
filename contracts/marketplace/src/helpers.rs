@@ -39,6 +39,9 @@ pub enum ExpiryRangeError {
 
     #[error("Invalid expiration range")]
     InvalidExpirationRange {},
+
+    #[error("Expiry min > max")]
+    InvalidExpiry {},
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -57,6 +60,14 @@ impl ExpiryRange {
         let now = block.time;
         if !(expires > now.plus_seconds(self.min) && expires <= now.plus_seconds(self.max)) {
             return Err(ExpiryRangeError::InvalidExpirationRange {});
+        }
+
+        Ok(())
+    }
+
+    pub fn validate(&self) -> Result<(), ExpiryRangeError> {
+        if self.min > self.max {
+            return Err(ExpiryRangeError::InvalidExpiry {});
         }
 
         Ok(())

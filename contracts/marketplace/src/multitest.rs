@@ -1624,7 +1624,7 @@ mod tests {
     }
 
     #[test]
-    fn try_sudo_update_config() {
+    fn try_sudo_update_params() {
         let mut router = custom_mock_app();
 
         // Setup intial accounts
@@ -1633,14 +1633,25 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let update_config_msg = SudoMsg::UpdateParams {
+        let update_params_msg = SudoMsg::UpdateParams {
+            trading_fee_bps: Some(5),
+            ask_expiry: Some(ExpiryRange::new(100, 2)),
+            bid_expiry: None,
+            operators: Some(vec!["operator".to_string()]),
+            max_finders_fee_bps: None,
+        };
+        router
+            .wasm_sudo(marketplace.clone(), &update_params_msg)
+            .unwrap_err();
+
+        let update_params_msg = SudoMsg::UpdateParams {
             trading_fee_bps: Some(5),
             ask_expiry: Some(ExpiryRange::new(1, 2)),
             bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
             max_finders_fee_bps: None,
         };
-        let res = router.wasm_sudo(marketplace.clone(), &update_config_msg);
+        let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
         assert!(res.is_ok());
 
         let query_params_msg = QueryMsg::Params {};

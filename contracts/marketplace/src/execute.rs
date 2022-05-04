@@ -35,6 +35,9 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    msg.ask_expiry.validate()?;
+    msg.bid_expiry.validate()?;
+
     let params = SudoParams {
         trading_fee_bps: Decimal::percent(msg.trading_fee_bps),
         ask_expiry: msg.ask_expiry,
