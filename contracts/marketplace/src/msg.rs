@@ -124,8 +124,12 @@ pub enum SudoMsg {
     },
     /// Add a new hook to be informed of all asks
     AddAskCreatedHook { hook: String },
+    /// Add a new hook to be informed of all bids
+    AddBidCreatedHook { hook: String },
     /// Remove a ask hook
     RemoveAskCreatedHook { hook: String },
+    /// Remove a bid hook
+    RemoveBidCreatedHook { hook: String },
     /// Add a new hook to be informed of all trades
     AddSaleHook { hook: String },
     /// Remove a trade hook
@@ -308,6 +312,9 @@ pub enum QueryMsg {
     /// Show all registered ask hooks
     /// Return type: `HooksResponse`
     AskCreatedHooks {},
+    /// Show all registered bid hooks
+    /// Return type: `HooksResponse`
+    BidCreatedHooks {},
     /// Show all registered sale hooks
     /// Return type: `HooksResponse`
     SaleHooks {},
@@ -463,4 +470,48 @@ impl AskCreatedHookMsg {
 #[serde(rename_all = "snake_case")]
 pub enum AskCreatedExecuteMsg {
     AskCreatedHook(AskCreatedHookMsg),
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct BidCreatedHookMsg {
+    pub collection: String,
+    pub token_id: TokenId,
+    pub bidder: String,
+    pub price: Uint128,
+}
+
+impl BidCreatedHookMsg {
+    pub fn new(collection: String, token_id: TokenId, bidder: String, price: Uint128) -> Self {
+        BidCreatedHookMsg {
+            collection,
+            token_id,
+            bidder,
+            price,
+        }
+    }
+
+    /// serializes the message
+    pub fn into_binary(self) -> StdResult<Binary> {
+        let msg = BidCreatedExecuteMsg::BidCreatedHook(self);
+        to_binary(&msg)
+    }
+
+    /// creates a cosmos_msg sending this struct to the named contract
+    pub fn into_cosmos_msg<T: Into<String>>(self, contract_addr: T) -> StdResult<CosmosMsg> {
+        let msg = self.into_binary()?;
+        let execute = WasmMsg::Execute {
+            contract_addr: contract_addr.into(),
+            msg,
+            funds: vec![],
+        };
+        Ok(execute.into())
+    }
+}
+
+// This is just a helper to properly serialize the above message
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum BidCreatedExecuteMsg {
+    BidCreatedHook(BidCreatedHookMsg),
 }
