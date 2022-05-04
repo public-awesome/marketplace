@@ -1754,6 +1754,7 @@ mod tests {
             max_finders_fee_bps: None,
             min_price: Some(Uint128::from(5u128)),
             stale_bid_duration: None,
+            bid_removal_reward_bps: None,
         };
         router
             .wasm_sudo(marketplace.clone(), &update_params_msg)
@@ -1767,6 +1768,7 @@ mod tests {
             max_finders_fee_bps: None,
             min_price: Some(Uint128::from(5u128)),
             stale_bid_duration: None,
+            bid_removal_reward_bps: None,
         };
         let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
         assert!(res.is_ok());

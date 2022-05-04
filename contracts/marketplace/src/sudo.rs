@@ -14,6 +14,7 @@ pub struct ParamInfo {
     max_finders_fee_bps: Option<u64>,
     min_price: Option<Uint128>,
     stale_bid_duration: Option<u64>,
+    bid_removal_reward_bps: Option<u64>,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -29,6 +30,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             max_finders_fee_bps,
             min_price,
             stale_bid_duration,
+            bid_removal_reward_bps,
         } => sudo_update_params(
             deps,
             env,
@@ -40,6 +42,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
                 max_finders_fee_bps,
                 min_price,
                 stale_bid_duration,
+                bid_removal_reward_bps,
             },
         ),
         SudoMsg::AddSaleHook { hook } => sudo_add_sale_hook(deps, api.addr_validate(&hook)?),
@@ -67,6 +70,7 @@ pub fn sudo_update_params(
         max_finders_fee_bps,
         min_price,
         stale_bid_duration,
+        bid_removal_reward_bps,
     } = param_info;
 
     ask_expiry.as_ref().map(|a| a.validate()).transpose()?;
@@ -92,8 +96,12 @@ pub fn sudo_update_params(
     params.min_price = min_price.unwrap_or(params.min_price);
 
     params.stale_bid_duration = stale_bid_duration
-        .map(Duration::Height)
+        .map(Duration::Time)
         .unwrap_or(params.stale_bid_duration);
+
+    params.bid_removal_reward_percent = bid_removal_reward_bps
+        .map(Decimal::percent)
+        .unwrap_or(params.bid_removal_reward_percent);
 
     SUDO_PARAMS.save(deps.storage, &params)?;
 
