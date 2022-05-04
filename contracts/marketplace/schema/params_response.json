@@ -2,9 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "ParamsResponse",
   "type": "object",
-  "required": [
-    "params"
-  ],
+  "required": ["params"],
   "properties": {
     "params": {
       "$ref": "#/definitions/SudoParams"
@@ -21,10 +19,7 @@
     },
     "ExpiryRange": {
       "type": "object",
-      "required": [
-        "max",
-        "min"
-      ],
+      "required": ["max", "min"],
       "properties": {
         "max": {
           "type": "integer",
