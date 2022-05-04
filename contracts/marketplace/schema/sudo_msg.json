@@ -110,6 +110,27 @@
       "additionalProperties": false
     },
     {
+      "description": "Add a new hook to be informed of all bids",
+      "type": "object",
+      "required": [
+        "add_bid_created_hook"
+      ],
+      "properties": {
+        "add_bid_created_hook": {
+          "type": "object",
+          "required": [
+            "hook"
+          ],
+          "properties": {
+            "hook": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Remove a ask hook",
       "type": "object",
       "required": [
@@ -117,6 +138,27 @@
       ],
       "properties": {
         "remove_ask_created_hook": {
+          "type": "object",
+          "required": [
+            "hook"
+          ],
+          "properties": {
+            "hook": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Remove a bid hook",
+      "type": "object",
+      "required": [
+        "remove_bid_created_hook"
+      ],
+      "properties": {
+        "remove_bid_created_hook": {
           "type": "object",
           "required": [
             "hook"
