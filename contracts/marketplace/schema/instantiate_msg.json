@@ -41,13 +41,8 @@
       "format": "uint64",
       "minimum": 0.0
     },
-<<<<<<< HEAD
     "min_price": {
       "description": "Min value for bids and asks",
-=======
-    "min_bid_amount": {
-      "description": "Min value for a bid",
->>>>>>> ddb6501 (Add min bid amount)
       "allOf": [
         {
           "$ref": "#/definitions/Uint128"

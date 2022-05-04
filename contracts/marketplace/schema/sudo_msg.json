@@ -5,7 +5,9 @@
     {
       "description": "Update the contract parameters Can only be called by governance",
       "type": "object",
-      "required": ["update_params"],
+      "required": [
+        "update_params"
+      ],
       "properties": {
         "update_params": {
           "type": "object",
@@ -39,7 +41,10 @@
               "minimum": 0.0
             },
             "max_finders_fee_bps": {
-              "type": ["integer", "null"],
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint64",
               "minimum": 0.0
             },
@@ -54,7 +59,10 @@
               ]
             },
             "operators": {
-              "type": ["array", "null"],
+              "type": [
+                "array",
+                "null"
+              ],
               "items": {
                 "type": "string"
               }
@@ -68,7 +76,10 @@
               "minimum": 0.0
             },
             "trading_fee_bps": {
-              "type": ["integer", "null"],
+              "type": [
+                "integer",
+                "null"
+              ],
               "format": "uint64",
               "minimum": 0.0
             }
@@ -80,11 +91,15 @@
     {
       "description": "Add a new hook to be informed of all asks",
       "type": "object",
-      "required": ["add_ask_created_hook"],
+      "required": [
+        "add_ask_created_hook"
+      ],
       "properties": {
         "add_ask_created_hook": {
           "type": "object",
-          "required": ["hook"],
+          "required": [
+            "hook"
+          ],
           "properties": {
             "hook": {
               "type": "string"
@@ -97,11 +112,15 @@
     {
       "description": "Remove a ask hook",
       "type": "object",
-      "required": ["remove_ask_created_hook"],
+      "required": [
+        "remove_ask_created_hook"
+      ],
       "properties": {
         "remove_ask_created_hook": {
           "type": "object",
-          "required": ["hook"],
+          "required": [
+            "hook"
+          ],
           "properties": {
             "hook": {
               "type": "string"
@@ -114,11 +133,15 @@
     {
       "description": "Add a new hook to be informed of all trades",
       "type": "object",
-      "required": ["add_sale_hook"],
+      "required": [
+        "add_sale_hook"
+      ],
       "properties": {
         "add_sale_hook": {
           "type": "object",
-          "required": ["hook"],
+          "required": [
+            "hook"
+          ],
           "properties": {
             "hook": {
               "type": "string"
@@ -131,11 +154,15 @@
     {
       "description": "Remove a trade hook",
       "type": "object",
-      "required": ["remove_sale_hook"],
+      "required": [
+        "remove_sale_hook"
+      ],
       "properties": {
         "remove_sale_hook": {
           "type": "object",
-          "required": ["hook"],
+          "required": [
+            "hook"
+          ],
           "properties": {
             "hook": {
               "type": "string"
@@ -149,7 +176,10 @@
   "definitions": {
     "ExpiryRange": {
       "type": "object",
-      "required": ["max", "min"],
+      "required": [
+        "max",
+        "min"
+      ],
       "properties": {
         "max": {
           "type": "integer",
