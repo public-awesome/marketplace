@@ -1,8 +1,9 @@
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use sg_marketplace::msg::{
-    AskCountResponse, AskCreatedHookMsg, AskResponse, AsksResponse, BidResponse, BidsResponse,
-    CollectionBidResponse, CollectionsResponse, ExecuteMsg, InstantiateMsg, ParamsResponse,
-    QueryMsg, SaleHookMsg, SudoMsg,
+    AskCountResponse, AskCreatedHookMsg, AskOffset, AskResponse, AsksResponse, BidOffset,
+    BidResponse, BidsResponse, CollectionBidOffset, CollectionBidResponse, CollectionOffset,
+    CollectionsResponse, ExecuteMsg, InstantiateMsg, ParamsResponse, QueryMsg, SaleHookMsg,
+    SudoMsg,
 };
 use sg_marketplace::MarketplaceContract;
 use std::env::current_dir;
@@ -19,14 +20,19 @@ fn main() {
     export_schema(&schema_for!(ExecuteMsg), &out_dir);
     export_schema(&schema_for!(QueryMsg), &out_dir);
     export_schema(&schema_for!(SudoMsg), &out_dir);
+
+    export_schema(&schema_for!(AskCountResponse), &out_dir);
+    export_schema(&schema_for!(AskOffset), &out_dir);
+    export_schema(&schema_for!(AskResponse), &out_dir);
     export_schema(&schema_for!(AsksResponse), &out_dir);
+    export_schema(&schema_for!(BidOffset), &out_dir);
     export_schema(&schema_for!(BidResponse), &out_dir);
     export_schema(&schema_for!(BidsResponse), &out_dir);
-    export_schema(&schema_for!(CollectionsResponse), &out_dir);
-    export_schema(&schema_for!(AskResponse), &out_dir);
-    export_schema(&schema_for!(AskCountResponse), &out_dir);
-    export_schema(&schema_for!(ParamsResponse), &out_dir);
     export_schema(&schema_for!(CollectionBidResponse), &out_dir);
+    export_schema(&schema_for!(CollectionBidOffset), &out_dir);
+    export_schema(&schema_for!(CollectionOffset), &out_dir);
+    export_schema(&schema_for!(CollectionsResponse), &out_dir);
+    export_schema(&schema_for!(ParamsResponse), &out_dir);
 
     // cosmwasm-typescript-gen expects the query return type as QueryNameResponse
     // Here we map query resonses to the correct name
@@ -36,12 +42,24 @@ fn main() {
         &out_dir,
         "AsksSortedByPriceResponse",
     );
+    export_schema_with_title(
+        &schema_for!(AsksResponse),
+        &out_dir,
+        "ReverseAsksSortedByPriceResponse",
+    );
+
     export_schema_with_title(&schema_for!(BidsResponse), &out_dir, "BidsByBidderResponse");
     export_schema_with_title(
         &schema_for!(BidsResponse),
         &out_dir,
         "BidsSortedByPriceResponse",
     );
+    export_schema_with_title(
+        &schema_for!(BidsResponse),
+        &out_dir,
+        "ReverseBidsSortedByPriceResponse",
+    );
+
     export_schema_with_title(
         &schema_for!(BidsResponse),
         &out_dir,
@@ -52,6 +70,12 @@ fn main() {
         &out_dir,
         "CollectionBidsSortedByPriceResponse",
     );
+    export_schema_with_title(
+        &schema_for!(BidsResponse),
+        &out_dir,
+        "ReverseCollectionBidsSortedByPriceResponse",
+    );
+
     export_schema_with_title(
         &schema_for!(CollectionsResponse),
         &out_dir,
