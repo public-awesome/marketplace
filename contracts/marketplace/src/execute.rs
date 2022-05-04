@@ -46,6 +46,7 @@ pub fn instantiate(
         max_finders_fee_percent: Decimal::percent(msg.max_finders_fee_bps),
         min_price: msg.min_price,
         stale_bid_duration: msg.stale_bid_duration,
+        bid_removal_reward_percent: Decimal::percent(msg.bid_removal_reward_bps),
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 

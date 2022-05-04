@@ -29,6 +29,8 @@ pub struct InstantiateMsg {
     pub min_price: Uint128,
     /// Duration after expiry when a bid becomes stale
     pub stale_bid_duration: Duration,
+    /// Stale bid removal reward
+    pub bid_removal_reward_bps: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
