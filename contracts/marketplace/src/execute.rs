@@ -195,10 +195,14 @@ pub fn execute_set_ask(
     } = ask_info;
 
     nonpayable(&info)?;
-    price_validate(&price)?;
+    price_validate(deps.storage, &price)?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_expiry.is_valid(&env.block, expires)?;
+
+    if price.amount < params.min_bid_amount {
+        return Err(ContractError::BidTooSmall(price.amount));
+    }
 
     if let Some(fee) = finders_fee_bps {
         if Decimal::percent(fee) > params.max_finders_fee_percent {
@@ -326,7 +330,7 @@ pub fn execute_update_ask_price(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-    price_validate(&price)?;
+    price_validate(deps.storage, &price)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     ask.price = price.amount;
@@ -865,9 +869,13 @@ fn payout(
     Ok(())
 }
 
-fn price_validate(price: &Coin) -> Result<(), ContractError> {
+fn price_validate(store: &dyn Storage, price: &Coin) -> Result<(), ContractError> {
     if price.amount.is_zero() || price.denom != NATIVE_DENOM {
         return Err(ContractError::InvalidPrice {});
+    }
+
+    if price.amount < SUDO_PARAMS.load(store)?.min_bid_amount {
+        return Err(ContractError::BidTooSmall(price.amount));
     }
 
     Ok(())
