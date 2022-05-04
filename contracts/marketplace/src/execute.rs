@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{AskCreatedHookMsg, AskFilledHookMsg, ExecuteMsg, InstantiateMsg};
+use crate::msg::{AskCreatedHookMsg, ExecuteMsg, InstantiateMsg, SaleHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
     SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
@@ -47,7 +47,7 @@ pub fn instantiate(
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
-    if let Some(hook) = msg.ask_filled_hook {
+    if let Some(hook) = msg.sale_hook {
         SALE_HOOKS.add_hook(deps.storage, deps.api.addr_validate(&hook)?)?;
     }
 
@@ -735,7 +735,7 @@ fn finalize_sale(
     };
     res.messages.push(SubMsg::new(exec_cw721_transfer));
 
-    let msg = AskFilledHookMsg {
+    let msg = SaleHookMsg {
         collection: ask.collection.to_string(),
         token_id: ask.token_id,
         price: coin(price.clone().u128(), NATIVE_DENOM),

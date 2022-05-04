@@ -25,15 +25,11 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             operators,
             max_finders_fee_bps,
         ),
-        SudoMsg::AddAskFilledHook { hook } => {
-            sudo_add_sale_finalized_hook(deps, api.addr_validate(&hook)?)
-        }
+        SudoMsg::AddSaleHook { hook } => sudo_add_sale_hook(deps, api.addr_validate(&hook)?),
         SudoMsg::AddAskCreatedHook { hook } => {
             sudo_add_ask_hook(deps, env, api.addr_validate(&hook)?)
         }
-        SudoMsg::RemoveAskFilledHook { hook } => {
-            sudo_remove_sale_finalized_hook(deps, api.addr_validate(&hook)?)
-        }
+        SudoMsg::RemoveSaleHook { hook } => sudo_remove_sale_hook(deps, api.addr_validate(&hook)?),
         SudoMsg::RemoveAskCreatedHook { hook } => {
             sudo_remove_ask_hook(deps, api.addr_validate(&hook)?)
         }
@@ -71,11 +67,11 @@ pub fn sudo_update_params(
     Ok(Response::new().add_attribute("action", "update_params"))
 }
 
-pub fn sudo_add_sale_finalized_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
+pub fn sudo_add_sale_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
     SALE_HOOKS.add_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
-        .add_attribute("action", "add_ask_filled_hook")
+        .add_attribute("action", "add_sale_hook")
         .add_attribute("hook", hook);
     Ok(res)
 }
@@ -89,14 +85,11 @@ pub fn sudo_add_ask_hook(deps: DepsMut, _env: Env, hook: Addr) -> Result<Respons
     Ok(res)
 }
 
-pub fn sudo_remove_sale_finalized_hook(
-    deps: DepsMut,
-    hook: Addr,
-) -> Result<Response, ContractError> {
+pub fn sudo_remove_sale_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
     SALE_HOOKS.remove_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
-        .add_attribute("action", "remove_ask_filled_hook")
+        .add_attribute("action", "remove_sale_hook")
         .add_attribute("hook", hook);
     Ok(res)
 }

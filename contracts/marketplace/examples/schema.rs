@@ -1,8 +1,8 @@
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
 use sg_marketplace::msg::{
-    AskCountResponse, AskCreatedHookMsg, AskFilledHookMsg, AskResponse, AsksResponse, BidResponse,
-    BidsResponse, CollectionBidResponse, CollectionsResponse, ExecuteMsg, InstantiateMsg,
-    ParamsResponse, QueryMsg, SudoMsg,
+    AskCountResponse, AskCreatedHookMsg, AskResponse, AsksResponse, BidResponse, BidsResponse,
+    CollectionBidResponse, CollectionsResponse, ExecuteMsg, InstantiateMsg, ParamsResponse,
+    QueryMsg, SaleHookMsg, SudoMsg,
 };
 use sg_marketplace::MarketplaceContract;
 use std::env::current_dir;
@@ -57,11 +57,7 @@ fn main() {
         &out_dir,
         "ListedCollectionsResponse",
     );
-    export_schema_with_title(
-        &schema_for!(AskFilledHookMsg),
-        &out_dir,
-        "AskFilledHooksResponse",
-    );
+    export_schema_with_title(&schema_for!(SaleHookMsg), &out_dir, "SaleHooksResponse");
     export_schema_with_title(
         &schema_for!(AskCreatedHookMsg),
         &out_dir,

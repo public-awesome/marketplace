@@ -21,7 +21,7 @@ pub struct InstantiateMsg {
     /// Operators are entites that are responsible for maintaining the active state of Asks.
     /// They listen to NFT transfer events, and update the active state of Asks.
     pub operators: Vec<String>,
-    pub ask_filled_hook: Option<String>,
+    pub sale_hook: Option<String>,
     /// Max basis points for the finders fee
     pub max_finders_fee_bps: u64,
 }
@@ -109,9 +109,9 @@ pub enum SudoMsg {
     /// Remove a ask hook
     RemoveAskCreatedHook { hook: String },
     /// Add a new hook to be informed of all trades
-    AddAskFilledHook { hook: String },
+    AddSaleHook { hook: String },
     /// Remove a trade hook
-    RemoveAskFilledHook { hook: String },
+    RemoveSaleHook { hook: String },
 }
 
 pub type Collection = String;
@@ -290,9 +290,9 @@ pub enum QueryMsg {
     /// Show all registered ask hooks
     /// Return type: `HooksResponse`
     AskCreatedHooks {},
-    /// Show all registered sale finalized hooks
+    /// Show all registered sale hooks
     /// Return type: `HooksResponse`
-    AskFilledHooks {},
+    SaleHooks {},
     /// Get the config for the contract
     /// Return type: `ParamsResponse`
     Params {},
@@ -345,7 +345,7 @@ pub struct CollectionBidsResponse {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub struct AskFilledHookMsg {
+pub struct SaleHookMsg {
     pub collection: String,
     pub token_id: u32,
     pub price: Coin,
@@ -353,7 +353,7 @@ pub struct AskFilledHookMsg {
     pub buyer: String,
 }
 
-impl AskFilledHookMsg {
+impl SaleHookMsg {
     pub fn new(
         collection: String,
         token_id: u32,
@@ -361,7 +361,7 @@ impl AskFilledHookMsg {
         seller: String,
         buyer: String,
     ) -> Self {
-        AskFilledHookMsg {
+        SaleHookMsg {
             collection,
             token_id,
             price,
@@ -372,7 +372,7 @@ impl AskFilledHookMsg {
 
     /// serializes the message
     pub fn into_binary(self) -> StdResult<Binary> {
-        let msg = AskFilledExecuteMsg::AskFilledHook(self);
+        let msg = SaleExecuteMsg::SaleHook(self);
         to_binary(&msg)
     }
 
@@ -391,8 +391,8 @@ impl AskFilledHookMsg {
 // This is just a helper to properly serialize the above message
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum AskFilledExecuteMsg {
-    AskFilledHook(AskFilledHookMsg),
+pub enum SaleExecuteMsg {
+    SaleHook(SaleHookMsg),
 }
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
