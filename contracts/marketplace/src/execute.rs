@@ -2,8 +2,8 @@ use crate::error::ContractError;
 use crate::helpers::map_validate;
 use crate::msg::{AskCreatedHookMsg, AskFilledHookMsg, ExecuteMsg, InstantiateMsg};
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, AskKey, Bid,
-    CollectionBid, SudoParams, TokenId, ASK_CREATED_HOOKS, ASK_FILLED_HOOKS, SUDO_PARAMS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
+    SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, ASK_FILLED_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -54,11 +54,15 @@ pub fn instantiate(
     Ok(Response::new())
 }
 
-/// To mitigate clippy::too_many_arguments warning
-pub struct ExecuteEnv<'a> {
-    deps: DepsMut<'a>,
-    env: Env,
-    info: MessageInfo,
+pub struct AskInfo {
+    sale_type: SaleType,
+    collection: Addr,
+    token_id: TokenId,
+    price: Coin,
+    funds_recipient: Option<Addr>,
+    reserve_for: Option<Addr>,
+    finders_fee_bps: Option<u64>,
+    expires: Timestamp,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -72,21 +76,28 @@ pub fn execute(
 
     match msg {
         ExecuteMsg::SetAsk {
+            sale_type,
             collection,
             token_id,
             price,
             funds_recipient,
             reserve_for,
-            finders_fee_basis_points,
+            finders_fee_bps,
             expires,
         } => execute_set_ask(
-            ExecuteEnv { deps, env, info },
-            ask_key(api.addr_validate(&collection)?, token_id),
-            price,
-            maybe_addr(api, funds_recipient)?,
-            maybe_addr(api, reserve_for)?,
-            finders_fee_basis_points,
-            expires,
+            deps,
+            env,
+            info,
+            AskInfo {
+                sale_type,
+                collection: api.addr_validate(&collection)?,
+                token_id,
+                price,
+                funds_recipient: maybe_addr(api, funds_recipient)?,
+                reserve_for: maybe_addr(api, reserve_for)?,
+                finders_fee_bps,
+                expires,
+            },
         ),
         ExecuteMsg::RemoveAsk {
             collection,
@@ -166,15 +177,22 @@ pub fn execute(
 
 /// An owner may set an Ask on their media. A bid is automatically fulfilled if it meets the asking price.
 pub fn execute_set_ask(
-    env: ExecuteEnv,
-    ask_key: AskKey,
-    price: Coin,
-    funds_recipient: Option<Addr>,
-    reserve_for: Option<Addr>,
-    finders_fee_bps: Option<u64>,
-    expires: Timestamp,
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    ask_info: AskInfo,
 ) -> Result<Response, ContractError> {
-    let ExecuteEnv { deps, info, env } = env;
+    let AskInfo {
+        sale_type,
+        collection,
+        token_id,
+        price,
+        funds_recipient,
+        reserve_for,
+        finders_fee_bps,
+        expires,
+    } = ask_info;
+
     nonpayable(&info)?;
     price_validate(&price)?;
 
@@ -188,7 +206,7 @@ pub fn execute_set_ask(
     }
 
     // Only the media onwer can call this
-    let owner_of_response = only_owner(deps.as_ref(), &info, ask_key.clone().0, ask_key.1)?;
+    let owner_of_response = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
     // Check that approval has been set for marketplace contract
     if owner_of_response
         .approvals
@@ -201,12 +219,12 @@ pub fn execute_set_ask(
     }
 
     let seller = info.sender;
-    asks().save(
+    store_ask(
         deps.storage,
-        ask_key.clone(),
         &Ask {
-            collection: ask_key.clone().0,
-            token_id: ask_key.1,
+            sale_type,
+            collection: collection.clone(),
+            token_id,
             seller: seller.clone(),
             price: price.amount,
             funds_recipient: funds_recipient.clone(),
@@ -218,8 +236,8 @@ pub fn execute_set_ask(
     )?;
 
     let msg = AskCreatedHookMsg {
-        collection: ask_key.0.to_string(),
-        token_id: ask_key.1,
+        collection: collection.to_string(),
+        token_id,
         seller: seller.to_string(),
         funds_recipient: funds_recipient
             .unwrap_or_else(|| seller.clone())
@@ -238,8 +256,8 @@ pub fn execute_set_ask(
     })?;
 
     let event = Event::new("set-ask")
-        .add_attribute("collection", ask_key.0.to_string())
-        .add_attribute("token_id", ask_key.1.to_string())
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
         .add_attribute("seller", seller)
         .add_attribute("price", price.to_string())
         .add_attribute("expires", expires.to_string());
@@ -340,23 +358,20 @@ pub fn execute_set_bid(
 
     let mut res = Response::new();
 
-    // Check bidder has existing bid, if so remove existing bid
     let existing_bid =
         bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
     if let Some(existing_bid) = existing_bid {
         bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-        let exec_refund_bidder = BankMsg::Send {
+        let refund_bidder = BankMsg::Send {
             to_address: bidder.to_string(),
             amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
         };
-        res = res.add_message(exec_refund_bidder)
+        res = res.add_message(refund_bidder)
     }
 
-    // Check if an ask exists for a token
     let ask = asks().may_load(deps.storage, ask_key(collection.clone(), token_id))?;
     match ask {
         Some(ask) => {
-            // Ask validation
             if ask.expires <= env.block.time {
                 return Err(ContractError::AskExpired {});
             }
@@ -368,40 +383,39 @@ pub fn execute_set_bid(
                     return Err(ContractError::TokenReserved {});
                 }
             }
-
-            if ask.price != bid_price {
-                // Bid does not meet ask criteria, store bid
-                bids().save(
-                    deps.storage,
-                    (collection.clone(), token_id, bidder.clone()),
-                    &Bid {
-                        collection: collection.clone(),
-                        token_id,
-                        bidder: bidder.clone(),
-                        price: bid_price,
-                        expires,
-                    },
-                )?;
-            } else {
-                // Bid meets ask criteria so fulfill bid
-                asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
-
-                // Include messages needed to finalize nft transfer and payout
-                fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
-            }
+            match ask.sale_type {
+                SaleType::FixedPrice => {
+                    if ask.price != bid_price {
+                        return Err(ContractError::InvalidPrice {});
+                    } else {
+                        asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
+                        fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
+                    }
+                }
+                SaleType::Auction => {
+                    store_bid(
+                        deps.storage,
+                        &Bid::new(
+                            collection.clone(),
+                            token_id,
+                            bidder.clone(),
+                            bid_price,
+                            expires,
+                        ),
+                    )?;
+                }
+            };
         }
         None => {
-            // Ask does not exist, save bid
-            bids().save(
+            store_bid(
                 deps.storage,
-                (collection.clone(), token_id, bidder.clone()),
-                &Bid {
-                    collection: collection.clone(),
+                &Bid::new(
+                    collection.clone(),
                     token_id,
-                    bidder: bidder.clone(),
-                    price: bid_price,
+                    bidder.clone(),
+                    bid_price,
                     expires,
-                },
+                ),
             )?;
         }
     }
@@ -654,6 +668,7 @@ pub fn execute_accept_collection_bid(
 
     // Create a temporary Ask
     let ask = Ask {
+        sale_type: SaleType::Auction,
         collection: collection.clone(),
         token_id,
         price: bid.price,
@@ -858,4 +873,16 @@ fn price_validate(price: &Coin) -> Result<(), ContractError> {
     }
 
     Ok(())
+}
+
+fn store_bid(store: &mut dyn Storage, bid: &Bid) -> StdResult<()> {
+    bids().save(
+        store,
+        bid_key(bid.collection.clone(), bid.token_id, bid.bidder.clone()),
+        bid,
+    )
+}
+
+fn store_ask(store: &mut dyn Storage, ask: &Ask) -> StdResult<()> {
+    asks().save(store, ask_key(ask.collection.clone(), ask.token_id), ask)
 }
