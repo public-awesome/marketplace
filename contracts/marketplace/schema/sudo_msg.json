@@ -40,7 +40,7 @@
               "format": "uint64",
               "minimum": 0.0
             },
-            "min_bid_amount": {
+            "min_price": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Uint128"

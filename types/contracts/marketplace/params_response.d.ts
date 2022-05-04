@@ -27,7 +27,7 @@ max_finders_fee_percent: Decimal
 /**
  * Min value for a bid
  */
-min_bid_amount: Uint128
+min_price: Uint128
 /**
  * Operators are entites that are responsible for maintaining the active state of Asks They listen to NFT transfer events, and update the active state of Asks
  */

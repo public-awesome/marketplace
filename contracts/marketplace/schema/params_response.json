@@ -44,7 +44,7 @@
         "ask_expiry",
         "bid_expiry",
         "max_finders_fee_percent",
-        "min_bid_amount",
+        "min_price",
         "operators",
         "trading_fee_percent"
       ],
@@ -73,7 +73,7 @@
             }
           ]
         },
-        "min_bid_amount": {
+        "min_price": {
           "description": "Min value for a bid",
           "allOf": [
             {
