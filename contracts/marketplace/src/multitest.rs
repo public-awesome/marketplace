@@ -271,7 +271,7 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
-            sale_type: SaleType::FixedPrice,
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
@@ -854,7 +854,7 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
-            sale_type: SaleType::FixedPrice,
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
@@ -867,7 +867,7 @@ mod tests {
         assert!(res.is_ok());
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
-            sale_type: SaleType::FixedPrice,
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID + 1,
             price: coin(109, NATIVE_DENOM),
@@ -880,7 +880,7 @@ mod tests {
         assert!(res.is_ok());
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
-            sale_type: SaleType::FixedPrice,
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID + 2,
             price: coin(111, NATIVE_DENOM),
@@ -1054,7 +1054,7 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
-            sale_type: SaleType::FixedPrice,
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
@@ -1365,7 +1365,7 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
-            sale_type: SaleType::FixedPrice,
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
@@ -1436,7 +1436,7 @@ mod tests {
 
         // An ask is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
-            sale_type: SaleType::FixedPrice,
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(200, NATIVE_DENOM),
