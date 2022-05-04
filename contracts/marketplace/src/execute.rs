@@ -174,6 +174,11 @@ pub fn execute(
             api.addr_validate(&bidder)?,
             maybe_addr(api, finder)?,
         ),
+        ExecuteMsg::RemoveStaleBid {
+            collection,
+            token_id,
+            bidder,
+        } => todo!(),
     }
 }
 
@@ -688,6 +693,26 @@ pub fn execute_accept_collection_bid(
         .add_attribute("price", bid.price.to_string());
 
     Ok(res.add_event(event))
+}
+
+/// Privileged operation to remove a stale bid. Operators can call this to remove and refund bids that are still in the
+/// state after they have expired. As a reward they get X% of the bid price.
+pub fn execute_remove_stale_bid(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+
+    asks().remove(deps.storage, (collection.clone(), token_id))?;
+
+    let event = Event::new("remove-ask")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string());
+
+    Ok(Response::new().add_event(event))
 }
 
 /// Transfers funds and NFT, updates bid

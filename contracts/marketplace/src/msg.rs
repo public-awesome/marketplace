@@ -95,12 +95,12 @@ pub enum ExecuteMsg {
         bidder: String,
         finder: Option<String>,
     },
-    // /// Privileged operation to remove stale bids
-    // RemoveStaleBid {
-    //     collection: String,
-    //     token_id: TokenId,
-    //     bidder: String,
-    // },
+    /// Privileged operation to remove stale bids
+    RemoveStaleBid {
+        collection: String,
+        token_id: TokenId,
+        bidder: String,
+    },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
