@@ -710,9 +710,7 @@ pub fn execute_remove_stale_bid(
     bidder: Addr,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    only_operator(deps.storage, &info)?;
-
-    let operator = info.sender;
+    let operator = only_operator(deps.storage, &info)?;
 
     let bid = bids().load(
         deps.storage,
@@ -954,7 +952,7 @@ fn only_owner(
 }
 
 /// Checks to enforce only privileged operators
-fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<(), ContractError> {
+fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, ContractError> {
     let params = SUDO_PARAMS.load(store)?;
     if !params
         .operators
@@ -964,5 +962,5 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<(), Contract
         return Err(ContractError::Unauthorized {});
     }
 
-    Ok(())
+    Ok(info.sender.clone())
 }
