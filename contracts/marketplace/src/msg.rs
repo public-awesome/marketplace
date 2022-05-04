@@ -88,6 +88,7 @@ pub enum ExecuteMsg {
     SetCollectionBid {
         collection: String,
         expires: Timestamp,
+        finders_fee_bps: Option<u64>,
     },
     /// Remove a bid (limit order) across an entire collection
     RemoveCollectionBid { collection: String },

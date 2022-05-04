@@ -2017,6 +2017,7 @@ mod tests {
         // A collection bid is made by the bidder
         let set_collection_bid = ExecuteMsg::SetCollectionBid {
             collection: collection.to_string(),
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
@@ -2030,6 +2031,7 @@ mod tests {
         // A collection bid is made by bidder2
         let set_collection_bid = ExecuteMsg::SetCollectionBid {
             collection: collection.to_string(),
+            finders_fee_bps: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         };
         let res = router.execute_contract(
