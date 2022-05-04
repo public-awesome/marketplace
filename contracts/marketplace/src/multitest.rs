@@ -42,7 +42,7 @@ mod tests {
         AskCountResponse, AskOffset, AsksResponse, BidOffset, BidResponse, CollectionBidOffset,
         CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
     };
-    use crate::state::Bid;
+    use crate::state::{Bid, SaleType};
 
     use super::*;
     use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
@@ -257,26 +257,28 @@ mod tests {
 
         // Should error with expiry lower than min
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY - 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_err());
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -393,13 +395,14 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -459,13 +462,14 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -548,37 +552,40 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID + 1,
             price: coin(109, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID + 2,
             price: coin(111, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -700,39 +707,42 @@ mod tests {
 
         // Owner1 lists their token for sale
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
 
         // Owner2 lists their token for sale
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID + 1,
             price: coin(109, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
 
         // Owner2 lists another token for sale
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID + 2,
             price: coin(111, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -844,37 +854,40 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID + 1,
             price: coin(109, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID + 2,
             price: coin(111, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1041,13 +1054,14 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1114,13 +1128,14 @@ mod tests {
 
         // An ask is made by the creator, but fails because NFT is not authorized
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_err());
@@ -1217,13 +1232,14 @@ mod tests {
 
         // An ask is made by the owner
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: Some(bidder.to_string()),
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1291,13 +1307,14 @@ mod tests {
 
         // An ask is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(500), // 5%
+            finders_fee_bps: Some(500), // 5%
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1348,13 +1365,14 @@ mod tests {
 
         // An asking price is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1418,13 +1436,14 @@ mod tests {
 
         // An ask is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::Auction,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(200, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1570,13 +1589,14 @@ mod tests {
 
         // An ask is made by the creator
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
@@ -1762,13 +1782,14 @@ mod tests {
 
         // An ask is made by the creator, but fails because NFT is not authorized
         let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
             collection: collection.to_string(),
             token_id: TOKEN_ID,
             price: coin(100, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
             expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-            finders_fee_basis_points: Some(0),
+            finders_fee_bps: Some(0),
         };
         // Creator Authorizes NFT
         let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
