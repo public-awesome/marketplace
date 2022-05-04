@@ -27,7 +27,7 @@ pub struct SudoParams {
     /// Duration after expiry when a bid becomes stale
     pub stale_bid_duration: Duration,
     /// Stale bid removal reward
-    // pub bid_removal_reward_vps
+    pub bid_removal_reward_percent: Decimal,
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");

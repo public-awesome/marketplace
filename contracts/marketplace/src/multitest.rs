@@ -61,6 +61,7 @@ mod tests {
     const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
     const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
     const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
+    const BID_REMOVAL_REWARD_BPS: u64 = 500; // 5%
 
     // Instantiates all needed contracts for testing
     fn setup_contracts(
@@ -78,6 +79,7 @@ mod tests {
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
             min_price: Uint128::from(5u128),
             stale_bid_duration: Duration::Height(100),
+            bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
         };
         let marketplace = router
             .instantiate_contract(
@@ -1633,6 +1635,7 @@ mod tests {
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
             min_price: Uint128::from(5u128),
             stale_bid_duration: Duration::Height(100),
+            bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
         };
         let marketplace = router
             .instantiate_contract(
@@ -1828,6 +1831,7 @@ mod tests {
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
             min_price: Uint128::from(5u128),
             stale_bid_duration: Duration::Height(100),
+            bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
         };
         let marketplace = router
             .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)
