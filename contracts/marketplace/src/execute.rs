@@ -68,6 +68,14 @@ pub struct AskInfo {
     expires: Timestamp,
 }
 
+pub struct BidInfo {
+    collection: Addr,
+    token_id: TokenId,
+    expires: Timestamp,
+    finder: Option<Addr>,
+    finders_fee_bps: Option<u64>,
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -122,14 +130,18 @@ pub fn execute(
             token_id,
             expires,
             finder,
+            finders_fee_bps,
         } => execute_set_bid(
             deps,
             env,
             info,
-            api.addr_validate(&collection)?,
-            token_id,
-            expires,
-            maybe_addr(api, finder)?,
+            BidInfo {
+                collection: api.addr_validate(&collection)?,
+                token_id,
+                expires,
+                finder: maybe_addr(api, finder)?,
+                finders_fee_bps,
+            },
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -351,11 +363,16 @@ pub fn execute_set_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    collection: Addr,
-    token_id: TokenId,
-    expires: Timestamp,
-    finder: Option<Addr>,
+    bid_info: BidInfo,
 ) -> Result<Response, ContractError> {
+    let BidInfo {
+        collection,
+        token_id,
+        finders_fee_bps,
+        expires,
+        finder,
+    } = bid_info;
+
     let params = SUDO_PARAMS.load(deps.storage)?;
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
@@ -409,6 +426,7 @@ pub fn execute_set_bid(
                             token_id,
                             bidder.clone(),
                             bid_price,
+                            finders_fee_bps,
                             expires,
                         ),
                     )?;
@@ -423,6 +441,7 @@ pub fn execute_set_bid(
                     token_id,
                     bidder.clone(),
                     bid_price,
+                    finders_fee_bps,
                     expires,
                 ),
             )?;
@@ -523,7 +542,7 @@ pub fn execute_accept_bid(
                 seller: info.sender,
                 funds_recipient: None,
                 reserve_for: None,
-                finders_fee_bps: None,
+                finders_fee_bps: bid.finders_fee_bps,
             }
         }
     };

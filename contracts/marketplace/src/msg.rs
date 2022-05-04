@@ -70,6 +70,7 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         expires: Timestamp,
         finder: Option<String>,
+        finders_fee_bps: Option<u64>,
     },
     /// Remove an existing bid from an ask
     RemoveBid {
