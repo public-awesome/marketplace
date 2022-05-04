@@ -341,7 +341,7 @@ pub fn execute_update_ask_price(
     Ok(Response::new().add_event(event))
 }
 
-/// Anyone may place a bid on a listed NFT. By placing a bid, the bidder sends STARS to the market contract.
+/// Places a bid on a listed or unlisted NFT. The bid is escrowed in the contract.
 pub fn execute_set_bid(
     deps: DepsMut,
     env: Env,
@@ -360,6 +360,7 @@ pub fn execute_set_bid(
 
     let existing_bid =
         bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
+
     if let Some(existing_bid) = existing_bid {
         bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
         let refund_bidder = BankMsg::Send {
@@ -473,7 +474,7 @@ fn remove_and_refund_bid(store: &mut dyn Storage, bid: Bid) -> Result<BankMsg, C
     Ok(msg)
 }
 
-/// Owner can accept a bid which transfers funds as well as the token
+/// Seller can accept a bid which transfers funds as well as the token. The bid may or may not be associated with an ask.
 pub fn execute_accept_bid(
     deps: DepsMut,
     env: Env,
@@ -486,26 +487,21 @@ pub fn execute_accept_bid(
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
-    // Query accepted bid
     let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
     if bid.expires <= env.block.time {
         return Err(ContractError::BidExpired {});
     }
 
-    // Query if ask exists
     let ask;
     match asks().may_load(deps.storage, ask_key(collection.clone(), token_id))? {
         Some(existing_ask) => {
             ask = existing_ask;
-
-            // Validate ask
             if ask.expires <= env.block.time {
                 return Err(ContractError::AskExpired {});
             }
             if !ask.is_active {
                 return Err(ContractError::AskNotActive {});
             }
-            // Remove ask
             asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
         }
         None => {
