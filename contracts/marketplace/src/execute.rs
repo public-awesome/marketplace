@@ -298,15 +298,7 @@ pub fn execute_update_ask_is_active(
     is_active: bool,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-
-    let params = SUDO_PARAMS.load(deps.storage)?;
-    if !params
-        .operators
-        .iter()
-        .any(|a| a.as_ref() == info.sender.as_ref())
-    {
-        return Err(ContractError::Unauthorized {});
-    }
+    only_operator(deps.storage, &info)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     ask.is_active = is_active;
@@ -697,21 +689,6 @@ pub fn execute_accept_collection_bid(
     Ok(res.add_event(event))
 }
 
-/// Checks to enfore only nft owner can call
-fn only_owner(
-    deps: Deps,
-    info: &MessageInfo,
-    collection: Addr,
-    token_id: u32,
-) -> Result<OwnerOfResponse, ContractError> {
-    let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
-    if res.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
-
-    Ok(res)
-}
-
 /// Transfers funds and NFT, updates bid
 fn finalize_sale(
     deps: DepsMut,
@@ -891,4 +868,33 @@ fn store_bid(store: &mut dyn Storage, bid: &Bid) -> StdResult<()> {
 
 fn store_ask(store: &mut dyn Storage, ask: &Ask) -> StdResult<()> {
     asks().save(store, ask_key(ask.collection.clone(), ask.token_id), ask)
+}
+
+/// Checks to enfore only NFT owner can call
+fn only_owner(
+    deps: Deps,
+    info: &MessageInfo,
+    collection: Addr,
+    token_id: u32,
+) -> Result<OwnerOfResponse, ContractError> {
+    let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
+    if res.owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    Ok(res)
+}
+
+/// Checks to enforce only privileged operators
+fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<(), ContractError> {
+    let params = SUDO_PARAMS.load(store)?;
+    if !params
+        .operators
+        .iter()
+        .any(|a| a.as_ref() == info.sender.as_ref())
+    {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    Ok(())
 }
