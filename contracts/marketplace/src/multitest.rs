@@ -1719,6 +1719,40 @@ mod tests {
     }
 
     #[test]
+    fn try_add_remove_bid_hooks() {
+        let mut router = custom_mock_app();
+        // Setup intial accounts
+        let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+        // Instantiate and configure contracts
+        let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+        let add_bid_hook_msg = SudoMsg::AddBidCreatedHook {
+            hook: "bid_hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &add_bid_hook_msg);
+        assert!(res.is_ok());
+
+        let query_hooks_msg = QueryMsg::BidCreatedHooks {};
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
+            .unwrap();
+        assert_eq!(res.hooks, vec!["bid_hook".to_string()]);
+
+        let remove_hook_msg = SudoMsg::RemoveBidCreatedHook {
+            hook: "bid_hook".to_string(),
+        };
+        let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
+        assert!(res.is_ok());
+
+        let res: HooksResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace, &query_hooks_msg)
+            .unwrap();
+        assert!(res.hooks.is_empty());
+    }
+
+    #[test]
     fn try_init_hook() {
         let mut router = custom_mock_app();
         // Setup intial accounts
@@ -1771,9 +1805,15 @@ mod tests {
         };
         let _res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
 
-        // Add listed hook
+        // Add ask created hook
         let add_ask_hook_msg = SudoMsg::AddAskCreatedHook {
             hook: "listed_hook".to_string(),
+        };
+        let _res = router.wasm_sudo(marketplace.clone(), &add_ask_hook_msg);
+
+        // Add bid created hook
+        let add_ask_hook_msg = SudoMsg::AddBidCreatedHook {
+            hook: "bid_created_hook".to_string(),
         };
         let _res = router.wasm_sudo(marketplace.clone(), &add_ask_hook_msg);
 
@@ -1824,7 +1864,11 @@ mod tests {
         assert!(res.is_ok());
         assert_eq!(
             "ask-filled-hook-failed",
-            res.unwrap().events[10].attributes[1].value
+            res.as_ref().unwrap().events[10].attributes[1].value
+        );
+        assert_eq!(
+            "bid-created-hook-failed",
+            res.as_ref().unwrap().events[12].attributes[1].value
         );
 
         // NFT is still transferred despite a sale finalized hook failing

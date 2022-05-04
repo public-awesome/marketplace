@@ -457,14 +457,14 @@ pub enum AskCreatedExecuteMsg {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct BidCreatedHookMsg {
-    pub collection: Addr,
+    pub collection: String,
     pub token_id: TokenId,
-    pub bidder: Addr,
+    pub bidder: String,
     pub price: Uint128,
 }
 
 impl BidCreatedHookMsg {
-    pub fn new(collection: Addr, token_id: TokenId, bidder: Addr, price: Uint128) -> Self {
+    pub fn new(collection: String, token_id: TokenId, bidder: String, price: Uint128) -> Self {
         BidCreatedHookMsg {
             collection,
             token_id,
