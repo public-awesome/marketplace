@@ -31,9 +31,17 @@ pub const ASK_FILLED_HOOKS: Hooks = Hooks::new("ask-filled-hooks");
 
 pub type TokenId = u32;
 
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SaleType {
+    FixedPrice,
+    Auction,
+}
+
 /// Represents an ask on the marketplace
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Ask {
+    pub sale_type: SaleType,
     pub collection: Addr,
     pub token_id: TokenId,
     pub seller: Addr,

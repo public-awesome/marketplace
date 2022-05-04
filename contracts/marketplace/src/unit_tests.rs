@@ -6,7 +6,7 @@ use crate::execute::{execute, instantiate};
 use crate::helpers::ExpiryRange;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::query::{query_ask_count, query_asks_by_seller, query_bids_by_bidder};
-use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid};
+use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SaleType};
 
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{coin, coins, Addr, DepsMut, StdError, Timestamp, Uint128};
@@ -29,6 +29,7 @@ fn ask_indexed_map() {
     let seller = Addr::unchecked("seller");
 
     let ask = Ask {
+        sale_type: SaleType::FixedPrice,
         collection: collection.clone(),
         token_id: TOKEN_ID,
         seller: seller.clone(),
@@ -44,6 +45,7 @@ fn ask_indexed_map() {
     assert!(res.is_ok());
 
     let ask2 = Ask {
+        sale_type: SaleType::FixedPrice,
         collection: collection.clone(),
         token_id: TOKEN_ID + 1,
         seller: seller.clone(),
@@ -184,6 +186,7 @@ fn try_set_ask() {
     setup_contract(deps.as_mut());
 
     let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         price: coin(100, NATIVE_DENOM),
@@ -192,7 +195,7 @@ fn try_set_ask() {
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),
-        finders_fee_basis_points: Some(0),
+        finders_fee_bps: Some(0),
     };
 
     // Reject if not called by the media owner
@@ -202,6 +205,7 @@ fn try_set_ask() {
 
     // Reject wrong denom
     let set_bad_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         price: coin(100, "osmo".to_string()),
@@ -210,7 +214,7 @@ fn try_set_ask() {
         expires: Timestamp::from_seconds(
             mock_env().block.time.plus_seconds(MIN_EXPIRY + 1).seconds(),
         ),
-        finders_fee_basis_points: Some(0),
+        finders_fee_bps: Some(0),
     };
     let err = execute(
         deps.as_mut(),
