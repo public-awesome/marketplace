@@ -390,7 +390,14 @@ pub fn execute_set_bid(
                 return Err(ContractError::InvalidPrice {});
             } else {
                 asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
-                fill_ask(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
+                fill_ask(
+                    deps.as_ref(),
+                    ask,
+                    bid_price,
+                    bidder.clone(),
+                    finder,
+                    &mut res,
+                )?;
             }
         }
         SaleType::Auction => {
@@ -496,7 +503,14 @@ pub fn execute_accept_bid(
     let mut res = Response::new();
 
     // Transfer funds and NFT
-    fill_ask(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
+    fill_ask(
+        deps.as_ref(),
+        ask,
+        bid.price,
+        bidder.clone(),
+        finder,
+        &mut res,
+    )?;
 
     let event = Event::new("accept-bid")
         .add_attribute("collection", collection.to_string())
@@ -647,7 +661,14 @@ pub fn execute_accept_collection_bid(
     };
 
     // Transfer funds and NFT
-    fill_ask(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
+    fill_ask(
+        deps.as_ref(),
+        ask,
+        bid.price,
+        bidder.clone(),
+        finder,
+        &mut res,
+    )?;
 
     let event = Event::new("accept-collection-bid")
         .add_attribute("collection", collection.to_string())
@@ -676,7 +697,7 @@ fn only_owner(
 
 /// Transfers funds and NFT, updates bid
 fn fill_ask(
-    deps: DepsMut,
+    deps: Deps,
     ask: Ask,
     price: Uint128,
     buyer: Addr,
@@ -685,7 +706,7 @@ fn fill_ask(
 ) -> StdResult<()> {
     // Payout bid
     payout(
-        deps.as_ref(),
+        deps,
         ask.collection.clone(),
         price,
         ask.funds_recipient
