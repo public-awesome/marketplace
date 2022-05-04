@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{AskCreatedHookMsg, ExecuteMsg, InstantiateMsg, SaleHookMsg};
+use crate::msg::{AskHookMsg, ExecuteMsg, HookAction, InstantiateMsg, SaleHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    SaleType, SudoParams, TokenId, ASK_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -262,7 +262,7 @@ pub fn execute_set_ask(
         },
     )?;
 
-    let msg = AskCreatedHookMsg {
+    let msg = AskHookMsg {
         collection: collection.to_string(),
         token_id,
         seller: seller.to_string(),
@@ -273,10 +273,10 @@ pub fn execute_set_ask(
     };
 
     // Include hook submessages, i.e: listing rewards
-    let submsgs = ASK_CREATED_HOOKS.prepare_hooks(deps.storage, |h| {
+    let submsgs = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: msg.clone().into_binary()?,
+            msg: msg.clone().into_binary(HookAction::Create)?,
             funds: vec![],
         };
         Ok(SubMsg::reply_on_error(execute, REPLY_ASK_CREATED_HOOK))

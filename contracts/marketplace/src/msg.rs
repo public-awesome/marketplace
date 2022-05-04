@@ -415,7 +415,15 @@ pub enum SaleExecuteMsg {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub struct AskCreatedHookMsg {
+pub enum HookAction {
+    Create,
+    Update,
+    Delete,
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct AskHookMsg {
     pub collection: String,
     pub token_id: u32,
     pub seller: String,
@@ -423,7 +431,7 @@ pub struct AskCreatedHookMsg {
     pub price: Coin,
 }
 
-impl AskCreatedHookMsg {
+impl AskHookMsg {
     pub fn new(
         collection: String,
         token_id: u32,
@@ -431,7 +439,7 @@ impl AskCreatedHookMsg {
         funds_recipient: String,
         price: Coin,
     ) -> Self {
-        AskCreatedHookMsg {
+        AskHookMsg {
             collection,
             token_id,
             seller,
@@ -441,14 +449,22 @@ impl AskCreatedHookMsg {
     }
 
     /// serializes the message
-    pub fn into_binary(self) -> StdResult<Binary> {
-        let msg = AskCreatedExecuteMsg::AskCreatedHook(self);
+    pub fn into_binary(self, action: HookAction) -> StdResult<Binary> {
+        let msg = match action {
+            HookAction::Create => AskHookExecuteMsg::AskCreatedHook(self),
+            HookAction::Update => AskHookExecuteMsg::AskUpdatedHook(self),
+            HookAction::Delete => AskHookExecuteMsg::AskDeletedHook(self),
+        };
         to_binary(&msg)
     }
 
     /// creates a cosmos_msg sending this struct to the named contract
-    pub fn into_cosmos_msg<T: Into<String>>(self, contract_addr: T) -> StdResult<CosmosMsg> {
-        let msg = self.into_binary()?;
+    pub fn into_cosmos_msg<T: Into<String>>(
+        self,
+        contract_addr: T,
+        action: HookAction,
+    ) -> StdResult<CosmosMsg> {
+        let msg = self.into_binary(action)?;
         let execute = WasmMsg::Execute {
             contract_addr: contract_addr.into(),
             msg,
@@ -461,6 +477,8 @@ impl AskCreatedHookMsg {
 // This is just a helper to properly serialize the above message
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum AskCreatedExecuteMsg {
-    AskCreatedHook(AskCreatedHookMsg),
+pub enum AskHookExecuteMsg {
+    AskCreatedHook(AskHookMsg),
+    AskUpdatedHook(AskHookMsg),
+    AskDeletedHook(AskHookMsg),
 }
