@@ -40,8 +40,8 @@ pub enum ContractError {
     #[error("Bid not found")]
     BidNotFound {},
 
-    #[error("BidTooSmall: {0}")]
-    BidTooSmall(Uint128),
+    #[error("PriceTooSmall: {0}")]
+    PriceTooSmall(Uint128),
 
     #[error("Contract needs approval")]
     NeedsApproval {},

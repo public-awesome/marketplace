@@ -105,7 +105,7 @@ pub enum SudoMsg {
         bid_expiry: Option<ExpiryRange>,
         operators: Option<Vec<String>>,
         max_finders_fee_bps: Option<u64>,
-        min_bid_amount: Option<Uint128>,
+        min_price: Option<Uint128>,
     },
     /// Add a new hook to be informed of all asks
     AddAskCreatedHook { hook: String },

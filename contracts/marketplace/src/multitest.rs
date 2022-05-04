@@ -1746,7 +1746,7 @@ mod tests {
             bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
             max_finders_fee_bps: None,
-            min_bid_amount: Some(Uint128::from(5u128)),
+            min_price: Some(Uint128::from(5u128)),
         };
         router
             .wasm_sudo(marketplace.clone(), &update_params_msg)
@@ -1758,7 +1758,7 @@ mod tests {
             bid_expiry: None,
             operators: Some(vec!["operator".to_string()]),
             max_finders_fee_bps: None,
-            min_bid_amount: Some(Uint128::from(5u128)),
+            min_price: Some(Uint128::from(5u128)),
         };
         let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
         assert!(res.is_ok());

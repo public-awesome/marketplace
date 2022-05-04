@@ -11,7 +11,7 @@ pub struct ParamInfo {
     bid_expiry: Option<ExpiryRange>,
     operators: Option<Vec<String>>,
     max_finders_fee_bps: Option<u64>,
-    min_bid_amount: Option<Uint128>,
+    min_price: Option<Uint128>,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -25,7 +25,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             bid_expiry,
             operators,
             max_finders_fee_bps,
-            min_bid_amount,
+            min_price,
         } => sudo_update_params(
             deps,
             env,
@@ -35,7 +35,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
                 bid_expiry,
                 operators,
                 max_finders_fee_bps,
-                min_bid_amount,
+                min_price,
             },
         ),
         SudoMsg::AddAskFilledHook { hook } => {
@@ -65,7 +65,7 @@ pub fn sudo_update_params(
         bid_expiry,
         operators,
         max_finders_fee_bps,
-        min_bid_amount,
+        min_price,
     } = param_info;
 
     ask_expiry.as_ref().map(|a| a.validate()).transpose()?;
@@ -88,7 +88,7 @@ pub fn sudo_update_params(
         .map(Decimal::percent)
         .unwrap_or(params.max_finders_fee_percent);
 
-    params.min_bid_amount = min_bid_amount.unwrap_or(params.min_bid_amount);
+    params.min_price = min_price.unwrap_or(params.min_price);
 
     SUDO_PARAMS.save(deps.storage, &params)?;
 

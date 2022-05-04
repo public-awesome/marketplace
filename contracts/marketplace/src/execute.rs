@@ -44,7 +44,7 @@ pub fn instantiate(
         bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,
         max_finders_fee_percent: Decimal::percent(msg.max_finders_fee_bps),
-        min_bid_amount: msg.min_bid_amount,
+        min_price: msg.min_bid_amount,
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -200,8 +200,8 @@ pub fn execute_set_ask(
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_expiry.is_valid(&env.block, expires)?;
 
-    if price.amount < params.min_bid_amount {
-        return Err(ContractError::BidTooSmall(price.amount));
+    if price.amount < params.min_price {
+        return Err(ContractError::PriceTooSmall(price.amount));
     }
 
     if let Some(fee) = finders_fee_bps {
@@ -356,8 +356,8 @@ pub fn execute_set_bid(
 ) -> Result<Response, ContractError> {
     let params = SUDO_PARAMS.load(deps.storage)?;
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
-    if bid_price < params.min_bid_amount {
-        return Err(ContractError::BidTooSmall(bid_price));
+    if bid_price < params.min_price {
+        return Err(ContractError::PriceTooSmall(bid_price));
     }
     params.bid_expiry.is_valid(&env.block, expires)?;
     let bidder = info.sender;
@@ -553,8 +553,8 @@ pub fn execute_set_collection_bid(
 ) -> Result<Response, ContractError> {
     let params = SUDO_PARAMS.load(deps.storage)?;
     let price = must_pay(&info, NATIVE_DENOM)?;
-    if price < params.min_bid_amount {
-        return Err(ContractError::BidTooSmall(price));
+    if price < params.min_price {
+        return Err(ContractError::PriceTooSmall(price));
     }
     params.bid_expiry.is_valid(&env.block, expires)?;
 
@@ -874,8 +874,8 @@ fn price_validate(store: &dyn Storage, price: &Coin) -> Result<(), ContractError
         return Err(ContractError::InvalidPrice {});
     }
 
-    if price.amount < SUDO_PARAMS.load(store)?.min_bid_amount {
-        return Err(ContractError::BidTooSmall(price.amount));
+    if price.amount < SUDO_PARAMS.load(store)?.min_price {
+        return Err(ContractError::PriceTooSmall(price.amount));
     }
 
     Ok(())
