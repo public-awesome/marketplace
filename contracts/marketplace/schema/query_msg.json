@@ -560,13 +560,13 @@
       "additionalProperties": false
     },
     {
-      "description": "Show all registered sale finalized hooks Return type: `HooksResponse`",
+      "description": "Show all registered sale hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [
-        "ask_filled_hooks"
+        "sale_hooks"
       ],
       "properties": {
-        "ask_filled_hooks": {
+        "sale_hooks": {
           "type": "object"
         }
       },

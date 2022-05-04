@@ -114,7 +114,7 @@ fn setup_contract(deps: DepsMut) {
         trading_fee_bps: TRADING_FEE_BASIS_POINTS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        ask_filled_hook: None,
+        sale_hook: None,
         max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
         min_price: Uint128::from(5u128),
     };
@@ -132,7 +132,7 @@ fn proper_initialization() {
         trading_fee_bps: TRADING_FEE_BASIS_POINTS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        ask_filled_hook: None,
+        sale_hook: None,
         max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
         min_price: Uint128::from(5u128),
     };

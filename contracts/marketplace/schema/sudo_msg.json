@@ -118,10 +118,10 @@
       "description": "Add a new hook to be informed of all trades",
       "type": "object",
       "required": [
-        "add_ask_filled_hook"
+        "add_sale_hook"
       ],
       "properties": {
-        "add_ask_filled_hook": {
+        "add_sale_hook": {
           "type": "object",
           "required": [
             "hook"
@@ -139,10 +139,10 @@
       "description": "Remove a trade hook",
       "type": "object",
       "required": [
-        "remove_ask_filled_hook"
+        "remove_sale_hook"
       ],
       "properties": {
-        "remove_ask_filled_hook": {
+        "remove_sale_hook": {
           "type": "object",
           "required": [
             "hook"

@@ -19,12 +19,6 @@
         }
       ]
     },
-    "ask_filled_hook": {
-      "type": [
-        "string",
-        "null"
-      ]
-    },
     "bid_expiry": {
       "description": "Valid time range for Bids (min, max) in seconds",
       "allOf": [
@@ -53,6 +47,12 @@
       "items": {
         "type": "string"
       }
+    },
+    "sale_hook": {
+      "type": [
+        "string",
+        "null"
+      ]
     },
     "trading_fee_bps": {
       "description": "Fair Burn fee for winning bids 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250",
