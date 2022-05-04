@@ -247,7 +247,7 @@ mod tests {
         let mut router = custom_mock_app();
 
         // Setup intial accounts
-        let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+        let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
         // Instantiate and configure contracts
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
@@ -282,19 +282,36 @@ mod tests {
             finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+        println!("{:?}", res);
         assert!(res.is_ok());
+
+        // transfer to make ask inactive
+        let transfer_msg: Cw721ExecuteMsg<Empty> = Cw721ExecuteMsg::TransferNft {
+            recipient: owner.clone().to_string(),
+            token_id: TOKEN_ID.to_string(),
+        };
+        let res = router.execute_contract(creator.clone(), collection.clone(), &transfer_msg, &[]);
+        assert!(res.is_ok());
+        let query_owner_msg = Cw721QueryMsg::OwnerOf {
+            token_id: TOKEN_ID.to_string(),
+            include_expired: None,
+        };
+        let res: OwnerOfResponse = router
+            .wrap()
+            .query_wasm_smart(collection.clone(), &query_owner_msg)
+            .unwrap();
+        assert_eq!(res.owner, owner.to_string());
 
         // Should error on non-admin trying to update active state
         let update_ask_state = ExecuteMsg::UpdateAskIsActive {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
-            is_active: false,
         };
         router
             .execute_contract(creator.clone(), marketplace.clone(), &update_ask_state, &[])
             .unwrap_err();
 
-        // Should not error on admin updating active state
+        // Should not error on operator updating active state
         let res = router.execute_contract(
             Addr::unchecked("operator"),
             marketplace.clone(),
@@ -303,11 +320,25 @@ mod tests {
         );
         assert!(res.is_ok());
 
-        // Reset active state
+        // transfer back to creator to make ask active
+        let transfer_msg: Cw721ExecuteMsg<Empty> = Cw721ExecuteMsg::TransferNft {
+            recipient: creator.clone().to_string(),
+            token_id: TOKEN_ID.to_string(),
+        };
+        let res = router.execute_contract(owner.clone(), collection.clone(), &transfer_msg, &[]);
+        assert!(res.is_ok());
+        let query_owner_msg = Cw721QueryMsg::OwnerOf {
+            token_id: TOKEN_ID.to_string(),
+            include_expired: None,
+        };
+        let res: OwnerOfResponse = router
+            .wrap()
+            .query_wasm_smart(collection.clone(), &query_owner_msg)
+            .unwrap();
+        assert_eq!(res.owner, creator.to_string());
         let update_ask_state = ExecuteMsg::UpdateAskIsActive {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
-            is_active: true,
         };
         let res = router.execute_contract(
             Addr::unchecked("operator"),

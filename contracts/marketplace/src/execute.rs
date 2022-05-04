@@ -107,14 +107,7 @@ pub fn execute(
         ExecuteMsg::UpdateAskIsActive {
             collection,
             token_id,
-            is_active,
-        } => execute_update_ask_is_active(
-            deps,
-            info,
-            api.addr_validate(&collection)?,
-            token_id,
-            is_active,
-        ),
+        } => execute_update_ask_is_active(deps, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::SetBid {
             collection,
             token_id,
@@ -291,7 +284,6 @@ pub fn execute_update_ask_is_active(
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
-    is_active: bool,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -305,13 +297,17 @@ pub fn execute_update_ask_is_active(
     }
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    ask.is_active = is_active;
+    let res =
+        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
+
+    ask.is_active = res.owner == ask.seller.to_string();
+
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
     let event = Event::new("update-ask-state")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("is_active", is_active.to_string());
+        .add_attribute("is_active", ask.is_active.to_string());
 
     Ok(Response::new().add_event(event))
 }
@@ -487,6 +483,13 @@ pub fn execute_accept_bid(
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
+    let res =
+        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
+    println!(
+        "execute_accept_bid{:?}{:?}",
+        res.owner,
+        info.sender.to_string()
+    );
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
@@ -701,7 +704,8 @@ fn only_owner(
     token_id: u32,
 ) -> Result<OwnerOfResponse, ContractError> {
     let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
-    if res.owner != info.sender {
+    println!("checking owner{:?}{:?}", res.owner, info.sender.to_string());
+    if res.owner != info.sender.to_string() {
         return Err(ContractError::Unauthorized {});
     }
 

@@ -47,11 +47,10 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
     },
-    /// Priviledged operation to change the active state of an ask when an NFT is transferred
+    /// Privileged operation to change the active state of an ask when an NFT is transferred
     UpdateAskIsActive {
         collection: String,
         token_id: TokenId,
-        is_active: bool,
     },
     /// Update the price of an existing ask
     UpdateAskPrice {
