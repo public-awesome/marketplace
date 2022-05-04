@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{AskCreatedHookMsg, ExecuteMsg, InstantiateMsg, SaleHookMsg};
+use crate::msg::{AskCreatedHookMsg, BidCreatedHookMsg, ExecuteMsg, InstantiateMsg, SaleHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, BID_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -25,6 +25,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const REPLY_ASK_CREATED_HOOK: u64 = 1;
 const REPLY_SALE_HOOK: u64 = 2;
+const REPLY_BID_CREATED_HOOK: u64 = 3;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -430,6 +431,23 @@ pub fn execute_set_bid(
         }
     }
 
+    let msg = BidCreatedHookMsg {
+        collection: collection.to_string(),
+        token_id,
+        bidder: bidder.to_string(),
+        price: bid_price.clone(),
+    };
+
+    // Include hook submessages, i.e: bid rewards
+    let submsgs = BID_CREATED_HOOKS.prepare_hooks(deps.storage, |h| {
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.clone().into_binary()?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_BID_CREATED_HOOK))
+    })?;
+
     let event = Event::new("set-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
@@ -437,7 +455,7 @@ pub fn execute_set_bid(
         .add_attribute("bid_price", bid_price.to_string())
         .add_attribute("expires", expires.to_string());
 
-    Ok(res.add_event(event))
+    Ok(res.add_submessages(submsgs).add_event(event))
 }
 
 /// Removes a bid made by the bidder. Bidders can only remove their own bids
@@ -802,6 +820,12 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
         REPLY_ASK_CREATED_HOOK => {
             let res = Response::new()
                 .add_attribute("action", "ask-created-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        REPLY_BID_CREATED_HOOK => {
+            let res = Response::new()
+                .add_attribute("action", "bid-created-hook-failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }
