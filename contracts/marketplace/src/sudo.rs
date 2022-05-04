@@ -55,17 +55,17 @@ pub fn sudo_update_params(
     ask_expiry.as_ref().map(|a| a.validate()).transpose()?;
     bid_expiry.as_ref().map(|b| b.validate()).transpose()?;
 
-    params.trading_fee_bps = trading_fee_bps
+    params.trading_fee_percent = trading_fee_bps
         .map(Decimal::percent)
-        .unwrap_or(params.trading_fee_bps);
+        .unwrap_or(params.trading_fee_percent);
     params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
     params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
     if let Some(operators) = operators {
         params.operators = map_validate(deps.api, &operators)?;
     }
-    params.max_finders_fee_bps = max_finders_fee_bps
+    params.max_finders_fee_percent = max_finders_fee_bps
         .map(Decimal::percent)
-        .unwrap_or(params.max_finders_fee_bps);
+        .unwrap_or(params.max_finders_fee_percent);
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "update_params"))
