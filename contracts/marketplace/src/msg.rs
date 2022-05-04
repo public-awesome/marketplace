@@ -27,7 +27,7 @@ pub struct InstantiateMsg {
     pub max_finders_fee_bps: u64,
     /// Min value for bids and asks
     pub min_price: Uint128,
-    /// Duration after expiry when a bid becomes stale
+    /// Duration after expiry when a bid becomes stale (in seconds)
     pub stale_bid_duration: Duration,
     /// Stale bid removal reward
     pub bid_removal_reward_bps: u64,
@@ -118,6 +118,7 @@ pub enum SudoMsg {
         max_finders_fee_bps: Option<u64>,
         min_price: Option<Uint128>,
         stale_bid_duration: Option<u64>,
+        bid_removal_reward_bps: Option<u64>,
     },
     /// Add a new hook to be informed of all asks
     AddAskCreatedHook { hook: String },

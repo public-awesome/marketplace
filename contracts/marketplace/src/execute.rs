@@ -14,7 +14,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
-use cw_utils::{maybe_addr, must_pay, nonpayable};
+use cw_utils::{maybe_addr, must_pay, nonpayable, Expiration};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
@@ -179,7 +179,14 @@ pub fn execute(
             collection,
             token_id,
             bidder,
-        } => todo!(),
+        } => execute_remove_stale_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            api.addr_validate(&bidder)?,
+        ),
     }
 }
 
@@ -700,20 +707,58 @@ pub fn execute_accept_collection_bid(
 /// state after they have expired. As a reward they get X% of the bid price.
 pub fn execute_remove_stale_bid(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
+    bidder: Addr,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    only_operator(deps.storage, &info)?;
 
-    asks().remove(deps.storage, (collection.clone(), token_id))?;
+    let operator = info.sender;
 
-    let event = Event::new("remove-ask")
+    let bid = bids().load(
+        deps.storage,
+        bid_key(collection.clone(), token_id, bidder.clone()),
+    )?;
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    let stale_time = (Expiration::AtTime(bid.expires) + params.stale_bid_duration)?;
+    if !stale_time.is_expired(&env.block) {
+        return Err(ContractError::BidNotStale {});
+    }
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+
+    // bid is stale, refund bidder and reward operator
+    bids().remove(
+        deps.storage,
+        (bid.collection, bid.token_id, bid.bidder.clone()),
+    )?;
+
+    let reward = bid.price * params.bid_removal_reward_percent / Uint128::from(100u128);
+
+    let bidder_msg = BankMsg::Send {
+        to_address: bid.bidder.to_string(),
+        amount: vec![coin((bid.price - reward).u128(), NATIVE_DENOM)],
+    };
+    let operator_msg = BankMsg::Send {
+        to_address: operator.to_string(),
+        amount: vec![coin(reward.u128(), NATIVE_DENOM)],
+    };
+
+    let event = Event::new("remove-stale-bid")
         .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string());
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("bidder", bidder.to_string())
+        .add_attribute("operator", operator.to_string())
+        .add_attribute("reward", reward.to_string());
 
-    Ok(Response::new().add_event(event))
+    Ok(Response::new()
+        .add_event(event)
+        .add_message(bidder_msg)
+        .add_message(operator_msg))
 }
 
 /// Transfers funds and NFT, updates bid
