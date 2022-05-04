@@ -75,7 +75,7 @@ mod tests {
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             ask_filled_hook: None,
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
-            min_bid_amount: Uint128::from(5u128),
+            min_price: Uint128::from(5u128),
         };
         let marketplace = router
             .instantiate_contract(
@@ -1629,7 +1629,7 @@ mod tests {
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             ask_filled_hook: None,
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
-            min_bid_amount: Uint128::from(5u128),
+            min_price: Uint128::from(5u128),
         };
         let marketplace = router
             .instantiate_contract(
@@ -1821,7 +1821,7 @@ mod tests {
             bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
             ask_filled_hook: Some("hook".to_string()),
             max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
-            min_bid_amount: Uint128::from(5u128),
+            min_price: Uint128::from(5u128),
         };
         let marketplace = router
             .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)

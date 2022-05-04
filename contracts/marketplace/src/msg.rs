@@ -24,8 +24,8 @@ pub struct InstantiateMsg {
     pub ask_filled_hook: Option<String>,
     /// Max basis points for the finders fee
     pub max_finders_fee_bps: u64,
-    /// Min value for a bid
-    pub min_bid_amount: Uint128,
+    /// Min value for bids and asks
+    pub min_price: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
