@@ -45,6 +45,7 @@ pub fn instantiate(
         operators: map_validate(deps.api, &msg.operators)?,
         max_finders_fee_percent: Decimal::percent(msg.max_finders_fee_bps),
         min_price: msg.min_price,
+        stale_bid_duration: msg.stale_bid_duration,
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
