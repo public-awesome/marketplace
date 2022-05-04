@@ -6,7 +6,7 @@
     "ask_expiry",
     "bid_expiry",
     "max_finders_fee_bps",
-    "min_bid_amount",
+    "min_price",
     "operators",
     "trading_fee_bps"
   ],
@@ -39,8 +39,8 @@
       "format": "uint64",
       "minimum": 0.0
     },
-    "min_bid_amount": {
-      "description": "Min value for a bid",
+    "min_price": {
+      "description": "Min value for bids and asks",
       "allOf": [
         {
           "$ref": "#/definitions/Uint128"
