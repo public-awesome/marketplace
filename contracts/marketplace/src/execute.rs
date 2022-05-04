@@ -44,6 +44,7 @@ pub fn instantiate(
         bid_expiry: msg.bid_expiry,
         operators: map_validate(deps.api, &msg.operators)?,
         max_finders_fee_percent: Decimal::percent(msg.max_finders_fee_bps),
+        min_bid_amount: msg.min_bid_amount,
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -349,10 +350,13 @@ pub fn execute_set_bid(
     expires: Timestamp,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
-    let bid_price = must_pay(&info, NATIVE_DENOM)?;
-    let bidder = info.sender;
     let params = SUDO_PARAMS.load(deps.storage)?;
+    let bid_price = must_pay(&info, NATIVE_DENOM)?;
+    if bid_price < params.min_bid_amount {
+        return Err(ContractError::BidTooSmall(bid_price));
+    }
     params.bid_expiry.is_valid(&env.block, expires)?;
+    let bidder = info.sender;
 
     let mut res = Response::new();
 
@@ -543,9 +547,11 @@ pub fn execute_set_collection_bid(
     collection: Addr,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
-    let price = must_pay(&info, NATIVE_DENOM)?;
-
     let params = SUDO_PARAMS.load(deps.storage)?;
+    let price = must_pay(&info, NATIVE_DENOM)?;
+    if price < params.min_bid_amount {
+        return Err(ContractError::BidTooSmall(price));
+    }
     params.bid_expiry.is_valid(&env.block, expires)?;
 
     let bidder = info.sender;

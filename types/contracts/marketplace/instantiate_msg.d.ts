@@ -1,4 +1,4 @@
-import { ExpiryRange } from "./shared-types";
+import { ExpiryRange, Uint128 } from "./shared-types";
 
 export interface InstantiateMsg {
 /**
@@ -14,6 +14,10 @@ bid_expiry: ExpiryRange
  * Max basis points for the finders fee
  */
 max_finders_fee_bps: number
+/**
+ * Min value for a bid
+ */
+min_bid_amount: Uint128
 /**
  * Operators are entites that are responsible for maintaining the active state of Asks. They listen to NFT transfer events, and update the active state of Asks.
  */

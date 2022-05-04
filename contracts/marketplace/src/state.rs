@@ -21,6 +21,8 @@ pub struct SudoParams {
     pub operators: Vec<Addr>,
     /// Max value for the finders fee
     pub max_finders_fee_percent: Decimal,
+    /// Min value for a bid
+    pub min_bid_amount: Uint128,
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");
