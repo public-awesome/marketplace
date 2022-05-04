@@ -333,6 +333,37 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Privileged operation to remove stale bids",
+      "type": "object",
+      "required": [
+        "remove_stale_bid"
+      ],
+      "properties": {
+        "remove_stale_bid": {
+          "type": "object",
+          "required": [
+            "bidder",
+            "collection",
+            "token_id"
+          ],
+          "properties": {
+            "bidder": {
+              "type": "string"
+            },
+            "collection": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {
