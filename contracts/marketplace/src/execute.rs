@@ -704,7 +704,7 @@ pub fn execute_accept_collection_bid(
 }
 
 /// Privileged operation to remove a stale bid. Operators can call this to remove and refund bids that are still in the
-/// state after they have expired. As a reward they get X% of the bid price.
+/// state after they have expired. As a reward they get a governance-determined percentage of the bid price.
 pub fn execute_remove_stale_bid(
     deps: DepsMut,
     env: Env,
