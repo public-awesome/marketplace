@@ -398,7 +398,14 @@ pub fn execute_set_bid(
                         return Err(ContractError::InvalidPrice {});
                     } else {
                         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
-                        finalize_sale(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
+                        finalize_sale(
+                            deps.as_ref(),
+                            ask,
+                            bid_price,
+                            bidder.clone(),
+                            finder,
+                            &mut res,
+                        )?;
                     }
                 }
                 SaleType::Auction => {
@@ -534,7 +541,14 @@ pub fn execute_accept_bid(
     let mut res = Response::new();
 
     // Transfer funds and NFT
-    finalize_sale(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
+    finalize_sale(
+        deps.as_ref(),
+        ask,
+        bid.price,
+        bidder.clone(),
+        finder,
+        &mut res,
+    )?;
 
     let event = Event::new("accept-bid")
         .add_attribute("collection", collection.to_string())
@@ -687,7 +701,14 @@ pub fn execute_accept_collection_bid(
     };
 
     // Transfer funds and NFT
-    finalize_sale(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
+    finalize_sale(
+        deps.as_ref(),
+        ask,
+        bid.price,
+        bidder.clone(),
+        finder,
+        &mut res,
+    )?;
 
     let event = Event::new("accept-collection-bid")
         .add_attribute("collection", collection.to_string())
@@ -757,7 +778,7 @@ pub fn execute_remove_stale_bid(
 
 /// Transfers funds and NFT, updates bid
 fn finalize_sale(
-    deps: DepsMut,
+    deps: Deps,
     ask: Ask,
     price: Uint128,
     buyer: Addr,
@@ -765,7 +786,7 @@ fn finalize_sale(
     res: &mut Response,
 ) -> StdResult<()> {
     payout(
-        deps.as_ref(),
+        deps,
         ask.collection.clone(),
         price,
         ask.funds_recipient
