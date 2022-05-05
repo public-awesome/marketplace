@@ -489,3 +489,34 @@ pub enum BidExecuteMsg {
     BidUpdatedHook(BidHookMsg),
     BidDeletedHook(BidHookMsg),
 }
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct CollectionBidHookMsg {
+    pub collection_bid: CollectionBid,
+}
+
+impl CollectionBidHookMsg {
+    pub fn new(collection_bid: CollectionBid) -> Self {
+        CollectionBidHookMsg { collection_bid }
+    }
+
+    /// serializes the message
+    pub fn into_binary(self, action: HookAction) -> StdResult<Binary> {
+        let msg = match action {
+            HookAction::Create => CollectionBidExecuteMsg::CollectionBidCreatedHook(self),
+            HookAction::Update => CollectionBidExecuteMsg::CollectionBidUpdatedHook(self),
+            HookAction::Delete => CollectionBidExecuteMsg::CollectionBidDeletedHook(self),
+        };
+        to_binary(&msg)
+    }
+}
+
+// This is just a helper to properly serialize the above message
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum CollectionBidExecuteMsg {
+    CollectionBidCreatedHook(CollectionBidHookMsg),
+    CollectionBidUpdatedHook(CollectionBidHookMsg),
+    CollectionBidDeletedHook(CollectionBidHookMsg),
+}
