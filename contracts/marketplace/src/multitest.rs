@@ -329,6 +329,17 @@ mod tests {
             &[],
         );
         assert!(res.is_ok());
+
+        // Should error when ask is unchanged
+        router
+            .execute_contract(
+                Addr::unchecked("operator"),
+                marketplace.clone(),
+                &update_ask_state,
+                &[],
+            )
+            .unwrap_err();
+
         let ask_msg = QueryMsg::Ask {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
