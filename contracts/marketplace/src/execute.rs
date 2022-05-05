@@ -319,12 +319,14 @@ pub fn execute_update_ask_is_active(
     ask.is_active = is_active;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
+    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
+
     let event = Event::new("update-ask-state")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("is_active", is_active.to_string());
 
-    Ok(Response::new().add_event(event))
+    Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
 /// Updates the ask price on a particular NFT
@@ -343,12 +345,14 @@ pub fn execute_update_ask_price(
     ask.price = price.amount;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
+    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
+
     let event = Event::new("update-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("price", price.to_string());
 
-    Ok(Response::new().add_event(event))
+    Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
 /// Places a bid on a listed or unlisted NFT. The bid is escrowed in the contract.
