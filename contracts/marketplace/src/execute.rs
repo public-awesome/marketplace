@@ -231,6 +231,15 @@ pub fn execute_set_ask(
 
     nonpayable(&info)?;
     price_validate(deps.storage, &price)?;
+    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+
+    // Check if this contract is approved to transfer the token
+    Cw721Contract(collection.clone()).approval(
+        &deps.querier,
+        token_id.to_string(),
+        env.contract.address.to_string(),
+        None,
+    )?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_expiry.is_valid(&env.block, expires)?;
@@ -240,11 +249,6 @@ pub fn execute_set_ask(
             return Err(ContractError::InvalidFindersFeeBps(fee));
         };
     }
-
-    must_approve(
-        env,
-        only_owner(deps.as_ref(), &info, collection.clone(), token_id)?,
-    )?;
 
     let seller = info.sender;
     store_ask(
@@ -1031,18 +1035,4 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
     }
 
     Ok(info.sender.clone())
-}
-
-fn must_approve(env: Env, res: OwnerOfResponse) -> Result<(), ContractError> {
-    if res
-        .approvals
-        .iter()
-        .map(|x| x.spender == env.contract.address)
-        .len()
-        != 1
-    {
-        return Err(ContractError::NeedsApproval {});
-    }
-
-    Ok(())
 }
