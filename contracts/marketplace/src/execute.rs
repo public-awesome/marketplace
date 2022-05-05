@@ -1,9 +1,13 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{AskHookMsg, BidHookMsg, ExecuteMsg, HookAction, InstantiateMsg, SaleHookMsg};
+use crate::msg::{
+    AskHookMsg, BidHookMsg, CollectionBidHookMsg, ExecuteMsg, HookAction, InstantiateMsg,
+    SaleHookMsg,
+};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SaleType, SudoParams, TokenId, ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    SaleType, SudoParams, TokenId, ASK_HOOKS, BID_HOOKS, COLLECTION_BID_HOOKS, SALE_HOOKS,
+    SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -26,6 +30,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const REPLY_ASK_HOOK: u64 = 1;
 const REPLY_SALE_HOOK: u64 = 2;
 const REPLY_BID_HOOK: u64 = 3;
+const REPLY_COLLECTION_BID_HOOK: u64 = 4;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -613,17 +618,20 @@ pub fn execute_set_collection_bid(
         )?);
     }
 
+    let collection_bid = CollectionBid {
+        collection: collection.clone(),
+        bidder: bidder.clone(),
+        price,
+        finders_fee_bps,
+        expires,
+    };
     collection_bids().save(
         deps.storage,
         collection_bid_key(collection.clone(), bidder.clone()),
-        &CollectionBid {
-            collection: collection.clone(),
-            bidder: bidder.clone(),
-            price,
-            finders_fee_bps,
-            expires,
-        },
+        &collection_bid,
     )?;
+
+    let hook = prepare_collection_bid_hook(deps.as_ref(), &collection_bid, HookAction::Create)?;
 
     let event = Event::new("set-collection-bid")
         .add_attribute("collection", collection.to_string())
@@ -631,7 +639,7 @@ pub fn execute_set_collection_bid(
         .add_attribute("bid_price", price.to_string())
         .add_attribute("expires", expires.to_string());
 
-    Ok(res.add_event(event))
+    Ok(res.add_event(event).add_submessages(hook))
 }
 
 /// Remove an existing collection bid (limit order)
@@ -651,6 +659,8 @@ pub fn execute_remove_collection_bid(
         collection_bid_key(collection.clone(), bidder.clone()),
     )?;
 
+    let hook = prepare_collection_bid_hook(deps.as_ref(), &collection_bid, HookAction::Delete)?;
+
     let event = Event::new("remove-collection-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("bidder", bidder);
@@ -660,7 +670,9 @@ pub fn execute_remove_collection_bid(
             deps.storage,
             collection_bid,
         )?)
-        .add_event(event);
+        .add_event(event)
+        .add_submessages(hook);
+
     Ok(res)
 }
 
@@ -1051,6 +1063,26 @@ fn prepare_bid_hook(
             funds: vec![],
         };
         Ok(SubMsg::reply_on_error(execute, REPLY_BID_HOOK))
+    })?;
+
+    Ok(submsgs)
+}
+
+fn prepare_collection_bid_hook(
+    deps: Deps,
+    collection_bid: &CollectionBid,
+    action: HookAction,
+) -> Result<Vec<SubMsg>, ContractError> {
+    let submsgs = COLLECTION_BID_HOOKS.prepare_hooks(deps.storage, |h| {
+        let msg = CollectionBidHookMsg {
+            collection_bid: collection_bid.clone(),
+        };
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.into_binary(action.clone())?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_COLLECTION_BID_HOOK))
     })?;
 
     Ok(submsgs)
