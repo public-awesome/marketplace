@@ -298,7 +298,6 @@ mod tests {
         let update_ask_state = ExecuteMsg::UpdateAskIsActive {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
-            is_active: false,
         };
         router
             .execute_contract(creator.clone(), marketplace.clone(), &update_ask_state, &[])
@@ -317,7 +316,6 @@ mod tests {
         let update_ask_state = ExecuteMsg::UpdateAskIsActive {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
-            is_active: true,
         };
         let res = router.execute_contract(
             Addr::unchecked("operator"),

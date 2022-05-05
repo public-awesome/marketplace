@@ -56,7 +56,6 @@ pub enum ExecuteMsg {
     UpdateAskIsActive {
         collection: String,
         token_id: TokenId,
-        is_active: bool,
     },
     /// Update the price of an existing ask
     UpdateAskPrice {

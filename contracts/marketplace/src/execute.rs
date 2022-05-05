@@ -123,14 +123,7 @@ pub fn execute(
         ExecuteMsg::UpdateAskIsActive {
             collection,
             token_id,
-            is_active,
-        } => execute_update_ask_is_active(
-            deps,
-            info,
-            api.addr_validate(&collection)?,
-            token_id,
-            is_active,
-        ),
+        } => execute_update_ask_is_active(deps, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::SetBid {
             collection,
             token_id,
@@ -313,13 +306,14 @@ pub fn execute_update_ask_is_active(
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
-    is_active: bool,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_operator(deps.storage, &info)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    ask.is_active = is_active;
+    let res =
+        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
+    ask.is_active = res.owner == ask.seller;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
@@ -327,7 +321,7 @@ pub fn execute_update_ask_is_active(
     let event = Event::new("update-ask-state")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("is_active", is_active.to_string());
+        .add_attribute("is_active", ask.is_active.to_string());
 
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
