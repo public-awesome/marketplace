@@ -40,9 +40,6 @@ pub enum ContractError {
     #[error("Token reserved")]
     TokenReserved {},
 
-    #[error("Unrecognised reply id: {0}")]
-    UnrecognisedReply(u64),
-
     #[error("Invalid finders fee bps: {0}")]
     InvalidFindersFeeBps(u64),
 
