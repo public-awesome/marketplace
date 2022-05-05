@@ -1902,7 +1902,7 @@ mod tests {
         let res = router.wasm_sudo(marketplace.clone(), &add_bid_hook_msg);
         assert!(res.is_ok());
 
-        let query_hooks_msg = QueryMsg::BidCreatedHooks {};
+        let query_hooks_msg = QueryMsg::BidHooks {};
         let res: HooksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &query_hooks_msg)
@@ -2067,7 +2067,7 @@ mod tests {
         let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
         assert!(res.is_ok());
 
-        let query_hooks_msg = QueryMsg::AskCreatedHooks {};
+        let query_hooks_msg = QueryMsg::AskHooks {};
         let res: HooksResponse = router
             .wrap()
             .query_wasm_smart(marketplace.clone(), &query_hooks_msg)

@@ -21,7 +21,6 @@ token_id: number
 } | {
 update_ask_is_active: {
 collection: string
-is_active: boolean
 token_id: number
 [k: string]: unknown
 }
