@@ -111,6 +111,10 @@ ask_created_hooks: {
 [k: string]: unknown
 }
 } | {
+bid_created_hooks: {
+[k: string]: unknown
+}
+} | {
 sale_hooks: {
 [k: string]: unknown
 }
