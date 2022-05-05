@@ -13,18 +13,6 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("Invalid roylties")]
-    InvalidRoyalties {},
-
-    #[error("No roylities exist for token_id")]
-    NoRoyaltiesForTokenId {},
-
-    #[error("Funds sent don't match bid amount")]
-    IncorrectBidFunds {},
-
-    #[error("InvalidExpiration")]
-    InvalidExpiration {},
-
     #[error("InvalidPrice")]
     InvalidPrice {},
 
@@ -40,14 +28,8 @@ pub enum ContractError {
     #[error("BidNotStale")]
     BidNotStale {},
 
-    #[error("Bid not found")]
-    BidNotFound {},
-
     #[error("PriceTooSmall: {0}")]
     PriceTooSmall(Uint128),
-
-    #[error("Contract needs approval")]
-    NeedsApproval {},
 
     #[error("Token reserved")]
     TokenReserved {},

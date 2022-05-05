@@ -18,7 +18,17 @@ hook: string
 [k: string]: unknown
 }
 } | {
+add_bid_created_hook: {
+hook: string
+[k: string]: unknown
+}
+} | {
 remove_ask_created_hook: {
+hook: string
+[k: string]: unknown
+}
+} | {
+remove_bid_created_hook: {
 hook: string
 [k: string]: unknown
 }
