@@ -1,27 +1,35 @@
-import { ExpiryRange, Uint128 } from "./shared-types";
+import { Duration, ExpiryRange, Uint128 } from "./shared-types";
 
 export interface InstantiateMsg {
 /**
  * Valid time range for Asks (min, max) in seconds
  */
 ask_expiry: ExpiryRange
-ask_filled_hook?: (string | null)
 /**
  * Valid time range for Bids (min, max) in seconds
  */
 bid_expiry: ExpiryRange
 /**
+ * Stale bid removal reward
+ */
+bid_removal_reward_bps: number
+/**
  * Max basis points for the finders fee
  */
 max_finders_fee_bps: number
 /**
- * Min value for a bid
+ * Min value for bids and asks
  */
-min_bid_amount: Uint128
+min_price: Uint128
 /**
  * Operators are entites that are responsible for maintaining the active state of Asks. They listen to NFT transfer events, and update the active state of Asks.
  */
 operators: string[]
+sale_hook?: (string | null)
+/**
+ * Duration after expiry when a bid becomes stale (in seconds)
+ */
+stale_bid_duration: Duration
 /**
  * Fair Burn fee for winning bids 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
  */

@@ -3,6 +3,7 @@ use crate::{
     state::{Ask, Bid, CollectionBid, SaleType, SudoParams, TokenId},
 };
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128, WasmMsg};
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_std::CosmosMsg;
@@ -26,6 +27,10 @@ pub struct InstantiateMsg {
     pub max_finders_fee_bps: u64,
     /// Min value for bids and asks
     pub min_price: Uint128,
+    /// Duration after expiry when a bid becomes stale (in seconds)
+    pub stale_bid_duration: Duration,
+    /// Stale bid removal reward
+    pub bid_removal_reward_bps: u64,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -64,6 +69,7 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         expires: Timestamp,
         finder: Option<String>,
+        finders_fee_bps: Option<u64>,
     },
     /// Remove an existing bid from an ask
     RemoveBid {
@@ -81,6 +87,7 @@ pub enum ExecuteMsg {
     SetCollectionBid {
         collection: String,
         expires: Timestamp,
+        finders_fee_bps: Option<u64>,
     },
     /// Remove a bid (limit order) across an entire collection
     RemoveCollectionBid { collection: String },
@@ -90,6 +97,12 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         bidder: String,
         finder: Option<String>,
+    },
+    /// Privileged operation to remove stale bids
+    RemoveStaleBid {
+        collection: String,
+        token_id: TokenId,
+        bidder: String,
     },
 }
 
@@ -105,11 +118,17 @@ pub enum SudoMsg {
         operators: Option<Vec<String>>,
         max_finders_fee_bps: Option<u64>,
         min_price: Option<Uint128>,
+        stale_bid_duration: Option<u64>,
+        bid_removal_reward_bps: Option<u64>,
     },
     /// Add a new hook to be informed of all asks
     AddAskCreatedHook { hook: String },
+    /// Add a new hook to be informed of all bids
+    AddBidCreatedHook { hook: String },
     /// Remove a ask hook
     RemoveAskCreatedHook { hook: String },
+    /// Remove a bid hook
+    RemoveBidCreatedHook { hook: String },
     /// Add a new hook to be informed of all trades
     AddSaleHook { hook: String },
     /// Remove a trade hook
@@ -292,6 +311,9 @@ pub enum QueryMsg {
     /// Show all registered ask hooks
     /// Return type: `HooksResponse`
     AskCreatedHooks {},
+    /// Show all registered bid hooks
+    /// Return type: `HooksResponse`
+    BidCreatedHooks {},
     /// Show all registered sale hooks
     /// Return type: `HooksResponse`
     SaleHooks {},
@@ -447,4 +469,48 @@ impl AskCreatedHookMsg {
 #[serde(rename_all = "snake_case")]
 pub enum AskCreatedExecuteMsg {
     AskCreatedHook(AskCreatedHookMsg),
+}
+
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub struct BidCreatedHookMsg {
+    pub collection: String,
+    pub token_id: TokenId,
+    pub bidder: String,
+    pub price: Uint128,
+}
+
+impl BidCreatedHookMsg {
+    pub fn new(collection: String, token_id: TokenId, bidder: String, price: Uint128) -> Self {
+        BidCreatedHookMsg {
+            collection,
+            token_id,
+            bidder,
+            price,
+        }
+    }
+
+    /// serializes the message
+    pub fn into_binary(self) -> StdResult<Binary> {
+        let msg = BidCreatedExecuteMsg::BidCreatedHook(self);
+        to_binary(&msg)
+    }
+
+    /// creates a cosmos_msg sending this struct to the named contract
+    pub fn into_cosmos_msg<T: Into<String>>(self, contract_addr: T) -> StdResult<CosmosMsg> {
+        let msg = self.into_binary()?;
+        let execute = WasmMsg::Execute {
+            contract_addr: contract_addr.into(),
+            msg,
+            funds: vec![],
+        };
+        Ok(execute.into())
+    }
+}
+
+// This is just a helper to properly serialize the above message
+#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum BidCreatedExecuteMsg {
+    BidCreatedHook(BidCreatedHookMsg),
 }

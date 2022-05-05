@@ -1,5 +1,6 @@
 use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
+use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_controllers::Hooks;
@@ -23,11 +24,16 @@ pub struct SudoParams {
     pub max_finders_fee_percent: Decimal,
     /// Min value for a bid
     pub min_price: Uint128,
+    /// Duration after expiry when a bid becomes stale
+    pub stale_bid_duration: Duration,
+    /// Stale bid removal reward
+    pub bid_removal_reward_percent: Decimal,
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");
 
 pub const ASK_CREATED_HOOKS: Hooks = Hooks::new("ask-created-hooks");
+pub const BID_CREATED_HOOKS: Hooks = Hooks::new("bid-created-hooks");
 pub const SALE_HOOKS: Hooks = Hooks::new("sale-hooks");
 
 pub type TokenId = u32;
@@ -95,6 +101,7 @@ pub struct Bid {
     pub token_id: TokenId,
     pub bidder: Addr,
     pub price: Uint128,
+    pub finders_fee_bps: Option<u64>,
     pub expires: Timestamp,
 }
 
@@ -104,6 +111,7 @@ impl Bid {
         token_id: TokenId,
         bidder: Addr,
         price: Uint128,
+        finders_fee_bps: Option<u64>,
         expires: Timestamp,
     ) -> Self {
         Bid {
@@ -111,6 +119,7 @@ impl Bid {
             token_id,
             bidder,
             price,
+            finders_fee_bps,
             expires,
         }
     }
@@ -167,6 +176,7 @@ pub struct CollectionBid {
     pub collection: Addr,
     pub bidder: Addr,
     pub price: Uint128,
+    pub finders_fee_bps: Option<u64>,
     pub expires: Timestamp,
 }
 

@@ -1,9 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{AskCreatedHookMsg, ExecuteMsg, InstantiateMsg, SaleHookMsg};
+use crate::msg::{AskCreatedHookMsg, BidCreatedHookMsg, ExecuteMsg, InstantiateMsg, SaleHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, BID_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -14,7 +14,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
-use cw_utils::{maybe_addr, must_pay, nonpayable};
+use cw_utils::{maybe_addr, must_pay, nonpayable, Expiration};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
@@ -25,6 +25,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const REPLY_ASK_CREATED_HOOK: u64 = 1;
 const REPLY_SALE_HOOK: u64 = 2;
+const REPLY_BID_CREATED_HOOK: u64 = 3;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -45,6 +46,8 @@ pub fn instantiate(
         operators: map_validate(deps.api, &msg.operators)?,
         max_finders_fee_percent: Decimal::percent(msg.max_finders_fee_bps),
         min_price: msg.min_price,
+        stale_bid_duration: msg.stale_bid_duration,
+        bid_removal_reward_percent: Decimal::percent(msg.bid_removal_reward_bps),
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -64,6 +67,14 @@ pub struct AskInfo {
     reserve_for: Option<Addr>,
     finders_fee_bps: Option<u64>,
     expires: Timestamp,
+}
+
+pub struct BidInfo {
+    collection: Addr,
+    token_id: TokenId,
+    expires: Timestamp,
+    finder: Option<Addr>,
+    finders_fee_bps: Option<u64>,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -113,14 +124,18 @@ pub fn execute(
             token_id,
             expires,
             finder,
+            finders_fee_bps,
         } => execute_set_bid(
             deps,
             env,
             info,
-            api.addr_validate(&collection)?,
-            token_id,
-            expires,
-            maybe_addr(api, finder)?,
+            BidInfo {
+                collection: api.addr_validate(&collection)?,
+                token_id,
+                expires,
+                finder: maybe_addr(api, finder)?,
+                finders_fee_bps,
+            },
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -148,7 +163,15 @@ pub fn execute(
         ExecuteMsg::SetCollectionBid {
             collection,
             expires,
-        } => execute_set_collection_bid(deps, env, info, api.addr_validate(&collection)?, expires),
+            finders_fee_bps,
+        } => execute_set_collection_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            finders_fee_bps,
+            expires,
+        ),
         ExecuteMsg::RemoveCollectionBid { collection } => {
             execute_remove_collection_bid(deps, env, info, api.addr_validate(&collection)?)
         }
@@ -165,6 +188,18 @@ pub fn execute(
             token_id,
             api.addr_validate(&bidder)?,
             maybe_addr(api, finder)?,
+        ),
+        ExecuteMsg::RemoveStaleBid {
+            collection,
+            token_id,
+            bidder,
+        } => execute_remove_stale_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            api.addr_validate(&bidder)?,
         ),
     }
 }
@@ -199,16 +234,10 @@ pub fn execute_set_ask(
         };
     }
 
-    let res = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
-    if res
-        .approvals
-        .iter()
-        .map(|x| x.spender == env.contract.address)
-        .len()
-        != 1
-    {
-        return Err(ContractError::NeedsApproval {});
-    }
+    must_approve(
+        env,
+        only_owner(deps.as_ref(), &info, collection.clone(), token_id)?,
+    )?;
 
     let seller = info.sender;
     store_ask(
@@ -286,15 +315,7 @@ pub fn execute_update_ask_is_active(
     token_id: TokenId,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-
-    let params = SUDO_PARAMS.load(deps.storage)?;
-    if !params
-        .operators
-        .iter()
-        .any(|a| a.as_ref() == info.sender.as_ref())
-    {
-        return Err(ContractError::Unauthorized {});
-    }
+    only_operator(deps.storage, &info)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     let res =
@@ -341,11 +362,16 @@ pub fn execute_set_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    collection: Addr,
-    token_id: TokenId,
-    expires: Timestamp,
-    finder: Option<Addr>,
+    bid_info: BidInfo,
 ) -> Result<Response, ContractError> {
+    let BidInfo {
+        collection,
+        token_id,
+        finders_fee_bps,
+        expires,
+        finder,
+    } = bid_info;
+
     let params = SUDO_PARAMS.load(deps.storage)?;
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
@@ -388,7 +414,14 @@ pub fn execute_set_bid(
                         return Err(ContractError::InvalidPrice {});
                     } else {
                         asks().remove(deps.storage, ask_key(collection.clone(), token_id))?;
-                        finalize_sale(deps, ask, bid_price, bidder.clone(), finder, &mut res)?;
+                        finalize_sale(
+                            deps.as_ref(),
+                            ask,
+                            bid_price,
+                            bidder.clone(),
+                            finder,
+                            &mut res,
+                        )?;
                     }
                 }
                 SaleType::Auction => {
@@ -399,6 +432,7 @@ pub fn execute_set_bid(
                             token_id,
                             bidder.clone(),
                             bid_price,
+                            finders_fee_bps,
                             expires,
                         ),
                     )?;
@@ -413,11 +447,29 @@ pub fn execute_set_bid(
                     token_id,
                     bidder.clone(),
                     bid_price,
+                    finders_fee_bps,
                     expires,
                 ),
             )?;
         }
     }
+
+    let msg = BidCreatedHookMsg {
+        collection: collection.to_string(),
+        token_id,
+        bidder: bidder.to_string(),
+        price: bid_price,
+    };
+
+    // Include hook submessages, i.e: bid rewards
+    let submsgs = BID_CREATED_HOOKS.prepare_hooks(deps.storage, |h| {
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.clone().into_binary()?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_BID_CREATED_HOOK))
+    })?;
 
     let event = Event::new("set-bid")
         .add_attribute("collection", collection.to_string())
@@ -426,7 +478,7 @@ pub fn execute_set_bid(
         .add_attribute("bid_price", bid_price.to_string())
         .add_attribute("expires", expires.to_string());
 
-    Ok(res.add_event(event))
+    Ok(res.add_submessages(submsgs).add_event(event))
 }
 
 /// Removes a bid made by the bidder. Bidders can only remove their own bids
@@ -520,7 +572,7 @@ pub fn execute_accept_bid(
                 seller: info.sender,
                 funds_recipient: None,
                 reserve_for: None,
-                finders_fee_bps: None,
+                finders_fee_bps: bid.finders_fee_bps,
             }
         }
     };
@@ -531,7 +583,14 @@ pub fn execute_accept_bid(
     let mut res = Response::new();
 
     // Transfer funds and NFT
-    finalize_sale(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
+    finalize_sale(
+        deps.as_ref(),
+        ask,
+        bid.price,
+        bidder.clone(),
+        finder,
+        &mut res,
+    )?;
 
     let event = Event::new("accept-bid")
         .add_attribute("collection", collection.to_string())
@@ -548,6 +607,7 @@ pub fn execute_set_collection_bid(
     env: Env,
     info: MessageInfo,
     collection: Addr,
+    finders_fee_bps: Option<u64>,
     expires: Timestamp,
 ) -> Result<Response, ContractError> {
     let params = SUDO_PARAMS.load(deps.storage)?;
@@ -579,6 +639,7 @@ pub fn execute_set_collection_bid(
             collection: collection.clone(),
             bidder: bidder.clone(),
             price,
+            finders_fee_bps,
             expires,
         },
     )?;
@@ -680,11 +741,18 @@ pub fn execute_accept_collection_bid(
         seller: info.sender.clone(),
         funds_recipient: None,
         reserve_for: None,
-        finders_fee_bps: None,
+        finders_fee_bps: bid.finders_fee_bps,
     };
 
     // Transfer funds and NFT
-    finalize_sale(deps, ask, bid.price, bidder.clone(), finder, &mut res)?;
+    finalize_sale(
+        deps.as_ref(),
+        ask,
+        bid.price,
+        bidder.clone(),
+        finder,
+        &mut res,
+    )?;
 
     let event = Event::new("accept-collection-bid")
         .add_attribute("collection", collection.to_string())
@@ -696,25 +764,65 @@ pub fn execute_accept_collection_bid(
     Ok(res.add_event(event))
 }
 
-/// Checks to enfore only nft owner can call
-fn only_owner(
-    deps: Deps,
-    info: &MessageInfo,
+/// Privileged operation to remove a stale bid. Operators can call this to remove and refund bids that are still in the
+/// state after they have expired. As a reward they get a governance-determined percentage of the bid price.
+pub fn execute_remove_stale_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
     collection: Addr,
-    token_id: u32,
-) -> Result<OwnerOfResponse, ContractError> {
-    let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
-    println!("checking owner{:?}{:?}", res.owner, info.sender.to_string());
-    if res.owner != info.sender.to_string() {
-        return Err(ContractError::Unauthorized {});
+    token_id: TokenId,
+    bidder: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    let operator = only_operator(deps.storage, &info)?;
+
+    let bid = bids().load(
+        deps.storage,
+        bid_key(collection.clone(), token_id, bidder.clone()),
+    )?;
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    let stale_time = (Expiration::AtTime(bid.expires) + params.stale_bid_duration)?;
+    if !stale_time.is_expired(&env.block) {
+        return Err(ContractError::BidNotStale {});
     }
 
-    Ok(res)
+    let params = SUDO_PARAMS.load(deps.storage)?;
+
+    // bid is stale, refund bidder and reward operator
+    bids().remove(
+        deps.storage,
+        (bid.collection, bid.token_id, bid.bidder.clone()),
+    )?;
+
+    let reward = bid.price * params.bid_removal_reward_percent / Uint128::from(100u128);
+
+    let bidder_msg = BankMsg::Send {
+        to_address: bid.bidder.to_string(),
+        amount: vec![coin((bid.price - reward).u128(), NATIVE_DENOM)],
+    };
+    let operator_msg = BankMsg::Send {
+        to_address: operator.to_string(),
+        amount: vec![coin(reward.u128(), NATIVE_DENOM)],
+    };
+
+    let event = Event::new("remove-stale-bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("bidder", bidder.to_string())
+        .add_attribute("operator", operator.to_string())
+        .add_attribute("reward", reward.to_string());
+
+    Ok(Response::new()
+        .add_event(event)
+        .add_message(bidder_msg)
+        .add_message(operator_msg))
 }
 
 /// Transfers funds and NFT, updates bid
 fn finalize_sale(
-    deps: DepsMut,
+    deps: Deps,
     ask: Ask,
     price: Uint128,
     buyer: Addr,
@@ -722,7 +830,7 @@ fn finalize_sale(
     res: &mut Response,
 ) -> StdResult<()> {
     payout(
-        deps.as_ref(),
+        deps,
         ask.collection.clone(),
         price,
         ask.funds_recipient
@@ -785,6 +893,12 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
         REPLY_ASK_CREATED_HOOK => {
             let res = Response::new()
                 .add_attribute("action", "ask-created-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        REPLY_BID_CREATED_HOOK => {
+            let res = Response::new()
+                .add_attribute("action", "bid-created-hook-failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }
@@ -891,4 +1005,47 @@ fn store_bid(store: &mut dyn Storage, bid: &Bid) -> StdResult<()> {
 
 fn store_ask(store: &mut dyn Storage, ask: &Ask) -> StdResult<()> {
     asks().save(store, ask_key(ask.collection.clone(), ask.token_id), ask)
+}
+
+/// Checks to enfore only NFT owner can call
+fn only_owner(
+    deps: Deps,
+    info: &MessageInfo,
+    collection: Addr,
+    token_id: u32,
+) -> Result<OwnerOfResponse, ContractError> {
+    let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
+    if res.owner != info.sender {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    Ok(res)
+}
+
+/// Checks to enforce only privileged operators
+fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, ContractError> {
+    let params = SUDO_PARAMS.load(store)?;
+    if !params
+        .operators
+        .iter()
+        .any(|a| a.as_ref() == info.sender.as_ref())
+    {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    Ok(info.sender.clone())
+}
+
+fn must_approve(env: Env, res: OwnerOfResponse) -> Result<(), ContractError> {
+    if res
+        .approvals
+        .iter()
+        .map(|x| x.spender == env.contract.address)
+        .len()
+        != 1
+    {
+        return Err(ContractError::NeedsApproval {});
+    }
+
+    Ok(())
 }
