@@ -317,7 +317,11 @@ pub fn execute_update_ask_is_active(
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
     let res =
         Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
-    ask.is_active = res.owner == ask.seller;
+    let new_is_active = res.owner == ask.seller;
+    if new_is_active == ask.is_active {
+        return Err(ContractError::AskUnchanged {});
+    }
+    ask.is_active = new_is_active;
     asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
 
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
@@ -1045,7 +1049,7 @@ fn only_owner(
 ) -> Result<OwnerOfResponse, ContractError> {
     let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
     if res.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::UnauthorizedOwner {});
     }
 
     Ok(res)
@@ -1059,7 +1063,7 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
         .iter()
         .any(|a| a.as_ref() == info.sender.as_ref())
     {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::UnauthorizedOperator {});
     }
 
     Ok(info.sender.clone())
