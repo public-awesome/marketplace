@@ -23,7 +23,7 @@
       "type": "object",
       "required": [
         "collection",
-        "expires",
+        "expires_at",
         "is_active",
         "price",
         "sale_type",
@@ -34,7 +34,7 @@
         "collection": {
           "$ref": "#/definitions/Addr"
         },
-        "expires": {
+        "expires_at": {
           "$ref": "#/definitions/Timestamp"
         },
         "finders_fee_bps": {

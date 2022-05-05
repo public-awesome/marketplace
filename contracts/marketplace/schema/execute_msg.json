@@ -376,6 +376,31 @@
         }
       },
       "additionalProperties": false
+    },
+    {
+      "description": "Privileged operation to remove stale bids",
+      "type": "object",
+      "required": [
+        "remove_stale_collection_bid"
+      ],
+      "properties": {
+        "remove_stale_collection_bid": {
+          "type": "object",
+          "required": [
+            "bidder",
+            "collection"
+          ],
+          "properties": {
+            "bidder": {
+              "type": "string"
+            },
+            "collection": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
     }
   ],
   "definitions": {

@@ -27,11 +27,6 @@ use sg_std::{Response, SubMsg, NATIVE_DENOM};
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const REPLY_ASK_HOOK: u64 = 1;
-const REPLY_SALE_HOOK: u64 = 2;
-const REPLY_BID_HOOK: u64 = 3;
-const REPLY_COLLECTION_BID_HOOK: u64 = 4;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -206,6 +201,15 @@ pub fn execute(
             token_id,
             api.addr_validate(&bidder)?,
         ),
+        ExecuteMsg::RemoveStaleCollectionBid { collection, bidder } => {
+            execute_remove_stale_collection_bid(
+                deps,
+                env,
+                info,
+                api.addr_validate(&collection)?,
+                api.addr_validate(&bidder)?,
+            )
+        }
     }
 }
 
@@ -258,7 +262,7 @@ pub fn execute_set_ask(
         funds_recipient,
         reserve_for,
         finders_fee_bps,
-        expires,
+        expires_at: expires,
         is_active: true,
     };
     store_ask(deps.storage, &ask)?;
@@ -392,7 +396,7 @@ pub fn execute_set_bid(
     let ask = asks().may_load(deps.storage, ask_key(collection.clone(), token_id))?;
     let bid: Option<Bid> = match ask {
         Some(ask) => {
-            if ask.expires <= env.block.time {
+            if ask.expires_at <= env.block.time {
                 return Err(ContractError::AskExpired {});
             }
             if !ask.is_active {
@@ -525,13 +529,13 @@ pub fn execute_accept_bid(
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-    if bid.expires <= env.block.time {
+    if bid.expires_at <= env.block.time {
         return Err(ContractError::BidExpired {});
     }
 
     let ask = match asks().may_load(deps.storage, ask_key(collection.clone(), token_id))? {
         Some(existing_ask) => {
-            if existing_ask.expires <= env.block.time {
+            if existing_ask.expires_at <= env.block.time {
                 return Err(ContractError::AskExpired {});
             }
             if !existing_ask.is_active {
@@ -547,7 +551,7 @@ pub fn execute_accept_bid(
                 collection: collection.clone(),
                 token_id,
                 price: bid.price,
-                expires: bid.expires,
+                expires_at: bid.expires_at,
                 is_active: true,
                 seller: info.sender,
                 funds_recipient: None,
@@ -617,7 +621,7 @@ pub fn execute_set_collection_bid(
         bidder: bidder.clone(),
         price,
         finders_fee_bps,
-        expires,
+        expires_at: expires,
     };
     collection_bids().save(
         deps.storage,
@@ -706,7 +710,7 @@ pub fn execute_accept_collection_bid(
         deps.storage,
         collection_bid_key(collection.clone(), bidder.clone()),
     )?;
-    if bid.expires <= env.block.time {
+    if bid.expires_at <= env.block.time {
         return Err(ContractError::BidExpired {});
     }
 
@@ -723,7 +727,7 @@ pub fn execute_accept_collection_bid(
         collection: collection.clone(),
         token_id,
         price: bid.price,
-        expires: bid.expires,
+        expires_at: bid.expires_at,
         is_active: true,
         seller: info.sender.clone(),
         funds_recipient: None,
@@ -770,7 +774,7 @@ pub fn execute_remove_stale_bid(
     )?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
-    let stale_time = (Expiration::AtTime(bid.expires) + params.stale_bid_duration)?;
+    let stale_time = (Expiration::AtTime(bid.expires_at) + params.stale_bid_duration)?;
     if !stale_time.is_expired(&env.block) {
         return Err(ContractError::BidNotStale {});
     }
@@ -799,6 +803,66 @@ pub fn execute_remove_stale_bid(
     let event = Event::new("remove-stale-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
+        .add_attribute("bidder", bidder.to_string())
+        .add_attribute("operator", operator.to_string())
+        .add_attribute("reward", reward.to_string());
+
+    Ok(Response::new()
+        .add_event(event)
+        .add_message(bidder_msg)
+        .add_message(operator_msg)
+        .add_submessages(hook))
+}
+
+/// Privileged operation to remove a stale colllection bid. Operators can call this to remove and refund bids that are still in the
+/// state after they have expired. As a reward they get a governance-determined percentage of the bid price.
+pub fn execute_remove_stale_collection_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    bidder: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    let operator = only_operator(deps.storage, &info)?;
+
+    let collection_bid = collection_bids().load(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )?;
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    let stale_time = (Expiration::AtTime(collection_bid.expires_at) + params.stale_bid_duration)?;
+    if !stale_time.is_expired(&env.block) {
+        return Err(ContractError::BidNotStale {});
+    }
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+
+    // collection bid is stale, refund bidder and reward operator
+    collection_bids().remove(
+        deps.storage,
+        collection_bid_key(
+            collection_bid.clone().collection,
+            collection_bid.bidder.clone(),
+        ),
+    )?;
+
+    let reward = collection_bid.price * params.bid_removal_reward_percent / Uint128::from(100u128);
+
+    let bidder_msg = BankMsg::Send {
+        to_address: collection_bid.bidder.to_string(),
+        amount: vec![coin((collection_bid.price - reward).u128(), NATIVE_DENOM)],
+    };
+    let operator_msg = BankMsg::Send {
+        to_address: operator.to_string(),
+        amount: vec![coin(reward.u128(), NATIVE_DENOM)],
+    };
+
+    let hook = prepare_collection_bid_hook(deps.as_ref(), &collection_bid, HookAction::Delete)?;
+
+    let event = Event::new("remove-stale-collection-bid")
+        .add_attribute("collection", collection.to_string())
         .add_attribute("bidder", bidder.to_string())
         .add_attribute("operator", operator.to_string())
         .add_attribute("reward", reward.to_string());
@@ -856,7 +920,7 @@ fn finalize_sale(
             msg: msg.clone().into_binary()?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_SALE_HOOK))
+        Ok(SubMsg::reply_on_error(execute, HookReply::Sale as u64))
     })?;
     res.messages.append(&mut submsgs);
 
@@ -869,31 +933,6 @@ fn finalize_sale(
     res.events.push(event);
 
     Ok(())
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    match msg.id {
-        REPLY_SALE_HOOK => {
-            let res = Response::new()
-                .add_attribute("action", "sale-hook-failed")
-                .add_attribute("error", msg.result.unwrap_err());
-            Ok(res)
-        }
-        REPLY_ASK_HOOK => {
-            let res = Response::new()
-                .add_attribute("action", "ask-hook-failed")
-                .add_attribute("error", msg.result.unwrap_err());
-            Ok(res)
-        }
-        REPLY_BID_HOOK => {
-            let res = Response::new()
-                .add_attribute("action", "bid-hook-failed")
-                .add_attribute("error", msg.result.unwrap_err());
-            Ok(res)
-        }
-        _ => Err(ContractError::UnrecognisedReply(msg.id)),
-    }
 }
 
 /// Payout a bid
@@ -1026,6 +1065,55 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
     Ok(info.sender.clone())
 }
 
+enum HookReply {
+    Ask = 1,
+    Sale,
+    Bid,
+    CollectionBid,
+}
+
+impl From<u64> for HookReply {
+    fn from(item: u64) -> Self {
+        match item {
+            1 => HookReply::Ask,
+            2 => HookReply::Sale,
+            3 => HookReply::Bid,
+            4 => HookReply::CollectionBid,
+            _ => panic!("invalid reply type"),
+        }
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match HookReply::from(msg.id) {
+        HookReply::Ask => {
+            let res = Response::new()
+                .add_attribute("action", "ask-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        HookReply::Sale => {
+            let res = Response::new()
+                .add_attribute("action", "sale-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        HookReply::Bid => {
+            let res = Response::new()
+                .add_attribute("action", "bid-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        HookReply::CollectionBid => {
+            let res = Response::new()
+                .add_attribute("action", "collection-bid-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+    }
+}
+
 fn prepare_ask_hook(
     deps: Deps,
     ask: &Ask,
@@ -1038,7 +1126,7 @@ fn prepare_ask_hook(
             msg: msg.into_binary(action.clone())?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
+        Ok(SubMsg::reply_on_error(execute, HookReply::Ask as u64))
     })?;
 
     Ok(submsgs)
@@ -1056,7 +1144,7 @@ fn prepare_bid_hook(
             msg: msg.into_binary(action.clone())?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_BID_HOOK))
+        Ok(SubMsg::reply_on_error(execute, HookReply::Bid as u64))
     })?;
 
     Ok(submsgs)
@@ -1076,7 +1164,10 @@ fn prepare_collection_bid_hook(
             msg: msg.into_binary(action.clone())?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_COLLECTION_BID_HOOK))
+        Ok(SubMsg::reply_on_error(
+            execute,
+            HookReply::CollectionBid as u64,
+        ))
     })?;
 
     Ok(submsgs)

@@ -53,7 +53,7 @@ export type SaleType = ("fixed_price" | "auction");
 export interface Ask {
     [k: string]: unknown;
     collection: Addr;
-    expires: Timestamp;
+    expires_at: Timestamp;
     finders_fee_bps?: (number | null);
     funds_recipient?: (Addr | null);
     is_active: boolean;
@@ -87,7 +87,7 @@ export interface Bid {
     [k: string]: unknown;
     bidder: Addr;
     collection: Addr;
-    expires: Timestamp;
+    expires_at: Timestamp;
     finders_fee_bps?: (number | null);
     price: Uint128;
     token_id: number;

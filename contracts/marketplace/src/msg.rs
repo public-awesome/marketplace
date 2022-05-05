@@ -104,6 +104,8 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         bidder: String,
     },
+    /// Privileged operation to remove stale bids
+    RemoveStaleCollectionBid { collection: String, bidder: String },
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]

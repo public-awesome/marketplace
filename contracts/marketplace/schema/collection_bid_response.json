@@ -25,7 +25,7 @@
       "required": [
         "bidder",
         "collection",
-        "expires",
+        "expires_at",
         "price"
       ],
       "properties": {
@@ -35,7 +35,7 @@
         "collection": {
           "$ref": "#/definitions/Addr"
         },
-        "expires": {
+        "expires_at": {
           "$ref": "#/definitions/Timestamp"
         },
         "finders_fee_bps": {
