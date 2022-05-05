@@ -1848,7 +1848,7 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let add_bid_hook_msg = SudoMsg::AddBidCreatedHook {
+        let add_bid_hook_msg = SudoMsg::AddBidHook {
             hook: "bid_hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &add_bid_hook_msg);
@@ -1861,7 +1861,7 @@ mod tests {
             .unwrap();
         assert_eq!(res.hooks, vec!["bid_hook".to_string()]);
 
-        let remove_hook_msg = SudoMsg::RemoveBidCreatedHook {
+        let remove_hook_msg = SudoMsg::RemoveBidHook {
             hook: "bid_hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);
@@ -1931,13 +1931,13 @@ mod tests {
         let _res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
 
         // Add listed hook
-        let add_ask_hook_msg = SudoMsg::AddAskCreatedHook {
+        let add_ask_hook_msg = SudoMsg::AddAskHook {
             hook: "ask_created_hook".to_string(),
         };
         let _res = router.wasm_sudo(marketplace.clone(), &add_ask_hook_msg);
 
         // Add bid created hook
-        let add_ask_hook_msg = SudoMsg::AddBidCreatedHook {
+        let add_ask_hook_msg = SudoMsg::AddBidHook {
             hook: "bid_created_hook".to_string(),
         };
         let _res = router.wasm_sudo(marketplace.clone(), &add_ask_hook_msg);
@@ -2013,7 +2013,7 @@ mod tests {
         // Instantiate and configure contracts
         let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-        let add_hook_msg = SudoMsg::AddAskCreatedHook {
+        let add_hook_msg = SudoMsg::AddAskHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
@@ -2026,7 +2026,7 @@ mod tests {
             .unwrap();
         assert_eq!(res.hooks, vec!["hook".to_string()]);
 
-        let remove_hook_msg = SudoMsg::RemoveAskCreatedHook {
+        let remove_hook_msg = SudoMsg::RemoveAskHook {
             hook: "hook".to_string(),
         };
         let res = router.wasm_sudo(marketplace.clone(), &remove_hook_msg);

@@ -46,19 +46,11 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             },
         ),
         SudoMsg::AddSaleHook { hook } => sudo_add_sale_hook(deps, api.addr_validate(&hook)?),
-        SudoMsg::AddAskCreatedHook { hook } => {
-            sudo_add_ask_hook(deps, env, api.addr_validate(&hook)?)
-        }
-        SudoMsg::AddBidCreatedHook { hook } => {
-            sudo_add_bid_hook(deps, env, api.addr_validate(&hook)?)
-        }
+        SudoMsg::AddAskHook { hook } => sudo_add_ask_hook(deps, env, api.addr_validate(&hook)?),
+        SudoMsg::AddBidHook { hook } => sudo_add_bid_hook(deps, env, api.addr_validate(&hook)?),
         SudoMsg::RemoveSaleHook { hook } => sudo_remove_sale_hook(deps, api.addr_validate(&hook)?),
-        SudoMsg::RemoveAskCreatedHook { hook } => {
-            sudo_remove_ask_hook(deps, api.addr_validate(&hook)?)
-        }
-        SudoMsg::RemoveBidCreatedHook { hook } => {
-            sudo_remove_bid_hook(deps, api.addr_validate(&hook)?)
-        }
+        SudoMsg::RemoveAskHook { hook } => sudo_remove_ask_hook(deps, api.addr_validate(&hook)?),
+        SudoMsg::RemoveBidHook { hook } => sudo_remove_bid_hook(deps, api.addr_validate(&hook)?),
     }
 }
 
