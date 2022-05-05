@@ -1,31 +1,4 @@
 /**
- * A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
- *
- * # Examples
- *
- * Use `from` to create instances of this and `u128` to get the value out:
- *
- * ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
- *
- * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
- *
- * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
- */
-export type Uint128 = string;
-export interface Coin {
-    [k: string]: unknown;
-    amount: Uint128;
-    denom: string;
-}
-/**
- * Offset for ask pagination
- */
-export interface AskOffset {
-    [k: string]: unknown;
-    price: Uint128;
-    token_id: number;
-}
-/**
  * A human readable address.
  *
  * In Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.
@@ -59,6 +32,20 @@ export type Timestamp = Uint64;
  * let b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```
  */
 export type Uint64 = string;
+/**
+ * A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.
+ *
+ * # Examples
+ *
+ * Use `from` to create instances of this and `u128` to get the value out:
+ *
+ * ``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);
+ *
+ * let b = Uint128::from(42u64); assert_eq!(b.u128(), 42);
+ *
+ * let c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```
+ */
+export type Uint128 = string;
 export type SaleType = ("fixed_price" | "auction");
 /**
  * Represents an ask on the marketplace
@@ -74,6 +61,14 @@ export interface Ask {
     reserve_for?: (Addr | null);
     sale_type: SaleType;
     seller: Addr;
+    token_id: number;
+}
+/**
+ * Offset for ask pagination
+ */
+export interface AskOffset {
+    [k: string]: unknown;
+    price: Uint128;
     token_id: number;
 }
 /**
@@ -113,6 +108,11 @@ export interface CollectionOffset {
     [k: string]: unknown;
     collection: string;
     token_id: number;
+}
+export interface Coin {
+    [k: string]: unknown;
+    amount: Uint128;
+    denom: string;
 }
 /**
  * Duration is a delta of time. You can add it to a BlockInfo or Expiration to move that further in the future. Note that an height-based Duration and a time-based Expiration cannot be combined

@@ -431,28 +431,12 @@ pub enum HookAction {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct AskHookMsg {
-    pub collection: String,
-    pub token_id: u32,
-    pub seller: String,
-    pub funds_recipient: String,
-    pub price: Coin,
+    pub ask: Ask,
 }
 
 impl AskHookMsg {
-    pub fn new(
-        collection: String,
-        token_id: u32,
-        seller: String,
-        funds_recipient: String,
-        price: Coin,
-    ) -> Self {
-        AskHookMsg {
-            collection,
-            token_id,
-            seller,
-            funds_recipient,
-            price,
-        }
+    pub fn new(ask: Ask) -> Self {
+        AskHookMsg { ask }
     }
 
     /// serializes the message
@@ -463,21 +447,6 @@ impl AskHookMsg {
             HookAction::Delete => AskHookExecuteMsg::AskDeletedHook(self),
         };
         to_binary(&msg)
-    }
-
-    /// creates a cosmos_msg sending this struct to the named contract
-    pub fn into_cosmos_msg<T: Into<String>>(
-        self,
-        contract_addr: T,
-        action: HookAction,
-    ) -> StdResult<CosmosMsg> {
-        let msg = self.into_binary(action)?;
-        let execute = WasmMsg::Execute {
-            contract_addr: contract_addr.into(),
-            msg,
-            funds: vec![],
-        };
-        Ok(execute.into())
     }
 }
 
@@ -492,44 +461,31 @@ pub enum AskHookExecuteMsg {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub struct BidCreatedHookMsg {
-    pub collection: String,
-    pub token_id: TokenId,
-    pub bidder: String,
-    pub price: Uint128,
+pub struct BidHookMsg {
+    pub bid: Bid,
 }
 
-impl BidCreatedHookMsg {
-    pub fn new(collection: String, token_id: TokenId, bidder: String, price: Uint128) -> Self {
-        BidCreatedHookMsg {
-            collection,
-            token_id,
-            bidder,
-            price,
-        }
+impl BidHookMsg {
+    pub fn new(bid: Bid) -> Self {
+        BidHookMsg { bid }
     }
 
     /// serializes the message
-    pub fn into_binary(self) -> StdResult<Binary> {
-        let msg = BidCreatedExecuteMsg::BidCreatedHook(self);
-        to_binary(&msg)
-    }
-
-    /// creates a cosmos_msg sending this struct to the named contract
-    pub fn into_cosmos_msg<T: Into<String>>(self, contract_addr: T) -> StdResult<CosmosMsg> {
-        let msg = self.into_binary()?;
-        let execute = WasmMsg::Execute {
-            contract_addr: contract_addr.into(),
-            msg,
-            funds: vec![],
+    pub fn into_binary(self, action: HookAction) -> StdResult<Binary> {
+        let msg = match action {
+            HookAction::Create => BidExecuteMsg::BidCreatedHook(self),
+            HookAction::Update => BidExecuteMsg::BidUpdatedHook(self),
+            HookAction::Delete => BidExecuteMsg::BidDeletedHook(self),
         };
-        Ok(execute.into())
+        to_binary(&msg)
     }
 }
 
 // This is just a helper to properly serialize the above message
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum BidCreatedExecuteMsg {
-    BidCreatedHook(BidCreatedHookMsg),
+pub enum BidExecuteMsg {
+    BidCreatedHook(BidHookMsg),
+    BidUpdatedHook(BidHookMsg),
+    BidDeletedHook(BidHookMsg),
 }

@@ -1968,7 +1968,7 @@ mod tests {
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
         assert_eq!(
-            "ask-created-hook-failed",
+            "ask-hook-failed",
             res.unwrap().events[3].attributes[1].value
         );
         // Bidder makes bid that meets the ask criteria
@@ -1991,10 +1991,6 @@ mod tests {
         assert_eq!(
             "sale-hook-failed",
             res.as_ref().unwrap().events[10].attributes[1].value
-        );
-        assert_eq!(
-            "bid-created-hook-failed",
-            res.unwrap().events[12].attributes[1].value
         );
 
         // NFT is still transferred despite a sale finalized hook failing

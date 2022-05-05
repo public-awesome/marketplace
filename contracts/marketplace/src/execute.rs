@@ -1,11 +1,9 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{
-    AskHookMsg, BidCreatedHookMsg, ExecuteMsg, HookAction, InstantiateMsg, SaleHookMsg,
-};
+use crate::msg::{AskHookMsg, BidHookMsg, ExecuteMsg, HookAction, InstantiateMsg, SaleHookMsg};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SaleType, SudoParams, TokenId, ASK_HOOKS, BID_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    SaleType, SudoParams, TokenId, ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -27,7 +25,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 const REPLY_ASK_HOOK: u64 = 1;
 const REPLY_SALE_HOOK: u64 = 2;
-const REPLY_BID_CREATED_HOOK: u64 = 3;
+const REPLY_BID_HOOK: u64 = 3;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -393,7 +391,7 @@ pub fn execute_set_bid(
     }
 
     let ask = asks().may_load(deps.storage, ask_key(collection.clone(), token_id))?;
-    match ask {
+    let bid: Option<Bid> = match ask {
         Some(ask) => {
             if ask.expires <= env.block.time {
                 return Err(ContractError::AskExpired {});
@@ -406,7 +404,7 @@ pub fn execute_set_bid(
                     return Err(ContractError::TokenReserved {});
                 }
             }
-            match ask.sale_type {
+            let inner_bid: Option<Bid> = match ask.sale_type {
                 SaleType::FixedPrice => {
                     if ask.price != bid_price {
                         return Err(ContractError::InvalidPrice {});
@@ -421,53 +419,42 @@ pub fn execute_set_bid(
                             &mut res,
                         )?;
                     }
+                    None
                 }
                 SaleType::Auction => {
-                    store_bid(
-                        deps.storage,
-                        &Bid::new(
-                            collection.clone(),
-                            token_id,
-                            bidder.clone(),
-                            bid_price,
-                            finders_fee_bps,
-                            expires,
-                        ),
-                    )?;
+                    let bid = Bid::new(
+                        collection.clone(),
+                        token_id,
+                        bidder.clone(),
+                        bid_price,
+                        finders_fee_bps,
+                        expires,
+                    );
+                    store_bid(deps.storage, &bid)?;
+                    Some(bid)
                 }
             };
+            inner_bid
         }
         None => {
-            store_bid(
-                deps.storage,
-                &Bid::new(
-                    collection.clone(),
-                    token_id,
-                    bidder.clone(),
-                    bid_price,
-                    finders_fee_bps,
-                    expires,
-                ),
-            )?;
+            let bid = Bid::new(
+                collection.clone(),
+                token_id,
+                bidder.clone(),
+                bid_price,
+                finders_fee_bps,
+                expires,
+            );
+            store_bid(deps.storage, &bid)?;
+            Some(bid)
         }
-    }
-
-    let msg = BidCreatedHookMsg {
-        collection: collection.to_string(),
-        token_id,
-        bidder: bidder.to_string(),
-        price: bid_price,
     };
 
-    // Include hook submessages, i.e: bid rewards
-    let submsgs = BID_CREATED_HOOKS.prepare_hooks(deps.storage, |h| {
-        let execute = WasmMsg::Execute {
-            contract_addr: h.to_string(),
-            msg: msg.clone().into_binary()?,
-            funds: vec![],
-        };
-        Ok(SubMsg::reply_on_error(execute, REPLY_BID_CREATED_HOOK))
-    })?;
+    let hook = if let Some(bid) = bid {
+        prepare_bid_hook(deps.as_ref(), &bid, HookAction::Create)?
+    } else {
+        vec![]
+    };
 
     let event = Event::new("set-bid")
         .add_attribute("collection", collection.to_string())
@@ -476,7 +463,7 @@ pub fn execute_set_bid(
         .add_attribute("bid_price", bid_price.to_string())
         .add_attribute("expires", expires.to_string());
 
-    Ok(res.add_submessages(submsgs).add_event(event))
+    Ok(res.add_submessages(hook).add_event(event))
 }
 
 /// Removes a bid made by the bidder. Bidders can only remove their own bids
@@ -497,6 +484,8 @@ pub fn execute_remove_bid(
         bid_key(collection.clone(), token_id, bidder.clone()),
     )?;
 
+    let hook = prepare_bid_hook(deps.as_ref(), &bid, HookAction::Delete)?;
+
     let event = Event::new("remove-bid")
         .add_attribute("collection", collection)
         .add_attribute("token_id", token_id.to_string())
@@ -504,7 +493,8 @@ pub fn execute_remove_bid(
 
     let res = Response::new()
         .add_message(remove_and_refund_bid(deps.storage, bid)?)
-        .add_event(event);
+        .add_event(event)
+        .add_submessages(hook);
 
     Ok(res)
 }
@@ -784,7 +774,7 @@ pub fn execute_remove_stale_bid(
     // bid is stale, refund bidder and reward operator
     bids().remove(
         deps.storage,
-        (bid.collection, bid.token_id, bid.bidder.clone()),
+        (bid.clone().collection, bid.token_id, bid.bidder.clone()),
     )?;
 
     let reward = bid.price * params.bid_removal_reward_percent / Uint128::from(100u128);
@@ -798,6 +788,8 @@ pub fn execute_remove_stale_bid(
         amount: vec![coin(reward.u128(), NATIVE_DENOM)],
     };
 
+    let hook = prepare_bid_hook(deps.as_ref(), &bid, HookAction::Delete)?;
+
     let event = Event::new("remove-stale-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
@@ -808,7 +800,8 @@ pub fn execute_remove_stale_bid(
     Ok(Response::new()
         .add_event(event)
         .add_message(bidder_msg)
-        .add_message(operator_msg))
+        .add_message(operator_msg)
+        .add_submessages(hook))
 }
 
 /// Transfers funds and NFT, updates bid
@@ -883,13 +876,13 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
         }
         REPLY_ASK_HOOK => {
             let res = Response::new()
-                .add_attribute("action", "ask-created-hook-failed")
+                .add_attribute("action", "ask-hook-failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }
-        REPLY_BID_CREATED_HOOK => {
+        REPLY_BID_HOOK => {
             let res = Response::new()
-                .add_attribute("action", "bid-created-hook-failed")
+                .add_attribute("action", "bid-hook-failed")
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }
@@ -1027,31 +1020,37 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
     Ok(info.sender.clone())
 }
 
-/// Prepare an ask hook
 fn prepare_ask_hook(
     deps: Deps,
     ask: &Ask,
     action: HookAction,
 ) -> Result<Vec<SubMsg>, ContractError> {
-    let msg = AskHookMsg {
-        collection: ask.collection.to_string(),
-        token_id: ask.token_id,
-        seller: ask.seller.to_string(),
-        funds_recipient: ask
-            .funds_recipient
-            .as_ref()
-            .unwrap_or(&ask.seller)
-            .to_string(),
-        price: coin(ask.price.u128(), NATIVE_DENOM),
-    };
-
     let submsgs = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
+        let msg = AskHookMsg { ask: ask.clone() };
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: msg.clone().into_binary(action.clone())?,
+            msg: msg.into_binary(action.clone())?,
             funds: vec![],
         };
         Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
+    })?;
+
+    Ok(submsgs)
+}
+
+fn prepare_bid_hook(
+    deps: Deps,
+    bid: &Bid,
+    action: HookAction,
+) -> Result<Vec<SubMsg>, ContractError> {
+    let submsgs = BID_HOOKS.prepare_hooks(deps.storage, |h| {
+        let msg = BidHookMsg { bid: bid.clone() };
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.into_binary(action.clone())?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_BID_HOOK))
     })?;
 
     Ok(submsgs)
