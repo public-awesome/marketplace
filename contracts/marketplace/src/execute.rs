@@ -27,11 +27,6 @@ use sg_std::{Response, SubMsg, NATIVE_DENOM};
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const REPLY_ASK_HOOK: u64 = 1;
-const REPLY_SALE_HOOK: u64 = 2;
-const REPLY_BID_HOOK: u64 = 3;
-const REPLY_COLLECTION_BID_HOOK: u64 = 4;
-
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -862,7 +857,7 @@ fn finalize_sale(
             msg: msg.clone().into_binary()?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_SALE_HOOK))
+        Ok(SubMsg::reply_on_error(execute, HookReply::Sale as u64))
     })?;
     res.messages.append(&mut submsgs);
 
@@ -875,31 +870,6 @@ fn finalize_sale(
     res.events.push(event);
 
     Ok(())
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
-    match msg.id {
-        REPLY_SALE_HOOK => {
-            let res = Response::new()
-                .add_attribute("action", "sale-hook-failed")
-                .add_attribute("error", msg.result.unwrap_err());
-            Ok(res)
-        }
-        REPLY_ASK_HOOK => {
-            let res = Response::new()
-                .add_attribute("action", "ask-hook-failed")
-                .add_attribute("error", msg.result.unwrap_err());
-            Ok(res)
-        }
-        REPLY_BID_HOOK => {
-            let res = Response::new()
-                .add_attribute("action", "bid-hook-failed")
-                .add_attribute("error", msg.result.unwrap_err());
-            Ok(res)
-        }
-        _ => Err(ContractError::UnrecognisedReply(msg.id)),
-    }
 }
 
 /// Payout a bid
@@ -1032,6 +1002,55 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
     Ok(info.sender.clone())
 }
 
+enum HookReply {
+    Ask = 1,
+    Sale,
+    Bid,
+    CollectionBid,
+}
+
+impl From<u64> for HookReply {
+    fn from(item: u64) -> Self {
+        match item {
+            1 => HookReply::Ask,
+            2 => HookReply::Sale,
+            3 => HookReply::Bid,
+            4 => HookReply::CollectionBid,
+            _ => panic!("invalid reply type"),
+        }
+    }
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
+    match HookReply::from(msg.id) {
+        HookReply::Ask => {
+            let res = Response::new()
+                .add_attribute("action", "ask-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        HookReply::Sale => {
+            let res = Response::new()
+                .add_attribute("action", "sale-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        HookReply::Bid => {
+            let res = Response::new()
+                .add_attribute("action", "bid-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+        HookReply::CollectionBid => {
+            let res = Response::new()
+                .add_attribute("action", "collection-bid-hook-failed")
+                .add_attribute("error", msg.result.unwrap_err());
+            Ok(res)
+        }
+    }
+}
+
 fn prepare_ask_hook(
     deps: Deps,
     ask: &Ask,
@@ -1044,7 +1063,7 @@ fn prepare_ask_hook(
             msg: msg.into_binary(action.clone())?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
+        Ok(SubMsg::reply_on_error(execute, HookReply::Ask as u64))
     })?;
 
     Ok(submsgs)
@@ -1062,7 +1081,7 @@ fn prepare_bid_hook(
             msg: msg.into_binary(action.clone())?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_BID_HOOK))
+        Ok(SubMsg::reply_on_error(execute, HookReply::Bid as u64))
     })?;
 
     Ok(submsgs)
@@ -1082,7 +1101,10 @@ fn prepare_collection_bid_hook(
             msg: msg.into_binary(action.clone())?,
             funds: vec![],
         };
-        Ok(SubMsg::reply_on_error(execute, REPLY_COLLECTION_BID_HOOK))
+        Ok(SubMsg::reply_on_error(
+            execute,
+            HookReply::CollectionBid as u64,
+        ))
     })?;
 
     Ok(submsgs)
