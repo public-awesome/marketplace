@@ -32,7 +32,7 @@ pub struct SudoParams {
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");
 
-pub const ASK_CREATED_HOOKS: Hooks = Hooks::new("ask-created-hooks");
+pub const ASK_HOOKS: Hooks = Hooks::new("ask-hooks");
 pub const BID_CREATED_HOOKS: Hooks = Hooks::new("bid-created-hooks");
 pub const SALE_HOOKS: Hooks = Hooks::new("sale-hooks");
 

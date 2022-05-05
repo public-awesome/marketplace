@@ -1,9 +1,11 @@
 use crate::error::ContractError;
 use crate::helpers::map_validate;
-use crate::msg::{AskCreatedHookMsg, BidCreatedHookMsg, ExecuteMsg, InstantiateMsg, SaleHookMsg};
+use crate::msg::{
+    AskHookMsg, BidCreatedHookMsg, ExecuteMsg, HookAction, InstantiateMsg, SaleHookMsg,
+};
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SaleType, SudoParams, TokenId, ASK_CREATED_HOOKS, BID_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    SaleType, SudoParams, TokenId, ASK_HOOKS, BID_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -23,7 +25,7 @@ use sg_std::{Response, SubMsg, NATIVE_DENOM};
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-const REPLY_ASK_CREATED_HOOK: u64 = 1;
+const REPLY_ASK_HOOK: u64 = 1;
 const REPLY_SALE_HOOK: u64 = 2;
 const REPLY_BID_CREATED_HOOK: u64 = 3;
 
@@ -251,41 +253,21 @@ pub fn execute_set_ask(
     }
 
     let seller = info.sender;
-    store_ask(
-        deps.storage,
-        &Ask {
-            sale_type,
-            collection: collection.clone(),
-            token_id,
-            seller: seller.clone(),
-            price: price.amount,
-            funds_recipient: funds_recipient.clone(),
-            reserve_for,
-            finders_fee_bps,
-            expires,
-            is_active: true,
-        },
-    )?;
-
-    let msg = AskCreatedHookMsg {
-        collection: collection.to_string(),
+    let ask = Ask {
+        sale_type,
+        collection: collection.clone(),
         token_id,
-        seller: seller.to_string(),
-        funds_recipient: funds_recipient
-            .unwrap_or_else(|| seller.clone())
-            .to_string(),
-        price: price.clone(),
+        seller: seller.clone(),
+        price: price.amount,
+        funds_recipient,
+        reserve_for,
+        finders_fee_bps,
+        expires,
+        is_active: true,
     };
+    store_ask(deps.storage, &ask)?;
 
-    // Include hook submessages, i.e: listing rewards
-    let submsgs = ASK_CREATED_HOOKS.prepare_hooks(deps.storage, |h| {
-        let execute = WasmMsg::Execute {
-            contract_addr: h.to_string(),
-            msg: msg.clone().into_binary()?,
-            funds: vec![],
-        };
-        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_CREATED_HOOK))
-    })?;
+    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Create)?;
 
     let event = Event::new("set-ask")
         .add_attribute("collection", collection.to_string())
@@ -294,7 +276,7 @@ pub fn execute_set_ask(
         .add_attribute("price", price.to_string())
         .add_attribute("expires", expires.to_string());
 
-    Ok(Response::new().add_submessages(submsgs).add_event(event))
+    Ok(Response::new().add_submessages(hook).add_event(event))
 }
 
 /// Removes the ask on a particular NFT
@@ -891,7 +873,7 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
                 .add_attribute("error", msg.result.unwrap_err());
             Ok(res)
         }
-        REPLY_ASK_CREATED_HOOK => {
+        REPLY_ASK_HOOK => {
             let res = Response::new()
                 .add_attribute("action", "ask-created-hook-failed")
                 .add_attribute("error", msg.result.unwrap_err());
@@ -1035,4 +1017,34 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
     }
 
     Ok(info.sender.clone())
+}
+
+/// Prepare an ask hook
+fn prepare_ask_hook(
+    deps: Deps,
+    ask: &Ask,
+    action: HookAction,
+) -> Result<Vec<SubMsg>, ContractError> {
+    let msg = AskHookMsg {
+        collection: ask.collection.to_string(),
+        token_id: ask.token_id,
+        seller: ask.seller.to_string(),
+        funds_recipient: ask
+            .funds_recipient
+            .as_ref()
+            .unwrap_or(&ask.seller)
+            .to_string(),
+        price: coin(ask.price.u128(), NATIVE_DENOM),
+    };
+
+    let submsgs = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.clone().into_binary(action.clone())?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))
+    })?;
+
+    Ok(submsgs)
 }

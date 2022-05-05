@@ -1,7 +1,7 @@
 use crate::error::ContractError;
 use crate::helpers::{map_validate, ExpiryRange};
 use crate::msg::SudoMsg;
-use crate::state::{ASK_CREATED_HOOKS, BID_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS};
+use crate::state::{ASK_HOOKS, BID_CREATED_HOOKS, SALE_HOOKS, SUDO_PARAMS};
 use cosmwasm_std::{entry_point, Addr, Decimal, DepsMut, Env, Uint128};
 use cw_utils::Duration;
 use sg_std::Response;
@@ -124,7 +124,7 @@ pub fn sudo_add_sale_hook(deps: DepsMut, hook: Addr) -> Result<Response, Contrac
 }
 
 pub fn sudo_add_ask_hook(deps: DepsMut, _env: Env, hook: Addr) -> Result<Response, ContractError> {
-    ASK_CREATED_HOOKS.add_hook(deps.storage, hook.clone())?;
+    ASK_HOOKS.add_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
         .add_attribute("action", "add_ask_created_hook")
@@ -151,7 +151,7 @@ pub fn sudo_remove_sale_hook(deps: DepsMut, hook: Addr) -> Result<Response, Cont
 }
 
 pub fn sudo_remove_ask_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
-    ASK_CREATED_HOOKS.remove_hook(deps.storage, hook.clone())?;
+    ASK_HOOKS.remove_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
         .add_attribute("action", "remove_ask_created_hook")
