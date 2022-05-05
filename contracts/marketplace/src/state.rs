@@ -57,7 +57,7 @@ pub struct Ask {
     pub funds_recipient: Option<Addr>,
     pub reserve_for: Option<Addr>,
     pub finders_fee_bps: Option<u64>,
-    pub expires: Timestamp,
+    pub expires_at: Timestamp,
     pub is_active: bool,
 }
 
@@ -103,7 +103,7 @@ pub struct Bid {
     pub bidder: Addr,
     pub price: Uint128,
     pub finders_fee_bps: Option<u64>,
-    pub expires: Timestamp,
+    pub expires_at: Timestamp,
 }
 
 impl Bid {
@@ -121,7 +121,7 @@ impl Bid {
             bidder,
             price,
             finders_fee_bps,
-            expires,
+            expires_at: expires,
         }
     }
 }
@@ -178,7 +178,7 @@ pub struct CollectionBid {
     pub bidder: Addr,
     pub price: Uint128,
     pub finders_fee_bps: Option<u64>,
-    pub expires: Timestamp,
+    pub expires_at: Timestamp,
 }
 
 /// Primary key for bids: (collection, token_id, bidder)

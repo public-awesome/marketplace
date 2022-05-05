@@ -269,7 +269,7 @@ pub fn execute_set_ask(
         funds_recipient,
         reserve_for,
         finders_fee_bps,
-        expires,
+        expires_at: expires,
         is_active: true,
     };
     store_ask(deps.storage, &ask)?;
@@ -402,7 +402,7 @@ pub fn execute_set_bid(
     let ask = asks().may_load(deps.storage, ask_key(collection.clone(), token_id))?;
     let bid: Option<Bid> = match ask {
         Some(ask) => {
-            if ask.expires <= env.block.time {
+            if ask.expires_at <= env.block.time {
                 return Err(ContractError::AskExpired {});
             }
             if !ask.is_active {
@@ -535,13 +535,13 @@ pub fn execute_accept_bid(
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
     let bid = bids().load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
-    if bid.expires <= env.block.time {
+    if bid.expires_at <= env.block.time {
         return Err(ContractError::BidExpired {});
     }
 
     let ask = match asks().may_load(deps.storage, ask_key(collection.clone(), token_id))? {
         Some(existing_ask) => {
-            if existing_ask.expires <= env.block.time {
+            if existing_ask.expires_at <= env.block.time {
                 return Err(ContractError::AskExpired {});
             }
             if !existing_ask.is_active {
@@ -557,7 +557,7 @@ pub fn execute_accept_bid(
                 collection: collection.clone(),
                 token_id,
                 price: bid.price,
-                expires: bid.expires,
+                expires_at: bid.expires_at,
                 is_active: true,
                 seller: info.sender,
                 funds_recipient: None,
@@ -627,7 +627,7 @@ pub fn execute_set_collection_bid(
         bidder: bidder.clone(),
         price,
         finders_fee_bps,
-        expires,
+        expires_at: expires,
     };
     collection_bids().save(
         deps.storage,
@@ -716,7 +716,7 @@ pub fn execute_accept_collection_bid(
         deps.storage,
         collection_bid_key(collection.clone(), bidder.clone()),
     )?;
-    if bid.expires <= env.block.time {
+    if bid.expires_at <= env.block.time {
         return Err(ContractError::BidExpired {});
     }
 
@@ -733,7 +733,7 @@ pub fn execute_accept_collection_bid(
         collection: collection.clone(),
         token_id,
         price: bid.price,
-        expires: bid.expires,
+        expires_at: bid.expires_at,
         is_active: true,
         seller: info.sender.clone(),
         funds_recipient: None,
@@ -780,7 +780,7 @@ pub fn execute_remove_stale_bid(
     )?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
-    let stale_time = (Expiration::AtTime(bid.expires) + params.stale_bid_duration)?;
+    let stale_time = (Expiration::AtTime(bid.expires_at) + params.stale_bid_duration)?;
     if !stale_time.is_expired(&env.block) {
         return Err(ContractError::BidNotStale {});
     }
@@ -838,7 +838,7 @@ pub fn execute_remove_stale_collection_bid(
     )?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
-    let stale_time = (Expiration::AtTime(collection_bid.expires) + params.stale_bid_duration)?;
+    let stale_time = (Expiration::AtTime(collection_bid.expires_at) + params.stale_bid_duration)?;
     if !stale_time.is_expired(&env.block) {
         return Err(ContractError::BidNotStale {});
     }
