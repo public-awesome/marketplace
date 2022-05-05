@@ -151,8 +151,8 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps,
             api.addr_validate(&bidder)?,
         )?),
-        QueryMsg::AskCreatedHooks {} => to_binary(&ASK_HOOKS.query_hooks(deps)?),
-        QueryMsg::BidCreatedHooks {} => to_binary(&BID_HOOKS.query_hooks(deps)?),
+        QueryMsg::AskHooks {} => to_binary(&ASK_HOOKS.query_hooks(deps)?),
+        QueryMsg::BidHooks {} => to_binary(&BID_HOOKS.query_hooks(deps)?),
         QueryMsg::SaleHooks {} => to_binary(&SALE_HOOKS.query_hooks(deps)?),
         QueryMsg::Params {} => to_binary(&query_params(deps)?),
     }

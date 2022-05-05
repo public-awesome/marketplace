@@ -107,11 +107,11 @@ start_before?: (CollectionBidOffset | null)
 [k: string]: unknown
 }
 } | {
-ask_created_hooks: {
+ask_hooks: {
 [k: string]: unknown
 }
 } | {
-bid_created_hooks: {
+bid_hooks: {
 [k: string]: unknown
 }
 } | {

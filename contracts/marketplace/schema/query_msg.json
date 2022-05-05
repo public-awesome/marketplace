@@ -550,10 +550,10 @@
       "description": "Show all registered ask hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [
-        "ask_created_hooks"
+        "ask_hooks"
       ],
       "properties": {
-        "ask_created_hooks": {
+        "ask_hooks": {
           "type": "object"
         }
       },
@@ -563,10 +563,10 @@
       "description": "Show all registered bid hooks Return type: `HooksResponse`",
       "type": "object",
       "required": [
-        "bid_created_hooks"
+        "bid_hooks"
       ],
       "properties": {
-        "bid_created_hooks": {
+        "bid_hooks": {
           "type": "object"
         }
       },

@@ -312,10 +312,10 @@ pub enum QueryMsg {
     },
     /// Show all registered ask hooks
     /// Return type: `HooksResponse`
-    AskCreatedHooks {},
+    AskHooks {},
     /// Show all registered bid hooks
     /// Return type: `HooksResponse`
-    BidCreatedHooks {},
+    BidHooks {},
     /// Show all registered sale hooks
     /// Return type: `HooksResponse`
     SaleHooks {},
