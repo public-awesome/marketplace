@@ -99,15 +99,11 @@
           "type": "object",
           "required": [
             "collection",
-            "is_active",
             "token_id"
           ],
           "properties": {
             "collection": {
               "type": "string"
-            },
-            "is_active": {
-              "type": "boolean"
             },
             "token_id": {
               "type": "integer",
