@@ -1628,7 +1628,7 @@ mod tests {
             token_id: TOKEN_ID,
             bidder,
             price: Uint128::from(150u128),
-            expires: (router.block_info().time.plus_seconds(MIN_EXPIRY + 1)),
+            expires_at: (router.block_info().time.plus_seconds(MIN_EXPIRY + 1)),
             finders_fee_bps: None,
         };
 

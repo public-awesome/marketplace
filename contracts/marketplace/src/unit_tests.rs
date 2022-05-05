@@ -38,7 +38,7 @@ fn ask_indexed_map() {
         price: Uint128::from(500u128),
         funds_recipient: None,
         reserve_for: None,
-        expires: Timestamp::from_seconds(0),
+        expires_at: Timestamp::from_seconds(0),
         is_active: true,
         finders_fee_bps: Some(0),
     };
@@ -54,7 +54,7 @@ fn ask_indexed_map() {
         price: Uint128::from(500u128),
         funds_recipient: None,
         reserve_for: None,
-        expires: Timestamp::from_seconds(0),
+        expires_at: Timestamp::from_seconds(0),
         is_active: true,
         finders_fee_bps: Some(0),
     };
@@ -86,7 +86,7 @@ fn bid_indexed_map() {
         bidder: bidder.clone(),
         price: Uint128::from(500u128),
         finders_fee_bps: None,
-        expires: Timestamp::from_seconds(0),
+        expires_at: Timestamp::from_seconds(0),
     };
     let key = bid_key(collection.clone(), TOKEN_ID, bidder.clone());
     let res = bids().save(deps.as_mut().storage, key.clone(), &bid);
@@ -98,7 +98,7 @@ fn bid_indexed_map() {
         bidder: bidder.clone(),
         price: Uint128::from(500u128),
         finders_fee_bps: None,
-        expires: Timestamp::from_seconds(0),
+        expires_at: Timestamp::from_seconds(0),
     };
     let key2 = bid_key(collection, TOKEN_ID + 1, bidder.clone());
     let res = bids().save(deps.as_mut().storage, key2, &bid2);
