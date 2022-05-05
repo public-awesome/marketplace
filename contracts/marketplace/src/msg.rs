@@ -123,13 +123,13 @@ pub enum SudoMsg {
         bid_removal_reward_bps: Option<u64>,
     },
     /// Add a new hook to be informed of all asks
-    AddAskCreatedHook { hook: String },
+    AddAskHook { hook: String },
     /// Add a new hook to be informed of all bids
-    AddBidCreatedHook { hook: String },
+    AddBidHook { hook: String },
     /// Remove a ask hook
-    RemoveAskCreatedHook { hook: String },
+    RemoveAskHook { hook: String },
     /// Remove a bid hook
-    RemoveBidCreatedHook { hook: String },
+    RemoveBidHook { hook: String },
     /// Add a new hook to be informed of all trades
     AddSaleHook { hook: String },
     /// Remove a trade hook
