@@ -10,8 +10,11 @@ pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Unauthorized")]
-    Unauthorized {},
+    #[error("UnauthorizedOwner")]
+    UnauthorizedOwner {},
+
+    #[error("UnauthorizedOperator")]
+    UnauthorizedOperator {},
 
     #[error("InvalidPrice")]
     InvalidPrice {},

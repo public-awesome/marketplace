@@ -1048,7 +1048,7 @@ fn only_owner(
 ) -> Result<OwnerOfResponse, ContractError> {
     let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
     if res.owner != info.sender {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::UnauthorizedOwner {});
     }
 
     Ok(res)
@@ -1062,7 +1062,7 @@ fn only_operator(store: &dyn Storage, info: &MessageInfo) -> Result<Addr, Contra
         .iter()
         .any(|a| a.as_ref() == info.sender.as_ref())
     {
-        return Err(ContractError::Unauthorized {});
+        return Err(ContractError::UnauthorizedOperator {});
     }
 
     Ok(info.sender.clone())
