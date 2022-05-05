@@ -289,13 +289,17 @@ pub fn execute_remove_ask(
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
 
-    asks().remove(deps.storage, (collection.clone(), token_id))?;
+    let key = ask_key(collection.clone(), token_id);
+    let ask = asks().load(deps.storage, key.clone())?;
+    asks().remove(deps.storage, key)?;
+
+    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Delete)?;
 
     let event = Event::new("remove-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string());
 
-    Ok(Response::new().add_event(event))
+    Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
 /// Updates the the active state of the ask.
