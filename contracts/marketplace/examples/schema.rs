@@ -1,4 +1,5 @@
 use cosmwasm_schema::{export_schema, export_schema_with_title, remove_schemas, schema_for};
+use sg_controllers::HooksResponse;
 use sg_marketplace::msg::{
     AskCountResponse, AskHookMsg, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse,
     BidsResponse, CollectionBidOffset, CollectionBidResponse, CollectionOffset,
@@ -38,6 +39,11 @@ fn main() {
     // Here we map query resonses to the correct name
     export_schema_with_title(&schema_for!(AsksResponse), &out_dir, "AsksBySellerResponse");
     export_schema_with_title(
+        &schema_for!(AskHookMsg),
+        &out_dir,
+        "AskCreatedHooksResponse",
+    );
+    export_schema_with_title(
         &schema_for!(AsksResponse),
         &out_dir,
         "AsksSortedByPriceResponse",
@@ -47,6 +53,7 @@ fn main() {
         &out_dir,
         "ReverseAsksSortedByPriceResponse",
     );
+    export_schema_with_title(&schema_for!(HooksResponse), &out_dir, "AskHooksResponse");
 
     export_schema_with_title(&schema_for!(BidsResponse), &out_dir, "BidsByBidderResponse");
     export_schema_with_title(
@@ -59,6 +66,7 @@ fn main() {
         &out_dir,
         "ReverseBidsSortedByPriceResponse",
     );
+    export_schema_with_title(&schema_for!(HooksResponse), &out_dir, "BidHooksResponse");
 
     export_schema_with_title(
         &schema_for!(BidsResponse),
@@ -82,9 +90,4 @@ fn main() {
         "ListedCollectionsResponse",
     );
     export_schema_with_title(&schema_for!(SaleHookMsg), &out_dir, "SaleHooksResponse");
-    export_schema_with_title(
-        &schema_for!(AskHookMsg),
-        &out_dir,
-        "AskCreatedHooksResponse",
-    );
 }
