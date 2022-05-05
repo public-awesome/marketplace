@@ -1025,22 +1025,11 @@ fn prepare_ask_hook(
     ask: &Ask,
     action: HookAction,
 ) -> Result<Vec<SubMsg>, ContractError> {
-    let msg = AskHookMsg {
-        collection: ask.collection.to_string(),
-        token_id: ask.token_id,
-        seller: ask.seller.to_string(),
-        funds_recipient: ask
-            .funds_recipient
-            .as_ref()
-            .unwrap_or(&ask.seller)
-            .to_string(),
-        price: coin(ask.price.u128(), NATIVE_DENOM),
-    };
-
     let submsgs = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
+        let msg = AskHookMsg { ask: ask.clone() };
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: msg.clone().into_binary(action.clone())?,
+            msg: msg.into_binary(action.clone())?,
             funds: vec![],
         };
         Ok(SubMsg::reply_on_error(execute, REPLY_ASK_HOOK))

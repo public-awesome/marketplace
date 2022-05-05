@@ -431,28 +431,12 @@ pub enum HookAction {
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
 pub struct AskHookMsg {
-    pub collection: String,
-    pub token_id: u32,
-    pub seller: String,
-    pub funds_recipient: String,
-    pub price: Coin,
+    pub ask: Ask,
 }
 
 impl AskHookMsg {
-    pub fn new(
-        collection: String,
-        token_id: u32,
-        seller: String,
-        funds_recipient: String,
-        price: Coin,
-    ) -> Self {
-        AskHookMsg {
-            collection,
-            token_id,
-            seller,
-            funds_recipient,
-            price,
-        }
+    pub fn new(ask: Ask) -> Self {
+        AskHookMsg { ask }
     }
 
     /// serializes the message
