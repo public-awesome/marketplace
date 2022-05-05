@@ -45,8 +45,8 @@ fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
 mod tests {
     use crate::helpers::ExpiryRange;
     use crate::msg::{
-        AskCountResponse, AskOffset, AsksResponse, BidOffset, BidResponse, CollectionBidOffset,
-        CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
+        AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse,
+        CollectionBidOffset, CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
     };
     use crate::state::{Bid, SaleType};
 
@@ -329,6 +329,15 @@ mod tests {
             &[],
         );
         assert!(res.is_ok());
+        let query_ask_msg = QueryMsg::Ask {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+        };
+        let res: AskResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_ask_msg)
+            .unwrap();
+        assert_eq!(false, res.ask.unwrap().is_active);
 
         // transfer back to creator to make ask active
         let transfer_msg: Cw721ExecuteMsg<Empty> = Cw721ExecuteMsg::TransferNft {
@@ -357,6 +366,11 @@ mod tests {
             &[],
         );
         assert!(res.is_ok());
+        let res: AskResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &query_ask_msg)
+            .unwrap();
+        assert_eq!(true, res.ask.unwrap().is_active);
 
         // Bidder makes bid
         let set_bid_msg = ExecuteMsg::SetBid {
