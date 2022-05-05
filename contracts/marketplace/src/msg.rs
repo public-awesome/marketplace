@@ -492,32 +492,32 @@ pub enum AskHookExecuteMsg {
 
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub struct BidCreatedHookMsg {
-    pub collection: String,
-    pub token_id: TokenId,
-    pub bidder: String,
-    pub price: Uint128,
+pub struct BidHookMsg {
+    pub bid: Bid,
 }
 
-impl BidCreatedHookMsg {
-    pub fn new(collection: String, token_id: TokenId, bidder: String, price: Uint128) -> Self {
-        BidCreatedHookMsg {
-            collection,
-            token_id,
-            bidder,
-            price,
-        }
+impl BidHookMsg {
+    pub fn new(bid: Bid) -> Self {
+        BidHookMsg { bid }
     }
 
     /// serializes the message
-    pub fn into_binary(self) -> StdResult<Binary> {
-        let msg = BidCreatedExecuteMsg::BidCreatedHook(self);
+    pub fn into_binary(self, action: HookAction) -> StdResult<Binary> {
+        let msg = match action {
+            HookAction::Create => BidExecuteMsg::BidCreatedHook(self),
+            HookAction::Update => BidExecuteMsg::BidUpdatedHook(self),
+            HookAction::Delete => BidExecuteMsg::BidDeletedHook(self),
+        };
         to_binary(&msg)
     }
 
     /// creates a cosmos_msg sending this struct to the named contract
-    pub fn into_cosmos_msg<T: Into<String>>(self, contract_addr: T) -> StdResult<CosmosMsg> {
-        let msg = self.into_binary()?;
+    pub fn into_cosmos_msg<T: Into<String>>(
+        self,
+        contract_addr: T,
+        action: HookAction,
+    ) -> StdResult<CosmosMsg> {
+        let msg = self.into_binary(action)?;
         let execute = WasmMsg::Execute {
             contract_addr: contract_addr.into(),
             msg,
@@ -530,6 +530,8 @@ impl BidCreatedHookMsg {
 // This is just a helper to properly serialize the above message
 #[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
 #[serde(rename_all = "snake_case")]
-pub enum BidCreatedExecuteMsg {
-    BidCreatedHook(BidCreatedHookMsg),
+pub enum BidExecuteMsg {
+    BidCreatedHook(BidHookMsg),
+    BidUpdatedHook(BidHookMsg),
+    BidDeletedHook(BidHookMsg),
 }
