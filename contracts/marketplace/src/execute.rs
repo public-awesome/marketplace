@@ -315,7 +315,8 @@ pub fn execute_update_ask_is_active(
     only_operator(deps.storage, &info)?;
 
     let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    let res = only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    let res =
+        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
     let new_is_active = res.owner == ask.seller;
     if new_is_active == ask.is_active {
         return Err(ContractError::AskUnchanged {});
