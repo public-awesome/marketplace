@@ -1992,10 +1992,6 @@ mod tests {
             "sale-hook-failed",
             res.as_ref().unwrap().events[10].attributes[1].value
         );
-        assert_eq!(
-            "bid-hook-failed",
-            res.unwrap().events[12].attributes[1].value
-        );
 
         // NFT is still transferred despite a sale finalized hook failing
         let query_owner_msg = Cw721QueryMsg::OwnerOf {

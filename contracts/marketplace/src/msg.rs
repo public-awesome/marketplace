@@ -464,21 +464,6 @@ impl AskHookMsg {
         };
         to_binary(&msg)
     }
-
-    /// creates a cosmos_msg sending this struct to the named contract
-    pub fn into_cosmos_msg<T: Into<String>>(
-        self,
-        contract_addr: T,
-        action: HookAction,
-    ) -> StdResult<CosmosMsg> {
-        let msg = self.into_binary(action)?;
-        let execute = WasmMsg::Execute {
-            contract_addr: contract_addr.into(),
-            msg,
-            funds: vec![],
-        };
-        Ok(execute.into())
-    }
 }
 
 // This is just a helper to properly serialize the above message
@@ -509,21 +494,6 @@ impl BidHookMsg {
             HookAction::Delete => BidExecuteMsg::BidDeletedHook(self),
         };
         to_binary(&msg)
-    }
-
-    /// creates a cosmos_msg sending this struct to the named contract
-    pub fn into_cosmos_msg<T: Into<String>>(
-        self,
-        contract_addr: T,
-        action: HookAction,
-    ) -> StdResult<CosmosMsg> {
-        let msg = self.into_binary(action)?;
-        let execute = WasmMsg::Execute {
-            contract_addr: contract_addr.into(),
-            msg,
-            funds: vec![],
-        };
-        Ok(execute.into())
     }
 }
 
