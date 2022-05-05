@@ -208,6 +208,15 @@ pub fn execute(
             token_id,
             api.addr_validate(&bidder)?,
         ),
+        ExecuteMsg::RemoveStaleCollectionBid { collection, bidder } => {
+            execute_remove_stale_collection_bid(
+                deps,
+                env,
+                info,
+                api.addr_validate(&collection)?,
+                api.addr_validate(&bidder)?,
+            )
+        }
     }
 }
 
@@ -800,6 +809,66 @@ pub fn execute_remove_stale_bid(
     let event = Event::new("remove-stale-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
+        .add_attribute("bidder", bidder.to_string())
+        .add_attribute("operator", operator.to_string())
+        .add_attribute("reward", reward.to_string());
+
+    Ok(Response::new()
+        .add_event(event)
+        .add_message(bidder_msg)
+        .add_message(operator_msg)
+        .add_submessages(hook))
+}
+
+/// Privileged operation to remove a stale colllection bid. Operators can call this to remove and refund bids that are still in the
+/// state after they have expired. As a reward they get a governance-determined percentage of the bid price.
+pub fn execute_remove_stale_collection_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    bidder: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    let operator = only_operator(deps.storage, &info)?;
+
+    let collection_bid = collection_bids().load(
+        deps.storage,
+        collection_bid_key(collection.clone(), bidder.clone()),
+    )?;
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    let stale_time = (Expiration::AtTime(collection_bid.expires) + params.stale_bid_duration)?;
+    if !stale_time.is_expired(&env.block) {
+        return Err(ContractError::BidNotStale {});
+    }
+
+    let params = SUDO_PARAMS.load(deps.storage)?;
+
+    // collection bid is stale, refund bidder and reward operator
+    collection_bids().remove(
+        deps.storage,
+        collection_bid_key(
+            collection_bid.clone().collection,
+            collection_bid.bidder.clone(),
+        ),
+    )?;
+
+    let reward = collection_bid.price * params.bid_removal_reward_percent / Uint128::from(100u128);
+
+    let bidder_msg = BankMsg::Send {
+        to_address: collection_bid.bidder.to_string(),
+        amount: vec![coin((collection_bid.price - reward).u128(), NATIVE_DENOM)],
+    };
+    let operator_msg = BankMsg::Send {
+        to_address: operator.to_string(),
+        amount: vec![coin(reward.u128(), NATIVE_DENOM)],
+    };
+
+    let hook = prepare_collection_bid_hook(deps.as_ref(), &collection_bid, HookAction::Delete)?;
+
+    let event = Event::new("remove-stale-collection-bid")
+        .add_attribute("collection", collection.to_string())
         .add_attribute("bidder", bidder.to_string())
         .add_attribute("operator", operator.to_string())
         .add_attribute("reward", reward.to_string());
