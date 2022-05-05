@@ -82,4 +82,10 @@ collection: string
 token_id: number
 [k: string]: unknown
 }
+} | {
+remove_stale_collection_bid: {
+bidder: string
+collection: string
+[k: string]: unknown
+}
 })
