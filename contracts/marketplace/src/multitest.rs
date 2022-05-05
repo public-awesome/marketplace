@@ -337,7 +337,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(marketplace.clone(), &ask_msg)
             .unwrap();
-        assert_eq!(false, res.ask.unwrap().is_active);
+        assert!(!res.ask.unwrap().is_active);
 
         // Reset active state
         transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
@@ -362,7 +362,7 @@ mod tests {
             .wrap()
             .query_wasm_smart(marketplace.clone(), &ask_msg)
             .unwrap();
-        assert_eq!(true, res.ask.unwrap().is_active);
+        assert!(res.ask.unwrap().is_active);
 
         // Bidder makes bid
         let set_bid_msg = ExecuteMsg::SetBid {
