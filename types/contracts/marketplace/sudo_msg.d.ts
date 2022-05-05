@@ -13,22 +13,22 @@ trading_fee_bps?: (number | null)
 [k: string]: unknown
 }
 } | {
-add_ask_created_hook: {
+add_ask_hook: {
 hook: string
 [k: string]: unknown
 }
 } | {
-add_bid_created_hook: {
+add_bid_hook: {
 hook: string
 [k: string]: unknown
 }
 } | {
-remove_ask_created_hook: {
+remove_ask_hook: {
 hook: string
 [k: string]: unknown
 }
 } | {
-remove_bid_created_hook: {
+remove_bid_hook: {
 hook: string
 [k: string]: unknown
 }
