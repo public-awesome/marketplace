@@ -45,8 +45,8 @@ fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
 mod tests {
     use crate::helpers::ExpiryRange;
     use crate::msg::{
-        AskCountResponse, AskOffset, AsksResponse, BidOffset, BidResponse, CollectionBidOffset,
-        CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
+        AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse,
+        CollectionBidOffset, CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
     };
     use crate::state::{Bid, SaleType};
 
@@ -252,12 +252,27 @@ mod tests {
         assert!(res.is_ok());
     }
 
+    fn transfer(
+        router: &mut StargazeApp,
+        creator: &Addr,
+        recipient: &Addr,
+        collection: &Addr,
+        token_id: u32,
+    ) {
+        let transfer_msg = Cw721ExecuteMsg::<Empty>::TransferNft {
+            recipient: recipient.to_string(),
+            token_id: token_id.to_string(),
+        };
+        let res = router.execute_contract(creator.clone(), collection.clone(), &transfer_msg, &[]);
+        assert!(res.is_ok());
+    }
+
     #[test]
     fn try_set_accept_bid() {
         let mut router = custom_mock_app();
 
         // Setup intial accounts
-        let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+        let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
         // Instantiate and configure contracts
         let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
@@ -294,6 +309,9 @@ mod tests {
         let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
         assert!(res.is_ok());
 
+        // Transfer nft from creator to owner. Creates a stale ask that needs to be updated
+        transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+
         // Should error on non-admin trying to update active state
         let update_ask_state = ExecuteMsg::UpdateAskIsActive {
             collection: collection.to_string(),
@@ -303,7 +321,7 @@ mod tests {
             .execute_contract(creator.clone(), marketplace.clone(), &update_ask_state, &[])
             .unwrap_err();
 
-        // Should not error on admin updating active state
+        // Should not error on admin updating active state to false
         let res = router.execute_contract(
             Addr::unchecked("operator"),
             marketplace.clone(),
@@ -311,8 +329,20 @@ mod tests {
             &[],
         );
         assert!(res.is_ok());
+        let ask_msg = QueryMsg::Ask {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+        };
+        let res: AskResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &ask_msg)
+            .unwrap();
+        assert_eq!(false, res.ask.unwrap().is_active);
 
         // Reset active state
+        transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
+        // after transfer, needs another approval
+        approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
         let update_ask_state = ExecuteMsg::UpdateAskIsActive {
             collection: collection.to_string(),
             token_id: TOKEN_ID,
@@ -324,6 +354,15 @@ mod tests {
             &[],
         );
         assert!(res.is_ok());
+        let ask_msg = QueryMsg::Ask {
+            collection: collection.to_string(),
+            token_id: TOKEN_ID,
+        };
+        let res: AskResponse = router
+            .wrap()
+            .query_wasm_smart(marketplace.clone(), &ask_msg)
+            .unwrap();
+        assert_eq!(true, res.ask.unwrap().is_active);
 
         // Bidder makes bid
         let set_bid_msg = ExecuteMsg::SetBid {
