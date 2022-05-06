@@ -115,10 +115,6 @@ pub fn execute(
             collection,
             token_id,
         } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, token_id),
-        ExecuteMsg::UpdateAskIsActive {
-            collection,
-            token_id,
-        } => execute_update_ask_is_active(deps, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::SetBid {
             collection,
             token_id,
@@ -189,6 +185,10 @@ pub fn execute(
             api.addr_validate(&bidder)?,
             maybe_addr(api, finder)?,
         ),
+        ExecuteMsg::UpdateAskIsActive {
+            collection,
+            token_id,
+        } => execute_update_ask_is_active(deps, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::RemoveStaleBid {
             collection,
             token_id,
