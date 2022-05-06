@@ -782,8 +782,6 @@ pub fn execute_remove_stale_bid(
         return Err(ContractError::BidNotStale {});
     }
 
-    let params = SUDO_PARAMS.load(deps.storage)?;
-
     // bid is stale, refund bidder and reward operator
     bids().remove(
         deps.storage,
@@ -839,8 +837,6 @@ pub fn execute_remove_stale_collection_bid(
     if !stale_time.is_expired(&env.block) {
         return Err(ContractError::BidNotStale {});
     }
-
-    let params = SUDO_PARAMS.load(deps.storage)?;
 
     // collection bid is stale, refund bidder and reward operator
     collection_bids().remove(
@@ -940,7 +936,6 @@ fn payout(
     let network_fee = payment * params.trading_fee_percent / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
-    // Check if token supports royalties
     let collection_info: CollectionInfoResponse = deps
         .querier
         .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
