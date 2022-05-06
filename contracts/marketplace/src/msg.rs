@@ -265,6 +265,13 @@ pub enum QueryMsg {
         start_after: Option<CollectionOffset>,
         limit: Option<u32>,
     },
+    /// Get all bids by a bidder, sorted by expiration
+    /// Return type: `BidsResponse`
+    BidsByBidderSortedByExpiration {
+        bidder: Bidder,
+        start_after: Option<CollectionOffset>,
+        limit: Option<u32>,
+    },
     /// Get all bids for a specific NFT
     /// Return type: `BidsResponse`
     Bids {
