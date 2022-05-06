@@ -2,11 +2,10 @@ use crate::{
     helpers::ExpiryRange,
     state::{Ask, Bid, CollectionBid, SaleType, SudoParams, TokenId},
 };
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128, WasmMsg};
+use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128};
 use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
-use sg_std::CosmosMsg;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct InstantiateMsg {
@@ -22,6 +21,7 @@ pub struct InstantiateMsg {
     /// Operators are entites that are responsible for maintaining the active state of Asks.
     /// They listen to NFT transfer events, and update the active state of Asks.
     pub operators: Vec<String>,
+    /// The address of the airdrop claim contract to detect sales
     pub sale_hook: Option<String>,
     /// Max basis points for the finders fee
     pub max_finders_fee_bps: u64,
@@ -49,11 +49,6 @@ pub enum ExecuteMsg {
     },
     /// Remove an existing ask from the marketplace
     RemoveAsk {
-        collection: String,
-        token_id: TokenId,
-    },
-    /// Priviledged operation to change the active state of an ask when an NFT is transferred
-    UpdateAskIsActive {
         collection: String,
         token_id: TokenId,
     },
@@ -98,13 +93,18 @@ pub enum ExecuteMsg {
         bidder: String,
         finder: Option<String>,
     },
+    /// Priviledged operation to change the active state of an ask when an NFT is transferred
+    UpdateAskIsActive {
+        collection: String,
+        token_id: TokenId,
+    },
     /// Privileged operation to remove stale bids
     RemoveStaleBid {
         collection: String,
         token_id: TokenId,
         bidder: String,
     },
-    /// Privileged operation to remove stale bids
+    /// Privileged operation to remove stale collection bids
     RemoveStaleCollectionBid { collection: String, bidder: String },
 }
 
@@ -400,17 +400,6 @@ impl SaleHookMsg {
     pub fn into_binary(self) -> StdResult<Binary> {
         let msg = SaleExecuteMsg::SaleHook(self);
         to_binary(&msg)
-    }
-
-    /// creates a cosmos_msg sending this struct to the named contract
-    pub fn into_cosmos_msg<T: Into<String>>(self, contract_addr: T) -> StdResult<CosmosMsg> {
-        let msg = self.into_binary()?;
-        let execute = WasmMsg::Execute {
-            contract_addr: contract_addr.into(),
-            msg,
-            funds: vec![],
-        };
-        Ok(execute.into())
     }
 }
 
