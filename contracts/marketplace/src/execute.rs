@@ -411,7 +411,7 @@ pub fn execute_set_bid(
                     return Err(ContractError::TokenReserved {});
                 }
             }
-            let inner_bid: Option<Bid> = match ask.sale_type {
+            let bid: Option<Bid> = match ask.sale_type {
                 SaleType::FixedPrice => {
                     if ask.price != bid_price {
                         return Err(ContractError::InvalidPrice {});
@@ -441,7 +441,7 @@ pub fn execute_set_bid(
                     Some(bid)
                 }
             };
-            inner_bid
+            bid
         }
         None => {
             let bid = Bid::new(
