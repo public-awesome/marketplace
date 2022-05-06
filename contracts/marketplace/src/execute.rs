@@ -911,22 +911,8 @@ fn finalize_sale(
     };
     res.messages.push(SubMsg::new(exec_cw721_transfer));
 
-    let msg = SaleHookMsg {
-        collection: ask.collection.to_string(),
-        token_id: ask.token_id,
-        price: coin(price.clone().u128(), NATIVE_DENOM),
-        seller: ask.seller.to_string(),
-        buyer: buyer.to_string(),
-    };
-    let mut submsgs = SALE_HOOKS.prepare_hooks(deps.storage, |h| {
-        let execute = WasmMsg::Execute {
-            contract_addr: h.to_string(),
-            msg: msg.clone().into_binary()?,
-            funds: vec![],
-        };
-        Ok(SubMsg::reply_on_error(execute, HookReply::Sale as u64))
-    })?;
-    res.messages.append(&mut submsgs);
+    res.messages
+        .append(&mut prepare_sale_hook(deps, &ask, buyer.clone())?);
 
     let event = Event::new("finalize-sale")
         .add_attribute("collection", ask.collection.to_string())
@@ -1118,11 +1104,7 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     }
 }
 
-fn prepare_ask_hook(
-    deps: Deps,
-    ask: &Ask,
-    action: HookAction,
-) -> Result<Vec<SubMsg>, ContractError> {
+fn prepare_ask_hook(deps: Deps, ask: &Ask, action: HookAction) -> StdResult<Vec<SubMsg>> {
     let submsgs = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
         let msg = AskHookMsg { ask: ask.clone() };
         let execute = WasmMsg::Execute {
@@ -1136,11 +1118,27 @@ fn prepare_ask_hook(
     Ok(submsgs)
 }
 
-fn prepare_bid_hook(
-    deps: Deps,
-    bid: &Bid,
-    action: HookAction,
-) -> Result<Vec<SubMsg>, ContractError> {
+fn prepare_sale_hook(deps: Deps, ask: &Ask, buyer: Addr) -> StdResult<Vec<SubMsg>> {
+    let submsgs = SALE_HOOKS.prepare_hooks(deps.storage, |h| {
+        let msg = SaleHookMsg {
+            collection: ask.collection.to_string(),
+            token_id: ask.token_id,
+            price: coin(ask.price.clone().u128(), NATIVE_DENOM),
+            seller: ask.seller.to_string(),
+            buyer: buyer.to_string(),
+        };
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.into_binary()?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, HookReply::Sale as u64))
+    })?;
+
+    Ok(submsgs)
+}
+
+fn prepare_bid_hook(deps: Deps, bid: &Bid, action: HookAction) -> StdResult<Vec<SubMsg>> {
     let submsgs = BID_HOOKS.prepare_hooks(deps.storage, |h| {
         let msg = BidHookMsg { bid: bid.clone() };
         let execute = WasmMsg::Execute {
@@ -1158,7 +1156,7 @@ fn prepare_collection_bid_hook(
     deps: Deps,
     collection_bid: &CollectionBid,
     action: HookAction,
-) -> Result<Vec<SubMsg>, ContractError> {
+) -> StdResult<Vec<SubMsg>> {
     let submsgs = COLLECTION_BID_HOOKS.prepare_hooks(deps.storage, |h| {
         let msg = CollectionBidHookMsg {
             collection_bid: collection_bid.clone(),
