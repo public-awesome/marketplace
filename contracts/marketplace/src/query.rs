@@ -161,6 +161,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps,
             api.addr_validate(&bidder)?,
         )?),
+        QueryMsg::CollectionBidsSortedByExpiration {
+            collection,
+            start_after,
+            limit,
+        } => to_binary(&query_collection_bids_sorted_by_expiry(
+            deps,
+            api.addr_validate(&collection)?,
+            start_after,
+            limit,
+        )?),
         QueryMsg::AskHooks {} => to_binary(&ASK_HOOKS.query_hooks(deps)?),
         QueryMsg::BidHooks {} => to_binary(&BID_HOOKS.query_hooks(deps)?),
         QueryMsg::SaleHooks {} => to_binary(&SALE_HOOKS.query_hooks(deps)?),
@@ -532,6 +542,40 @@ pub fn query_collection_bids_by_bidder(
         .bidder
         .prefix(bidder)
         .range(deps.storage, None, None, Order::Ascending)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(CollectionBidsResponse { bids })
+}
+
+pub fn query_collection_bids_sorted_by_expiry(
+    deps: Deps,
+    collection: Addr,
+    start_after: Option<CollectionBidOffset>,
+    limit: Option<u32>,
+) -> StdResult<CollectionBidsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    // let start: Option<Bound<(u64, (Addr, Addr))>> =
+
+    let start = if let Some(start) = start_after {
+        start.map(|offset| {
+            let bidder = deps.api.addr_validate(&offset.bidder).unwrap();
+            let bid = query_collection_bid(deps, collection.clone(), bidder.clone()).unwrap();
+            Some(Bound::exclusive((
+                bid.bid.unwrap().expires_at.seconds(),
+                (collection.clone(), bidder),
+            )))
+        });
+    } else {
+        None
+    };
+
+    let bids = collection_bids()
+        .idx
+        .bidder_expires_at
+        .sub_prefix(collection)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
 
