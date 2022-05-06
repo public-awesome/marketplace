@@ -94,7 +94,7 @@ pub enum ExecuteMsg {
         finder: Option<String>,
     },
     /// Priviledged operation to change the active state of an ask when an NFT is transferred
-    UpdateAskIsActive {
+    SyncAsk {
         collection: String,
         token_id: TokenId,
     },

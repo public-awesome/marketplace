@@ -185,10 +185,10 @@ pub fn execute(
             api.addr_validate(&bidder)?,
             maybe_addr(api, finder)?,
         ),
-        ExecuteMsg::UpdateAskIsActive {
+        ExecuteMsg::SyncAsk {
             collection,
             token_id,
-        } => execute_update_ask_is_active(deps, info, api.addr_validate(&collection)?, token_id),
+        } => execute_sync_ask(deps, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::RemoveStaleBid {
             collection,
             token_id,
@@ -302,10 +302,9 @@ pub fn execute_remove_ask(
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
-/// Updates the the active state of the ask.
-/// This is a privileged operation called by an operator to update the active state of an Ask
-/// when an NFT transfer happens.
-pub fn execute_update_ask_is_active(
+/// Synchronizes the active state of an ask based on token ownership.
+/// This is a privileged operation called by an operator to update an ask when a transfer happens.
+pub fn execute_sync_ask(
     deps: DepsMut,
     info: MessageInfo,
     collection: Addr,

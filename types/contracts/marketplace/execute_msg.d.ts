@@ -19,12 +19,6 @@ token_id: number
 [k: string]: unknown
 }
 } | {
-update_ask_is_active: {
-collection: string
-token_id: number
-[k: string]: unknown
-}
-} | {
 update_ask_price: {
 collection: string
 price: Coin
@@ -71,6 +65,12 @@ accept_collection_bid: {
 bidder: string
 collection: string
 finder?: (string | null)
+token_id: number
+[k: string]: unknown
+}
+} | {
+sync_ask: {
+collection: string
 token_id: number
 [k: string]: unknown
 }

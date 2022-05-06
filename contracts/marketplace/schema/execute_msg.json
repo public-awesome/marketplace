@@ -89,33 +89,6 @@
       "additionalProperties": false
     },
     {
-      "description": "Priviledged operation to change the active state of an ask when an NFT is transferred",
-      "type": "object",
-      "required": [
-        "update_ask_is_active"
-      ],
-      "properties": {
-        "update_ask_is_active": {
-          "type": "object",
-          "required": [
-            "collection",
-            "token_id"
-          ],
-          "properties": {
-            "collection": {
-              "type": "string"
-            },
-            "token_id": {
-              "type": "integer",
-              "format": "uint32",
-              "minimum": 0.0
-            }
-          }
-        }
-      },
-      "additionalProperties": false
-    },
-    {
       "description": "Update the price of an existing ask",
       "type": "object",
       "required": [
@@ -347,6 +320,33 @@
       "additionalProperties": false
     },
     {
+      "description": "Priviledged operation to change the active state of an ask when an NFT is transferred",
+      "type": "object",
+      "required": [
+        "sync_ask"
+      ],
+      "properties": {
+        "sync_ask": {
+          "type": "object",
+          "required": [
+            "collection",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Privileged operation to remove stale bids",
       "type": "object",
       "required": [
@@ -378,7 +378,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Privileged operation to remove stale bids",
+      "description": "Privileged operation to remove stale collection bids",
       "type": "object",
       "required": [
         "remove_stale_collection_bid"
