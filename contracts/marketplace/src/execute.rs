@@ -302,37 +302,6 @@ pub fn execute_remove_ask(
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
-/// Synchronizes the active state of an ask based on token ownership.
-/// This is a privileged operation called by an operator to update an ask when a transfer happens.
-pub fn execute_sync_ask(
-    deps: DepsMut,
-    info: MessageInfo,
-    collection: Addr,
-    token_id: TokenId,
-) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-    only_operator(deps.storage, &info)?;
-
-    let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    let res =
-        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
-    let new_is_active = res.owner == ask.seller;
-    if new_is_active == ask.is_active {
-        return Err(ContractError::AskUnchanged {});
-    }
-    ask.is_active = new_is_active;
-    asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
-
-    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
-
-    let event = Event::new("update-ask-state")
-        .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string())
-        .add_attribute("is_active", ask.is_active.to_string());
-
-    Ok(Response::new().add_event(event).add_submessages(hook))
-}
-
 /// Updates the ask price on a particular NFT
 pub fn execute_update_ask_price(
     deps: DepsMut,
@@ -756,6 +725,37 @@ pub fn execute_accept_collection_bid(
         .add_attribute("price", bid.price.to_string());
 
     Ok(res.add_event(event))
+}
+
+/// Synchronizes the active state of an ask based on token ownership.
+/// This is a privileged operation called by an operator to update an ask when a transfer happens.
+pub fn execute_sync_ask(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_operator(deps.storage, &info)?;
+
+    let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
+    let res =
+        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
+    let new_is_active = res.owner == ask.seller;
+    if new_is_active == ask.is_active {
+        return Err(ContractError::AskUnchanged {});
+    }
+    ask.is_active = new_is_active;
+    asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
+
+    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
+
+    let event = Event::new("update-ask-state")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("is_active", ask.is_active.to_string());
+
+    Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
 /// Privileged operation to remove a stale bid. Operators can call this to remove and refund bids that are still in the
