@@ -115,10 +115,6 @@ pub fn execute(
             collection,
             token_id,
         } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, token_id),
-        ExecuteMsg::UpdateAskIsActive {
-            collection,
-            token_id,
-        } => execute_update_ask_is_active(deps, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::SetBid {
             collection,
             token_id,
@@ -189,6 +185,10 @@ pub fn execute(
             api.addr_validate(&bidder)?,
             maybe_addr(api, finder)?,
         ),
+        ExecuteMsg::SyncAsk {
+            collection,
+            token_id,
+        } => execute_sync_ask(deps, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::RemoveStaleBid {
             collection,
             token_id,
@@ -302,38 +302,6 @@ pub fn execute_remove_ask(
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
-/// Updates the the active state of the ask.
-/// This is a privileged operation called by an operator to update the active state of an Ask
-/// when an NFT transfer happens.
-pub fn execute_update_ask_is_active(
-    deps: DepsMut,
-    info: MessageInfo,
-    collection: Addr,
-    token_id: TokenId,
-) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-    only_operator(deps.storage, &info)?;
-
-    let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
-    let res =
-        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
-    let new_is_active = res.owner == ask.seller;
-    if new_is_active == ask.is_active {
-        return Err(ContractError::AskUnchanged {});
-    }
-    ask.is_active = new_is_active;
-    asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
-
-    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
-
-    let event = Event::new("update-ask-state")
-        .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string())
-        .add_attribute("is_active", ask.is_active.to_string());
-
-    Ok(Response::new().add_event(event).add_submessages(hook))
-}
-
 /// Updates the ask price on a particular NFT
 pub fn execute_update_ask_price(
     deps: DepsMut,
@@ -411,7 +379,7 @@ pub fn execute_set_bid(
                     return Err(ContractError::TokenReserved {});
                 }
             }
-            let inner_bid: Option<Bid> = match ask.sale_type {
+            let bid: Option<Bid> = match ask.sale_type {
                 SaleType::FixedPrice => {
                     if ask.price != bid_price {
                         return Err(ContractError::InvalidPrice {});
@@ -441,7 +409,7 @@ pub fn execute_set_bid(
                     Some(bid)
                 }
             };
-            inner_bid
+            bid
         }
         None => {
             let bid = Bid::new(
@@ -759,6 +727,37 @@ pub fn execute_accept_collection_bid(
     Ok(res.add_event(event))
 }
 
+/// Synchronizes the active state of an ask based on token ownership.
+/// This is a privileged operation called by an operator to update an ask when a transfer happens.
+pub fn execute_sync_ask(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_operator(deps.storage, &info)?;
+
+    let mut ask = asks().load(deps.storage, ask_key(collection.clone(), token_id))?;
+    let res =
+        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
+    let new_is_active = res.owner == ask.seller;
+    if new_is_active == ask.is_active {
+        return Err(ContractError::AskUnchanged {});
+    }
+    ask.is_active = new_is_active;
+    asks().save(deps.storage, ask_key(collection.clone(), token_id), &ask)?;
+
+    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
+
+    let event = Event::new("update-ask-state")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("is_active", ask.is_active.to_string());
+
+    Ok(Response::new().add_event(event).add_submessages(hook))
+}
+
 /// Privileged operation to remove a stale bid. Operators can call this to remove and refund bids that are still in the
 /// state after they have expired. As a reward they get a governance-determined percentage of the bid price.
 pub fn execute_remove_stale_bid(
@@ -911,22 +910,8 @@ fn finalize_sale(
     };
     res.messages.push(SubMsg::new(exec_cw721_transfer));
 
-    let msg = SaleHookMsg {
-        collection: ask.collection.to_string(),
-        token_id: ask.token_id,
-        price: coin(price.clone().u128(), NATIVE_DENOM),
-        seller: ask.seller.to_string(),
-        buyer: buyer.to_string(),
-    };
-    let mut submsgs = SALE_HOOKS.prepare_hooks(deps.storage, |h| {
-        let execute = WasmMsg::Execute {
-            contract_addr: h.to_string(),
-            msg: msg.clone().into_binary()?,
-            funds: vec![],
-        };
-        Ok(SubMsg::reply_on_error(execute, HookReply::Sale as u64))
-    })?;
-    res.messages.append(&mut submsgs);
+    res.messages
+        .append(&mut prepare_sale_hook(deps, &ask, buyer.clone())?);
 
     let event = Event::new("finalize-sale")
         .add_attribute("collection", ask.collection.to_string())
@@ -1118,11 +1103,7 @@ pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, Contract
     }
 }
 
-fn prepare_ask_hook(
-    deps: Deps,
-    ask: &Ask,
-    action: HookAction,
-) -> Result<Vec<SubMsg>, ContractError> {
+fn prepare_ask_hook(deps: Deps, ask: &Ask, action: HookAction) -> StdResult<Vec<SubMsg>> {
     let submsgs = ASK_HOOKS.prepare_hooks(deps.storage, |h| {
         let msg = AskHookMsg { ask: ask.clone() };
         let execute = WasmMsg::Execute {
@@ -1136,11 +1117,27 @@ fn prepare_ask_hook(
     Ok(submsgs)
 }
 
-fn prepare_bid_hook(
-    deps: Deps,
-    bid: &Bid,
-    action: HookAction,
-) -> Result<Vec<SubMsg>, ContractError> {
+fn prepare_sale_hook(deps: Deps, ask: &Ask, buyer: Addr) -> StdResult<Vec<SubMsg>> {
+    let submsgs = SALE_HOOKS.prepare_hooks(deps.storage, |h| {
+        let msg = SaleHookMsg {
+            collection: ask.collection.to_string(),
+            token_id: ask.token_id,
+            price: coin(ask.price.clone().u128(), NATIVE_DENOM),
+            seller: ask.seller.to_string(),
+            buyer: buyer.to_string(),
+        };
+        let execute = WasmMsg::Execute {
+            contract_addr: h.to_string(),
+            msg: msg.into_binary()?,
+            funds: vec![],
+        };
+        Ok(SubMsg::reply_on_error(execute, HookReply::Sale as u64))
+    })?;
+
+    Ok(submsgs)
+}
+
+fn prepare_bid_hook(deps: Deps, bid: &Bid, action: HookAction) -> StdResult<Vec<SubMsg>> {
     let submsgs = BID_HOOKS.prepare_hooks(deps.storage, |h| {
         let msg = BidHookMsg { bid: bid.clone() };
         let execute = WasmMsg::Execute {
@@ -1158,7 +1155,7 @@ fn prepare_collection_bid_hook(
     deps: Deps,
     collection_bid: &CollectionBid,
     action: HookAction,
-) -> Result<Vec<SubMsg>, ContractError> {
+) -> StdResult<Vec<SubMsg>> {
     let submsgs = COLLECTION_BID_HOOKS.prepare_hooks(deps.storage, |h| {
         let msg = CollectionBidHookMsg {
             collection_bid: collection_bid.clone(),

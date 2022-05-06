@@ -310,7 +310,7 @@ fn try_set_accept_bid() {
     transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
 
     // Should error on non-admin trying to update active state
-    let update_ask_state = ExecuteMsg::UpdateAskIsActive {
+    let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
         token_id: TOKEN_ID,
     };
@@ -351,7 +351,7 @@ fn try_set_accept_bid() {
     transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
     // after transfer, needs another approval
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-    let update_ask_state = ExecuteMsg::UpdateAskIsActive {
+    let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
         token_id: TOKEN_ID,
     };

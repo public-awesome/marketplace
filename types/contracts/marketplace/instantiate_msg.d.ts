@@ -25,6 +25,9 @@ min_price: Uint128
  * Operators are entites that are responsible for maintaining the active state of Asks. They listen to NFT transfer events, and update the active state of Asks.
  */
 operators: string[]
+/**
+ * The address of the airdrop claim contract to detect sales
+ */
 sale_hook?: (string | null)
 /**
  * Duration after expiry when a bid becomes stale (in seconds)

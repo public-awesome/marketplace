@@ -1,6 +1,7 @@
 export * from "./ask_count_response";
 export * from "./ask_created_hooks_response";
 export * from "./ask_filled_hooks_response";
+export * from "./ask_hooks_response";
 // dedup emptied this file
 // export * from "./ask_offset";
 export * from "./ask_response";
@@ -9,6 +10,7 @@ export * from "./ask_response";
 export * from "./asks_by_seller_response";
 export * from "./asks_response";
 export * from "./asks_sorted_by_price_response";
+export * from "./bid_hooks_response";
 // dedup emptied this file
 // export * from "./bid_offset";
 export * from "./bid_response";

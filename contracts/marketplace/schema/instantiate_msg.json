@@ -57,6 +57,7 @@
       }
     },
     "sale_hook": {
+      "description": "The address of the airdrop claim contract to detect sales",
       "type": [
         "string",
         "null"
