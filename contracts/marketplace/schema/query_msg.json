@@ -68,11 +68,15 @@
         "asks": {
           "type": "object",
           "required": [
-            "collection"
+            "collection",
+            "include_inactive"
           ],
           "properties": {
             "collection": {
               "type": "string"
+            },
+            "include_inactive": {
+              "type": "boolean"
             },
             "limit": {
               "type": [
@@ -105,11 +109,15 @@
         "asks_sorted_by_price": {
           "type": "object",
           "required": [
-            "collection"
+            "collection",
+            "include_inactive"
           ],
           "properties": {
             "collection": {
               "type": "string"
+            },
+            "include_inactive": {
+              "type": "boolean"
             },
             "limit": {
               "type": [
@@ -144,11 +152,15 @@
         "reverse_asks_sorted_by_price": {
           "type": "object",
           "required": [
-            "collection"
+            "collection",
+            "include_inactive"
           ],
           "properties": {
             "collection": {
               "type": "string"
+            },
+            "include_inactive": {
+              "type": "boolean"
             },
             "limit": {
               "type": [
@@ -204,9 +216,13 @@
         "asks_by_seller": {
           "type": "object",
           "required": [
+            "include_inactive",
             "seller"
           ],
           "properties": {
+            "include_inactive": {
+              "type": "boolean"
+            },
             "limit": {
               "type": [
                 "integer",

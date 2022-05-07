@@ -15,6 +15,7 @@ token_id: number
 } | {
 asks: {
 collection: string
+include_inactive: boolean
 limit?: (number | null)
 start_after?: (number | null)
 [k: string]: unknown
@@ -22,6 +23,7 @@ start_after?: (number | null)
 } | {
 asks_sorted_by_price: {
 collection: string
+include_inactive: boolean
 limit?: (number | null)
 start_after?: (AskOffset | null)
 [k: string]: unknown
@@ -29,6 +31,7 @@ start_after?: (AskOffset | null)
 } | {
 reverse_asks_sorted_by_price: {
 collection: string
+include_inactive: boolean
 limit?: (number | null)
 start_before?: (AskOffset | null)
 [k: string]: unknown
@@ -40,6 +43,7 @@ collection: string
 }
 } | {
 asks_by_seller: {
+include_inactive: boolean
 limit?: (number | null)
 seller: string
 start_after?: (CollectionOffset | null)
@@ -54,6 +58,13 @@ token_id: number
 }
 } | {
 bids_by_bidder: {
+bidder: string
+limit?: (number | null)
+start_after?: (CollectionOffset | null)
+[k: string]: unknown
+}
+} | {
+bids_by_bidder_sorted_by_expiration: {
 bidder: string
 limit?: (number | null)
 start_after?: (CollectionOffset | null)
@@ -90,6 +101,15 @@ collection: string
 } | {
 collection_bids_by_bidder: {
 bidder: string
+limit?: (number | null)
+start_after?: (CollectionOffset | null)
+[k: string]: unknown
+}
+} | {
+collection_bids_by_bidder_sorted_by_expiration: {
+bidder: string
+limit?: (number | null)
+start_after?: (CollectionBidOffset | null)
 [k: string]: unknown
 }
 } | {
