@@ -265,6 +265,13 @@ pub enum QueryMsg {
         start_after: Option<CollectionOffset>,
         limit: Option<u32>,
     },
+    /// Get all bids by a bidder, sorted by expiration
+    /// Return type: `BidsResponse`
+    BidsByBidderSortedByExpiration {
+        bidder: Bidder,
+        start_after: Option<CollectionOffset>,
+        limit: Option<u32>,
+    },
     /// Get all bids for a specific NFT
     /// Return type: `BidsResponse`
     Bids {
@@ -295,7 +302,18 @@ pub enum QueryMsg {
     },
     /// Get all collection bids by a bidder
     /// Return type: `CollectionBidsResponse`
-    CollectionBidsByBidder { bidder: Bidder },
+    CollectionBidsByBidder {
+        bidder: Bidder,
+        start_after: Option<CollectionOffset>,
+        limit: Option<u32>,
+    },
+    /// Get all collection bids by a bidder, sorted by expiration
+    /// Return type: `CollectionBidsResponse`
+    CollectionBidsByBidderSortedByExpiration {
+        bidder: Collection,
+        start_after: Option<CollectionBidOffset>,
+        limit: Option<u32>,
+    },
     /// Get all collection bids for a collection sorted by price
     /// Return type: `CollectionBidsResponse`
     CollectionBidsSortedByPrice {

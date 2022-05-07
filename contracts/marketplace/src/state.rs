@@ -139,6 +139,8 @@ pub struct BidIndicies<'a> {
     pub collection_token_id: MultiIndex<'a, (Addr, TokenId), Bid, BidKey>,
     pub collection_price: MultiIndex<'a, (Addr, u128), Bid, BidKey>,
     pub bidder: MultiIndex<'a, Addr, Bid, BidKey>,
+    // Cannot include `Timestamp` in index, converted `Timestamp` to `seconds` and stored as `u64`
+    pub bidder_expires_at: MultiIndex<'a, (Addr, u64), Bid, BidKey>,
 }
 
 impl<'a> IndexList<Bid> for BidIndicies<'a> {
@@ -148,6 +150,7 @@ impl<'a> IndexList<Bid> for BidIndicies<'a> {
             &self.collection_token_id,
             &self.collection_price,
             &self.bidder,
+            &self.bidder_expires_at,
         ];
         Box::new(v.into_iter())
     }
@@ -167,6 +170,11 @@ pub fn bids<'a>() -> IndexedMap<'a, BidKey, Bid, BidIndicies<'a>> {
             "bids__collection_price",
         ),
         bidder: MultiIndex::new(|d: &Bid| d.bidder.clone(), "bids", "bids__bidder"),
+        bidder_expires_at: MultiIndex::new(
+            |d: &Bid| (d.bidder.clone(), d.expires_at.seconds()),
+            "bids",
+            "bids__bidder_expires_at",
+        ),
     };
     IndexedMap::new("bids", indexes)
 }
@@ -193,12 +201,18 @@ pub struct CollectionBidIndicies<'a> {
     pub collection: MultiIndex<'a, Addr, CollectionBid, CollectionBidKey>,
     pub collection_price: MultiIndex<'a, (Addr, u128), CollectionBid, CollectionBidKey>,
     pub bidder: MultiIndex<'a, Addr, CollectionBid, CollectionBidKey>,
+    // Cannot include `Timestamp` in index, converted `Timestamp` to `seconds` and stored as `u64`
+    pub bidder_expires_at: MultiIndex<'a, (Addr, u64), CollectionBid, CollectionBidKey>,
 }
 
 impl<'a> IndexList<CollectionBid> for CollectionBidIndicies<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<CollectionBid>> + '_> {
-        let v: Vec<&dyn Index<CollectionBid>> =
-            vec![&self.collection, &self.collection_price, &self.bidder];
+        let v: Vec<&dyn Index<CollectionBid>> = vec![
+            &self.collection,
+            &self.collection_price,
+            &self.bidder,
+            &self.bidder_expires_at,
+        ];
         Box::new(v.into_iter())
     }
 }
@@ -220,6 +234,11 @@ pub fn collection_bids<'a>(
             |d: &CollectionBid| d.bidder.clone(),
             "col_bids",
             "col_bids__bidder",
+        ),
+        bidder_expires_at: MultiIndex::new(
+            |d: &CollectionBid| (d.bidder.clone(), d.expires_at.seconds()),
+            "col_bids",
+            "col_bids__bidder_expires_at",
         ),
     };
     IndexedMap::new("col_bids", indexes)

@@ -122,6 +122,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         )?),
+        QueryMsg::BidsByBidderSortedByExpiration {
+            bidder,
+            start_after,
+            limit,
+        } => to_binary(&query_bids_by_bidder_sorted_by_expiry(
+            deps,
+            api.addr_validate(&bidder)?,
+            start_after,
+            limit,
+        )?),
         QueryMsg::CollectionBid { collection, bidder } => to_binary(&query_collection_bid(
             deps,
             api.addr_validate(&collection)?,
@@ -147,9 +157,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         )?),
-        QueryMsg::CollectionBidsByBidder { bidder } => to_binary(&query_collection_bids_by_bidder(
+        QueryMsg::CollectionBidsByBidder {
+            bidder,
+            start_after,
+            limit,
+        } => to_binary(&query_collection_bids_by_bidder(
             deps,
             api.addr_validate(&bidder)?,
+            start_after,
+            limit,
+        )?),
+        QueryMsg::CollectionBidsByBidderSortedByExpiration {
+            bidder,
+            start_after,
+            limit,
+        } => to_binary(&query_collection_bids_by_bidder_sorted_by_expiry(
+            deps,
+            api.addr_validate(&bidder)?,
+            start_after,
+            limit,
         )?),
         QueryMsg::AskHooks {} => to_binary(&ASK_HOOKS.query_hooks(deps)?),
         QueryMsg::BidHooks {} => to_binary(&BID_HOOKS.query_hooks(deps)?),
@@ -424,6 +450,41 @@ pub fn reverse_query_bids_sorted_by_price(
     Ok(BidsResponse { bids })
 }
 
+pub fn query_bids_by_bidder_sorted_by_expiry(
+    deps: Deps,
+    bidder: Addr,
+    start_after: Option<CollectionOffset>,
+    limit: Option<u32>,
+) -> StdResult<BidsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let start = match start_after {
+        Some(offset) => {
+            let collection = deps.api.addr_validate(&offset.collection)?;
+            let bid = query_bid(deps, collection.clone(), offset.token_id, bidder.clone())?;
+            match bid.bid {
+                Some(bid) => Some(Bound::exclusive((
+                    bid.expires_at.seconds(),
+                    bid_key(collection, offset.token_id, bidder.clone()),
+                ))),
+                None => None,
+            }
+        }
+        None => None,
+    };
+
+    let bids = bids()
+        .idx
+        .bidder_expires_at
+        .sub_prefix(bidder)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(BidsResponse { bids })
+}
+
 pub fn query_collection_bid(
     deps: Deps,
     collection: Addr,
@@ -485,12 +546,61 @@ pub fn reverse_query_collection_bids_sorted_by_price(
 pub fn query_collection_bids_by_bidder(
     deps: Deps,
     bidder: Addr,
+    start_after: Option<CollectionOffset>,
+    limit: Option<u32>,
 ) -> StdResult<CollectionBidsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let start: Option<Bound<(Addr, Addr)>> = match start_after {
+        Some(offset) => {
+            let collection = deps.api.addr_validate(&offset.collection)?;
+            Some(Bound::exclusive((collection, bidder.clone())))
+        }
+        None => None,
+    };
     let bids = collection_bids()
         .idx
         .bidder
         .prefix(bidder)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .map(|item| item.map(|(_, b)| b))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(CollectionBidsResponse { bids })
+}
+
+pub fn query_collection_bids_by_bidder_sorted_by_expiry(
+    deps: Deps,
+    bidder: Addr,
+    start_after: Option<CollectionBidOffset>,
+    limit: Option<u32>,
+) -> StdResult<CollectionBidsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let start = match start_after {
+        Some(offset) => {
+            let bidder = deps.api.addr_validate(&offset.bidder)?;
+            let collection = deps.api.addr_validate(&offset.collection)?;
+            let collection_bid =
+                query_collection_bid(deps, collection.clone(), bidder.clone())?.bid;
+            let bound = match collection_bid {
+                Some(collection_bid) => Some(Bound::exclusive((
+                    collection_bid.expires_at.seconds(),
+                    (collection, bidder),
+                ))),
+                None => None,
+            };
+            bound
+        }
+        None => None,
+    };
+
+    let bids = collection_bids()
+        .idx
+        .bidder_expires_at
+        .sub_prefix(bidder)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
 

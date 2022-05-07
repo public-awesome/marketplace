@@ -304,6 +304,45 @@
       "additionalProperties": false
     },
     {
+      "description": "Get all bids by a bidder, sorted by expiration Return type: `BidsResponse`",
+      "type": "object",
+      "required": [
+        "bids_by_bidder_sorted_by_expiration"
+      ],
+      "properties": {
+        "bids_by_bidder_sorted_by_expiration": {
+          "type": "object",
+          "required": [
+            "bidder"
+          ],
+          "properties": {
+            "bidder": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/CollectionOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Get all bids for a specific NFT Return type: `BidsResponse`",
       "type": "object",
       "required": [
@@ -462,6 +501,63 @@
           "properties": {
             "bidder": {
               "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/CollectionOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Get all collection bids by a bidder, sorted by expiration Return type: `CollectionBidsResponse`",
+      "type": "object",
+      "required": [
+        "collection_bids_by_bidder_sorted_by_expiration"
+      ],
+      "properties": {
+        "collection_bids_by_bidder_sorted_by_expiration": {
+          "type": "object",
+          "required": [
+            "bidder"
+          ],
+          "properties": {
+            "bidder": {
+              "type": "string"
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_after": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/CollectionBidOffset"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             }
           }
         }
