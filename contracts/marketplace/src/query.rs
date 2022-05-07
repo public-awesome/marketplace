@@ -242,7 +242,7 @@ pub fn query_asks(
 
     asks = asks
         .into_iter()
-        .filter(|v| v.is_active == include_inactive)
+        .filter(|a| a.is_active == include_inactive)
         .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
@@ -275,7 +275,7 @@ pub fn query_asks_sorted_by_price(
 
     asks = asks
         .into_iter()
-        .filter(|v| v.is_active == include_inactive)
+        .filter(|a| a.is_active == include_inactive)
         .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
@@ -308,7 +308,7 @@ pub fn reverse_query_asks_sorted_by_price(
 
     asks = asks
         .into_iter()
-        .filter(|v| v.is_active == include_inactive)
+        .filter(|a| a.is_active == include_inactive)
         .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
@@ -352,7 +352,7 @@ pub fn query_asks_by_seller(
 
     asks = asks
         .into_iter()
-        .filter(|v| v.is_active == include_inactive)
+        .filter(|a| a.is_active == include_inactive)
         .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
