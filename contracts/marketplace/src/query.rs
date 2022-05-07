@@ -549,7 +549,7 @@ pub fn query_collection_bids_by_bidder(
     Ok(CollectionBidsResponse { bids })
 }
 
-pub fn query_collection_bids_sorted_by_expiry(
+pub fn query_collection_bids_by_bidder_sorted_by_expiry(
     deps: Deps,
     bidder: Addr,
     start_after: Option<CollectionBidOffset>,
@@ -557,23 +557,24 @@ pub fn query_collection_bids_sorted_by_expiry(
 ) -> StdResult<CollectionBidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let start = if let Some(offset) = start_after {
-        let bidder = deps.api.addr_validate(&offset.bidder)?;
-        let collection = deps.api.addr_validate(&offset.collection)?;
-        let bid = query_collection_bid(deps, collection.clone(), bidder.clone())?;
-        let collection_bid = if let Some(collection_bid) = bid.bid {
-            collection_bid
-        } else {
-            return Err(StdError::GenericErr {
-                msg: "something".to_string(),
-            });
-        };
-        Some(Bound::exclusive((
-            collection_bid.expires_at.seconds(),
-            (collection.clone(), bidder),
-        )))
-    } else {
-        None
+    let start = match start_after {
+        Some(offset) => {
+            let bidder = deps.api.addr_validate(&offset.bidder)?;
+            let collection = deps.api.addr_validate(&offset.collection)?;
+            let bid = query_collection_bid(deps, collection.clone(), bidder.clone())?;
+            let collection_bid = if let Some(collection_bid) = bid.bid {
+                collection_bid
+            } else {
+                return Err(StdError::GenericErr {
+                    msg: "something".to_string(),
+                });
+            };
+            Some(Bound::exclusive((
+                collection_bid.expires_at.seconds(),
+                (collection.clone(), bidder),
+            )))
+        }
+        None => None,
     };
 
     let bids = collection_bids()
