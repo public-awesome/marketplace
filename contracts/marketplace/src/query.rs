@@ -7,7 +7,8 @@ use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, TokenId, ASK_HOOKS,
     BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
-use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
+use crate::ContractError;
+use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdError, StdResult};
 use cw_storage_plus::{Bound, PrefixBound};
 use cw_utils::maybe_addr;
 
@@ -550,17 +551,25 @@ pub fn query_collection_bids_by_bidder(
 
 pub fn query_collection_bids_sorted_by_expiry(
     deps: Deps,
-    collection: Addr,
+    bidder: Addr,
     start_after: Option<CollectionBidOffset>,
     limit: Option<u32>,
 ) -> StdResult<CollectionBidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
     let start = if let Some(offset) = start_after {
-        let bidder = deps.api.addr_validate(&offset.bidder).unwrap();
-        let bid = query_collection_bid(deps, collection.clone(), bidder.clone()).unwrap();
+        let bidder = deps.api.addr_validate(&offset.bidder)?;
+        let collection = deps.api.addr_validate(&offset.collection)?;
+        let bid = query_collection_bid(deps, collection.clone(), bidder.clone())?;
+        let collection_bid = if let Some(collection_bid) = bid.bid {
+            collection_bid
+        } else {
+            return Err(StdError::GenericErr {
+                msg: "something".to_string(),
+            });
+        };
         Some(Bound::exclusive((
-            bid.bid.unwrap().expires_at.seconds(),
+            collection_bid.expires_at.seconds(),
             (collection.clone(), bidder),
         )))
     } else {
@@ -570,7 +579,7 @@ pub fn query_collection_bids_sorted_by_expiry(
     let bids = collection_bids()
         .idx
         .bidder_expires_at
-        .sub_prefix(collection)
+        .sub_prefix(bidder)
         .range(deps.storage, start, None, Order::Ascending)
         .take(limit)
         .map(|item| item.map(|(_, b)| b))
