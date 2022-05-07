@@ -4,8 +4,8 @@ use crate::msg::{
     CollectionOffset, CollectionsResponse, ParamsResponse, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, TokenId, ASK_HOOKS,
-    BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, CollectionBid,
+    TokenId, ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
 use crate::ContractError;
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdError, StdResult};
@@ -166,7 +166,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             collection,
             start_after,
             limit,
-        } => to_binary(&query_collection_bids_sorted_by_expiry(
+        } => to_binary(&query_collection_bids_by_bidder_sorted_by_expiry(
             deps,
             api.addr_validate(&collection)?,
             start_after,
@@ -549,7 +549,7 @@ pub fn query_collection_bids_by_bidder(
     Ok(CollectionBidsResponse { bids })
 }
 
-pub fn query_collection_bids_sorted_by_expiry(
+pub fn query_collection_bids_by_bidder_sorted_by_expiry(
     deps: Deps,
     bidder: Addr,
     start_after: Option<CollectionBidOffset>,
@@ -557,23 +557,22 @@ pub fn query_collection_bids_sorted_by_expiry(
 ) -> StdResult<CollectionBidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let start = if let Some(offset) = start_after {
-        let bidder = deps.api.addr_validate(&offset.bidder)?;
-        let collection = deps.api.addr_validate(&offset.collection)?;
-        let bid = query_collection_bid(deps, collection.clone(), bidder.clone())?;
-        let collection_bid = if let Some(collection_bid) = bid.bid {
-            collection_bid
-        } else {
-            return Err(StdError::GenericErr {
-                msg: "something".to_string(),
-            });
-        };
-        Some(Bound::exclusive((
-            collection_bid.expires_at.seconds(),
-            (collection.clone(), bidder),
-        )))
-    } else {
-        None
+    let start = match start_after {
+        Some(offset) => {
+            let bidder = deps.api.addr_validate(&offset.bidder)?;
+            let collection = deps.api.addr_validate(&offset.collection)?;
+            let collection_bid =
+                query_collection_bid(deps, collection.clone(), bidder.clone())?.bid;
+            let bound = match collection_bid {
+                Some(collection_bid) => Some(Bound::exclusive((
+                    collection_bid.expires_at.seconds(),
+                    (collection, bidder),
+                ))),
+                None => None,
+            };
+            bound
+        }
+        None => None,
     };
 
     let bids = collection_bids()
