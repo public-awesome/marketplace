@@ -561,15 +561,12 @@ pub fn query_collection_bids_by_bidder_sorted_by_expiry(
         Some(offset) => {
             let bidder = deps.api.addr_validate(&offset.bidder)?;
             let collection = deps.api.addr_validate(&offset.collection)?;
-            let res = query_collection_bid(deps, collection.clone(), bidder.clone())?;
-            let collection_bid: Option<CollectionBid> = match res.bid {
-                Some(collection_bid) => Some(collection_bid),
-                None => None,
-            };
+            let collection_bid =
+                query_collection_bid(deps, collection.clone(), bidder.clone())?.bid;
             let bound = match collection_bid {
                 Some(collection_bid) => Some(Bound::exclusive((
                     collection_bid.expires_at.seconds(),
-                    (collection.clone(), bidder.clone()),
+                    (collection, bidder),
                 ))),
                 None => None,
             };
