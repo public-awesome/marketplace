@@ -4,8 +4,8 @@ use crate::msg::{
     CollectionOffset, CollectionsResponse, ParamsResponse, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, TokenId, ASK_HOOKS,
-    BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, CollectionBid,
+    TokenId, ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
 use crate::ContractError;
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdError, StdResult};
@@ -166,7 +166,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             collection,
             start_after,
             limit,
-        } => to_binary(&query_collection_bids_sorted_by_expiry(
+        } => to_binary(&query_collection_bids_by_bidder_sorted_by_expiry(
             deps,
             api.addr_validate(&collection)?,
             start_after,
@@ -561,18 +561,19 @@ pub fn query_collection_bids_by_bidder_sorted_by_expiry(
         Some(offset) => {
             let bidder = deps.api.addr_validate(&offset.bidder)?;
             let collection = deps.api.addr_validate(&offset.collection)?;
-            let bid = query_collection_bid(deps, collection.clone(), bidder.clone())?;
-            let collection_bid = if let Some(collection_bid) = bid.bid {
-                collection_bid
-            } else {
-                return Err(StdError::GenericErr {
-                    msg: "something".to_string(),
-                });
+            let res = query_collection_bid(deps, collection.clone(), bidder.clone())?;
+            let collection_bid: Option<CollectionBid> = match res.bid {
+                Some(collection_bid) => Some(collection_bid),
+                None => None,
             };
-            Some(Bound::exclusive((
-                collection_bid.expires_at.seconds(),
-                (collection.clone(), bidder),
-            )))
+            let bound = match collection_bid {
+                Some(collection_bid) => Some(Bound::exclusive((
+                    collection_bid.expires_at.seconds(),
+                    (collection.clone(), bidder.clone()),
+                ))),
+                None => None,
+            };
+            bound
         }
         None => None,
     };
