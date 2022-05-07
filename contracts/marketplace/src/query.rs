@@ -555,17 +555,14 @@ pub fn query_collection_bids_sorted_by_expiry(
     limit: Option<u32>,
 ) -> StdResult<CollectionBidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    // let start: Option<Bound<(u64, (Addr, Addr))>> =
 
-    let start = if let Some(start) = start_after {
-        start.map(|offset| {
-            let bidder = deps.api.addr_validate(&offset.bidder).unwrap();
-            let bid = query_collection_bid(deps, collection.clone(), bidder.clone()).unwrap();
-            Some(Bound::exclusive((
-                bid.bid.unwrap().expires_at.seconds(),
-                (collection.clone(), bidder),
-            )))
-        });
+    let start = if let Some(offset) = start_after {
+        let bidder = deps.api.addr_validate(&offset.bidder).unwrap();
+        let bid = query_collection_bid(deps, collection.clone(), bidder.clone()).unwrap();
+        Some(Bound::exclusive((
+            bid.bid.unwrap().expires_at.seconds(),
+            (collection.clone(), bidder),
+        )))
     } else {
         None
     };
