@@ -128,6 +128,40 @@ fn setup_contracts(
     Ok((marketplace, collection))
 }
 
+fn setup_collection(router: &mut StargazeApp, creator: &Addr) -> Result<Addr, ContractError> {
+    // Setup media contract
+    let sg721_id = router.store_code(contract_sg721());
+    let msg = Sg721InstantiateMsg {
+        name: String::from("Test Collection 2"),
+        symbol: String::from("TEST 2"),
+        minter: creator.to_string(),
+        collection_info: CollectionInfo {
+            creator: creator.to_string(),
+            description: String::from("Stargaze Monkeys 2"),
+            image:
+                "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
+                    .to_string(),
+            external_link: Some("https://example.com/external.html".to_string()),
+            royalty_info: Some(RoyaltyInfoResponse {
+                payment_address: creator.to_string(),
+                share: Decimal::percent(10),
+            }),
+        },
+    };
+    let collection = router
+        .instantiate_contract(
+            sg721_id,
+            creator.clone(),
+            &msg,
+            &coins(CREATION_FEE, NATIVE_DENOM),
+            "NFT",
+            None,
+        )
+        .unwrap();
+    println!("collection 2: {:?}", collection);
+    Ok(collection)
+}
+
 // Intializes accounts with balances
 fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), ContractError> {
     let owner: Addr = Addr::unchecked("owner");
@@ -176,7 +210,7 @@ fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Contra
 
 fn setup_second_bidder_account(router: &mut StargazeApp) -> Result<Addr, ContractError> {
     let bidder2: Addr = Addr::unchecked("bidder2");
-    let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
+    let funds: Vec<Coin> = coins(CREATION_FEE + INITIAL_BALANCE, NATIVE_DENOM);
     router
         .sudo(CwSudoMsg::Bank({
             BankSudo::Mint {
@@ -2101,7 +2135,7 @@ fn try_collection_bids() {
     let set_collection_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
     };
     let res = router.execute_contract(
         bidder.clone(),
@@ -2115,7 +2149,7 @@ fn try_collection_bids() {
     let set_collection_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 5),
     };
     let res = router.execute_contract(
         bidder2.clone(),
@@ -2149,14 +2183,14 @@ fn try_collection_bids() {
     assert_eq!(res.bids[0].price.u128(), 150u128);
 
     // test querying all sorted collection bids by bidder
-    let query_sorted_collection_bids = QueryMsg::CollectionBidsSortedByPrice {
+    let query_collection_bids_by_price = QueryMsg::CollectionBidsSortedByPrice {
         collection: collection.to_string(),
         start_after: None,
         limit: Some(10),
     };
     let res: CollectionBidsResponse = router
         .wrap()
-        .query_wasm_smart(marketplace.clone(), &query_sorted_collection_bids)
+        .query_wasm_smart(marketplace.clone(), &query_collection_bids_by_price)
         .unwrap();
     assert_eq!(res.bids.len(), 2);
     assert_eq!(res.bids[0].price.u128(), 150u128);
@@ -2179,6 +2213,49 @@ fn try_collection_bids() {
         .unwrap();
     assert_eq!(res.bids.len(), 1);
     assert_eq!(res.bids[0].price.u128(), 180u128);
+
+    // test querying all sorted collection bids by bidder sorted by expiration
+    // add another collection
+    let collection2 = setup_collection(&mut router, &bidder2).unwrap();
+    // set another collection bid
+    let set_collection_bid = ExecuteMsg::SetCollectionBid {
+        collection: collection2.to_string(),
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+    };
+    let res = router.execute_contract(
+        bidder2.clone(),
+        marketplace.clone(),
+        &set_collection_bid,
+        &coins(180, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+    let query_collection_bids_by_expiration = QueryMsg::CollectionBidsByBidderSortedByExpiration {
+        bidder: bidder2.to_string(),
+        start_after: None,
+        limit: None,
+    };
+    let res: CollectionBidsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_collection_bids_by_expiration)
+        .unwrap();
+    assert_eq!(res.bids.len(), 2);
+    assert_eq!(
+        res.bids[0].expires_at.seconds(),
+        router
+            .block_info()
+            .time
+            .plus_seconds(MIN_EXPIRY + 5)
+            .seconds()
+    );
+    assert_eq!(
+        res.bids[1].expires_at.seconds(),
+        router
+            .block_info()
+            .time
+            .plus_seconds(MIN_EXPIRY + 10)
+            .seconds()
+    );
 
     // test querying all sorted collection bids by bidder in reverse
     let reverse_query_sorted_collection_bids = QueryMsg::ReverseCollectionBidsSortedByPrice {

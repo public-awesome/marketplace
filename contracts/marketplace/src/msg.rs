@@ -309,8 +309,8 @@ pub enum QueryMsg {
     },
     /// Get all collection bids by a bidder, sorted by expiration
     /// Return type: `CollectionBidsResponse`
-    CollectionBidsSortedByExpiration {
-        collection: Collection,
+    CollectionBidsByBidderSortedByExpiration {
+        bidder: Collection,
         start_after: Option<CollectionBidOffset>,
         limit: Option<u32>,
     },

@@ -167,13 +167,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
-        QueryMsg::CollectionBidsSortedByExpiration {
-            collection,
+        QueryMsg::CollectionBidsByBidderSortedByExpiration {
+            bidder,
             start_after,
             limit,
         } => to_binary(&query_collection_bids_by_bidder_sorted_by_expiry(
             deps,
-            api.addr_validate(&collection)?,
+            api.addr_validate(&bidder)?,
             start_after,
             limit,
         )?),
