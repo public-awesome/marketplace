@@ -1258,12 +1258,12 @@ fn try_query_bids() {
         .unwrap();
     assert_eq!(res.bids, vec![]);
 
-    // Bidder makes bid
+    // Bidder makes bids
     let set_bid_msg = ExecuteMsg::SetBid {
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
         finder: None,
     };
     let res = router.execute_contract(
@@ -1274,12 +1274,39 @@ fn try_query_bids() {
     );
     assert!(res.is_ok());
 
+    let set_bid_msg = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID + 1,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(105, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
     let res: BidsResponse = router
         .wrap()
         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
         .unwrap();
     assert_eq!(res.bids[0].token_id, TOKEN_ID);
     assert_eq!(res.bids[0].price.u128(), 100u128);
+    let query_bids_msg = QueryMsg::Bids {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID + 1,
+        start_after: None,
+        limit: None,
+    };
+    let res: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_bids_msg)
+        .unwrap();
+    assert_eq!(res.bids[0].token_id, TOKEN_ID + 1);
+    assert_eq!(res.bids[0].price.u128(), 105u128);
 
     let query_bids_msg = QueryMsg::BidsByBidder {
         bidder: bidder.to_string(),
@@ -1288,9 +1315,35 @@ fn try_query_bids() {
     };
     let res: BidsResponse = router
         .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_bids_msg)
+        .unwrap();
+    assert_eq!(res.bids.len(), 2);
+    let query_bids_msg = QueryMsg::BidsByBidderSortedByExpiration {
+        bidder: bidder.to_string(),
+        start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID - 1)),
+        limit: None,
+    };
+    let res: BidsResponse = router
+        .wrap()
         .query_wasm_smart(marketplace, &query_bids_msg)
         .unwrap();
-    assert_eq!(res.bids.len(), 1);
+    assert_eq!(res.bids.len(), 2);
+    assert_eq!(
+        res.bids[0].expires_at.seconds(),
+        router
+            .block_info()
+            .time
+            .plus_seconds(MIN_EXPIRY + 1)
+            .seconds()
+    );
+    assert_eq!(
+        res.bids[1].expires_at.seconds(),
+        router
+            .block_info()
+            .time
+            .plus_seconds(MIN_EXPIRY + 10)
+            .seconds()
+    );
 }
 
 #[test]

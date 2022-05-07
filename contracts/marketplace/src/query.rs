@@ -458,15 +458,19 @@ pub fn query_bids_by_bidder_sorted_by_expiry(
 ) -> StdResult<BidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let start = if let Some(start) = start_after {
-        let collection = deps.api.addr_validate(&start.collection)?;
-        let bid = query_bid(deps, collection.clone(), start.token_id, bidder.clone())?;
-        Some(Bound::exclusive((
-            bid.bid.unwrap().expires_at.seconds(),
-            bid_key(collection, start.token_id, bidder.clone()),
-        )))
-    } else {
-        None
+    let start = match start_after {
+        Some(offset) => {
+            let collection = deps.api.addr_validate(&offset.collection)?;
+            let bid = query_bid(deps, collection.clone(), offset.token_id, bidder.clone())?;
+            match bid.bid {
+                Some(bid) => Some(Bound::exclusive((
+                    bid.expires_at.seconds(),
+                    bid_key(collection, offset.token_id, bidder.clone()),
+                ))),
+                None => None,
+            }
+        }
+        None => None,
     };
 
     let bids = bids()
