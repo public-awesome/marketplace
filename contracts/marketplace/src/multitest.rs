@@ -620,6 +620,7 @@ fn try_query_asks() {
         collection: collection.to_string(),
         start_after: None,
         limit: None,
+        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -654,6 +655,7 @@ fn try_query_asks() {
         collection: collection.to_string(),
         start_after: Some(TOKEN_ID - 1),
         limit: None,
+        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -666,6 +668,7 @@ fn try_query_asks() {
         collection: collection.to_string(),
         start_after: Some(TOKEN_ID),
         limit: None,
+        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()

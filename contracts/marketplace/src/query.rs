@@ -31,11 +31,13 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             collection,
             start_after,
             limit,
+            include_inactive,
         } => to_binary(&query_asks(
             deps,
             api.addr_validate(&collection)?,
             start_after,
             limit,
+            include_inactive,
         )?),
         QueryMsg::AsksSortedByPrice {
             collection,
@@ -211,10 +213,11 @@ pub fn query_asks(
     collection: Addr,
     start_after: Option<TokenId>,
     limit: Option<u32>,
+    include_inactive: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let asks = asks()
+    let mut asks = asks()
         .idx
         .collection
         .prefix(collection.clone())
@@ -230,6 +233,11 @@ pub fn query_asks(
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
+
+    asks = asks
+        .into_iter()
+        .filter(|v| v.is_active == include_inactive)
+        .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
 }

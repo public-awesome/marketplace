@@ -226,6 +226,7 @@ pub enum QueryMsg {
         collection: Collection,
         start_after: Option<TokenId>,
         limit: Option<u32>,
+        include_inactive: bool,
     },
     /// Get all asks for a collection, sorted by price
     /// Return type: `AsksResponse`
