@@ -764,6 +764,7 @@ fn try_query_sorted_asks() {
         collection: collection.to_string(),
         start_after: None,
         limit: None,
+        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -779,6 +780,7 @@ fn try_query_sorted_asks() {
         collection: collection.to_string(),
         start_after: Some(start_after),
         limit: None,
+        include_inactive: true,
     };
 
     let res: AsksResponse = router
@@ -793,6 +795,7 @@ fn try_query_sorted_asks() {
         collection: collection.to_string(),
         start_before: None,
         limit: None,
+        include_inactive: true,
     };
 
     let res: AsksResponse = router
@@ -809,6 +812,7 @@ fn try_query_sorted_asks() {
         collection: collection.to_string(),
         start_before: Some(start_before),
         limit: None,
+        include_inactive: true,
     };
 
     let res: AsksResponse = router
@@ -933,6 +937,7 @@ fn try_query_asks_by_seller() {
         seller: owner.to_string(),
         start_after: None,
         limit: None,
+        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -945,6 +950,7 @@ fn try_query_asks_by_seller() {
         seller: owner2.to_string(),
         start_after: None,
         limit: None,
+        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -960,6 +966,7 @@ fn try_query_asks_by_seller() {
             TOKEN_ID,
         )),
         limit: None,
+        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -972,6 +979,7 @@ fn try_query_asks_by_seller() {
         seller: owner2.to_string(),
         start_after: Some(CollectionOffset::new(collection.to_string(), 0)),
         limit: None,
+        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -984,6 +992,7 @@ fn try_query_asks_by_seller() {
         seller: owner2.to_string(),
         start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID + 1)),
         limit: None,
+        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()

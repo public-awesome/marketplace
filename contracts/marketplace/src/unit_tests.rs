@@ -65,7 +65,7 @@ fn ask_indexed_map() {
     let res = asks().load(deps.as_ref().storage, key);
     assert_eq!(res.unwrap(), ask);
 
-    let res = query_asks_by_seller(deps.as_ref(), seller, None, None).unwrap();
+    let res = query_asks_by_seller(deps.as_ref(), seller, None, None, true).unwrap();
     assert_eq!(res.asks.len(), 2);
     assert_eq!(res.asks[0], ask);
 

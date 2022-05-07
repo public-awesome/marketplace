@@ -43,31 +43,37 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             collection,
             start_after,
             limit,
+            include_inactive,
         } => to_binary(&query_asks_sorted_by_price(
             deps,
             api.addr_validate(&collection)?,
             start_after,
             limit,
+            include_inactive,
         )?),
         QueryMsg::ReverseAsksSortedByPrice {
             collection,
             start_before,
             limit,
+            include_inactive,
         } => to_binary(&reverse_query_asks_sorted_by_price(
             deps,
             api.addr_validate(&collection)?,
             start_before,
             limit,
+            include_inactive,
         )?),
         QueryMsg::AsksBySeller {
             seller,
             start_after,
             limit,
+            include_inactive,
         } => to_binary(&query_asks_by_seller(
             deps,
             api.addr_validate(&seller)?,
             start_after,
             limit,
+            include_inactive,
         )?),
         QueryMsg::AskCount { collection } => {
             to_binary(&query_ask_count(deps, api.addr_validate(&collection)?)?)
@@ -247,6 +253,7 @@ pub fn query_asks_sorted_by_price(
     collection: Addr,
     start_after: Option<AskOffset>,
     limit: Option<u32>,
+    include_inactive: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
@@ -257,7 +264,7 @@ pub fn query_asks_sorted_by_price(
         ))
     });
 
-    let asks = asks()
+    let mut asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
@@ -265,6 +272,11 @@ pub fn query_asks_sorted_by_price(
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
+
+    asks = asks
+        .into_iter()
+        .filter(|v| v.is_active == include_inactive)
+        .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
 }
@@ -274,6 +286,7 @@ pub fn reverse_query_asks_sorted_by_price(
     collection: Addr,
     start_before: Option<AskOffset>,
     limit: Option<u32>,
+    include_inactive: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
@@ -284,7 +297,7 @@ pub fn reverse_query_asks_sorted_by_price(
         ))
     });
 
-    let asks = asks()
+    let mut asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
@@ -292,6 +305,11 @@ pub fn reverse_query_asks_sorted_by_price(
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
+
+    asks = asks
+        .into_iter()
+        .filter(|v| v.is_active == include_inactive)
+        .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
 }
@@ -312,6 +330,7 @@ pub fn query_asks_by_seller(
     seller: Addr,
     start_after: Option<CollectionOffset>,
     limit: Option<u32>,
+    include_inactive: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
@@ -322,7 +341,7 @@ pub fn query_asks_by_seller(
         None
     };
 
-    let asks = asks()
+    let mut asks = asks()
         .idx
         .seller
         .prefix(seller)
@@ -330,6 +349,11 @@ pub fn query_asks_by_seller(
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
+
+    asks = asks
+        .into_iter()
+        .filter(|v| v.is_active == include_inactive)
+        .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
 }

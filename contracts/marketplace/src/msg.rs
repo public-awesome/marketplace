@@ -234,6 +234,7 @@ pub enum QueryMsg {
         collection: Collection,
         start_after: Option<AskOffset>,
         limit: Option<u32>,
+        include_inactive: bool,
     },
     /// Get all asks for a collection, sorted by price in reverse
     /// Return type: `AsksResponse`
@@ -241,6 +242,7 @@ pub enum QueryMsg {
         collection: Collection,
         start_before: Option<AskOffset>,
         limit: Option<u32>,
+        include_inactive: bool,
     },
     /// Count of all asks
     /// Return type: `AskCountResponse`
@@ -251,6 +253,7 @@ pub enum QueryMsg {
         seller: Seller,
         start_after: Option<CollectionOffset>,
         limit: Option<u32>,
+        include_inactive: bool,
     },
     /// Get data for a specific bid
     /// Return type: `BidResponse`
