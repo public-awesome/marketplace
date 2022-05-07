@@ -4,11 +4,10 @@ use crate::msg::{
     CollectionOffset, CollectionsResponse, ParamsResponse, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, CollectionBid,
-    TokenId, ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, TokenId, ASK_HOOKS,
+    BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
-use crate::ContractError;
-use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdError, StdResult};
+use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
 use cw_storage_plus::{Bound, PrefixBound};
 use cw_utils::maybe_addr;
 
@@ -158,9 +157,15 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_before,
             limit,
         )?),
-        QueryMsg::CollectionBidsByBidder { bidder } => to_binary(&query_collection_bids_by_bidder(
+        QueryMsg::CollectionBidsByBidder {
+            bidder,
+            start_after,
+            limit,
+        } => to_binary(&query_collection_bids_by_bidder(
             deps,
             api.addr_validate(&bidder)?,
+            start_after,
+            limit,
         )?),
         QueryMsg::CollectionBidsSortedByExpiration {
             collection,
@@ -537,12 +542,23 @@ pub fn reverse_query_collection_bids_sorted_by_price(
 pub fn query_collection_bids_by_bidder(
     deps: Deps,
     bidder: Addr,
+    start_after: Option<CollectionOffset>,
+    limit: Option<u32>,
 ) -> StdResult<CollectionBidsResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+    let start: Option<Bound<(Addr, Addr)>> = match start_after {
+        Some(offset) => {
+            let collection = deps.api.addr_validate(&offset.collection)?;
+            Some(Bound::exclusive((collection, bidder.clone())))
+        }
+        None => None,
+    };
     let bids = collection_bids()
         .idx
         .bidder
         .prefix(bidder)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
         .map(|item| item.map(|(_, b)| b))
         .collect::<StdResult<Vec<_>>>()?;
 

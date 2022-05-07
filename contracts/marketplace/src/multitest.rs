@@ -2139,6 +2139,8 @@ fn try_collection_bids() {
     // test querying all collection bids by bidder
     let query_collection_bids = QueryMsg::CollectionBidsByBidder {
         bidder: bidder.to_string(),
+        start_after: None,
+        limit: None,
     };
     let res: CollectionBidsResponse = router
         .wrap()

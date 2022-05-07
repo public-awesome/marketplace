@@ -302,7 +302,11 @@ pub enum QueryMsg {
     },
     /// Get all collection bids by a bidder
     /// Return type: `CollectionBidsResponse`
-    CollectionBidsByBidder { bidder: Bidder },
+    CollectionBidsByBidder {
+        bidder: Bidder,
+        start_after: Option<CollectionOffset>,
+        limit: Option<u32>,
+    },
     /// Get all collection bids by a bidder, sorted by expiration
     /// Return type: `CollectionBidsResponse`
     CollectionBidsSortedByExpiration {
