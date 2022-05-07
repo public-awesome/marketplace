@@ -2470,3 +2470,59 @@ fn try_bid_finders_fee() {
     let finder_balances = router.wrap().query_all_balances(finder).unwrap();
     assert_eq!(finder_balances, coins(5, NATIVE_DENOM));
 }
+
+#[test]
+fn try_ask_with_filter_inactive() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // An ask is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(500), // 5%
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    // Move forward in time..
+    setup_block_time(&mut router, 10000000000);
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        start_after: None,
+        limit: None,
+        include_inactive: false,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        start_after: None,
+        limit: None,
+        include_inactive: true,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 1);
+}
