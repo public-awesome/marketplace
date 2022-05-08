@@ -119,7 +119,7 @@ pub fn sudo_add_ask_hook(deps: DepsMut, _env: Env, hook: Addr) -> Result<Respons
     ASK_HOOKS.add_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
-        .add_attribute("action", "add_ask_created_hook")
+        .add_attribute("action", "add_ask_hook")
         .add_attribute("hook", hook);
     Ok(res)
 }
@@ -128,7 +128,7 @@ pub fn sudo_add_bid_hook(deps: DepsMut, _env: Env, hook: Addr) -> Result<Respons
     BID_HOOKS.add_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
-        .add_attribute("action", "add_bid_created_hook")
+        .add_attribute("action", "add_bid_hook")
         .add_attribute("hook", hook);
     Ok(res)
 }
@@ -146,7 +146,7 @@ pub fn sudo_remove_ask_hook(deps: DepsMut, hook: Addr) -> Result<Response, Contr
     ASK_HOOKS.remove_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
-        .add_attribute("action", "remove_ask_created_hook")
+        .add_attribute("action", "remove_ask_hook")
         .add_attribute("hook", hook);
     Ok(res)
 }
@@ -155,7 +155,7 @@ pub fn sudo_remove_bid_hook(deps: DepsMut, hook: Addr) -> Result<Response, Contr
     BID_HOOKS.remove_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
-        .add_attribute("action", "remove_bid_created_hook")
+        .add_attribute("action", "remove_bid_hook")
         .add_attribute("hook", hook);
     Ok(res)
 }
