@@ -597,8 +597,27 @@ fn try_update_ask() {
         price: coin(0, NATIVE_DENOM),
     };
     router
-        .execute_contract(creator.clone(), marketplace, &update_ask, &[])
+        .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
         .unwrap_err();
+
+    // confirm ask removed
+    let remove_ask_msg = ExecuteMsg::RemoveAsk {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &remove_ask_msg, &[]);
+    assert!(res.is_ok());
+    let res: AskResponse = router
+        .wrap()
+        .query_wasm_smart(
+            marketplace.to_string(),
+            &QueryMsg::Ask {
+                collection: collection.to_string(),
+                token_id: TOKEN_ID,
+            },
+        )
+        .unwrap();
+    assert_eq!(res.ask, None);
 }
 
 #[test]
