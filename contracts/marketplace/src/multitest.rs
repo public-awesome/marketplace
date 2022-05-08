@@ -2454,6 +2454,61 @@ fn try_remove_stale_bid() {
 }
 
 #[test]
+fn try_remove_stale_collection_bid() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    let expiry_time = router
+        .block_info()
+        .time
+        .plus_seconds(MIN_EXPIRY + 1)
+        .seconds();
+
+    // Bidder makes collection bid
+    let set_col_bid_msg = ExecuteMsg::SetCollectionBid {
+        collection: collection.to_string(),
+        finders_fee_bps: None,
+        expires: Timestamp::from_seconds(expiry_time),
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_col_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    let operator = Addr::unchecked("operator".to_string());
+
+    // Try to remove the collection bid (not yet stale) as an operator
+    let remove_col_msg = ExecuteMsg::RemoveStaleCollectionBid {
+        collection: collection.to_string(),
+        bidder: bidder.to_string(),
+    };
+    router
+        .execute_contract(operator.clone(), marketplace.clone(), &remove_col_msg, &[])
+        .unwrap_err();
+
+    // make bid stale by adding stale_bid_duration
+    setup_block_time(&mut router, expiry_time + 100);
+
+    let res = router.execute_contract(operator.clone(), marketplace.clone(), &remove_col_msg, &[]);
+    assert!(res.is_ok());
+
+    let operator_balances = router.wrap().query_all_balances(operator).unwrap();
+    assert_eq!(operator_balances, coins(5, NATIVE_DENOM));
+}
+
+#[test]
 fn try_bid_finders_fee() {
     let mut router = custom_mock_app();
 
