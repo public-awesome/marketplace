@@ -344,22 +344,24 @@ pub fn execute_set_bid(
         expires,
         finder,
     } = bid_info;
-
     let params = SUDO_PARAMS.load(deps.storage)?;
+
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
         return Err(ContractError::PriceTooSmall(bid_price));
     }
     params.bid_expiry.is_valid(&env.block, expires)?;
-    let bidder = info.sender;
 
+    let bidder = info.sender;
     let mut res = Response::new();
+    let bid_key = bid_key(collection.clone(), token_id, bidder.clone());
+    let ask_key = ask_key(collection.clone(), token_id);
 
     let existing_bid =
-        bids().may_load(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
+        bids().may_load(deps.storage, bid_key.clone())?;
 
     if let Some(existing_bid) = existing_bid {
-        bids().remove(deps.storage, (collection.clone(), token_id, bidder.clone()))?;
+        bids().remove(deps.storage, bid_key)?;
         let refund_bidder = BankMsg::Send {
             to_address: bidder.to_string(),
             amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
@@ -367,9 +369,8 @@ pub fn execute_set_bid(
         res = res.add_message(refund_bidder)
     }
 
-    let ask_key = ask_key(collection.clone(), token_id);
-
     let ask = asks().may_load(deps.storage, ask_key.clone())?;
+
     let bid: Option<Bid> = match ask {
         Some(ask) => {
             if ask.expires_at <= env.block.time {
