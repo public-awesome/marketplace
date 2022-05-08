@@ -357,8 +357,7 @@ pub fn execute_set_bid(
     let bid_key = bid_key(collection.clone(), token_id, bidder.clone());
     let ask_key = ask_key(collection.clone(), token_id);
 
-    let existing_bid =
-        bids().may_load(deps.storage, bid_key.clone())?;
+    let existing_bid = bids().may_load(deps.storage, bid_key.clone())?;
 
     if let Some(existing_bid) = existing_bid {
         bids().remove(deps.storage, bid_key)?;
