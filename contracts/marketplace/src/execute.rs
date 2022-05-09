@@ -560,11 +560,11 @@ pub fn execute_set_collection_bid(
     let key = collection_bid_key(&collection, &bidder);
 
     let existing_bid = collection_bids().may_load(deps.storage, key.clone())?;
-    if let Some(existing_bid) = existing_bid {
+    if let Some(bid) = existing_bid {
         collection_bids().remove(deps.storage, key.clone())?;
         let refund_bidder_msg = BankMsg::Send {
-            to_address: existing_bid.bidder.to_string(),
-            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
+            to_address: bid.bidder.to_string(),
+            amount: vec![coin(bid.price.u128(), NATIVE_DENOM)],
         };
         res = res.add_message(refund_bidder_msg);
     }
