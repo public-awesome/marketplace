@@ -357,15 +357,29 @@ pub fn execute_set_bid(
     let bid_key = bid_key(&collection, token_id, &bidder);
     let ask_key = ask_key(&collection, token_id);
 
-    let existing_bid = bids().may_load(deps.storage, bid_key.clone())?;
-
-    if let Some(existing_bid) = existing_bid {
+    if let Some(existing_bid) = bids().may_load(deps.storage, bid_key.clone())? {
         bids().remove(deps.storage, bid_key)?;
         let refund_bidder = BankMsg::Send {
             to_address: bidder.to_string(),
             amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
         };
         res = res.add_message(refund_bidder)
+    }
+
+    let existing_ask = asks().may_load(deps.storage, ask_key.clone())?;
+
+    if let Some(ask) = existing_ask.clone() {
+        if ask.is_expired(&env.block) {
+            return Err(ContractError::AskExpired {});
+        }
+        if !ask.is_active {
+            return Err(ContractError::AskNotActive {});
+        }
+        if let Some(reserved_for) = ask.reserve_for {
+            if reserved_for != bidder {
+                return Err(ContractError::TokenReserved {});
+            }
+        }
     }
 
     let save_bid = |store| -> StdResult<_> {
@@ -381,40 +395,26 @@ pub fn execute_set_bid(
         Ok(Some(bid))
     };
 
-    let bid: Option<Bid> = if let Some(ask) = asks().may_load(deps.storage, ask_key.clone())? {
-        if ask.is_expired(&env.block) {
-            return Err(ContractError::AskExpired {});
-        }
-        if !ask.is_active {
-            return Err(ContractError::AskNotActive {});
-        }
-        if let Some(reserved_for) = ask.clone().reserve_for {
-            if reserved_for != bidder {
-                return Err(ContractError::TokenReserved {});
+    let bid = match existing_ask {
+        Some(ask) => match ask.sale_type {
+            SaleType::FixedPrice => {
+                if ask.price != bid_price {
+                    return Err(ContractError::InvalidPrice {});
+                }
+                asks().remove(deps.storage, ask_key)?;
+                finalize_sale(
+                    deps.as_ref(),
+                    ask,
+                    bid_price,
+                    bidder.clone(),
+                    finder,
+                    &mut res,
+                )?;
+                None
             }
-        }
-
-        if let SaleType::FixedPrice = ask.sale_type {
-            if ask.price != bid_price {
-                return Err(ContractError::InvalidPrice {});
-            }
-            asks().remove(deps.storage, ask_key)?;
-            finalize_sale(
-                deps.as_ref(),
-                ask,
-                bid_price,
-                bidder.clone(),
-                finder,
-                &mut res,
-            )?;
-            None
-        } else {
-            // Store bids for non-fixed prices sales (i.e. auction)
-            save_bid(deps.storage)?
-        }
-    } else {
-        // Stores bids when there's no ask
-        save_bid(deps.storage)?
+            SaleType::Auction => save_bid(deps.storage)?,
+        },
+        None => save_bid(deps.storage)?,
     };
 
     let hook = if let Some(bid) = bid {
@@ -560,11 +560,11 @@ pub fn execute_set_collection_bid(
     let key = collection_bid_key(&collection, &bidder);
 
     let existing_bid = collection_bids().may_load(deps.storage, key.clone())?;
-    if let Some(existing_bid) = existing_bid {
+    if let Some(bid) = existing_bid {
         collection_bids().remove(deps.storage, key.clone())?;
         let refund_bidder_msg = BankMsg::Send {
-            to_address: existing_bid.bidder.to_string(),
-            amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
+            to_address: bid.bidder.to_string(),
+            amount: vec![coin(bid.price.u128(), NATIVE_DENOM)],
         };
         res = res.add_message(refund_bidder_msg);
     }
