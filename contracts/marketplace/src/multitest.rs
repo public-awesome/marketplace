@@ -637,9 +637,9 @@ fn try_query_asks() {
     // test before ask is made, without using pagination
     let query_asks_msg = QueryMsg::Asks {
         collection: collection.to_string(),
+        include_inactive: Some(true),
         start_after: None,
         limit: None,
-        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -672,9 +672,9 @@ fn try_query_asks() {
     // test pagination, starting when tokens exist
     let query_asks_msg = QueryMsg::Asks {
         collection: collection.to_string(),
+        include_inactive: Some(true),
         start_after: Some(TOKEN_ID - 1),
         limit: None,
-        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -685,9 +685,9 @@ fn try_query_asks() {
     // test pagination, starting when token don't exist
     let query_asks_msg = QueryMsg::Asks {
         collection: collection.to_string(),
+        include_inactive: Some(true),
         start_after: Some(TOKEN_ID),
         limit: None,
-        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -781,9 +781,9 @@ fn try_query_sorted_asks() {
 
     let query_asks_msg = QueryMsg::AsksSortedByPrice {
         collection: collection.to_string(),
+        include_inactive: Some(true),
         start_after: None,
         limit: None,
-        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -797,9 +797,9 @@ fn try_query_sorted_asks() {
     let start_after = AskOffset::new(res.asks[0].price, res.asks[0].token_id);
     let query_msg = QueryMsg::AsksSortedByPrice {
         collection: collection.to_string(),
+        include_inactive: Some(true),
         start_after: Some(start_after),
         limit: None,
-        include_inactive: true,
     };
 
     let res: AsksResponse = router
@@ -812,9 +812,9 @@ fn try_query_sorted_asks() {
 
     let reverse_query_asks_msg = QueryMsg::ReverseAsksSortedByPrice {
         collection: collection.to_string(),
+        include_inactive: Some(true),
         start_before: None,
         limit: None,
-        include_inactive: true,
     };
 
     let res: AsksResponse = router
@@ -829,9 +829,9 @@ fn try_query_sorted_asks() {
     let start_before = AskOffset::new(res.asks[0].price, res.asks[0].token_id);
     let reverse_query_asks_start_before_first_desc_msg = QueryMsg::ReverseAsksSortedByPrice {
         collection: collection.to_string(),
+        include_inactive: Some(true),
         start_before: Some(start_before),
         limit: None,
-        include_inactive: true,
     };
 
     let res: AsksResponse = router
@@ -954,9 +954,9 @@ fn try_query_asks_by_seller() {
     // owner1 should only have 1 token
     let query_asks_msg = QueryMsg::AsksBySeller {
         seller: owner.to_string(),
+        include_inactive: Some(true),
         start_after: None,
         limit: None,
-        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -967,9 +967,9 @@ fn try_query_asks_by_seller() {
     // owner2 should have 2 token
     let query_asks_msg = QueryMsg::AsksBySeller {
         seller: owner2.to_string(),
+        include_inactive: Some(true),
         start_after: None,
         limit: None,
-        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -980,12 +980,12 @@ fn try_query_asks_by_seller() {
     // owner2 should have 0 tokens when paginated by a non-existing collection
     let query_asks_msg = QueryMsg::AsksBySeller {
         seller: owner2.to_string(),
+        include_inactive: Some(true),
         start_after: Some(CollectionOffset::new(
             "non-existing-collection".to_string(),
             TOKEN_ID,
         )),
         limit: None,
-        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -996,9 +996,9 @@ fn try_query_asks_by_seller() {
     // owner2 should have 2 tokens when paginated by a existing collection
     let query_asks_msg = QueryMsg::AsksBySeller {
         seller: owner2.to_string(),
+        include_inactive: Some(true),
         start_after: Some(CollectionOffset::new(collection.to_string(), 0)),
         limit: None,
-        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -1009,9 +1009,9 @@ fn try_query_asks_by_seller() {
     // owner2 should have 1 token when paginated by a existing collection starting after a token
     let query_asks_msg = QueryMsg::AsksBySeller {
         seller: owner2.to_string(),
+        include_inactive: Some(true),
         start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID + 1)),
         limit: None,
-        include_inactive: true,
     };
     let res: AsksResponse = router
         .wrap()
@@ -2559,7 +2559,7 @@ fn try_ask_with_filter_inactive() {
     let mut router = custom_mock_app();
 
     // Setup intial accounts
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
@@ -2582,14 +2582,26 @@ fn try_ask_with_filter_inactive() {
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
     assert!(res.is_ok());
 
-    // Move forward in time..
-    setup_block_time(&mut router, 10000000000);
+    // transfer nft from creator to owner. Creates a stale ask that needs to be updated
+    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+
+    let update_ask_state = ExecuteMsg::SyncAsk {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+    };
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_ok());
 
     let ask_msg = QueryMsg::Asks {
         collection: collection.to_string(),
+        include_inactive: None,
         start_after: None,
         limit: None,
-        include_inactive: false,
     };
     let res: AsksResponse = router
         .wrap()
@@ -2599,9 +2611,21 @@ fn try_ask_with_filter_inactive() {
 
     let ask_msg = QueryMsg::Asks {
         collection: collection.to_string(),
+        include_inactive: Some(false),
         start_after: None,
         limit: None,
-        include_inactive: true,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(true),
+        start_after: None,
+        limit: None,
     };
     let res: AsksResponse = router
         .wrap()
