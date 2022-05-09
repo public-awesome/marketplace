@@ -381,7 +381,7 @@ pub fn execute_set_bid(
         Ok(Some(bid))
     };
 
-    let bid: Option<Bid> = if let Some(ask) = asks().may_load(deps.storage, ask_key.clone())? {
+    let bid = if let Some(ask) = asks().may_load(deps.storage, ask_key.clone())? {
         if ask.is_expired(&env.block) {
             return Err(ContractError::AskExpired {});
         }
