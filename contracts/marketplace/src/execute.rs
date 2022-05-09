@@ -368,6 +368,19 @@ pub fn execute_set_bid(
         res = res.add_message(refund_bidder)
     }
 
+    let save_bid = |store| -> StdResult<Option<Bid>> {
+        let bid = Bid::new(
+            collection.clone(),
+            token_id,
+            bidder.clone(),
+            bid_price,
+            finders_fee_bps,
+            expires,
+        );
+        store_bid(store, &bid)?;
+        Ok(Some(bid))
+    };
+
     let bid: Option<Bid> = if let Some(ask) = asks().may_load(deps.storage, ask_key.clone())? {
         if ask.expires_at <= env.block.time {
             return Err(ContractError::AskExpired {});
@@ -397,29 +410,11 @@ pub fn execute_set_bid(
             None
         } else {
             // Store bids for non-fixed prices sales (i.e. auction)
-            let bid = Bid::new(
-                collection.clone(),
-                token_id,
-                bidder.clone(),
-                bid_price,
-                finders_fee_bps,
-                expires,
-            );
-            store_bid(deps.storage, &bid)?;
-            Some(bid)
+            save_bid(deps.storage)?
         }
     } else {
         // Stores bids when there's no ask
-        let bid = Bid::new(
-            collection.clone(),
-            token_id,
-            bidder.clone(),
-            bid_price,
-            finders_fee_bps,
-            expires,
-        );
-        store_bid(deps.storage, &bid)?;
-        Some(bid)
+        save_bid(deps.storage)?
     };
 
     let hook = if let Some(bid) = bid {
