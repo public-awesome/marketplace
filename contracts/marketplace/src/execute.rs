@@ -368,7 +368,7 @@ pub fn execute_set_bid(
         res = res.add_message(refund_bidder)
     }
 
-    let save_bid = |store| -> StdResult<Option<Bid>> {
+    let save_bid = |store| -> StdResult<_> {
         let bid = Bid::new(
             collection.clone(),
             token_id,
