@@ -233,7 +233,7 @@ pub fn execute_set_ask(
 
     nonpayable(&info)?;
     price_validate(deps.storage, &price)?;
-    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    only_owner(deps.as_ref(), &info, &collection, token_id)?;
 
     // Check if this contract is approved to transfer the token
     Cw721Contract(collection.clone()).approval(
@@ -287,9 +287,9 @@ pub fn execute_remove_ask(
     token_id: TokenId,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    only_owner(deps.as_ref(), &info, &collection, token_id)?;
 
-    let key = ask_key(collection.clone(), token_id);
+    let key = ask_key(&collection, token_id);
     let ask = asks().load(deps.storage, key.clone())?;
     asks().remove(deps.storage, key)?;
 
@@ -311,10 +311,10 @@ pub fn execute_update_ask_price(
     price: Coin,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    only_owner(deps.as_ref(), &info, &collection, token_id)?;
     price_validate(deps.storage, &price)?;
 
-    let key = ask_key(collection.clone(), token_id);
+    let key = ask_key(&collection, token_id);
 
     let mut ask = asks().load(deps.storage, key.clone())?;
     ask.price = price.amount;
@@ -354,8 +354,8 @@ pub fn execute_set_bid(
 
     let bidder = info.sender;
     let mut res = Response::new();
-    let bid_key = bid_key(collection.clone(), token_id, bidder.clone());
-    let ask_key = ask_key(collection.clone(), token_id);
+    let bid_key = bid_key(&collection, token_id, &bidder);
+    let ask_key = ask_key(&collection, token_id);
 
     let existing_bid = bids().may_load(deps.storage, bid_key.clone())?;
 
@@ -456,7 +456,7 @@ pub fn execute_remove_bid(
     nonpayable(&info)?;
     let bidder = info.sender;
 
-    let key = bid_key(collection.clone(), token_id, bidder.clone());
+    let key = bid_key(&collection, token_id, &bidder);
     let bid = bids().load(deps.storage, key.clone())?;
     bids().remove(deps.storage, key)?;
 
@@ -491,41 +491,38 @@ pub fn execute_accept_bid(
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    only_owner(deps.as_ref(), &info, &collection, token_id)?;
 
-    let bid_key = bid_key(collection.clone(), token_id, bidder.clone());
-    let ask_key = ask_key(collection.clone(), token_id);
+    let bid_key = bid_key(&collection, token_id, &bidder);
+    let ask_key = ask_key(&collection, token_id);
 
     let bid = bids().load(deps.storage, bid_key.clone())?;
     if bid.expires_at <= env.block.time {
         return Err(ContractError::BidExpired {});
     }
 
-    let ask = match asks().may_load(deps.storage, ask_key.clone())? {
-        Some(existing_ask) => {
-            if existing_ask.expires_at <= env.block.time {
-                return Err(ContractError::AskExpired {});
-            }
-            if !existing_ask.is_active {
-                return Err(ContractError::AskNotActive {});
-            }
-            asks().remove(deps.storage, ask_key)?;
-            existing_ask
+    let ask = if let Some(existing_ask) = asks().may_load(deps.storage, ask_key.clone())? {
+        if existing_ask.expires_at <= env.block.time {
+            return Err(ContractError::AskExpired {});
         }
-        None => {
-            // Create a temporary Ask
-            Ask {
-                sale_type: SaleType::Auction,
-                collection: collection.clone(),
-                token_id,
-                price: bid.price,
-                expires_at: bid.expires_at,
-                is_active: true,
-                seller: info.sender,
-                funds_recipient: None,
-                reserve_for: None,
-                finders_fee_bps: bid.finders_fee_bps,
-            }
+        if !existing_ask.is_active {
+            return Err(ContractError::AskNotActive {});
+        }
+        asks().remove(deps.storage, ask_key)?;
+        existing_ask
+    } else {
+        // Create a temporary Ask
+        Ask {
+            sale_type: SaleType::Auction,
+            collection: collection.clone(),
+            token_id,
+            price: bid.price,
+            expires_at: bid.expires_at,
+            is_active: true,
+            seller: info.sender,
+            funds_recipient: None,
+            reserve_for: None,
+            finders_fee_bps: bid.finders_fee_bps,
         }
     };
 
@@ -572,7 +569,7 @@ pub fn execute_set_collection_bid(
     let bidder = info.sender;
     let mut res = Response::new();
 
-    let key = collection_bid_key(collection.clone(), bidder.clone());
+    let key = collection_bid_key(&collection, &bidder);
 
     let existing_bid = collection_bids().may_load(deps.storage, key.clone())?;
     if let Some(existing_bid) = existing_bid {
@@ -614,7 +611,7 @@ pub fn execute_remove_collection_bid(
     nonpayable(&info)?;
     let bidder = info.sender;
 
-    let key = collection_bid_key(collection.clone(), bidder.clone());
+    let key = collection_bid_key(&collection, &bidder);
 
     let collection_bid = collection_bids().load(deps.storage, key.clone())?;
     collection_bids().remove(deps.storage, key)?;
@@ -649,9 +646,9 @@ pub fn execute_accept_collection_bid(
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    only_owner(deps.as_ref(), &info, collection.clone(), token_id)?;
+    only_owner(deps.as_ref(), &info, &collection, token_id)?;
 
-    let key = collection_bid_key(collection.clone(), bidder.clone());
+    let key = collection_bid_key(&collection, &bidder);
 
     let bid = collection_bids().load(deps.storage, key.clone())?;
     if bid.expires_at <= env.block.time {
@@ -706,7 +703,7 @@ pub fn execute_sync_ask(
     nonpayable(&info)?;
     only_operator(deps.storage, &info)?;
 
-    let key = ask_key(collection.clone(), token_id);
+    let key = ask_key(&collection, token_id);
 
     let mut ask = asks().load(deps.storage, key.clone())?;
     let res =
@@ -741,7 +738,7 @@ pub fn execute_remove_stale_bid(
     nonpayable(&info)?;
     let operator = only_operator(deps.storage, &info)?;
 
-    let bid_key = bid_key(collection.clone(), token_id, bidder.clone());
+    let bid_key = bid_key(&collection, token_id, &bidder);
     let bid = bids().load(deps.storage, bid_key.clone())?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
@@ -792,7 +789,7 @@ pub fn execute_remove_stale_collection_bid(
     nonpayable(&info)?;
     let operator = only_operator(deps.storage, &info)?;
 
-    let key = collection_bid_key(collection.clone(), bidder.clone());
+    let key = collection_bid_key(&collection, &bidder);
     let collection_bid = collection_bids().load(deps.storage, key.clone())?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
@@ -968,23 +965,24 @@ fn price_validate(store: &dyn Storage, price: &Coin) -> Result<(), ContractError
 fn store_bid(store: &mut dyn Storage, bid: &Bid) -> StdResult<()> {
     bids().save(
         store,
-        bid_key(bid.collection.clone(), bid.token_id, bid.bidder.clone()),
+        bid_key(&bid.collection, bid.token_id, &bid.bidder),
         bid,
     )
 }
 
 fn store_ask(store: &mut dyn Storage, ask: &Ask) -> StdResult<()> {
-    asks().save(store, ask_key(ask.collection.clone(), ask.token_id), ask)
+    asks().save(store, ask_key(&ask.collection, ask.token_id), ask)
 }
 
 /// Checks to enfore only NFT owner can call
 fn only_owner(
     deps: Deps,
     info: &MessageInfo,
-    collection: Addr,
+    collection: &Addr,
     token_id: u32,
 ) -> Result<OwnerOfResponse, ContractError> {
-    let res = Cw721Contract(collection).owner_of(&deps.querier, token_id.to_string(), false)?;
+    let res =
+        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
     if res.owner != info.sender {
         return Err(ContractError::UnauthorizedOwner {});
     }

@@ -42,7 +42,7 @@ fn ask_indexed_map() {
         is_active: true,
         finders_fee_bps: Some(0),
     };
-    let key = ask_key(collection.clone(), TOKEN_ID);
+    let key = ask_key(&collection, TOKEN_ID);
     let res = asks().save(deps.as_mut().storage, key.clone(), &ask);
     assert!(res.is_ok());
 
@@ -58,7 +58,7 @@ fn ask_indexed_map() {
         is_active: true,
         finders_fee_bps: Some(0),
     };
-    let key2 = ask_key(collection.clone(), TOKEN_ID + 1);
+    let key2 = ask_key(&collection, TOKEN_ID + 1);
     let res = asks().save(deps.as_mut().storage, key2, &ask2);
     assert!(res.is_ok());
 
@@ -88,7 +88,7 @@ fn bid_indexed_map() {
         finders_fee_bps: None,
         expires_at: Timestamp::from_seconds(0),
     };
-    let key = bid_key(collection.clone(), TOKEN_ID, bidder.clone());
+    let key = bid_key(&collection, TOKEN_ID, &bidder);
     let res = bids().save(deps.as_mut().storage, key.clone(), &bid);
     assert!(res.is_ok());
 
@@ -100,7 +100,7 @@ fn bid_indexed_map() {
         finders_fee_bps: None,
         expires_at: Timestamp::from_seconds(0),
     };
-    let key2 = bid_key(collection, TOKEN_ID + 1, bidder.clone());
+    let key2 = bid_key(&collection, TOKEN_ID + 1, &bidder);
     let res = bids().save(deps.as_mut().storage, key2, &bid2);
     assert!(res.is_ok());
 

@@ -64,8 +64,8 @@ pub struct Ask {
 /// Primary key for asks: (collection, token_id)
 pub type AskKey = (Addr, TokenId);
 /// Convenience ask key constructor
-pub fn ask_key(collection: Addr, token_id: TokenId) -> AskKey {
-    (collection, token_id)
+pub fn ask_key(collection: &Addr, token_id: TokenId) -> AskKey {
+    (collection.clone(), token_id)
 }
 
 /// Defines indices for accessing Asks
@@ -129,8 +129,8 @@ impl Bid {
 /// Primary key for bids: (collection, token_id, bidder)
 pub type BidKey = (Addr, TokenId, Addr);
 /// Convenience bid key constructor
-pub fn bid_key(collection: Addr, token_id: TokenId, bidder: Addr) -> BidKey {
-    (collection, token_id, bidder)
+pub fn bid_key(collection: &Addr, token_id: TokenId, bidder: &Addr) -> BidKey {
+    (collection.clone(), token_id, bidder.clone())
 }
 
 /// Defines incides for accessing bids
@@ -192,8 +192,8 @@ pub struct CollectionBid {
 /// Primary key for bids: (collection, token_id, bidder)
 pub type CollectionBidKey = (Addr, Addr);
 /// Convenience collection bid key constructor
-pub fn collection_bid_key(collection: Addr, bidder: Addr) -> CollectionBidKey {
-    (collection, bidder)
+pub fn collection_bid_key(collection: &Addr, bidder: &Addr) -> CollectionBidKey {
+    (collection.clone(), bidder.clone())
 }
 
 /// Defines incides for accessing collection bids
