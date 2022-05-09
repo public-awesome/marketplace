@@ -4,8 +4,8 @@ use crate::msg::{
     CollectionOffset, CollectionsResponse, ParamsResponse, QueryMsg,
 };
 use crate::state::{
-    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, TokenId, ASK_HOOKS,
-    BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
+    ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, CollectionBidKey,
+    TokenId, ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };
 use cosmwasm_std::{entry_point, to_binary, Addr, Binary, Deps, Env, Order, StdResult};
 use cw_storage_plus::{Bound, PrefixBound};
@@ -528,10 +528,17 @@ pub fn query_collection_bids_sorted_by_price(
     limit: Option<u32>,
 ) -> StdResult<CollectionBidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let start = start_after.map(|offset| {
-        let bidder = deps.api.addr_validate(&offset.bidder).unwrap();
-        Bound::exclusive((offset.price.u128(), (collection.clone(), bidder)))
-    });
+
+    let start: Option<Bound<(u128, CollectionBidKey)>> = match start_after {
+        Some(offset) => {
+            let bidder = deps.api.addr_validate(&offset.bidder)?;
+            Some(Bound::exclusive((
+                offset.price.u128(),
+                collection_bid_key(&collection, &bidder),
+            )))
+        }
+        None => None,
+    };
 
     let bids = collection_bids()
         .idx
@@ -552,10 +559,16 @@ pub fn reverse_query_collection_bids_sorted_by_price(
     limit: Option<u32>,
 ) -> StdResult<CollectionBidsResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
-    let end = start_before.map(|offset| {
-        let bidder = deps.api.addr_validate(&offset.bidder).unwrap();
-        Bound::exclusive((offset.price.u128(), (collection.clone(), bidder)))
-    });
+    let end: Option<Bound<(u128, CollectionBidKey)>> = match start_before {
+        Some(offset) => {
+            let bidder = deps.api.addr_validate(&offset.bidder)?;
+            Some(Bound::exclusive((
+                offset.price.u128(),
+                collection_bid_key(&collection, &bidder),
+            )))
+        }
+        None => None,
+    };
 
     let bids = collection_bids()
         .idx
