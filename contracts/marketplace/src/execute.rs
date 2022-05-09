@@ -6,7 +6,7 @@ use crate::msg::{
 };
 use crate::state::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, Ask, Bid, CollectionBid,
-    SaleType, SudoParams, TokenId, ASK_HOOKS, BID_HOOKS, COLLECTION_BID_HOOKS, SALE_HOOKS,
+    Order, SaleType, SudoParams, TokenId, ASK_HOOKS, BID_HOOKS, COLLECTION_BID_HOOKS, SALE_HOOKS,
     SUDO_PARAMS,
 };
 #[cfg(not(feature = "library"))]
@@ -382,7 +382,7 @@ pub fn execute_set_bid(
     };
 
     let bid: Option<Bid> = if let Some(ask) = asks().may_load(deps.storage, ask_key.clone())? {
-        if ask.expires_at <= env.block.time {
+        if ask.is_expired(&env.block) {
             return Err(ContractError::AskExpired {});
         }
         if !ask.is_active {
@@ -485,12 +485,12 @@ pub fn execute_accept_bid(
     let ask_key = ask_key(&collection, token_id);
 
     let bid = bids().load(deps.storage, bid_key.clone())?;
-    if bid.expires_at <= env.block.time {
+    if bid.is_expired(&env.block) {
         return Err(ContractError::BidExpired {});
     }
 
     let ask = if let Some(existing_ask) = asks().may_load(deps.storage, ask_key.clone())? {
-        if existing_ask.expires_at <= env.block.time {
+        if existing_ask.is_expired(&env.block) {
             return Err(ContractError::AskExpired {});
         }
         if !existing_ask.is_active {
@@ -639,7 +639,7 @@ pub fn execute_accept_collection_bid(
     let key = collection_bid_key(&collection, &bidder);
 
     let bid = collection_bids().load(deps.storage, key.clone())?;
-    if bid.expires_at <= env.block.time {
+    if bid.is_expired(&env.block) {
         return Err(ContractError::BidExpired {});
     }
     collection_bids().remove(deps.storage, key)?;

@@ -1,4 +1,4 @@
-use cosmwasm_std::{Addr, Decimal, Timestamp, Uint128};
+use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use cw_utils::Duration;
 use schemars::JsonSchema;
@@ -39,6 +39,14 @@ pub const COLLECTION_BID_HOOKS: Hooks = Hooks::new("collection-bid-hooks");
 
 pub type TokenId = u32;
 
+pub trait Order {
+    fn expires_at(&self) -> Timestamp;
+
+    fn is_expired(&self, block: &BlockInfo) -> bool {
+        self.expires_at() <= block.time
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum SaleType {
@@ -59,6 +67,12 @@ pub struct Ask {
     pub finders_fee_bps: Option<u64>,
     pub expires_at: Timestamp,
     pub is_active: bool,
+}
+
+impl Order for Ask {
+    fn expires_at(&self) -> Timestamp {
+        self.expires_at
+    }
 }
 
 /// Primary key for asks: (collection, token_id)
@@ -126,6 +140,12 @@ impl Bid {
     }
 }
 
+impl Order for Bid {
+    fn expires_at(&self) -> Timestamp {
+        self.expires_at
+    }
+}
+
 /// Primary key for bids: (collection, token_id, bidder)
 pub type BidKey = (Addr, TokenId, Addr);
 /// Convenience bid key constructor
@@ -187,6 +207,12 @@ pub struct CollectionBid {
     pub price: Uint128,
     pub finders_fee_bps: Option<u64>,
     pub expires_at: Timestamp,
+}
+
+impl Order for CollectionBid {
+    fn expires_at(&self) -> Timestamp {
+        self.expires_at
+    }
 }
 
 /// Primary key for bids: (collection, token_id, bidder)
