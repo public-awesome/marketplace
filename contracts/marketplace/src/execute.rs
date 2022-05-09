@@ -636,29 +636,41 @@ pub fn execute_accept_collection_bid(
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
 
-    let key = collection_bid_key(&collection, &bidder);
+    let bid_key = collection_bid_key(&collection, &bidder);
+    let ask_key = ask_key(&collection, token_id);
 
-    let bid = collection_bids().load(deps.storage, key.clone())?;
+    let bid = collection_bids().load(deps.storage, bid_key.clone())?;
     if bid.is_expired(&env.block) {
         return Err(ContractError::BidExpired {});
     }
-    collection_bids().remove(deps.storage, key)?;
+    collection_bids().remove(deps.storage, bid_key)?;
+
+    let ask = if let Some(existing_ask) = asks().may_load(deps.storage, ask_key.clone())? {
+        if existing_ask.is_expired(&env.block) {
+            return Err(ContractError::AskExpired {});
+        }
+        if !existing_ask.is_active {
+            return Err(ContractError::AskNotActive {});
+        }
+        asks().remove(deps.storage, ask_key)?;
+        existing_ask
+    } else {
+        // Create a temporary Ask
+        Ask {
+            sale_type: SaleType::Auction,
+            collection: collection.clone(),
+            token_id,
+            price: bid.price,
+            expires_at: bid.expires_at,
+            is_active: true,
+            seller: info.sender.clone(),
+            funds_recipient: None,
+            reserve_for: None,
+            finders_fee_bps: bid.finders_fee_bps,
+        }
+    };
 
     let mut res = Response::new();
-
-    // Create a temporary Ask
-    let ask = Ask {
-        sale_type: SaleType::Auction,
-        collection: collection.clone(),
-        token_id,
-        price: bid.price,
-        expires_at: bid.expires_at,
-        is_active: true,
-        seller: info.sender.clone(),
-        funds_recipient: None,
-        reserve_for: None,
-        finders_fee_bps: bid.finders_fee_bps,
-    };
 
     // Transfer funds and NFT
     finalize_sale(
