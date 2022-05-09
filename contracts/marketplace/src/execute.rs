@@ -368,54 +368,35 @@ pub fn execute_set_bid(
         res = res.add_message(refund_bidder)
     }
 
-    let ask = asks().may_load(deps.storage, ask_key.clone())?;
-
-    let bid: Option<Bid> = match ask {
-        Some(ask) => {
-            if ask.expires_at <= env.block.time {
-                return Err(ContractError::AskExpired {});
-            }
-            if !ask.is_active {
-                return Err(ContractError::AskNotActive {});
-            }
-            if let Some(reserved_for) = ask.clone().reserve_for {
-                if reserved_for != bidder {
-                    return Err(ContractError::TokenReserved {});
-                }
-            }
-            let bid: Option<Bid> = match ask.sale_type {
-                SaleType::FixedPrice => {
-                    if ask.price != bid_price {
-                        return Err(ContractError::InvalidPrice {});
-                    } else {
-                        asks().remove(deps.storage, ask_key)?;
-                        finalize_sale(
-                            deps.as_ref(),
-                            ask,
-                            bid_price,
-                            bidder.clone(),
-                            finder,
-                            &mut res,
-                        )?;
-                    }
-                    None
-                }
-                SaleType::Auction => {
-                    let bid = Bid::new(
-                        collection.clone(),
-                        token_id,
-                        bidder.clone(),
-                        bid_price,
-                        finders_fee_bps,
-                        expires,
-                    );
-                    store_bid(deps.storage, &bid)?;
-                    Some(bid)
-                }
-            };
-            bid
+    let bid: Option<Bid> = if let Some(ask) = asks().may_load(deps.storage, ask_key.clone())? {
+        if ask.expires_at <= env.block.time {
+            return Err(ContractError::AskExpired {});
         }
-        None => {
+        if !ask.is_active {
+            return Err(ContractError::AskNotActive {});
+        }
+        if let Some(reserved_for) = ask.clone().reserve_for {
+            if reserved_for != bidder {
+                return Err(ContractError::TokenReserved {});
+            }
+        }
+
+        if let SaleType::FixedPrice = ask.sale_type {
+            if ask.price != bid_price {
+                return Err(ContractError::InvalidPrice {});
+            }
+            asks().remove(deps.storage, ask_key)?;
+            finalize_sale(
+                deps.as_ref(),
+                ask,
+                bid_price,
+                bidder.clone(),
+                finder,
+                &mut res,
+            )?;
+            None
+        } else {
+            // Store bids for non-fixed prices sales (i.e. auction)
             let bid = Bid::new(
                 collection.clone(),
                 token_id,
@@ -427,6 +408,18 @@ pub fn execute_set_bid(
             store_bid(deps.storage, &bid)?;
             Some(bid)
         }
+    } else {
+        // Stores bids when there's no ask
+        let bid = Bid::new(
+            collection.clone(),
+            token_id,
+            bidder.clone(),
+            bid_price,
+            finders_fee_bps,
+            expires,
+        );
+        store_bid(deps.storage, &bid)?;
+        Some(bid)
     };
 
     let hook = if let Some(bid) = bid {
