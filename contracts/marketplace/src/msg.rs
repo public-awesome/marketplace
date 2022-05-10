@@ -224,25 +224,25 @@ pub enum QueryMsg {
     /// Return type: `AsksResponse`
     Asks {
         collection: Collection,
+        include_inactive: Option<bool>,
         start_after: Option<TokenId>,
         limit: Option<u32>,
-        include_inactive: bool,
     },
     /// Get all asks for a collection, sorted by price
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
         collection: Collection,
+        include_inactive: Option<bool>,
         start_after: Option<AskOffset>,
         limit: Option<u32>,
-        include_inactive: bool,
     },
     /// Get all asks for a collection, sorted by price in reverse
     /// Return type: `AsksResponse`
     ReverseAsksSortedByPrice {
         collection: Collection,
+        include_inactive: Option<bool>,
         start_before: Option<AskOffset>,
         limit: Option<u32>,
-        include_inactive: bool,
     },
     /// Count of all asks
     /// Return type: `AskCountResponse`
@@ -251,9 +251,9 @@ pub enum QueryMsg {
     /// Return type: `AsksResponse`
     AsksBySeller {
         seller: Seller,
+        include_inactive: Option<bool>,
         start_after: Option<CollectionOffset>,
         limit: Option<u32>,
-        include_inactive: bool,
     },
     /// Get data for a specific bid
     /// Return type: `BidResponse`

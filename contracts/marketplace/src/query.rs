@@ -29,51 +29,51 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => to_binary(&query_ask(deps, api.addr_validate(&collection)?, token_id)?),
         QueryMsg::Asks {
             collection,
+            include_inactive,
             start_after,
             limit,
-            include_inactive,
         } => to_binary(&query_asks(
             deps,
             api.addr_validate(&collection)?,
+            include_inactive,
             start_after,
             limit,
-            include_inactive,
         )?),
         QueryMsg::AsksSortedByPrice {
             collection,
+            include_inactive,
             start_after,
             limit,
-            include_inactive,
         } => to_binary(&query_asks_sorted_by_price(
             deps,
             api.addr_validate(&collection)?,
+            include_inactive,
             start_after,
             limit,
-            include_inactive,
         )?),
         QueryMsg::ReverseAsksSortedByPrice {
             collection,
+            include_inactive,
             start_before,
             limit,
-            include_inactive,
         } => to_binary(&reverse_query_asks_sorted_by_price(
             deps,
             api.addr_validate(&collection)?,
+            include_inactive,
             start_before,
             limit,
-            include_inactive,
         )?),
         QueryMsg::AsksBySeller {
             seller,
+            include_inactive,
             start_after,
             limit,
-            include_inactive,
         } => to_binary(&query_asks_by_seller(
             deps,
             api.addr_validate(&seller)?,
+            include_inactive,
             start_after,
             limit,
-            include_inactive,
         )?),
         QueryMsg::AskCount { collection } => {
             to_binary(&query_ask_count(deps, api.addr_validate(&collection)?)?)
@@ -217,13 +217,13 @@ pub fn query_collections(
 pub fn query_asks(
     deps: Deps,
     collection: Addr,
+    include_inactive: Option<bool>,
     start_after: Option<TokenId>,
     limit: Option<u32>,
-    include_inactive: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
-    let mut asks = asks()
+    let asks = asks()
         .idx
         .collection
         .prefix(collection.clone())
@@ -236,14 +236,16 @@ pub fn query_asks(
             None,
             Order::Ascending,
         )
+        .filter(|item| match item {
+            Ok((_, ask)) => match include_inactive {
+                Some(true) => true,
+                _ => ask.is_active,
+            },
+            Err(_) => true,
+        })
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
-
-    asks = asks
-        .into_iter()
-        .filter(|a| a.is_active == include_inactive)
-        .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
 }
@@ -251,9 +253,9 @@ pub fn query_asks(
 pub fn query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
+    include_inactive: Option<bool>,
     start_after: Option<AskOffset>,
     limit: Option<u32>,
-    include_inactive: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
@@ -261,19 +263,21 @@ pub fn query_asks_sorted_by_price(
         Bound::exclusive((offset.price.u128(), ask_key(&collection, offset.token_id)))
     });
 
-    let mut asks = asks()
+    let asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
         .range(deps.storage, start, None, Order::Ascending)
+        .filter(|item| match item {
+            Ok((_, ask)) => match include_inactive {
+                Some(true) => true,
+                _ => ask.is_active,
+            },
+            Err(_) => true,
+        })
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
-
-    asks = asks
-        .into_iter()
-        .filter(|a| a.is_active == include_inactive)
-        .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
 }
@@ -281,9 +285,9 @@ pub fn query_asks_sorted_by_price(
 pub fn reverse_query_asks_sorted_by_price(
     deps: Deps,
     collection: Addr,
+    include_inactive: Option<bool>,
     start_before: Option<AskOffset>,
     limit: Option<u32>,
-    include_inactive: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
@@ -291,19 +295,21 @@ pub fn reverse_query_asks_sorted_by_price(
         Bound::exclusive((offset.price.u128(), ask_key(&collection, offset.token_id)))
     });
 
-    let mut asks = asks()
+    let asks = asks()
         .idx
         .collection_price
         .sub_prefix(collection)
         .range(deps.storage, None, end, Order::Descending)
+        .filter(|item| match item {
+            Ok((_, ask)) => match include_inactive {
+                Some(true) => true,
+                _ => ask.is_active,
+            },
+            Err(_) => true,
+        })
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
-
-    asks = asks
-        .into_iter()
-        .filter(|a| a.is_active == include_inactive)
-        .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
 }
@@ -322,9 +328,9 @@ pub fn query_ask_count(deps: Deps, collection: Addr) -> StdResult<AskCountRespon
 pub fn query_asks_by_seller(
     deps: Deps,
     seller: Addr,
+    include_inactive: Option<bool>,
     start_after: Option<CollectionOffset>,
     limit: Option<u32>,
-    include_inactive: bool,
 ) -> StdResult<AsksResponse> {
     let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
 
@@ -335,19 +341,21 @@ pub fn query_asks_by_seller(
         None
     };
 
-    let mut asks = asks()
+    let asks = asks()
         .idx
         .seller
         .prefix(seller)
         .range(deps.storage, start, None, Order::Ascending)
+        .filter(|item| match item {
+            Ok((_, ask)) => match include_inactive {
+                Some(true) => true,
+                _ => ask.is_active,
+            },
+            Err(_) => true,
+        })
         .take(limit)
         .map(|res| res.map(|item| item.1))
         .collect::<StdResult<Vec<_>>>()?;
-
-    asks = asks
-        .into_iter()
-        .filter(|a| a.is_active == include_inactive)
-        .collect::<Vec<_>>();
 
     Ok(AsksResponse { asks })
 }
