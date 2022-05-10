@@ -687,7 +687,7 @@ dependencies = [
 
 [[package]]
 name = "sg-marketplace"
-version = "0.14.4"
+version = "0.15.0"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
