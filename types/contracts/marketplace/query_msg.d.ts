@@ -15,7 +15,7 @@ token_id: number
 } | {
 asks: {
 collection: string
-include_inactive: boolean
+include_inactive?: (boolean | null)
 limit?: (number | null)
 start_after?: (number | null)
 [k: string]: unknown
@@ -23,7 +23,7 @@ start_after?: (number | null)
 } | {
 asks_sorted_by_price: {
 collection: string
-include_inactive: boolean
+include_inactive?: (boolean | null)
 limit?: (number | null)
 start_after?: (AskOffset | null)
 [k: string]: unknown
@@ -31,7 +31,7 @@ start_after?: (AskOffset | null)
 } | {
 reverse_asks_sorted_by_price: {
 collection: string
-include_inactive: boolean
+include_inactive?: (boolean | null)
 limit?: (number | null)
 start_before?: (AskOffset | null)
 [k: string]: unknown
@@ -43,7 +43,7 @@ collection: string
 }
 } | {
 asks_by_seller: {
-include_inactive: boolean
+include_inactive?: (boolean | null)
 limit?: (number | null)
 seller: string
 start_after?: (CollectionOffset | null)
