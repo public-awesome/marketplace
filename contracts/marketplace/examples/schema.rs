@@ -64,6 +64,11 @@ fn main() {
     export_schema_with_title(
         &schema_for!(BidsResponse),
         &out_dir,
+        "BidsByBidderSortedByExpirationResponse",
+    );
+    export_schema_with_title(
+        &schema_for!(BidsResponse),
+        &out_dir,
         "ReverseBidsSortedByPriceResponse",
     );
     export_schema_with_title(&schema_for!(HooksResponse), &out_dir, "BidHooksResponse");
@@ -77,6 +82,11 @@ fn main() {
         &schema_for!(BidsResponse),
         &out_dir,
         "CollectionBidsSortedByPriceResponse",
+    );
+    export_schema_with_title(
+        &schema_for!(BidsResponse),
+        &out_dir,
+        "CollectionBidsByBidderSortedByExpirationResponse",
     );
     export_schema_with_title(
         &schema_for!(BidsResponse),
