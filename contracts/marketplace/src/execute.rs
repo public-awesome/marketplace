@@ -349,8 +349,6 @@ pub fn execute_set_bid(
     } = bid_info;
     let params = SUDO_PARAMS.load(deps.storage)?;
 
-    let sale_type = asks().load(deps.storage, ask_key(&Addr::unchecked(&collection), token_id))?.sale_type;
-
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
         return Err(ContractError::PriceTooSmall(bid_price));
@@ -372,6 +370,7 @@ pub fn execute_set_bid(
     }
 
     let existing_ask = asks().may_load(deps.storage, ask_key.clone())?;
+    let mut sale_type: SaleType = SaleType::Auction;
 
     if let Some(ask) = existing_ask.clone() {
         if ask.is_expired(&env.block) {
@@ -385,6 +384,8 @@ pub fn execute_set_bid(
                 return Err(ContractError::TokenReserved {});
             }
         }
+
+        sale_type = ask.sale_type;
     }
 
     let save_bid = |store| -> StdResult<_> {
