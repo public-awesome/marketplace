@@ -113,6 +113,7 @@ pub fn asks<'a>() -> IndexedMap<'a, AskKey, Ask, AskIndicies<'a>> {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Bid {
     pub collection: Addr,
+    pub sale_type: SaleType,
     pub token_id: TokenId,
     pub bidder: Addr,
     pub price: Uint128,
@@ -123,6 +124,7 @@ pub struct Bid {
 impl Bid {
     pub fn new(
         collection: Addr,
+        sale_type: SaleType,
         token_id: TokenId,
         bidder: Addr,
         price: Uint128,
@@ -131,6 +133,7 @@ impl Bid {
     ) -> Self {
         Bid {
             collection,
+            sale_type,
             token_id,
             bidder,
             price,

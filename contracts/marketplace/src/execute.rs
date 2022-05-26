@@ -70,6 +70,7 @@ pub struct AskInfo {
 }
 
 pub struct BidInfo {
+    sale_type: SaleType,
     collection: Addr,
     token_id: TokenId,
     expires: Timestamp,
@@ -127,6 +128,7 @@ pub fn execute(
             info,
             BidInfo {
                 collection: api.addr_validate(&collection)?,
+                sale_type: SaleType::Auction, // Will be set the its correct value in `execute_set_bid`, cannot set inline here because `deps` has already been borrowed
                 token_id,
                 expires,
                 finder: maybe_addr(api, finder)?,
@@ -339,12 +341,15 @@ pub fn execute_set_bid(
 ) -> Result<Response, ContractError> {
     let BidInfo {
         collection,
+        sale_type: _sale_type,
         token_id,
         finders_fee_bps,
         expires,
         finder,
     } = bid_info;
     let params = SUDO_PARAMS.load(deps.storage)?;
+
+    let sale_type = asks().load(deps.storage, ask_key(&Addr::unchecked(&collection), token_id))?.sale_type;
 
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
@@ -385,6 +390,7 @@ pub fn execute_set_bid(
     let save_bid = |store| -> StdResult<_> {
         let bid = Bid::new(
             collection.clone(),
+            sale_type,
             token_id,
             bidder.clone(),
             bid_price,

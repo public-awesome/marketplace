@@ -1786,6 +1786,7 @@ fn new_bid_refund() {
     };
     let bid = Bid {
         collection,
+        sale_type: SaleType::Auction,
         token_id: TOKEN_ID,
         bidder,
         price: Uint128::from(150u128),
