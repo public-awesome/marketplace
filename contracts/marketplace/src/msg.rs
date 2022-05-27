@@ -52,6 +52,11 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
     },
+    /// Check for & remove an expired ask from from the marketplace
+    RemoveExpiredAsk {
+        collection: String,
+        token_id: TokenId
+    },
     /// Update the price of an existing ask
     UpdateAskPrice {
         collection: String,
