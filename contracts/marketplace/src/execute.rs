@@ -320,29 +320,20 @@ pub fn execute_remove_expired_ask(
     let key = ask_key(&collection, token_id);
 
     // Pre-set hook, if the ask wasn't expired, hook will default to this empty vec
-    let hook = vec![];
+    let mut hook = vec![];
 
     // Pre-set event
-    let event = Event::new("nothing")
+    let event = Event::new("remove-expired-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string());
 
     if let Some(ask) = asks().may_load(deps.storage, key.clone())? {
         if Utc::now().timestamp_nanos() >= ask.expires_at.clone().nanos() as i64 {
             asks().remove(deps.storage, key)?;
-            let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Delete)?;
-
-            let event = Event::new("remove-ask")
-                .add_attribute("collection", collection.to_string())
-                .add_attribute("token_id", token_id.to_string());
-
-            Ok(Response::new().add_event(event).add_submessages(hook))
-        } else {
-            Ok(Response::new().add_event(event).add_submessages(hook))
+            hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Delete)?;
         }
-    } else {
-        Ok(Response::new().add_event(event).add_submessages(hook))
     }
+    Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
 /// Updates the ask price on a particular NFT
