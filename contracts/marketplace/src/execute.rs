@@ -9,7 +9,7 @@ use crate::state::{
     Order, SaleType, SudoParams, TokenId, ASK_HOOKS, BID_HOOKS, COLLECTION_BID_HOOKS, SALE_HOOKS,
     SUDO_PARAMS,
 };
-use chrono::offset::Utc;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -119,7 +119,7 @@ pub fn execute(
         ExecuteMsg::RemoveExpiredAsk {
             collection,
             token_id,
-        } => execute_remove_expired_ask(deps, info, api.addr_validate(&collection)?, token_id),
+        } => execute_remove_expired_ask(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::SetBid {
             collection,
             token_id,
@@ -310,6 +310,7 @@ pub fn execute_remove_ask(
 /// Checks for an expired ask & removes it if expired on a particular NFT
 pub fn execute_remove_expired_ask(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
@@ -328,7 +329,7 @@ pub fn execute_remove_expired_ask(
         .add_attribute("token_id", token_id.to_string());
 
     if let Some(ask) = asks().may_load(deps.storage, key.clone())? {
-        if Utc::now().timestamp_nanos() >= ask.expires_at.clone().nanos() as i64 {
+        if ask.is_expired(&env.block) {
             asks().remove(deps.storage, key)?;
             hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Delete)?;
         }
