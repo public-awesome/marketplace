@@ -318,7 +318,6 @@ pub fn execute_remove_expired_ask(
     // No call to `only_owner`, we want the bot to able to able to remove any ask, but only if it's expired
 
     let key = ask_key(&collection, token_id);
-    let ask = asks().load(deps.storage, key.clone())?;
 
     // Pre-set hook, if the ask wasn't expired, hook will default to this empty vec
     let hook = vec![];
