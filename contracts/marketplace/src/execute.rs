@@ -332,8 +332,13 @@ pub fn execute_remove_expired_ask(
         if ask.is_expired(&env.block) {
             asks().remove(deps.storage, key)?;
             hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Delete)?;
+
+            let event = event.clone().add_attribute("removed", "true");
+            return Ok(Response::new().add_event(event).add_submessages(hook));
         }
     }
+
+    let event = event.clone().add_attribute("removed", "false");
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
 

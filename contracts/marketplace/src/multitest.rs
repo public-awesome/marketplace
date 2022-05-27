@@ -2658,8 +2658,18 @@ fn try_remove_expired_ask() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(500), // 5%
     };
+
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
     assert!(res.is_ok());
+
+    let time = router
+        .block_info()
+        .time
+        .plus_seconds(MAX_EXPIRY + 10)
+        .seconds();
+
+    // Back to the future
+    setup_block_time(&mut router, time);
 
     let remove_expired_ask = ExecuteMsg::RemoveExpiredAsk {
         collection: collection.to_string(),
@@ -2667,13 +2677,16 @@ fn try_remove_expired_ask() {
     };
 
     // Someone who isn't creator inits remove-expired-ask message
-    let res_creator = router.execute_contract(
+    let res_remove = router.execute_contract(
         bidder.clone(),
         marketplace.clone(),
         &remove_expired_ask,
         &[],
     );
 
-    println!("{:?}", res_creator);
-    assert!(res_creator.is_ok());
+    assert!(res_remove.is_ok());
+
+    if let Some(result) = res_remove.ok() {
+        assert!(result.events[1].attributes[3].value == true.to_string());
+    }
 }
