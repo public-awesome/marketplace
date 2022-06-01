@@ -695,6 +695,19 @@ fn try_query_asks() {
         .unwrap();
     assert_eq!(res.asks.len(), 0);
 
+    // test pagination starting before token exists
+    let query_reverse_asks_msg = QueryMsg::ReverseAsks {
+        collection: collection.to_string(),
+        include_inactive: Some(true),
+        start_before: Some(TOKEN_ID + 1),
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_reverse_asks_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 1);
+
     // test listed collections query
     let res: CollectionsResponse = router
         .wrap()
