@@ -896,6 +896,7 @@ fn payout(
 
     let finders_fee = match finder {
         Some(finder) => {
+            let finder = deps.api.addr_validate(&finder.to_string())?;
             let finders_fee = finders_fee_bps
                 .map(|fee| (payment * Decimal::percent(fee) / Uint128::from(100u128)).u128())
                 .unwrap_or(0);
