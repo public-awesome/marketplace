@@ -547,6 +547,87 @@ fn try_set_accept_bid_no_ask() {
 }
 
 #[test]
+fn try_set_accept_bid_high_fees() {
+    // Setup initial accounts
+    // Instantiate and configure contracts
+    // Setup bid with high finders fee, network fee, royalty share so seller gets nothing
+    // Should throw error
+    let mut router = custom_mock_app();
+    let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+    let creator_funds: Vec<Coin> = coins(CREATION_FEE, NATIVE_DENOM);
+
+    router
+        .sudo(CwSudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: creator.to_string(),
+                amount: creator_funds.clone(),
+            }
+        }))
+        .map_err(|err| println!("{:?}", err))
+        .ok();
+
+    let sg721_id = router.store_code(contract_sg721());
+    let msg = Sg721InstantiateMsg {
+        name: String::from("Test Coin"),
+        symbol: String::from("TEST"),
+        minter: creator.to_string(),
+        collection_info: CollectionInfo {
+            creator: creator.to_string(),
+            description: String::from("Stargaze Monkeys"),
+            image:
+                "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
+                    .to_string(),
+            external_link: Some("https://example.com/external.html".to_string()),
+            royalty_info: Some(RoyaltyInfoResponse {
+                payment_address: creator.to_string(),
+                share: Decimal::percent(100),
+            }),
+        },
+    };
+    let collection = router
+        .instantiate_contract(
+            sg721_id,
+            creator.clone(),
+            &msg,
+            &coins(CREATION_FEE, NATIVE_DENOM),
+            "NFT",
+            None,
+        )
+        .unwrap();
+    println!("collection: {:?}", collection);
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: Some(10),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: Some(owner.to_string()),
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    let accept_bid_msg = ExecuteMsg::AcceptBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        bidder: bidder.to_string(),
+        finder: None,
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
+    assert!(res.is_err());
+}
+
+#[test]
 fn try_update_ask() {
     let mut router = custom_mock_app();
 

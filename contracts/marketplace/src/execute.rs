@@ -915,9 +915,7 @@ fn payout(
         // If token supports royalities, payout shares to royalty recipient
         Some(royalty) => {
             let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
-            if (payment - network_fee - Uint128::from(finders_fee) - amount.amount)
-                < Uint128::zero()
-            {
+            if payment < (network_fee + Uint128::from(finders_fee) + amount.amount) {
                 return Err(StdError::generic_err("Fees exceed payment"));
             }
             res.messages.push(SubMsg::new(BankMsg::Send {
@@ -941,7 +939,7 @@ fn payout(
             res.messages.push(SubMsg::new(seller_share_msg));
         }
         None => {
-            if (payment - network_fee + Uint128::from(finders_fee)) < Uint128::zero() {
+            if payment < (network_fee + Uint128::from(finders_fee)) {
                 return Err(StdError::generic_err("Fees exceed payment"));
             }
             // If token doesn't support royalties, pay seller in full
