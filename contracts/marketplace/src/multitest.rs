@@ -561,7 +561,7 @@ fn try_set_accept_bid_high_fees() {
         .sudo(CwSudoMsg::Bank({
             BankSudo::Mint {
                 to_address: creator.to_string(),
-                amount: creator_funds.clone(),
+                amount: creator_funds,
             }
         }))
         .map_err(|err| println!("{:?}", err))
@@ -624,7 +624,10 @@ fn try_set_accept_bid_high_fees() {
         finder: None,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
-    assert!(res.is_err());
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        "Generic error: Fees exceed payment".to_string()
+    );
 }
 
 #[test]
