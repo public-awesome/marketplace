@@ -13,7 +13,7 @@ use crate::state::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, Event, MessageInfo, Reply,
-    StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
@@ -915,6 +915,11 @@ fn payout(
         // If token supports royalities, payout shares to royalty recipient
         Some(royalty) => {
             let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
+            if (payment - network_fee - Uint128::from(finders_fee) - amount.amount)
+                < Uint128::zero()
+            {
+                return Err(StdError::generic_err("Fees exceed payment"));
+            }
             res.messages.push(SubMsg::new(BankMsg::Send {
                 to_address: royalty.payment_address.to_string(),
                 amount: vec![amount.clone()],
@@ -936,6 +941,9 @@ fn payout(
             res.messages.push(SubMsg::new(seller_share_msg));
         }
         None => {
+            if (payment - network_fee + Uint128::from(finders_fee)) < Uint128::zero() {
+                return Err(StdError::generic_err("Fees exceed payment"));
+            }
             // If token doesn't support royalties, pay seller in full
             let seller_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
