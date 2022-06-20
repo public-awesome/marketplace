@@ -70,6 +70,7 @@ pub struct AskInfo {
 }
 
 pub struct BidInfo {
+    sale_type: SaleType,
     collection: Addr,
     token_id: TokenId,
     expires: Timestamp,
@@ -127,6 +128,7 @@ pub fn execute(
             info,
             BidInfo {
                 collection: api.addr_validate(&collection)?,
+                sale_type: SaleType::Auction, // Will be set the its correct value in `execute_set_bid`, cannot set inline here because `deps` has already been borrowed
                 token_id,
                 expires,
                 finder: maybe_addr(api, finder)?,
@@ -339,6 +341,7 @@ pub fn execute_set_bid(
 ) -> Result<Response, ContractError> {
     let BidInfo {
         collection,
+        sale_type: _sale_type,
         token_id,
         finders_fee_bps,
         expires,
@@ -367,6 +370,7 @@ pub fn execute_set_bid(
     }
 
     let existing_ask = asks().may_load(deps.storage, ask_key.clone())?;
+    let mut sale_type: SaleType = SaleType::Auction;
 
     if let Some(ask) = existing_ask.clone() {
         if ask.is_expired(&env.block) {
@@ -380,11 +384,14 @@ pub fn execute_set_bid(
                 return Err(ContractError::TokenReserved {});
             }
         }
+
+        sale_type = ask.sale_type;
     }
 
     let save_bid = |store| -> StdResult<_> {
         let bid = Bid::new(
             collection.clone(),
+            sale_type,
             token_id,
             bidder.clone(),
             bid_price,

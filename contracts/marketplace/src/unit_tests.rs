@@ -82,6 +82,7 @@ fn bid_indexed_map() {
 
     let bid = Bid {
         collection: collection.clone(),
+        sale_type: SaleType::Auction,
         token_id: TOKEN_ID,
         bidder: bidder.clone(),
         price: Uint128::from(500u128),
@@ -94,6 +95,7 @@ fn bid_indexed_map() {
 
     let bid2 = Bid {
         collection: collection.clone(),
+        sale_type: SaleType::Auction,
         token_id: TOKEN_ID + 1,
         bidder: bidder.clone(),
         price: Uint128::from(500u128),
