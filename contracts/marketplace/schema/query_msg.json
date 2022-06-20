@@ -102,6 +102,49 @@
       "additionalProperties": false
     },
     {
+      "description": "Get all asks for a collection in reverse Return type: `AsksResponse`",
+      "type": "object",
+      "required": [
+        "reverse_asks"
+      ],
+      "properties": {
+        "reverse_asks": {
+          "type": "object",
+          "required": [
+            "collection"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "include_inactive": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "limit": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            },
+            "start_before": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Get all asks for a collection, sorted by price Return type: `AsksResponse`",
       "type": "object",
       "required": [

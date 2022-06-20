@@ -228,6 +228,14 @@ pub enum QueryMsg {
         start_after: Option<TokenId>,
         limit: Option<u32>,
     },
+    /// Get all asks for a collection in reverse
+    /// Return type: `AsksResponse`
+    ReverseAsks {
+        collection: Collection,
+        include_inactive: Option<bool>,
+        start_before: Option<TokenId>,
+        limit: Option<u32>,
+    },
     /// Get all asks for a collection, sorted by price
     /// Return type: `AsksResponse`
     AsksSortedByPrice {
