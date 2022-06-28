@@ -2646,3 +2646,60 @@ fn try_ask_with_filter_inactive() {
         .unwrap();
     assert_eq!(res.asks.len(), 1);
 }
+#[test]
+fn try_remove_expired_ask() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // An ask is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(500), // 5%
+    };
+
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    let time = router
+        .block_info()
+        .time
+        .plus_seconds(MAX_EXPIRY + 10)
+        .seconds();
+
+    // Back to the future
+    setup_block_time(&mut router, time);
+
+    let remove_expired_ask = ExecuteMsg::RemoveExpiredAsk {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+    };
+
+    // Someone who isn't creator inits remove-expired-ask message
+    let res_remove = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &remove_expired_ask,
+        &[],
+    );
+
+    assert!(res_remove.is_ok());
+
+    if let Some(result) = res_remove.ok() {
+        assert!(result.events[1].attributes[3].value == true.to_string());
+    }
+}

@@ -9,6 +9,7 @@ use crate::state::{
     Order, SaleType, SudoParams, TokenId, ASK_HOOKS, BID_HOOKS, COLLECTION_BID_HOOKS, SALE_HOOKS,
     SUDO_PARAMS,
 };
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -115,6 +116,10 @@ pub fn execute(
             collection,
             token_id,
         } => execute_remove_ask(deps, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::RemoveExpiredAsk {
+            collection,
+            token_id,
+        } => execute_remove_expired_ask(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::SetBid {
             collection,
             token_id,
@@ -299,6 +304,41 @@ pub fn execute_remove_ask(
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string());
 
+    Ok(Response::new().add_event(event).add_submessages(hook))
+}
+
+/// Checks for an expired ask & removes it if expired on a particular NFT
+pub fn execute_remove_expired_ask(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    // No call to `only_owner`, we want the bot to able to able to remove any ask, but only if it's expired
+
+    let key = ask_key(&collection, token_id);
+
+    // Pre-set hook, if the ask wasn't expired, hook will default to this empty vec
+    let mut hook = vec![];
+
+    // Pre-set event
+    let event = Event::new("remove-expired-ask")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string());
+
+    if let Some(ask) = asks().may_load(deps.storage, key.clone())? {
+        if ask.is_expired(&env.block) {
+            asks().remove(deps.storage, key)?;
+            hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Delete)?;
+
+            let event = event.clone().add_attribute("removed", "true");
+            return Ok(Response::new().add_event(event).add_submessages(hook));
+        }
+    }
+
+    let event = event.clone().add_attribute("removed", "false");
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
