@@ -310,7 +310,6 @@ pub fn execute_remove_ask(
 }
 
 /// Updates the ask price on a particular NFT
-/// price change is allowed on inactive ask
 pub fn execute_update_ask_price(
     deps: DepsMut,
     env: Env,
@@ -326,6 +325,9 @@ pub fn execute_update_ask_price(
     let key = ask_key(&collection, token_id);
 
     let mut ask = asks().load(deps.storage, key.clone())?;
+    if !ask.is_active {
+        return Err(ContractError::AskNotActive {});
+    }
     if ask.is_expired(&env.block) {
         return Err(ContractError::AskExpired {});
     }

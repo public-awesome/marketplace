@@ -2646,4 +2646,14 @@ fn try_ask_with_filter_inactive() {
         .query_wasm_smart(marketplace.clone(), &ask_msg)
         .unwrap();
     assert_eq!(res.asks.len(), 1);
+
+    // updating price of inactive ask throws error
+    let update_ask = ExecuteMsg::UpdateAskPrice {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(200, NATIVE_DENOM),
+    };
+    router
+        .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
+        .unwrap_err();
 }
