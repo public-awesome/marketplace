@@ -27,6 +27,9 @@ use sg_std::{Response, SubMsg, NATIVE_DENOM};
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+// bps fee can not exceed 100%
+const MAX_FEE_AMOUNT: u64 = 10000;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -35,13 +38,13 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    if msg.max_finders_fee_bps > 10000 {
+    if msg.max_finders_fee_bps > MAX_FEE_AMOUNT {
         return Err(ContractError::InvalidFindersFeeBps(msg.max_finders_fee_bps));
     }
-    if msg.trading_fee_bps > 10000 {
+    if msg.trading_fee_bps > MAX_FEE_AMOUNT {
         return Err(ContractError::InvalidTradingFeeBps(msg.trading_fee_bps));
     }
-    if msg.bid_removal_reward_bps > 10000 {
+    if msg.bid_removal_reward_bps > MAX_FEE_AMOUNT {
         return Err(ContractError::InvalidBidRemovalRewardBps(
             msg.bid_removal_reward_bps,
         ));
