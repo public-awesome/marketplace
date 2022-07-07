@@ -346,6 +346,12 @@ pub fn execute_set_bid(
     } = bid_info;
     let params = SUDO_PARAMS.load(deps.storage)?;
 
+    // check bid finders_fee_bps is not over max
+    if let Some(fee) = finders_fee_bps {
+        if Decimal::percent(fee) > params.max_finders_fee_percent {
+            return Err(ContractError::InvalidFindersFeeBps(fee));
+        }
+    }
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
         return Err(ContractError::PriceTooSmall(bid_price));
@@ -499,6 +505,14 @@ pub fn execute_accept_bid(
         asks().remove(deps.storage, ask_key)?;
         existing_ask
     } else {
+        // check bid finders_fee_bps is not over max
+        let params = SUDO_PARAMS.load(deps.storage)?;
+        if let Some(fee) = bid.finders_fee_bps {
+            if Decimal::percent(fee) > params.max_finders_fee_percent {
+                return Err(ContractError::InvalidFindersFeeBps(fee));
+            }
+        }
+
         // Create a temporary Ask
         Ask {
             sale_type: SaleType::Auction,
@@ -553,6 +567,12 @@ pub fn execute_set_collection_bid(
         return Err(ContractError::PriceTooSmall(price));
     }
     params.bid_expiry.is_valid(&env.block, expires)?;
+    // check bid finders_fee_bps is not over max
+    if let Some(fee) = finders_fee_bps {
+        if Decimal::percent(fee) > params.max_finders_fee_percent {
+            return Err(ContractError::InvalidFindersFeeBps(fee));
+        }
+    }
 
     let bidder = info.sender;
     let mut res = Response::new();
@@ -655,6 +675,14 @@ pub fn execute_accept_collection_bid(
         asks().remove(deps.storage, ask_key)?;
         existing_ask
     } else {
+        // check bid finders_fee_bps is not over max
+        let params = SUDO_PARAMS.load(deps.storage)?;
+        if let Some(fee) = bid.finders_fee_bps {
+            if Decimal::percent(fee) > params.max_finders_fee_percent {
+                return Err(ContractError::InvalidFindersFeeBps(fee));
+            }
+        }
+
         // Create a temporary Ask
         Ask {
             sale_type: SaleType::Auction,
