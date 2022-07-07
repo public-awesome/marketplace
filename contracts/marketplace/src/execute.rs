@@ -365,6 +365,12 @@ pub fn execute_set_bid(
         return Err(ContractError::PriceTooSmall(bid_price));
     }
     params.bid_expiry.is_valid(&env.block, expires)?;
+    finders_fee_bps.map(|finders_fee_bps| {
+        if Decimal::percent(finders_fee_bps) > params.max_finders_fee_percent {
+            return Err(ContractError::InvalidFindersFeeBps(finders_fee_bps));
+        }
+        Ok(())
+    });
 
     let bidder = info.sender;
     let mut res = Response::new();
