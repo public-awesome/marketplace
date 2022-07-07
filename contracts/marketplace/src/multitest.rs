@@ -600,6 +600,20 @@ fn try_update_ask() {
         .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
         .unwrap_err();
 
+    // can not update ask price for expired ask
+    let time = router.block_info().time.clone();
+    setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).seconds());
+    let update_ask = ExecuteMsg::UpdateAskPrice {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(150, NATIVE_DENOM),
+    };
+    router
+        .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
+        .unwrap_err();
+    // reset time to original
+    setup_block_time(&mut router, time.seconds());
+
     // confirm ask removed
     let remove_ask_msg = ExecuteMsg::RemoveAsk {
         collection: collection.to_string(),
