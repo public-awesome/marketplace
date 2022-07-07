@@ -601,7 +601,7 @@ fn try_update_ask() {
         .unwrap_err();
 
     // can not update ask price for expired ask
-    let time = router.block_info().time.clone();
+    let time = router.block_info().time;
     setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).seconds());
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
