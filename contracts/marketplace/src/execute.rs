@@ -35,6 +35,17 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    if msg.max_finders_fee_bps > 100_00 {
+        return Err(ContractError::InvalidFindersFeeBps(msg.max_finders_fee_bps));
+    }
+    if msg.trading_fee_bps > 100_00 {
+        return Err(ContractError::InvalidTradingFeeBps(msg.trading_fee_bps));
+    }
+    if msg.bid_removal_reward_bps > 100_00 {
+        return Err(ContractError::InvalidBidRemovalRewardBps(
+            msg.bid_removal_reward_bps,
+        ));
+    }
 
     msg.ask_expiry.validate()?;
     msg.bid_expiry.validate()?;
