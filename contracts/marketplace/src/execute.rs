@@ -505,14 +505,6 @@ pub fn execute_accept_bid(
         asks().remove(deps.storage, ask_key)?;
         existing_ask
     } else {
-        // check bid finders_fee_bps is not over max
-        let params = SUDO_PARAMS.load(deps.storage)?;
-        if let Some(fee) = bid.finders_fee_bps {
-            if Decimal::percent(fee) > params.max_finders_fee_percent {
-                return Err(ContractError::InvalidFindersFeeBps(fee));
-            }
-        }
-
         // Create a temporary Ask
         Ask {
             sale_type: SaleType::Auction,
@@ -675,14 +667,6 @@ pub fn execute_accept_collection_bid(
         asks().remove(deps.storage, ask_key)?;
         existing_ask
     } else {
-        // check bid finders_fee_bps is not over max
-        let params = SUDO_PARAMS.load(deps.storage)?;
-        if let Some(fee) = bid.finders_fee_bps {
-            if Decimal::percent(fee) > params.max_finders_fee_percent {
-                return Err(ContractError::InvalidFindersFeeBps(fee));
-            }
-        }
-
         // Create a temporary Ask
         Ask {
             sale_type: SaleType::Auction,
