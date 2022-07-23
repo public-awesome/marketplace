@@ -2229,6 +2229,20 @@ fn try_collection_bids() {
     );
     assert!(res.is_ok());
 
+    // An invalid collection bid is attempted by the bidder
+    let set_collection_bid = ExecuteMsg::SetCollectionBid {
+        collection: collection.to_string(),
+        finders_fee_bps: Some(10100),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_collection_bid,
+        &coins(151, NATIVE_DENOM),
+    );
+    assert!(res.is_err());
+
     // A collection bid is made by bidder2
     let set_collection_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
