@@ -2662,7 +2662,6 @@ fn try_sync_ask() {
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
     assert!(res.is_ok());
 
-    // First Case: Transfer
     // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
     transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
 
@@ -2690,10 +2689,10 @@ fn try_sync_ask() {
         .unwrap();
     assert_eq!(res.asks.len(), 0);
 
-    // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
+    // transfer nft back
     transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
 
-    // Transfer Back should have unchanged operation
+    // Transfer Back should have unchanged operation (still not active)
     let res = router.execute_contract(
         Addr::unchecked("operator"),
         marketplace.clone(),
@@ -2701,6 +2700,18 @@ fn try_sync_ask() {
         &[],
     );
     assert!(res.is_err());
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
 
     // Approving again should have a success sync ask after
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
@@ -2762,7 +2773,7 @@ fn try_sync_ask() {
     );
     assert!(res.is_ok());
 
-    // No more ask
+    // No more valid asks
     let ask_msg = QueryMsg::Asks {
         collection: collection.to_string(),
         include_inactive: Some(false),
