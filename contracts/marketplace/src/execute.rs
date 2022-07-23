@@ -259,6 +259,19 @@ pub fn execute_set_ask(
         };
     }
 
+    if let Some(address) = reserve_for.clone() {
+        if address == info.sender {
+            return Err(ContractError::InvalidReserveAddress {
+                reason: "cannot reserve to the same address".to_string(),
+            });
+        }
+        if sale_type != SaleType::FixedPrice {
+            return Err(ContractError::InvalidReserveAddress {
+                reason: "can only reserve for fixed_price sales".to_string(),
+            });
+        }
+    }
+
     let seller = info.sender;
     let ask = Ask {
         sale_type,

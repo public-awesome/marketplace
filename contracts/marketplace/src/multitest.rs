@@ -2915,3 +2915,112 @@ fn try_sync_ask() {
         .unwrap();
     assert_eq!(res.asks.len(), 0);
 }
+
+#[test]
+fn try_set_ask_reserve_for() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // Can't reserve to themselves.
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(110, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: Some(creator.clone().to_string()),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        finders_fee_bps: Some(0),
+    };
+    let err = router
+        .execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[])
+        .unwrap_err();
+    assert_eq!(
+        err.source().unwrap().to_string(),
+        ContractError::InvalidReserveAddress {
+            reason: "cannot reserve to the same address".to_owned(),
+        }
+        .to_string()
+    );
+    // Can't reserve for auction sale type
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(110, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: Some(bidder.clone().to_string()),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        finders_fee_bps: Some(0),
+    };
+    let err = router
+        .execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[])
+        .unwrap_err();
+    assert_eq!(
+        err.source().unwrap().to_string(),
+        ContractError::InvalidReserveAddress {
+            reason: "can only reserve for fixed_price sales".to_owned(),
+        }
+        .to_string()
+    );
+
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(110, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: Some(bidder.clone().to_string()),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    let bidder2 = setup_second_bidder_account(&mut router).unwrap();
+    // Bidder2 makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder2.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(110, NATIVE_DENOM),
+    );
+    assert!(res.is_err());
+    let err = res.unwrap_err();
+    assert_eq!(
+        err.source().unwrap().to_string(),
+        ContractError::TokenReserved {}.to_string()
+    );
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(110, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+}

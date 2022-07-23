@@ -53,3 +53,11 @@ sg-controllers = "0.12.1"
 cosmwasm-schema = { version = "1.0.0-rc.0" }
 cw-multi-test = { version = "0.13.2" }
 sg-multi-test = "0.13.0"
+
+[profile.release]
+rpath = false
+lto = true
+overflow-checks = true
+opt-level = 3
+debug = false
+debug-assertions = false
