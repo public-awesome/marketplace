@@ -155,7 +155,14 @@ pub fn execute(
             collection,
             token_id,
             price,
-        } => execute_update_ask_price(deps, info, api.addr_validate(&collection)?, token_id, price),
+        } => execute_update_ask_price(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            price,
+        ),
         ExecuteMsg::SetCollectionBid {
             collection,
             expires,
@@ -305,6 +312,7 @@ pub fn execute_remove_ask(
 /// Updates the ask price on a particular NFT
 pub fn execute_update_ask_price(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
@@ -317,6 +325,13 @@ pub fn execute_update_ask_price(
     let key = ask_key(&collection, token_id);
 
     let mut ask = asks().load(deps.storage, key.clone())?;
+    if !ask.is_active {
+        return Err(ContractError::AskNotActive {});
+    }
+    if ask.is_expired(&env.block) {
+        return Err(ContractError::AskExpired {});
+    }
+
     ask.price = price.amount;
     asks().save(deps.storage, key, &ask)?;
 
