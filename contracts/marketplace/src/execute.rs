@@ -188,7 +188,7 @@ pub fn execute(
         ExecuteMsg::SyncAsk {
             collection,
             token_id,
-        } => execute_sync_ask(deps, info, api.addr_validate(&collection)?, token_id),
+        } => execute_sync_ask(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::RemoveStaleBid {
             collection,
             token_id,
@@ -696,6 +696,7 @@ pub fn execute_accept_collection_bid(
 /// This is a privileged operation called by an operator to update an ask when a transfer happens.
 pub fn execute_sync_ask(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
@@ -706,13 +707,21 @@ pub fn execute_sync_ask(
     let key = ask_key(&collection, token_id);
 
     let mut ask = asks().load(deps.storage, key.clone())?;
-    let res =
-        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
-    let new_is_active = res.owner == ask.seller;
-    if new_is_active == ask.is_active {
+
+    // Check if marketplace still holds approval
+    // An approval will removed when
+    // 1 - There is a transfer
+    // 2 - The approval expired (approvals can have different expiration times)
+    let res = Cw721Contract(collection.clone()).approval(
+        &deps.querier,
+        token_id.to_string(),
+        env.contract.address.to_string(),
+        None,
+    );
+    if res.is_ok() == ask.is_active {
         return Err(ContractError::AskUnchanged {});
     }
-    ask.is_active = new_is_active;
+    ask.is_active = res.is_ok();
     asks().save(deps.storage, key, &ask)?;
 
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
