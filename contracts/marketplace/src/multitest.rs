@@ -2947,7 +2947,7 @@ fn try_set_ask_reserve_for() {
     assert_eq!(
         err.source().unwrap().to_string(),
         ContractError::InvalidReserveAddress {
-            reason: "can not reserve to the same address".to_owned(),
+            reason: "cannot reserve to the same address".to_owned(),
         }
         .to_string()
     );
