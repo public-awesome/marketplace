@@ -259,20 +259,17 @@ pub fn execute_set_ask(
         };
     }
 
-    match reserve_for.clone() {
-        Some(address) => {
-            if address == info.sender {
-                return Err(ContractError::InvalidReserveAddress {
-                    reason: "can not reserve to the same address".to_owned(),
-                });
-            }
-            if sale_type != SaleType::FixedPrice {
-                return Err(ContractError::InvalidReserveAddress {
-                    reason: "can only reserve for fixed_price sales".to_owned(),
-                });
-            }
+    if let Some(address) = reserve_for.clone() {
+        if address == info.sender {
+            return Err(ContractError::InvalidReserveAddress {
+                reason: "cannot reserve to the same address".to_string(),
+            });
         }
-        None => {}
+        if sale_type != SaleType::FixedPrice {
+            return Err(ContractError::InvalidReserveAddress {
+                reason: "can only reserve for fixed_price sales".to_string(),
+            });
+        }
     }
 
     let seller = info.sender;
