@@ -18,7 +18,7 @@ use sg_multi_test::StargazeApp;
 use sg_std::StargazeMsgWrapper;
 
 use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
-use cw_utils::Duration;
+use cw_utils::{Duration, Expiration};
 use sg721::msg::{InstantiateMsg as Sg721InstantiateMsg, RoyaltyInfoResponse};
 use sg721::state::CollectionInfo;
 use sg_std::NATIVE_DENOM;
@@ -2761,4 +2761,157 @@ fn try_ask_with_filter_inactive() {
     router
         .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
         .unwrap_err();
+}
+
+#[test]
+fn try_sync_ask() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // An ask is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(500), // 5%
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
+    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+
+    let update_ask_state = ExecuteMsg::SyncAsk {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+    };
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_ok());
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+
+    // transfer nft back
+    transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
+
+    // Transfer Back should have unchanged operation (still not active)
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_err());
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+
+    // Approving again should have a success sync ask after
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // SyncAsk should be ok
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_ok());
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 1);
+
+    // Approve for shorter period than ask
+    let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+        spender: marketplace.to_string(),
+        token_id: TOKEN_ID.to_string(),
+        expires: Some(Expiration::AtTime(
+            router.block_info().time.plus_seconds(MIN_EXPIRY - 10),
+        )),
+    };
+    let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
+    assert!(res.is_ok());
+
+    // SyncAsk should fail (Unchanged)
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_err());
+
+    let expiry_time = router
+        .block_info()
+        .time
+        .plus_seconds(MIN_EXPIRY - 5)
+        .seconds();
+    // move clock before ask expire but after approval expiration time
+    setup_block_time(&mut router, expiry_time);
+
+    // SyncAsk should succeed as approval is no longer valid
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // No more valid asks
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
 }
