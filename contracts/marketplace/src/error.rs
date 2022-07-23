@@ -34,6 +34,9 @@ pub enum ContractError {
     #[error("BidNotStale")]
     BidNotStale {},
 
+    #[error("InvalidFinder: {0}")]
+    InvalidFinder(String),
+
     #[error("PriceTooSmall: {0}")]
     PriceTooSmall(Uint128),
 
