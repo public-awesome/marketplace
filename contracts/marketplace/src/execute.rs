@@ -18,7 +18,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
-use cw_utils::{maybe_addr, must_pay, nonpayable, Expiration};
+use cw_utils::{maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
@@ -38,6 +38,11 @@ pub fn instantiate(
 
     msg.ask_expiry.validate()?;
     msg.bid_expiry.validate()?;
+
+    match msg.stale_bid_duration {
+        Duration::Height(_) => Err(ContractError::InvalidDuration {})?,
+        Duration::Time(_) => {}
+    };
 
     let params = SudoParams {
         trading_fee_percent: Decimal::percent(msg.trading_fee_bps),
