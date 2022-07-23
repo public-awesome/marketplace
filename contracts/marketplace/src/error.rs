@@ -51,4 +51,7 @@ pub enum ContractError {
 
     #[error("{0}")]
     ExpiryRange(#[from] ExpiryRangeError),
+
+    #[error("Invalid reserve_for address: {reason}")]
+    InvalidReserveAddress { reason: String },
 }
