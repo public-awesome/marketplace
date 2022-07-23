@@ -709,7 +709,7 @@ pub fn execute_sync_ask(
     let mut ask = asks().load(deps.storage, key.clone())?;
 
     // Check if marketplace still holds approval
-    // An approval will removed when
+    // An approval will be removed when
     // 1 - There is a transfer
     // 2 - The approval expired (approvals can have different expiration times)
     let res = Cw721Contract(collection.clone()).approval(
