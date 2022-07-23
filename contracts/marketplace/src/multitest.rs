@@ -2620,6 +2620,27 @@ fn try_bid_finders_fee() {
     mint(&mut router, &creator, &collection, TOKEN_ID);
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
+    // Bidder makes failed bid with a large finder's fee
+    let set_bid_msg = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: Some(5000),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let err = router
+        .execute_contract(
+            bidder.clone(),
+            marketplace.clone(),
+            &set_bid_msg,
+            &coins(100, NATIVE_DENOM),
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.source().unwrap().to_string(),
+        ContractError::InvalidFindersFeeBps(5000).to_string()
+    );
+
     // Bidder makes bid with a finder's fee
     let set_bid_msg = ExecuteMsg::SetBid {
         collection: collection.to_string(),
