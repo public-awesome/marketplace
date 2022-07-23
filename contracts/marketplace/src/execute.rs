@@ -573,9 +573,9 @@ pub fn execute_set_collection_bid(
         return Err(ContractError::PriceTooSmall(price));
     }
     params.bid_expiry.is_valid(&env.block, expires)?;
-    if let Some(finders_fee_bps) = finders_fee_bps {
-        if Decimal::percent(finders_fee_bps) > params.max_finders_fee_percent {
-            return Err(ContractError::InvalidFindersFeeBps(finders_fee_bps));
+    if let Some(fee) = finders_fee_bps {
+        if Decimal::percent(fee) > params.max_finders_fee_percent {
+            return Err(ContractError::InvalidFindersFeeBps(fee));
         }
     }
 
