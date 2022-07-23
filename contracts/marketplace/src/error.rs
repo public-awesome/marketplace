@@ -19,6 +19,9 @@ pub enum ContractError {
     #[error("InvalidPrice")]
     InvalidPrice {},
 
+    #[error("InvalidDuration")]
+    InvalidDuration {},
+
     #[error("AskExpired")]
     AskExpired {},
 
