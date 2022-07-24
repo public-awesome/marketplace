@@ -379,6 +379,14 @@ pub fn execute_set_bid(
     } = bid_info;
     let params = SUDO_PARAMS.load(deps.storage)?;
 
+    if let Some(finder) = finder.clone() {
+        if info.sender == finder {
+            return Err(ContractError::InvalidFinder(
+                "bidder cannot be finder".to_string(),
+            ));
+        }
+    }
+
     // check bid finders_fee_bps is not over max
     if let Some(fee) = finders_fee_bps {
         if Decimal::percent(fee) > params.max_finders_fee_percent {

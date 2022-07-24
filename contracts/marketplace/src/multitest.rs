@@ -2674,6 +2674,38 @@ fn try_bid_finders_fee() {
 }
 
 #[test]
+fn try_bidder_cannot_be_finder() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // Bidder makes bid with a finder's fee
+    let set_bid_msg = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: Some(500),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: Some(bidder.to_string()),
+    };
+    router
+        .execute_contract(
+            bidder,
+            marketplace.clone(),
+            &set_bid_msg,
+            &coins(100, NATIVE_DENOM),
+        )
+        .unwrap_err();
+}
+
+#[test]
 fn try_ask_with_filter_inactive() {
     let mut router = custom_mock_app();
 
