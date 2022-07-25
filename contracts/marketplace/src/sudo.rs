@@ -45,6 +45,10 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
                 bid_removal_reward_bps,
             },
         ),
+        SudoMsg::AddOperator { operator } => sudo_add_operator(deps, api.addr_validate(&operator)?),
+        SudoMsg::RemoveOperator { operator } => {
+            sudo_remove_operator(deps, api.addr_validate(&operator)?)
+        }
         SudoMsg::AddSaleHook { hook } => sudo_add_sale_hook(deps, api.addr_validate(&hook)?),
         SudoMsg::AddAskHook { hook } => sudo_add_ask_hook(deps, env, api.addr_validate(&hook)?),
         SudoMsg::AddBidHook { hook } => sudo_add_bid_hook(deps, env, api.addr_validate(&hook)?),
@@ -104,6 +108,34 @@ pub fn sudo_update_params(
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "update_params"))
+}
+
+pub fn sudo_add_operator(deps: DepsMut, operator: Addr) -> Result<Response, ContractError> {
+    let mut params = SUDO_PARAMS.load(deps.storage)?;
+    if !params.operators.iter().any(|o| o == &operator) {
+        params.operators.push(operator.clone());
+    } else {
+        return Err(ContractError::OperatorAlreadyRegistered {});
+    }
+    SUDO_PARAMS.save(deps.storage, &params)?;
+    let res = Response::new()
+        .add_attribute("action", "add_operator")
+        .add_attribute("operator", operator);
+    Ok(res)
+}
+
+pub fn sudo_remove_operator(deps: DepsMut, operator: Addr) -> Result<Response, ContractError> {
+    let mut params = SUDO_PARAMS.load(deps.storage)?;
+    if let Some(i) = params.operators.iter().position(|o| o == &operator) {
+        params.operators.remove(i);
+    } else {
+        return Err(ContractError::OperatorNotRegistered {});
+    }
+    SUDO_PARAMS.save(deps.storage, &params)?;
+    let res = Response::new()
+        .add_attribute("action", "remove_operator")
+        .add_attribute("operator", operator);
+    Ok(res)
 }
 
 pub fn sudo_add_sale_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {

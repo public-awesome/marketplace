@@ -3259,3 +3259,106 @@ fn try_remove_stale_ask() {
         .unwrap();
     assert_eq!(res.asks.len(), 0);
 }
+
+#[test]
+fn try_add_and_remove_operators() {
+    let mut router = custom_mock_app();
+    // Setup intial accounts
+    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+    // Instantiate and configure contracts
+    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Initialize Some Params
+    let update_params_msg = SudoMsg::UpdateParams {
+        trading_fee_bps: Some(5),
+        ask_expiry: Some(ExpiryRange::new(100, 2)),
+        bid_expiry: None,
+        operators: Some(vec!["operator1".to_string()]),
+        max_finders_fee_bps: None,
+        min_price: Some(Uint128::from(5u128)),
+        stale_bid_duration: None,
+        bid_removal_reward_bps: None,
+    };
+    router
+        .wasm_sudo(marketplace.clone(), &update_params_msg)
+        .unwrap_err();
+
+    let update_params_msg = SudoMsg::UpdateParams {
+        trading_fee_bps: Some(5),
+        ask_expiry: Some(ExpiryRange::new(1, 2)),
+        bid_expiry: Some(ExpiryRange::new(1, 2)),
+        operators: Some(vec!["operator2".to_string()]),
+        max_finders_fee_bps: Some(1),
+        min_price: Some(Uint128::from(5u128)),
+        stale_bid_duration: Some(2),
+        bid_removal_reward_bps: Some(2),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
+    assert!(res.is_ok());
+
+    // add single operator
+    let add_operator_msg = SudoMsg::AddOperator {
+        operator: "operator1".to_string(),
+    };
+
+    let res = router.wasm_sudo(marketplace.clone(), &add_operator_msg);
+    assert!(res.is_ok());
+
+    let query_params_msg = QueryMsg::Params {};
+    let mut res: ParamsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_params_msg)
+        .unwrap();
+    assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
+    assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
+    res.params.operators.sort();
+    assert_eq!(
+        res.params.operators,
+        vec![
+            Addr::unchecked("operator1".to_string()),
+            Addr::unchecked("operator2".to_string()),
+        ]
+    );
+
+    // remove single operator
+    let add_operator_msg = SudoMsg::RemoveOperator {
+        operator: "operator1".to_string(),
+    };
+
+    let res = router.wasm_sudo(marketplace.clone(), &add_operator_msg);
+    assert!(res.is_ok());
+
+    let query_params_msg = QueryMsg::Params {};
+    let res: ParamsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_params_msg)
+        .unwrap();
+    assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
+    assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
+    assert_eq!(
+        res.params.operators,
+        vec![Addr::unchecked("operator2".to_string()),]
+    );
+
+    // remove unexisting operator
+    let remove_operator = SudoMsg::RemoveOperator {
+        operator: "operator1".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &remove_operator);
+    assert!(res.is_err());
+    assert_eq!(
+        res.unwrap_err().to_string(),
+        ContractError::OperatorNotRegistered {}.to_string()
+    );
+
+    // add existing operator
+    let add_operator_msg = SudoMsg::AddOperator {
+        operator: "operator2".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_operator_msg);
+    assert!(res.is_err());
+    assert_eq!(
+        res.unwrap_err().to_string(),
+        ContractError::OperatorAlreadyRegistered {}.to_string()
+    );
+}
