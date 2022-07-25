@@ -93,8 +93,13 @@ pub enum ExecuteMsg {
         bidder: String,
         finder: Option<String>,
     },
-    /// Priviledged operation to change the active state of an ask when an NFT is transferred
+    /// Privileged operation to change the active state of an ask when an NFT is transferred
     SyncAsk {
+        collection: String,
+        token_id: TokenId,
+    },
+    /// Privileged operation to remove stale or invalid asks.
+    RemoveStaleAsk {
         collection: String,
         token_id: TokenId,
     },
