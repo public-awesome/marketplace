@@ -809,9 +809,10 @@ pub fn execute_remove_stale_ask(
     let res =
         Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false);
     let has_owner = res.is_ok();
+    let expired = ask.is_expired(&env.block);
 
     // it has an owner and ask is still valid
-    if has_owner && !ask.is_expired(&env.block) {
+    if has_owner && !expired {
         return Err(ContractError::AskUnchanged {});
     }
 
@@ -821,7 +822,10 @@ pub fn execute_remove_stale_ask(
     let event = Event::new("remove-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
-        .add_attribute("operator", info.sender.to_string());
+        .add_attribute("operator", info.sender.to_string())
+        .add_attribute("expired", expired.to_string())
+        .add_attribute("has_owner", has_owner.to_string());
+
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
