@@ -2066,11 +2066,42 @@ fn try_sudo_update_params() {
     let query_params_msg = QueryMsg::Params {};
     let res: ParamsResponse = router
         .wrap()
-        .query_wasm_smart(marketplace, &query_params_msg)
+        .query_wasm_smart(marketplace.clone(), &query_params_msg)
         .unwrap();
     assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
     assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
     assert_eq!(res.params.operators, vec!["operator".to_string()]);
+    let update_params_msg = SudoMsg::UpdateParams {
+        trading_fee_bps: None,
+        ask_expiry: None,
+        bid_expiry: None,
+        operators: Some(vec![
+            "operator".to_string(),
+            "operator1".to_string(),
+            "operator2".to_string(),
+            "operator1".to_string(),
+            "operator".to_string(),
+        ]),
+        max_finders_fee_bps: None,
+        min_price: None,
+        stale_bid_duration: None,
+        bid_removal_reward_bps: None,
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
+    assert!(res.is_ok());
+    // query params
+    let res: ParamsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_params_msg)
+        .unwrap();
+    assert_eq!(
+        res.params.operators,
+        vec![
+            Addr::unchecked("operator".to_string()),
+            Addr::unchecked("operator1".to_string()),
+            Addr::unchecked("operator2".to_string()),
+        ]
+    );
 }
 
 #[test]
