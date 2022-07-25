@@ -673,9 +673,9 @@ dependencies = [
 
 [[package]]
 name = "sg-controllers"
-version = "0.12.1"
+version = "0.12.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8139d4ec93b30e68b5fe598076bf80bc778e950e1b1af6e7cd7a38da439bbc79"
+checksum = "1f15d56b2de4fd96bf55b73b6d533b3521873d51004c822f50e9f5f099dae47c"
 dependencies = [
  "cosmwasm-std",
  "cw-storage-plus",
@@ -704,16 +704,16 @@ dependencies = [
  "sg-controllers",
  "sg-multi-test",
  "sg-std",
- "sg1 0.13.0",
+ "sg1 0.14.0",
  "sg721",
  "thiserror",
 ]
 
 [[package]]
 name = "sg-multi-test"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "68b2c20961ef0d92d3e071c923c2ceca525dddb4a0c57991c418f31d708c346f"
+checksum = "5957430ba35756401a05081054cff7de27fd1b38fa600960c7a5c6586b22a326"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
@@ -725,9 +725,9 @@ dependencies = [
 
 [[package]]
 name = "sg-std"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8333ebd66ab56cd6f83368598c3f810e95b41a10fd81ac3e447792996824deba"
+checksum = "07130302e5e6cf53351196e70f04b0c86b45b886ab93120bc6884596e1aeb782"
 dependencies = [
  "cosmwasm-std",
  "cw-utils",
@@ -753,9 +753,9 @@ dependencies = [
 
 [[package]]
 name = "sg1"
-version = "0.13.0"
+version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f84da5448efc51fb2484fa1aa3d29402b1cd2fc26d42f4e2cefa73090a85d2da"
+checksum = "8c1673ed8ac3ed540cb091cd350cf7c6f1f162587254ed04ae9947f54af98710"
 dependencies = [
  "cosmwasm-std",
  "cw-utils",

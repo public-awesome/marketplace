@@ -2139,6 +2139,51 @@ fn try_add_remove_sales_hooks() {
 }
 
 #[test]
+fn try_add_too_many_sales_hooks() {
+    let mut router = custom_mock_app();
+    // Setup intial accounts
+    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+    // Instantiate and configure contracts
+    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook1".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook2".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook3".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook4".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook5".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook6".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_err());
+}
+
+#[test]
 fn try_add_remove_bid_hooks() {
     let mut router = custom_mock_app();
     // Setup intial accounts
