@@ -808,9 +808,10 @@ pub fn execute_remove_stale_ask(
 
     let res =
         Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false);
+    let has_owner = res.is_ok();
 
     // it has an owner and ask is still valid
-    if res.is_ok() && !ask.is_expired(&env.block) {
+    if has_owner && !ask.is_expired(&env.block) {
         return Err(ContractError::AskUnchanged {});
     }
 
