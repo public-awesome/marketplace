@@ -107,7 +107,6 @@ pub fn sudo_update_params(
 }
 
 pub fn sudo_add_sale_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {
-    println!("sudo_add_sale_hook: {}", hook);
     SALE_HOOKS.add_hook(deps.storage, hook.clone())?;
 
     let res = Response::new()
