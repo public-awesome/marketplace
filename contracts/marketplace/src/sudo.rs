@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::helpers::{map_validate, ExpiryRange};
+use crate::helpers::ExpiryRange;
 use crate::msg::SudoMsg;
 use crate::state::{ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS};
 use cosmwasm_std::{entry_point, Addr, Decimal, DepsMut, Env, Uint128};
@@ -68,7 +68,7 @@ pub fn sudo_update_params(
         trading_fee_bps,
         ask_expiry,
         bid_expiry,
-        operators,
+        operators: _operators,
         max_finders_fee_bps,
         min_price,
         stale_bid_duration,
@@ -86,10 +86,6 @@ pub fn sudo_update_params(
 
     params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
     params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
-
-    if let Some(operators) = operators {
-        params.operators = map_validate(deps.api, &operators)?;
-    }
 
     params.max_finders_fee_percent = max_finders_fee_bps
         .map(Decimal::percent)

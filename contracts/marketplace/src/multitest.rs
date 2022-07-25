@@ -72,7 +72,7 @@ fn setup_contracts(
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
     let msg = crate::msg::InstantiateMsg {
-        operators: vec!["operator".to_string()],
+        operators: vec!["operator1".to_string()],
         trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
@@ -362,7 +362,7 @@ fn try_set_accept_bid() {
 
     // Should not error on admin updating active state to false
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -372,7 +372,7 @@ fn try_set_accept_bid() {
     // Should error when ask is unchanged
     router
         .execute_contract(
-            Addr::unchecked("operator"),
+            Addr::unchecked("operator1"),
             marketplace.clone(),
             &update_ask_state,
             &[],
@@ -398,7 +398,7 @@ fn try_set_accept_bid() {
         token_id: TOKEN_ID,
     };
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -1916,7 +1916,7 @@ fn try_royalties() {
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
     let msg = crate::msg::InstantiateMsg {
-        operators: vec!["operator".to_string()],
+        operators: vec!["operator1".to_string()],
         trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
@@ -2053,12 +2053,12 @@ fn try_sudo_update_params() {
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: Some(5),
         ask_expiry: Some(ExpiryRange::new(1, 2)),
-        bid_expiry: None,
+        bid_expiry: Some(ExpiryRange::new(3, 4)),
         operators: Some(vec!["operator".to_string()]),
         max_finders_fee_bps: None,
         min_price: Some(Uint128::from(5u128)),
-        stale_bid_duration: None,
-        bid_removal_reward_bps: None,
+        stale_bid_duration: Some(10),
+        bid_removal_reward_bps: Some(20),
     };
     let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
     assert!(res.is_ok());
@@ -2070,17 +2070,21 @@ fn try_sudo_update_params() {
         .unwrap();
     assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
     assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
-    assert_eq!(res.params.operators, vec!["operator".to_string()]);
+    assert_eq!(res.params.bid_expiry, ExpiryRange::new(3, 4));
+    assert_eq!(res.params.operators, vec!["operator1".to_string()]);
+    assert_eq!(res.params.stale_bid_duration, Duration::Time(10));
+    assert_eq!(res.params.bid_removal_reward_percent, Decimal::percent(20));
+
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: None,
         ask_expiry: None,
         bid_expiry: None,
         operators: Some(vec![
-            "operator".to_string(),
+            "operator3".to_string(),
             "operator1".to_string(),
             "operator2".to_string(),
             "operator1".to_string(),
-            "operator".to_string(),
+            "operator4".to_string(),
         ]),
         max_finders_fee_bps: None,
         min_price: None,
@@ -2096,11 +2100,7 @@ fn try_sudo_update_params() {
         .unwrap();
     assert_eq!(
         res.params.operators,
-        vec![
-            Addr::unchecked("operator".to_string()),
-            Addr::unchecked("operator1".to_string()),
-            Addr::unchecked("operator2".to_string()),
-        ]
+        vec![Addr::unchecked("operator1".to_string()),]
     );
 }
 
@@ -2225,7 +2225,7 @@ fn try_init_hook() {
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
     let msg = crate::msg::InstantiateMsg {
-        operators: vec!["operator".to_string()],
+        operators: vec!["operator1".to_string()],
         trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
@@ -2614,7 +2614,7 @@ fn try_remove_stale_bid() {
     );
     assert!(res.is_ok());
 
-    let operator = Addr::unchecked("operator".to_string());
+    let operator = Addr::unchecked("operator1".to_string());
 
     // Try to remove the bid (not yet stale) as an operator
     let remove_msg = ExecuteMsg::RemoveStaleBid {
@@ -2669,7 +2669,7 @@ fn try_remove_stale_collection_bid() {
     );
     assert!(res.is_ok());
 
-    let operator = Addr::unchecked("operator".to_string());
+    let operator = Addr::unchecked("operator1".to_string());
 
     // Try to remove the collection bid (not yet stale) as an operator
     let remove_col_msg = ExecuteMsg::RemoveStaleCollectionBid {
@@ -2825,7 +2825,7 @@ fn try_ask_with_filter_inactive() {
         token_id: TOKEN_ID,
     };
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -2915,7 +2915,7 @@ fn try_sync_ask() {
         token_id: TOKEN_ID,
     };
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -2939,7 +2939,7 @@ fn try_sync_ask() {
 
     // Transfer Back should have unchanged operation (still not active)
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -2963,7 +2963,7 @@ fn try_sync_ask() {
 
     // SyncAsk should be ok
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -2994,7 +2994,7 @@ fn try_sync_ask() {
 
     // SyncAsk should fail (Unchanged)
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -3011,7 +3011,7 @@ fn try_sync_ask() {
 
     // SyncAsk should succeed as approval is no longer valid
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -3175,7 +3175,7 @@ fn try_remove_stale_ask() {
         token_id: TOKEN_ID,
     };
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &remove_ask,
         &[],
@@ -3200,7 +3200,7 @@ fn try_remove_stale_ask() {
 
     // try again to remove the ask
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &remove_ask,
         &[],
@@ -3221,7 +3221,7 @@ fn try_remove_stale_ask() {
     assert!(res.is_ok());
 
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &remove_ask,
         &[],
@@ -3231,7 +3231,7 @@ fn try_remove_stale_ask() {
     // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
     transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &remove_ask,
         &[],
@@ -3247,7 +3247,7 @@ fn try_remove_stale_ask() {
 
     // remove stale ask
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &remove_ask,
         &[],
@@ -3268,37 +3268,22 @@ fn try_add_and_remove_operators() {
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
 
-    // Initialize Some Params
-    let update_params_msg = SudoMsg::UpdateParams {
-        trading_fee_bps: Some(5),
-        ask_expiry: Some(ExpiryRange::new(100, 2)),
-        bid_expiry: None,
-        operators: Some(vec!["operator1".to_string()]),
-        max_finders_fee_bps: None,
-        min_price: Some(Uint128::from(5u128)),
-        stale_bid_duration: None,
-        bid_removal_reward_bps: None,
-    };
-    router
-        .wasm_sudo(marketplace.clone(), &update_params_msg)
-        .unwrap_err();
-
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: Some(5),
         ask_expiry: Some(ExpiryRange::new(1, 2)),
-        bid_expiry: Some(ExpiryRange::new(1, 2)),
+        bid_expiry: Some(ExpiryRange::new(3, 4)),
         operators: Some(vec!["operator2".to_string()]),
         max_finders_fee_bps: Some(1),
         min_price: Some(Uint128::from(5u128)),
-        stale_bid_duration: Some(2),
-        bid_removal_reward_bps: Some(2),
+        stale_bid_duration: Some(10),
+        bid_removal_reward_bps: Some(20),
     };
     let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
     assert!(res.is_ok());
 
     // add single operator
     let add_operator_msg = SudoMsg::AddOperator {
-        operator: "operator1".to_string(),
+        operator: "operator2".to_string(),
     };
 
     let res = router.wasm_sudo(marketplace.clone(), &add_operator_msg);
@@ -3335,6 +3320,14 @@ fn try_add_and_remove_operators() {
         .unwrap();
     assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
     assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
+
+    assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
+    assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
+    assert_eq!(res.params.bid_expiry, ExpiryRange::new(3, 4));
+    assert_eq!(res.params.operators, vec!["operator2".to_string()]);
+    assert_eq!(res.params.stale_bid_duration, Duration::Time(10));
+    assert_eq!(res.params.min_price, Uint128::from(5u128));
+    assert_eq!(res.params.bid_removal_reward_percent, Decimal::percent(20));
     assert_eq!(
         res.params.operators,
         vec![Addr::unchecked("operator2".to_string()),]
