@@ -26,10 +26,13 @@ impl MarketplaceContract {
 }
 
 pub fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
-    addresses
+    let mut validated_addresses = addresses
         .iter()
         .map(|addr| api.addr_validate(addr))
-        .collect()
+        .collect::<StdResult<Vec<_>>>()?;
+    validated_addresses.sort();
+    validated_addresses.dedup();
+    return Ok(validated_addresses);
 }
 
 #[derive(Error, Debug, PartialEq)]
@@ -71,5 +74,46 @@ impl ExpiryRange {
         }
 
         Ok(())
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cosmwasm_std::testing::mock_dependencies;
+
+    #[test]
+    fn test_map_validate() {
+        let deps = mock_dependencies();
+        let adddreses = map_validate(
+            &deps.api,
+            &vec![
+                "operator1".to_string(),
+                "operator2".to_string(),
+                "operator3".to_string(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(3, adddreses.len());
+
+        let adddreses = map_validate(
+            &deps.api,
+            &vec![
+                "operator1".to_string(),
+                "operator2".to_string(),
+                "operator3".to_string(),
+                "operator3".to_string(),
+                "operator1".to_string(),
+            ],
+        )
+        .unwrap();
+
+        assert_eq!(
+            adddreses,
+            vec![
+                Addr::unchecked("operator1".to_string()),
+                Addr::unchecked("operator2".to_string()),
+                Addr::unchecked("operator3".to_string()),
+            ]
+        )
     }
 }
