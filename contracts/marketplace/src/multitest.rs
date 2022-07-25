@@ -298,6 +298,14 @@ fn transfer(
     assert!(res.is_ok());
 }
 
+fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
+    let transfer_msg = Cw721ExecuteMsg::<Empty>::Burn {
+        token_id: token_id.to_string(),
+    };
+    let res = router.execute_contract(creator.clone(), collection.clone(), &transfer_msg, &[]);
+    assert!(res.is_ok());
+}
+
 #[test]
 fn try_set_accept_bid() {
     let mut router = custom_mock_app();
@@ -3055,4 +3063,123 @@ fn try_set_ask_reserve_for() {
         &coins(110, NATIVE_DENOM),
     );
     assert!(res.is_ok());
+}
+
+#[test]
+fn try_remove_stale_ask() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // An ask is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(500), // 5%
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    // trying to remove a valid ask
+    let remove_ask = ExecuteMsg::RemoveStaleAsk {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+    };
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_err());
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 1);
+
+    // burn the token
+    burn(&mut router, &creator, &collection, TOKEN_ID);
+
+    // try again to remove the ask
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_ok());
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // set ask again
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
+    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_err());
+
+    // transfer nft back
+    transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
+
+    // move time forward
+    let time = router.block_info().time;
+    setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).seconds());
+
+    // remove stale ask
+    let res = router.execute_contract(
+        Addr::unchecked("operator"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_ok());
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
 }
