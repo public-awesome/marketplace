@@ -98,6 +98,11 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
     },
+    /// Priviledged operation to remove stale or invalid asks.
+    RemoveStaleAsk {
+        collection: String,
+        token_id: TokenId,
+    },
     /// Privileged operation to remove stale bids
     RemoveStaleBid {
         collection: String,

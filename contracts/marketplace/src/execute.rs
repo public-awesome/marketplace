@@ -201,6 +201,10 @@ pub fn execute(
             collection,
             token_id,
         } => execute_sync_ask(deps, env, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::RemoveStaleAsk {
+            collection,
+            token_id,
+        } => execute_remove_stale_ask(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::RemoveStaleBid {
             collection,
             token_id,
@@ -784,6 +788,39 @@ pub fn execute_sync_ask(
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("is_active", ask.is_active.to_string());
 
+    Ok(Response::new().add_event(event).add_submessages(hook))
+}
+
+/// Privileged operation to remove a stale ask. Operators can call this to remove asks that are still in the
+/// state after they have expired or a token is no longer existing.
+pub fn execute_remove_stale_ask(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_operator(deps.storage, &info)?;
+
+    let key = ask_key(&collection, token_id);
+    let ask = asks().load(deps.storage, key.clone())?;
+
+    let res =
+        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false);
+
+    // it has an owner and ask is still valid
+    if res.is_ok() && !ask.is_expired(&env.block) {
+        return Err(ContractError::AskUnchanged {});
+    }
+
+    asks().remove(deps.storage, key)?;
+    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Delete)?;
+
+    let event = Event::new("remove-ask")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("operator", info.sender.to_string());
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
 
