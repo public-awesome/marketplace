@@ -89,6 +89,47 @@
       "additionalProperties": false
     },
     {
+      "description": "Add a new operator Remove operator",
+      "type": "object",
+      "required": [
+        "add_operator"
+      ],
+      "properties": {
+        "add_operator": {
+          "type": "object",
+          "required": [
+            "operator"
+          ],
+          "properties": {
+            "operator": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_operator"
+      ],
+      "properties": {
+        "remove_operator": {
+          "type": "object",
+          "required": [
+            "operator"
+          ],
+          "properties": {
+            "operator": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
       "description": "Add a new hook to be informed of all asks",
       "type": "object",
       "required": [
