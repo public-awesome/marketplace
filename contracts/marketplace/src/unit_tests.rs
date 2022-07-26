@@ -181,6 +181,7 @@ fn try_set_bid() {
     let bidder = mock_info("bidder", &coins(1000, NATIVE_DENOM));
 
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: None,
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -196,6 +197,7 @@ fn try_set_bid() {
     );
 
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: None,
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
