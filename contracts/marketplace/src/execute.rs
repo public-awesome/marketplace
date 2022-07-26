@@ -374,7 +374,7 @@ pub fn execute_set_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    sale_type: Option<SaleType>,
+    sale_type: SaleType,
     bid_info: BidInfo,
 ) -> Result<Response, ContractError> {
     let BidInfo {
@@ -424,10 +424,8 @@ pub fn execute_set_bid(
 
     // if the bid is placed for fixed price only but there is no ask
     // return an error
-    if let Some(st) = sale_type {
-        if st == SaleType::FixedPrice && existing_ask.is_none() {
-            return Err(ContractError::AskNotFound {});
-        }
+    if sale_type == SaleType::FixedPrice && existing_ask.is_none() {
+        return Err(ContractError::AskNotFound {});
     }
 
     if let Some(ask) = existing_ask.clone() {

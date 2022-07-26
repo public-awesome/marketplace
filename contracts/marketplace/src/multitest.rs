@@ -416,7 +416,7 @@ fn try_set_accept_bid() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -494,7 +494,7 @@ fn try_set_accept_bid_no_ask() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -613,7 +613,7 @@ fn try_set_accept_bid_high_fees() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: Some(10),
@@ -1201,7 +1201,7 @@ fn try_query_sorted_bids() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1217,7 +1217,7 @@ fn try_query_sorted_bids() {
     assert!(res.is_ok());
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
         finders_fee_bps: None,
@@ -1233,7 +1233,7 @@ fn try_query_sorted_bids() {
     assert!(res.is_ok());
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 2,
         finders_fee_bps: None,
@@ -1285,7 +1285,7 @@ fn try_query_sorted_bids() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1404,7 +1404,7 @@ fn try_query_bids() {
 
     // Bidder makes bids
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1420,7 +1420,7 @@ fn try_query_bids() {
     assert!(res.is_ok());
 
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
         finders_fee_bps: None,
@@ -1537,7 +1537,7 @@ fn auto_accept_bid() {
         .map_err(|err| println!("{:?}", err))
         .ok();
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1555,7 +1555,7 @@ fn auto_accept_bid() {
 
     // Bidder makes bid that meets the ask criteria
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1629,7 +1629,7 @@ fn try_reserved_ask() {
 
     // Non-bidder makes bid that meets the ask price
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1651,7 +1651,7 @@ fn try_reserved_ask() {
 
     // Bidder makes bid that meets ask price
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1710,7 +1710,7 @@ fn try_ask_with_finders_fee() {
 
     // Bidder makes bid that meets ask price
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1768,7 +1768,7 @@ fn remove_bid_refund() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1841,7 +1841,7 @@ fn new_bid_refund() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1872,7 +1872,7 @@ fn new_bid_refund() {
 
     // Bidder makes higher bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -2002,7 +2002,7 @@ fn try_royalties() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -2334,7 +2334,7 @@ fn try_hook_was_run() {
     );
     // Bidder makes bid that meets the ask criteria
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -2619,7 +2619,7 @@ fn try_remove_stale_bid() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -2726,7 +2726,7 @@ fn try_bid_finders_fee() {
 
     // Bidder makes failed bid with a large finder's fee
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: Some(5000),
@@ -2748,7 +2748,7 @@ fn try_bid_finders_fee() {
 
     // Bidder makes bid with a finder's fee
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: Some(500),
@@ -2795,7 +2795,7 @@ fn try_bidder_cannot_be_finder() {
 
     // Bidder makes bid with a finder's fee
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: Some(500),
@@ -3128,7 +3128,7 @@ fn try_set_ask_reserve_for() {
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
     // Bidder2 makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -3150,7 +3150,7 @@ fn try_set_ask_reserve_for() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: None,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -3411,7 +3411,7 @@ fn try_bid_sale_type() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: Some(SaleType::FixedPrice),
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -3443,7 +3443,7 @@ fn try_bid_sale_type() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: Some(SaleType::FixedPrice),
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -3465,7 +3465,7 @@ fn try_bid_sale_type() {
 
     // Bidder makes bid with Auction
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: Some(SaleType::Auction),
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
