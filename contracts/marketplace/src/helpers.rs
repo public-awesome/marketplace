@@ -86,7 +86,7 @@ mod tests {
         let deps = mock_dependencies();
         let adddreses = map_validate(
             &deps.api,
-            &vec![
+            &[
                 "operator1".to_string(),
                 "operator2".to_string(),
                 "operator3".to_string(),
@@ -97,7 +97,7 @@ mod tests {
 
         let adddreses = map_validate(
             &deps.api,
-            &vec![
+            &[
                 "operator1".to_string(),
                 "operator2".to_string(),
                 "operator3".to_string(),
