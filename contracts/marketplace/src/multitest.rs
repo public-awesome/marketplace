@@ -3348,7 +3348,7 @@ fn try_add_and_remove_operators() {
     let add_operator_msg = SudoMsg::AddOperator {
         operator: "operator2".to_string(),
     };
-    let res = router.wasm_sudo(marketplace.clone(), &add_operator_msg);
+    let res = router.wasm_sudo(marketplace, &add_operator_msg);
     assert!(res.is_err());
     assert_eq!(
         res.unwrap_err().to_string(),
