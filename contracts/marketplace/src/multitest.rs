@@ -3482,7 +3482,7 @@ fn try_bid_sale_type() {
     assert!(res.is_ok());
 
     let query_bids_msg = QueryMsg::BidsByBidder {
-        bidder: bidder2.clone().to_string(),
+        bidder: bidder2.to_string(),
         limit: None,
         start_after: None,
     };
