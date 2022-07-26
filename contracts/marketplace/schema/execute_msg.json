@@ -154,6 +154,16 @@
               "format": "uint64",
               "minimum": 0.0
             },
+            "sale_type": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/SaleType"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "token_id": {
               "type": "integer",
               "format": "uint32",
