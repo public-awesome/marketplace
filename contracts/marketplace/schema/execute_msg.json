@@ -131,6 +131,7 @@
           "required": [
             "collection",
             "expires",
+            "sale_type",
             "token_id"
           ],
           "properties": {
@@ -155,14 +156,7 @@
               "minimum": 0.0
             },
             "sale_type": {
-              "anyOf": [
-                {
-                  "$ref": "#/definitions/SaleType"
-                },
-                {
-                  "type": "null"
-                }
-              ]
+              "$ref": "#/definitions/SaleType"
             },
             "token_id": {
               "type": "integer",
