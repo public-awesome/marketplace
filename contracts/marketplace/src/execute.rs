@@ -126,10 +126,12 @@ pub fn execute(
             expires,
             finder,
             finders_fee_bps,
+            sale_type,
         } => execute_set_bid(
             deps,
             env,
             info,
+            sale_type,
             BidInfo {
                 collection: api.addr_validate(&collection)?,
                 token_id,
@@ -372,6 +374,7 @@ pub fn execute_set_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
+    sale_type: SaleType,
     bid_info: BidInfo,
 ) -> Result<Response, ContractError> {
     let BidInfo {
@@ -418,6 +421,12 @@ pub fn execute_set_bid(
     }
 
     let existing_ask = asks().may_load(deps.storage, ask_key.clone())?;
+
+    // if the bid is placed for fixed price only but there is no ask
+    // return an error
+    if sale_type == SaleType::FixedPrice && existing_ask.is_none() {
+        return Err(ContractError::AskNotFound {});
+    }
 
     if let Some(ask) = existing_ask.clone() {
         if ask.is_expired(&env.block) {

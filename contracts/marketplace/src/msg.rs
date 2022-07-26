@@ -63,6 +63,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         expires: Timestamp,
+        sale_type: SaleType,
         finder: Option<String>,
         finders_fee_bps: Option<u64>,
     },

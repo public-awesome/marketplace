@@ -131,6 +131,7 @@
           "required": [
             "collection",
             "expires",
+            "sale_type",
             "token_id"
           ],
           "properties": {
@@ -153,6 +154,9 @@
               ],
               "format": "uint64",
               "minimum": 0.0
+            },
+            "sale_type": {
+              "$ref": "#/definitions/SaleType"
             },
             "token_id": {
               "type": "integer",
