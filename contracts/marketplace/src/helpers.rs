@@ -32,7 +32,7 @@ pub fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>>
         .collect::<StdResult<Vec<_>>>()?;
     validated_addresses.sort();
     validated_addresses.dedup();
-    return Ok(validated_addresses);
+    Ok(validated_addresses)
 }
 
 #[derive(Error, Debug, PartialEq)]
