@@ -3380,3 +3380,116 @@ fn try_add_and_remove_operators() {
         ContractError::OperatorAlreadyRegistered {}.to_string()
     );
 }
+
+#[test]
+fn try_bid_sale_type() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // An asking price is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: Some(SaleType::FixedPrice),
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    // Check creator has been paid yet
+    let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
+    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+
+    // Check contract has zero balance
+    let contract_balances = router
+        .wrap()
+        .query_all_balances(marketplace.clone())
+        .unwrap();
+    assert_eq!(contract_balances, []);
+
+    transfer(&mut router, &bidder, &creator, &collection, TOKEN_ID);
+
+    let bidder2 = setup_second_bidder_account(&mut router).unwrap();
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: Some(SaleType::FixedPrice),
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder2.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+
+    assert!(res.is_err());
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        ContractError::AskNotFound {}.to_string()
+    );
+
+    // Bidder makes bid with Auction
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: Some(SaleType::Auction),
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder2.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+
+    assert!(res.is_ok());
+
+    let query_bids_msg = QueryMsg::BidsByBidder {
+        bidder: bidder2.clone().to_string(),
+        limit: None,
+        start_after: None,
+    };
+    let res: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_bids_msg)
+        .unwrap();
+    assert_eq!(res.bids.len(), 1);
+    assert_eq!(res.bids[0].price.u128(), 100u128);
+}
