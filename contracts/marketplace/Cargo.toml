@@ -1,6 +1,6 @@
 [package]
 name = "sg-marketplace"
-version = "0.15.0"
+version = "0.16.0"
 authors = [
   "Shane Vitarana <s@noreply.publicawesome.com>",
   "Jake Hartnell <jake@publicawesome.com>",
