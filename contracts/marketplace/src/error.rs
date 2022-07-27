@@ -69,4 +69,7 @@ pub enum ContractError {
 
     #[error("Given operator address is not registered as an operator")]
     OperatorNotRegistered {},
+
+    #[error("InvalidContractVersion")]
+    InvalidContractVersion {},
 }
