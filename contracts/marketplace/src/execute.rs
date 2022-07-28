@@ -12,13 +12,14 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, Event, MessageInfo, Reply,
-    StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Empty, Env, Event, MessageInfo,
+    Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
 use cw_utils::{maybe_addr, must_pay, nonpayable, Duration, Expiration};
+use semver::Version;
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
@@ -1241,4 +1242,25 @@ fn prepare_collection_bid_hook(
     })?;
 
     Ok(submsgs)
+}
+
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn migrate(deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, ContractError> {
+    let current_version = cw2::get_contract_version(deps.storage)?;
+    if current_version.contract != CONTRACT_NAME {
+        return Err(StdError::generic_err("Cannot upgrade to a different contract").into());
+    }
+    let version: Version = current_version
+        .version
+        .parse()
+        .map_err(|_| StdError::generic_err("Invalid contract version"))?;
+    let new_version: Version = CONTRACT_VERSION
+        .parse()
+        .map_err(|_| StdError::generic_err("Invalid contract version"))?;
+
+    if version > new_version {
+        return Err(StdError::generic_err("Cannot upgrade to a previous contract version").into());
+    }
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    Ok(Response::new())
 }
