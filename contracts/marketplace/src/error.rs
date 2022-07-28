@@ -19,6 +19,9 @@ pub enum ContractError {
     #[error("InvalidPrice")]
     InvalidPrice {},
 
+    #[error("InvalidDuration")]
+    InvalidDuration {},
+
     #[error("AskExpired")]
     AskExpired {},
 
@@ -33,6 +36,9 @@ pub enum ContractError {
 
     #[error("BidNotStale")]
     BidNotStale {},
+
+    #[error("InvalidFinder: {0}")]
+    InvalidFinder(String),
 
     #[error("PriceTooSmall: {0}")]
     PriceTooSmall(Uint128),
@@ -57,4 +63,7 @@ pub enum ContractError {
 
     #[error("{0}")]
     ExpiryRange(#[from] ExpiryRangeError),
+
+    #[error("Invalid reserve_for address: {reason}")]
+    InvalidReserveAddress { reason: String },
 }

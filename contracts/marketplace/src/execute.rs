@@ -13,12 +13,12 @@ use crate::state::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Env, Event, MessageInfo, Reply,
-    StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
-use cw_utils::{maybe_addr, must_pay, nonpayable, Expiration};
+use cw_utils::{maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
@@ -52,6 +52,11 @@ pub fn instantiate(
 
     msg.ask_expiry.validate()?;
     msg.bid_expiry.validate()?;
+
+    match msg.stale_bid_duration {
+        Duration::Height(_) => Err(ContractError::InvalidDuration {})?,
+        Duration::Time(_) => {}
+    };
 
     let params = SudoParams {
         trading_fee_percent: Decimal::percent(msg.trading_fee_bps),
@@ -169,7 +174,14 @@ pub fn execute(
             collection,
             token_id,
             price,
-        } => execute_update_ask_price(deps, info, api.addr_validate(&collection)?, token_id, price),
+        } => execute_update_ask_price(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            price,
+        ),
         ExecuteMsg::SetCollectionBid {
             collection,
             expires,
@@ -202,7 +214,11 @@ pub fn execute(
         ExecuteMsg::SyncAsk {
             collection,
             token_id,
-        } => execute_sync_ask(deps, info, api.addr_validate(&collection)?, token_id),
+        } => execute_sync_ask(deps, env, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::RemoveStaleAsk {
+            collection,
+            token_id,
+        } => execute_remove_stale_ask(deps, env, info, api.addr_validate(&collection)?, token_id),
         ExecuteMsg::RemoveStaleBid {
             collection,
             token_id,
@@ -266,6 +282,19 @@ pub fn execute_set_ask(
         };
     }
 
+    if let Some(address) = reserve_for.clone() {
+        if address == info.sender {
+            return Err(ContractError::InvalidReserveAddress {
+                reason: "cannot reserve to the same address".to_string(),
+            });
+        }
+        if sale_type != SaleType::FixedPrice {
+            return Err(ContractError::InvalidReserveAddress {
+                reason: "can only reserve for fixed_price sales".to_string(),
+            });
+        }
+    }
+
     let seller = info.sender;
     let ask = Ask {
         sale_type,
@@ -319,6 +348,7 @@ pub fn execute_remove_ask(
 /// Updates the ask price on a particular NFT
 pub fn execute_update_ask_price(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
@@ -331,6 +361,13 @@ pub fn execute_update_ask_price(
     let key = ask_key(&collection, token_id);
 
     let mut ask = asks().load(deps.storage, key.clone())?;
+    if !ask.is_active {
+        return Err(ContractError::AskNotActive {});
+    }
+    if ask.is_expired(&env.block) {
+        return Err(ContractError::AskExpired {});
+    }
+
     ask.price = price.amount;
     asks().save(deps.storage, key, &ask)?;
 
@@ -360,6 +397,20 @@ pub fn execute_set_bid(
     } = bid_info;
     let params = SUDO_PARAMS.load(deps.storage)?;
 
+    if let Some(finder) = finder.clone() {
+        if info.sender == finder {
+            return Err(ContractError::InvalidFinder(
+                "bidder cannot be finder".to_string(),
+            ));
+        }
+    }
+
+    // check bid finders_fee_bps is not over max
+    if let Some(fee) = finders_fee_bps {
+        if Decimal::percent(fee) > params.max_finders_fee_percent {
+            return Err(ContractError::InvalidFindersFeeBps(fee));
+        }
+    }
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
         return Err(ContractError::PriceTooSmall(bid_price));
@@ -573,6 +624,7 @@ pub fn execute_set_collection_bid(
         return Err(ContractError::PriceTooSmall(price));
     }
     params.bid_expiry.is_valid(&env.block, expires)?;
+    // check bid finders_fee_bps is not over max
     if let Some(fee) = finders_fee_bps {
         if Decimal::percent(fee) > params.max_finders_fee_percent {
             return Err(ContractError::InvalidFindersFeeBps(fee));
@@ -721,6 +773,7 @@ pub fn execute_accept_collection_bid(
 /// This is a privileged operation called by an operator to update an ask when a transfer happens.
 pub fn execute_sync_ask(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
@@ -731,13 +784,21 @@ pub fn execute_sync_ask(
     let key = ask_key(&collection, token_id);
 
     let mut ask = asks().load(deps.storage, key.clone())?;
-    let res =
-        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
-    let new_is_active = res.owner == ask.seller;
-    if new_is_active == ask.is_active {
+
+    // Check if marketplace still holds approval
+    // An approval will be removed when
+    // 1 - There is a transfer
+    // 2 - The approval expired (approvals can have different expiration times)
+    let res = Cw721Contract(collection.clone()).approval(
+        &deps.querier,
+        token_id.to_string(),
+        env.contract.address.to_string(),
+        None,
+    );
+    if res.is_ok() == ask.is_active {
         return Err(ContractError::AskUnchanged {});
     }
-    ask.is_active = new_is_active;
+    ask.is_active = res.is_ok();
     asks().save(deps.storage, key, &ask)?;
 
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Update)?;
@@ -746,6 +807,44 @@ pub fn execute_sync_ask(
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("is_active", ask.is_active.to_string());
+
+    Ok(Response::new().add_event(event).add_submessages(hook))
+}
+
+/// Privileged operation to remove a stale ask. Operators can call this to remove asks that are still in the
+/// state after they have expired or a token is no longer existing.
+pub fn execute_remove_stale_ask(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_operator(deps.storage, &info)?;
+
+    let key = ask_key(&collection, token_id);
+    let ask = asks().load(deps.storage, key.clone())?;
+
+    let res =
+        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false);
+    let has_owner = res.is_ok();
+    let expired = ask.is_expired(&env.block);
+
+    // it has an owner and ask is still valid
+    if has_owner && !expired {
+        return Err(ContractError::AskUnchanged {});
+    }
+
+    asks().remove(deps.storage, key)?;
+    let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Delete)?;
+
+    let event = Event::new("remove-ask")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("operator", info.sender.to_string())
+        .add_attribute("expired", expired.to_string())
+        .add_attribute("has_owner", has_owner.to_string());
 
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
@@ -939,6 +1038,9 @@ fn payout(
         // If token supports royalities, payout shares to royalty recipient
         Some(royalty) => {
             let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
+            if payment < (network_fee + Uint128::from(finders_fee) + amount.amount) {
+                return Err(StdError::generic_err("Fees exceed payment"));
+            }
             res.messages.push(SubMsg::new(BankMsg::Send {
                 to_address: royalty.payment_address.to_string(),
                 amount: vec![amount.clone()],
@@ -960,6 +1062,9 @@ fn payout(
             res.messages.push(SubMsg::new(seller_share_msg));
         }
         None => {
+            if payment < (network_fee + Uint128::from(finders_fee)) {
+                return Err(StdError::generic_err("Fees exceed payment"));
+            }
             // If token doesn't support royalties, pay seller in full
             let seller_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
