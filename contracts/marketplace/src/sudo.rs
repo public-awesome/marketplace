@@ -73,26 +73,23 @@ pub fn sudo_update_params(
         stale_bid_duration,
         bid_removal_reward_bps,
     } = param_info;
-    max_finders_fee_bps.map(|max_finders_fee_bps| {
+    if let Some(max_finders_fee_bps) = max_finders_fee_bps {
         if max_finders_fee_bps > MAX_FEE_AMOUNT {
             return Err(ContractError::InvalidFindersFeeBps(max_finders_fee_bps));
         }
-        Ok(())
-    });
-    trading_fee_bps.map(|trading_fee_bps| {
+    }
+    if let Some(trading_fee_bps) = trading_fee_bps {
         if trading_fee_bps > MAX_FEE_AMOUNT {
             return Err(ContractError::InvalidTradingFeeBps(trading_fee_bps));
         }
-        Ok(())
-    });
-    bid_removal_reward_bps.map(|bid_removal_reward_bps| {
+    }
+    if let Some(bid_removal_reward_bps) = bid_removal_reward_bps {
         if bid_removal_reward_bps > MAX_FEE_AMOUNT {
             return Err(ContractError::InvalidBidRemovalRewardBps(
                 bid_removal_reward_bps,
             ));
         }
-        Ok(())
-    });
+    }
 
     ask_expiry.as_ref().map(|a| a.validate()).transpose()?;
     bid_expiry.as_ref().map(|b| b.validate()).transpose()?;
