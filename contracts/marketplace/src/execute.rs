@@ -28,6 +28,9 @@ use sg_std::{Response, SubMsg, NATIVE_DENOM};
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+// bps fee can not exceed 100%
+const MAX_FEE_BPS: u64 = 10000;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
@@ -36,6 +39,17 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    if msg.max_finders_fee_bps > MAX_FEE_BPS {
+        return Err(ContractError::InvalidFindersFeeBps(msg.max_finders_fee_bps));
+    }
+    if msg.trading_fee_bps > MAX_FEE_BPS {
+        return Err(ContractError::InvalidTradingFeeBps(msg.trading_fee_bps));
+    }
+    if msg.bid_removal_reward_bps > MAX_FEE_BPS {
+        return Err(ContractError::InvalidBidRemovalRewardBps(
+            msg.bid_removal_reward_bps,
+        ));
+    }
 
     msg.ask_expiry.validate()?;
     msg.bid_expiry.validate()?;
@@ -406,6 +420,11 @@ pub fn execute_set_bid(
         return Err(ContractError::PriceTooSmall(bid_price));
     }
     params.bid_expiry.is_valid(&env.block, expires)?;
+    if let Some(finders_fee_bps) = finders_fee_bps {
+        if Decimal::percent(finders_fee_bps) > params.max_finders_fee_percent {
+            return Err(ContractError::InvalidFindersFeeBps(finders_fee_bps));
+        }
+    }
 
     let bidder = info.sender;
     let mut res = Response::new();

@@ -52,6 +52,12 @@ pub enum ContractError {
     #[error("Invalid finders fee bps: {0}")]
     InvalidFindersFeeBps(u64),
 
+    #[error("Invalid finders fee bps: {0}")]
+    InvalidTradingFeeBps(u64),
+
+    #[error("Invalid finders fee bps: {0}")]
+    InvalidBidRemovalRewardBps(u64),
+
     #[error("{0}")]
     BidPaymentError(#[from] PaymentError),
 

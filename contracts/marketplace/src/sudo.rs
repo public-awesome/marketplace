@@ -6,6 +6,9 @@ use cosmwasm_std::{entry_point, Addr, Decimal, DepsMut, Env, Uint128};
 use cw_utils::Duration;
 use sg_std::Response;
 
+// bps fee can not exceed 100%
+const MAX_FEE_BPS: u64 = 10000;
+
 pub struct ParamInfo {
     trading_fee_bps: Option<u64>,
     ask_expiry: Option<ExpiryRange>,
@@ -74,6 +77,23 @@ pub fn sudo_update_params(
         stale_bid_duration,
         bid_removal_reward_bps,
     } = param_info;
+    if let Some(max_finders_fee_bps) = max_finders_fee_bps {
+        if max_finders_fee_bps > MAX_FEE_BPS {
+            return Err(ContractError::InvalidFindersFeeBps(max_finders_fee_bps));
+        }
+    }
+    if let Some(trading_fee_bps) = trading_fee_bps {
+        if trading_fee_bps > MAX_FEE_BPS {
+            return Err(ContractError::InvalidTradingFeeBps(trading_fee_bps));
+        }
+    }
+    if let Some(bid_removal_reward_bps) = bid_removal_reward_bps {
+        if bid_removal_reward_bps > MAX_FEE_BPS {
+            return Err(ContractError::InvalidBidRemovalRewardBps(
+                bid_removal_reward_bps,
+            ));
+        }
+    }
 
     ask_expiry.as_ref().map(|a| a.validate()).transpose()?;
     bid_expiry.as_ref().map(|b| b.validate()).transpose()?;
