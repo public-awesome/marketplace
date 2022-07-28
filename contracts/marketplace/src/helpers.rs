@@ -32,7 +32,7 @@ pub fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>>
         .collect::<StdResult<Vec<_>>>()?;
     validated_addresses.sort();
     validated_addresses.dedup();
-    return Ok(validated_addresses);
+    Ok(validated_addresses)
 }
 
 #[derive(Error, Debug, PartialEq)]
@@ -86,7 +86,7 @@ mod tests {
         let deps = mock_dependencies();
         let adddreses = map_validate(
             &deps.api,
-            &vec![
+            &[
                 "operator1".to_string(),
                 "operator2".to_string(),
                 "operator3".to_string(),
@@ -97,7 +97,7 @@ mod tests {
 
         let adddreses = map_validate(
             &deps.api,
-            &vec![
+            &[
                 "operator1".to_string(),
                 "operator2".to_string(),
                 "operator3".to_string(),

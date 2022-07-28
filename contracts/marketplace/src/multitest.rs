@@ -2092,7 +2092,7 @@ fn try_sudo_update_params() {
     // query params
     let res: ParamsResponse = router
         .wrap()
-        .query_wasm_smart(marketplace.clone(), &query_params_msg)
+        .query_wasm_smart(marketplace, &query_params_msg)
         .unwrap();
     assert_eq!(
         res.params.operators,
@@ -2179,7 +2179,7 @@ fn try_add_too_many_sales_hooks() {
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook6".to_string(),
     };
-    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    let res = router.wasm_sudo(marketplace, &add_hook_msg);
     assert!(res.is_err());
 }
 
@@ -3088,7 +3088,7 @@ fn try_set_ask_reserve_for() {
         token_id: TOKEN_ID,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
-        reserve_for: Some(bidder.clone().to_string()),
+        reserve_for: Some(bidder.to_string()),
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
         finders_fee_bps: Some(0),
     };
@@ -3109,7 +3109,7 @@ fn try_set_ask_reserve_for() {
         token_id: TOKEN_ID,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
-        reserve_for: Some(bidder.clone().to_string()),
+        reserve_for: Some(bidder.to_string()),
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
         finders_fee_bps: Some(0),
     };
@@ -3126,7 +3126,7 @@ fn try_set_ask_reserve_for() {
         finder: None,
     };
     let res = router.execute_contract(
-        bidder2.clone(),
+        bidder2,
         marketplace.clone(),
         &set_bid_msg,
         &coins(110, NATIVE_DENOM),
@@ -3147,7 +3147,7 @@ fn try_set_ask_reserve_for() {
         finder: None,
     };
     let res = router.execute_contract(
-        bidder.clone(),
+        bidder,
         marketplace.clone(),
         &set_bid_msg,
         &coins(110, NATIVE_DENOM),
