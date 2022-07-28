@@ -54,7 +54,7 @@ pub fn instantiate(
     msg.bid_expiry.validate()?;
 
     match msg.stale_bid_duration {
-        Duration::Height(_) => Err(ContractError::InvalidDuration {})?,
+        Duration::Height(_) => return Err(ContractError::InvalidDuration {}),
         Duration::Time(_) => {}
     };
 
