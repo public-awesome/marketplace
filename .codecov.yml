@@ -1,0 +1,3 @@
+ignore:
+  - "contracts/marketplace/multitest.rs"
+  - "contracts/marketplace/unit_tests.rs"

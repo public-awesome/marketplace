@@ -131,6 +131,7 @@
           "required": [
             "collection",
             "expires",
+            "sale_type",
             "token_id"
           ],
           "properties": {
@@ -153,6 +154,9 @@
               ],
               "format": "uint64",
               "minimum": 0.0
+            },
+            "sale_type": {
+              "$ref": "#/definitions/SaleType"
             },
             "token_id": {
               "type": "integer",
@@ -320,13 +324,40 @@
       "additionalProperties": false
     },
     {
-      "description": "Priviledged operation to change the active state of an ask when an NFT is transferred",
+      "description": "Privileged operation to change the active state of an ask when an NFT is transferred",
       "type": "object",
       "required": [
         "sync_ask"
       ],
       "properties": {
         "sync_ask": {
+          "type": "object",
+          "required": [
+            "collection",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "type": "string"
+            },
+            "token_id": {
+              "type": "integer",
+              "format": "uint32",
+              "minimum": 0.0
+            }
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "description": "Privileged operation to remove stale or invalid asks.",
+      "type": "object",
+      "required": [
+        "remove_stale_ask"
+      ],
+      "properties": {
+        "remove_stale_ask": {
           "type": "object",
           "required": [
             "collection",

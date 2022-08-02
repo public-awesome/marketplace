@@ -1,10 +1,13 @@
 use crate::error::ContractError;
-use crate::helpers::{map_validate, ExpiryRange};
+use crate::helpers::ExpiryRange;
 use crate::msg::SudoMsg;
 use crate::state::{ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS};
 use cosmwasm_std::{entry_point, Addr, Decimal, DepsMut, Env, Uint128};
 use cw_utils::Duration;
 use sg_std::Response;
+
+// bps fee can not exceed 100%
+const MAX_FEE_BPS: u64 = 10000;
 
 pub struct ParamInfo {
     trading_fee_bps: Option<u64>,
@@ -45,6 +48,10 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
                 bid_removal_reward_bps,
             },
         ),
+        SudoMsg::AddOperator { operator } => sudo_add_operator(deps, api.addr_validate(&operator)?),
+        SudoMsg::RemoveOperator { operator } => {
+            sudo_remove_operator(deps, api.addr_validate(&operator)?)
+        }
         SudoMsg::AddSaleHook { hook } => sudo_add_sale_hook(deps, api.addr_validate(&hook)?),
         SudoMsg::AddAskHook { hook } => sudo_add_ask_hook(deps, env, api.addr_validate(&hook)?),
         SudoMsg::AddBidHook { hook } => sudo_add_bid_hook(deps, env, api.addr_validate(&hook)?),
@@ -64,12 +71,29 @@ pub fn sudo_update_params(
         trading_fee_bps,
         ask_expiry,
         bid_expiry,
-        operators,
+        operators: _operators,
         max_finders_fee_bps,
         min_price,
         stale_bid_duration,
         bid_removal_reward_bps,
     } = param_info;
+    if let Some(max_finders_fee_bps) = max_finders_fee_bps {
+        if max_finders_fee_bps > MAX_FEE_BPS {
+            return Err(ContractError::InvalidFindersFeeBps(max_finders_fee_bps));
+        }
+    }
+    if let Some(trading_fee_bps) = trading_fee_bps {
+        if trading_fee_bps > MAX_FEE_BPS {
+            return Err(ContractError::InvalidTradingFeeBps(trading_fee_bps));
+        }
+    }
+    if let Some(bid_removal_reward_bps) = bid_removal_reward_bps {
+        if bid_removal_reward_bps > MAX_FEE_BPS {
+            return Err(ContractError::InvalidBidRemovalRewardBps(
+                bid_removal_reward_bps,
+            ));
+        }
+    }
 
     ask_expiry.as_ref().map(|a| a.validate()).transpose()?;
     bid_expiry.as_ref().map(|b| b.validate()).transpose()?;
@@ -82,10 +106,6 @@ pub fn sudo_update_params(
 
     params.ask_expiry = ask_expiry.unwrap_or(params.ask_expiry);
     params.bid_expiry = bid_expiry.unwrap_or(params.bid_expiry);
-
-    if let Some(operators) = operators {
-        params.operators = map_validate(deps.api, &operators)?;
-    }
 
     params.max_finders_fee_percent = max_finders_fee_bps
         .map(Decimal::percent)
@@ -104,6 +124,34 @@ pub fn sudo_update_params(
     SUDO_PARAMS.save(deps.storage, &params)?;
 
     Ok(Response::new().add_attribute("action", "update_params"))
+}
+
+pub fn sudo_add_operator(deps: DepsMut, operator: Addr) -> Result<Response, ContractError> {
+    let mut params = SUDO_PARAMS.load(deps.storage)?;
+    if !params.operators.iter().any(|o| o == &operator) {
+        params.operators.push(operator.clone());
+    } else {
+        return Err(ContractError::OperatorAlreadyRegistered {});
+    }
+    SUDO_PARAMS.save(deps.storage, &params)?;
+    let res = Response::new()
+        .add_attribute("action", "add_operator")
+        .add_attribute("operator", operator);
+    Ok(res)
+}
+
+pub fn sudo_remove_operator(deps: DepsMut, operator: Addr) -> Result<Response, ContractError> {
+    let mut params = SUDO_PARAMS.load(deps.storage)?;
+    if let Some(i) = params.operators.iter().position(|o| o == &operator) {
+        params.operators.remove(i);
+    } else {
+        return Err(ContractError::OperatorNotRegistered {});
+    }
+    SUDO_PARAMS.save(deps.storage, &params)?;
+    let res = Response::new()
+        .add_attribute("action", "remove_operator")
+        .add_attribute("operator", operator);
+    Ok(res)
 }
 
 pub fn sudo_add_sale_hook(deps: DepsMut, hook: Addr) -> Result<Response, ContractError> {

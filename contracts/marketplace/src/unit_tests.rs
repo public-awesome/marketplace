@@ -121,7 +121,7 @@ fn setup_contract(deps: DepsMut) {
         sale_hook: None,
         max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
         min_price: Uint128::from(5u128),
-        stale_bid_duration: Duration::Height(100),
+        stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
     };
     let info = mock_info(CREATOR, &[]);
@@ -141,7 +141,7 @@ fn proper_initialization() {
         sale_hook: None,
         max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
         min_price: Uint128::from(5u128),
-        stale_bid_duration: Duration::Height(100),
+        stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
@@ -149,6 +149,80 @@ fn proper_initialization() {
     // we can just call .unwrap() to assert this was a success
     let res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
     assert_eq!(0, res.messages.len());
+}
+
+#[test]
+fn bad_fees_initialization() {
+    let mut deps = mock_dependencies();
+
+    // throw error if trading fee bps > 100%
+    let msg = InstantiateMsg {
+        operators: vec!["operator".to_string()],
+        trading_fee_bps: 10001,
+        ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        sale_hook: None,
+        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
+        min_price: Uint128::from(5u128),
+        stale_bid_duration: Duration::Height(100),
+        bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+    };
+    let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
+    let res = instantiate(deps.as_mut(), mock_env(), info, msg);
+    assert!(res.is_err());
+
+    // throw error if bid removal reward bps > 100%
+    let msg = InstantiateMsg {
+        operators: vec!["operator".to_string()],
+        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+        ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        sale_hook: None,
+        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
+        min_price: Uint128::from(5u128),
+        stale_bid_duration: Duration::Height(100),
+        bid_removal_reward_bps: 10001,
+    };
+    let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
+    let res = instantiate(deps.as_mut(), mock_env(), info, msg);
+    assert!(res.is_err());
+
+    // throw error if finders fee bps > 100%
+    let msg = InstantiateMsg {
+        operators: vec!["operator".to_string()],
+        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+        ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        sale_hook: None,
+        max_finders_fee_bps: MAX_FINDERS_FEE_BPS + 1,
+        min_price: Uint128::from(5u128),
+        stale_bid_duration: Duration::Height(100),
+        bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+    };
+    let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
+    let res = instantiate(deps.as_mut(), mock_env(), info, msg);
+    assert!(res.is_err());
+}
+
+#[test]
+fn improper_initialization_stale_bid() {
+    let mut deps = mock_dependencies();
+
+    let msg = InstantiateMsg {
+        operators: vec!["operator".to_string()],
+        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+        ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        sale_hook: None,
+        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
+        min_price: Uint128::from(5u128),
+        stale_bid_duration: Duration::Height(100),
+        bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+    };
+    let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
+
+    // we can just call .unwrap() to assert this was a success
+    instantiate(deps.as_mut(), mock_env(), info, msg).unwrap_err();
 }
 
 #[test]
@@ -160,6 +234,7 @@ fn try_set_bid() {
     let bidder = mock_info("bidder", &coins(1000, NATIVE_DENOM));
 
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -175,6 +250,7 @@ fn try_set_bid() {
     );
 
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
         collection: COLLECTION.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,

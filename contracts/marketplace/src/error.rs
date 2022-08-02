@@ -19,6 +19,9 @@ pub enum ContractError {
     #[error("InvalidPrice")]
     InvalidPrice {},
 
+    #[error("InvalidDuration")]
+    InvalidDuration {},
+
     #[error("AskExpired")]
     AskExpired {},
 
@@ -28,11 +31,17 @@ pub enum ContractError {
     #[error("AskUnchanged")]
     AskUnchanged {},
 
+    #[error("AskNotFound")]
+    AskNotFound {},
+
     #[error("BidExpired")]
     BidExpired {},
 
     #[error("BidNotStale")]
     BidNotStale {},
+
+    #[error("InvalidFinder: {0}")]
+    InvalidFinder(String),
 
     #[error("PriceTooSmall: {0}")]
     PriceTooSmall(Uint128),
@@ -43,6 +52,12 @@ pub enum ContractError {
     #[error("Invalid finders fee bps: {0}")]
     InvalidFindersFeeBps(u64),
 
+    #[error("Invalid finders fee bps: {0}")]
+    InvalidTradingFeeBps(u64),
+
+    #[error("Invalid finders fee bps: {0}")]
+    InvalidBidRemovalRewardBps(u64),
+
     #[error("{0}")]
     BidPaymentError(#[from] PaymentError),
 
@@ -51,4 +66,16 @@ pub enum ContractError {
 
     #[error("{0}")]
     ExpiryRange(#[from] ExpiryRangeError),
+
+    #[error("Invalid reserve_for address: {reason}")]
+    InvalidReserveAddress { reason: String },
+
+    #[error("Given operator address already registered as an operator")]
+    OperatorAlreadyRegistered {},
+
+    #[error("Given operator address is not registered as an operator")]
+    OperatorNotRegistered {},
+
+    #[error("InvalidContractVersion")]
+    InvalidContractVersion {},
 }

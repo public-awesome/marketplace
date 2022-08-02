@@ -63,6 +63,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         expires: Timestamp,
+        sale_type: SaleType,
         finder: Option<String>,
         finders_fee_bps: Option<u64>,
     },
@@ -93,8 +94,13 @@ pub enum ExecuteMsg {
         bidder: String,
         finder: Option<String>,
     },
-    /// Priviledged operation to change the active state of an ask when an NFT is transferred
+    /// Privileged operation to change the active state of an ask when an NFT is transferred
     SyncAsk {
+        collection: String,
+        token_id: TokenId,
+    },
+    /// Privileged operation to remove stale or invalid asks.
+    RemoveStaleAsk {
         collection: String,
         token_id: TokenId,
     },
@@ -123,18 +129,38 @@ pub enum SudoMsg {
         stale_bid_duration: Option<u64>,
         bid_removal_reward_bps: Option<u64>,
     },
+    /// Add a new operator
+    /// Remove operator
+    AddOperator {
+        operator: String,
+    },
+    RemoveOperator {
+        operator: String,
+    },
     /// Add a new hook to be informed of all asks
-    AddAskHook { hook: String },
+    AddAskHook {
+        hook: String,
+    },
     /// Add a new hook to be informed of all bids
-    AddBidHook { hook: String },
+    AddBidHook {
+        hook: String,
+    },
     /// Remove a ask hook
-    RemoveAskHook { hook: String },
+    RemoveAskHook {
+        hook: String,
+    },
     /// Remove a bid hook
-    RemoveBidHook { hook: String },
+    RemoveBidHook {
+        hook: String,
+    },
     /// Add a new hook to be informed of all trades
-    AddSaleHook { hook: String },
+    AddSaleHook {
+        hook: String,
+    },
     /// Remove a trade hook
-    RemoveSaleHook { hook: String },
+    RemoveSaleHook {
+        hook: String,
+    },
 }
 
 pub type Collection = String;
