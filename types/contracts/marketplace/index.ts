@@ -17,6 +17,7 @@ export * from "./bid_response";
 // dedup emptied this file
 // export * from "./bid";
 export * from "./bids_by_bidder_response";
+export * from "./bids_by_bidder_sorted_by_expiration_response";
 export * from "./bids_response";
 export * from "./bids_sorted_by_price_response";
 // dedup emptied this file
@@ -25,6 +26,7 @@ export * from "./collection_bid_response";
 // dedup emptied this file
 // export * from "./collection_bid";
 export * from "./collection_bids_by_bidder_response";
+export * from "./collection_bids_by_bidder_sorted_by_expiration_response";
 export * from "./collection_bids_sorted_by_price_response";
 // dedup emptied this file
 // export * from "./collection_offset";
