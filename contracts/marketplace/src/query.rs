@@ -39,6 +39,18 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             start_after,
             limit,
         )?),
+        QueryMsg::ReverseAsks {
+            collection,
+            include_inactive,
+            start_before,
+            limit,
+        } => to_binary(&reverse_query_asks(
+            deps,
+            api.addr_validate(&collection)?,
+            include_inactive,
+            start_before,
+            limit,
+        )?),
         QueryMsg::AsksSortedByPrice {
             collection,
             include_inactive,
@@ -235,6 +247,42 @@ pub fn query_asks(
             ))),
             None,
             Order::Ascending,
+        )
+        .filter(|item| match item {
+            Ok((_, ask)) => match include_inactive {
+                Some(true) => true,
+                _ => ask.is_active,
+            },
+            Err(_) => true,
+        })
+        .take(limit)
+        .map(|res| res.map(|item| item.1))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(AsksResponse { asks })
+}
+
+pub fn reverse_query_asks(
+    deps: Deps,
+    collection: Addr,
+    include_inactive: Option<bool>,
+    start_before: Option<TokenId>,
+    limit: Option<u32>,
+) -> StdResult<AsksResponse> {
+    let limit = limit.unwrap_or(DEFAULT_QUERY_LIMIT).min(MAX_QUERY_LIMIT) as usize;
+
+    let asks = asks()
+        .idx
+        .collection
+        .prefix(collection.clone())
+        .range(
+            deps.storage,
+            None,
+            Some(Bound::exclusive((
+                collection,
+                start_before.unwrap_or_default(),
+            ))),
+            Order::Descending,
         )
         .filter(|item| match item {
             Ok((_, ask)) => match include_inactive {
