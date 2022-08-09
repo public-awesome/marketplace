@@ -31,6 +31,7 @@ collection: string
 expires: Timestamp
 finder?: (string | null)
 finders_fee_bps?: (number | null)
+sale_type: SaleType
 token_id: number
 [k: string]: unknown
 }
@@ -70,6 +71,12 @@ token_id: number
 }
 } | {
 sync_ask: {
+collection: string
+token_id: number
+[k: string]: unknown
+}
+} | {
+remove_stale_ask: {
 collection: string
 token_id: number
 [k: string]: unknown
