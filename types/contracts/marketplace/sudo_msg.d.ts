@@ -13,6 +13,16 @@ trading_fee_bps?: (number | null)
 [k: string]: unknown
 }
 } | {
+add_operator: {
+operator: string
+[k: string]: unknown
+}
+} | {
+remove_operator: {
+operator: string
+[k: string]: unknown
+}
+} | {
 add_ask_hook: {
 hook: string
 [k: string]: unknown

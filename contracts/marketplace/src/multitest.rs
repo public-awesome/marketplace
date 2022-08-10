@@ -18,7 +18,7 @@ use sg_multi_test::StargazeApp;
 use sg_std::StargazeMsgWrapper;
 
 use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
-use cw_utils::Duration;
+use cw_utils::{Duration, Expiration};
 use sg721::msg::{InstantiateMsg as Sg721InstantiateMsg, RoyaltyInfoResponse};
 use sg721::state::CollectionInfo;
 use sg_std::NATIVE_DENOM;
@@ -72,7 +72,7 @@ fn setup_contracts(
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
     let msg = crate::msg::InstantiateMsg {
-        operators: vec!["operator".to_string()],
+        operators: vec!["operator1".to_string()],
         trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
@@ -298,6 +298,14 @@ fn transfer(
     assert!(res.is_ok());
 }
 
+fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
+    let transfer_msg = Cw721ExecuteMsg::<Empty>::Burn {
+        token_id: token_id.to_string(),
+    };
+    let res = router.execute_contract(creator.clone(), collection.clone(), &transfer_msg, &[]);
+    assert!(res.is_ok());
+}
+
 #[test]
 fn try_set_accept_bid() {
     let mut router = custom_mock_app();
@@ -354,7 +362,7 @@ fn try_set_accept_bid() {
 
     // Should not error on admin updating active state to false
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -364,7 +372,7 @@ fn try_set_accept_bid() {
     // Should error when ask is unchanged
     router
         .execute_contract(
-            Addr::unchecked("operator"),
+            Addr::unchecked("operator1"),
             marketplace.clone(),
             &update_ask_state,
             &[],
@@ -390,7 +398,7 @@ fn try_set_accept_bid() {
         token_id: TOKEN_ID,
     };
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -408,6 +416,7 @@ fn try_set_accept_bid() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -485,6 +494,7 @@ fn try_set_accept_bid_no_ask() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -547,6 +557,91 @@ fn try_set_accept_bid_no_ask() {
 }
 
 #[test]
+fn try_set_accept_bid_high_fees() {
+    // Setup initial accounts
+    // Instantiate and configure contracts
+    // Setup bid with high finders fee, network fee, royalty share so seller gets nothing
+    // Should throw error
+    let mut router = custom_mock_app();
+    let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+    let creator_funds: Vec<Coin> = coins(CREATION_FEE, NATIVE_DENOM);
+
+    router
+        .sudo(CwSudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: creator.to_string(),
+                amount: creator_funds,
+            }
+        }))
+        .map_err(|err| println!("{:?}", err))
+        .ok();
+
+    let sg721_id = router.store_code(contract_sg721());
+    let msg = Sg721InstantiateMsg {
+        name: String::from("Test Coin"),
+        symbol: String::from("TEST"),
+        minter: creator.to_string(),
+        collection_info: CollectionInfo {
+            creator: creator.to_string(),
+            description: String::from("Stargaze Monkeys"),
+            image:
+                "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
+                    .to_string(),
+            external_link: Some("https://example.com/external.html".to_string()),
+            royalty_info: Some(RoyaltyInfoResponse {
+                payment_address: creator.to_string(),
+                share: Decimal::percent(100),
+            }),
+        },
+    };
+    let collection = router
+        .instantiate_contract(
+            sg721_id,
+            creator.clone(),
+            &msg,
+            &coins(CREATION_FEE, NATIVE_DENOM),
+            "NFT",
+            None,
+        )
+        .unwrap();
+    println!("collection: {:?}", collection);
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: Some(10),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: Some(owner.to_string()),
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    let accept_bid_msg = ExecuteMsg::AcceptBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        bidder: bidder.to_string(),
+        finder: None,
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        "Generic error: Fees exceed payment".to_string()
+    );
+}
+
+#[test]
 fn try_update_ask() {
     let mut router = custom_mock_app();
 
@@ -599,6 +694,20 @@ fn try_update_ask() {
     router
         .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
         .unwrap_err();
+
+    // can not update ask price for expired ask
+    let time = router.block_info().time;
+    setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).seconds());
+    let update_ask = ExecuteMsg::UpdateAskPrice {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(150, NATIVE_DENOM),
+    };
+    router
+        .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
+        .unwrap_err();
+    // reset time to original
+    setup_block_time(&mut router, time.seconds());
 
     // confirm ask removed
     let remove_ask_msg = ExecuteMsg::RemoveAsk {
@@ -1105,6 +1214,7 @@ fn try_query_sorted_bids() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1120,6 +1230,7 @@ fn try_query_sorted_bids() {
     assert!(res.is_ok());
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
         finders_fee_bps: None,
@@ -1135,6 +1246,7 @@ fn try_query_sorted_bids() {
     assert!(res.is_ok());
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 2,
         finders_fee_bps: None,
@@ -1186,6 +1298,7 @@ fn try_query_sorted_bids() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1304,6 +1417,7 @@ fn try_query_bids() {
 
     // Bidder makes bids
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1319,6 +1433,7 @@ fn try_query_bids() {
     assert!(res.is_ok());
 
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
         finders_fee_bps: None,
@@ -1435,6 +1550,7 @@ fn auto_accept_bid() {
         .map_err(|err| println!("{:?}", err))
         .ok();
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1452,6 +1568,7 @@ fn auto_accept_bid() {
 
     // Bidder makes bid that meets the ask criteria
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1525,6 +1642,7 @@ fn try_reserved_ask() {
 
     // Non-bidder makes bid that meets the ask price
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1546,6 +1664,7 @@ fn try_reserved_ask() {
 
     // Bidder makes bid that meets ask price
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1604,6 +1723,7 @@ fn try_ask_with_finders_fee() {
 
     // Bidder makes bid that meets ask price
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1661,6 +1781,7 @@ fn remove_bid_refund() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1733,6 +1854,7 @@ fn new_bid_refund() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1763,6 +1885,7 @@ fn new_bid_refund() {
 
     // Bidder makes higher bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1823,7 +1946,7 @@ fn try_royalties() {
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
     let msg = crate::msg::InstantiateMsg {
-        operators: vec!["operator".to_string()],
+        operators: vec!["operator1".to_string()],
         trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
@@ -1892,6 +2015,7 @@ fn try_royalties() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1960,12 +2084,12 @@ fn try_sudo_update_params() {
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: Some(5),
         ask_expiry: Some(ExpiryRange::new(1, 2)),
-        bid_expiry: None,
+        bid_expiry: Some(ExpiryRange::new(3, 4)),
         operators: Some(vec!["operator".to_string()]),
         max_finders_fee_bps: None,
         min_price: Some(Uint128::from(5u128)),
-        stale_bid_duration: None,
-        bid_removal_reward_bps: None,
+        stale_bid_duration: Some(10),
+        bid_removal_reward_bps: Some(20),
     };
     let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
     assert!(res.is_ok());
@@ -1973,11 +2097,42 @@ fn try_sudo_update_params() {
     let query_params_msg = QueryMsg::Params {};
     let res: ParamsResponse = router
         .wrap()
-        .query_wasm_smart(marketplace, &query_params_msg)
+        .query_wasm_smart(marketplace.clone(), &query_params_msg)
         .unwrap();
     assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
     assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
-    assert_eq!(res.params.operators, vec!["operator".to_string()]);
+    assert_eq!(res.params.bid_expiry, ExpiryRange::new(3, 4));
+    assert_eq!(res.params.operators, vec!["operator1".to_string()]);
+    assert_eq!(res.params.stale_bid_duration, Duration::Time(10));
+    assert_eq!(res.params.bid_removal_reward_percent, Decimal::percent(20));
+
+    let update_params_msg = SudoMsg::UpdateParams {
+        trading_fee_bps: None,
+        ask_expiry: None,
+        bid_expiry: None,
+        operators: Some(vec![
+            "operator3".to_string(),
+            "operator1".to_string(),
+            "operator2".to_string(),
+            "operator1".to_string(),
+            "operator4".to_string(),
+        ]),
+        max_finders_fee_bps: None,
+        min_price: None,
+        stale_bid_duration: None,
+        bid_removal_reward_bps: None,
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
+    assert!(res.is_ok());
+    // query params
+    let res: ParamsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace, &query_params_msg)
+        .unwrap();
+    assert_eq!(
+        res.params.operators,
+        vec![Addr::unchecked("operator1".to_string()),]
+    );
 }
 
 #[test]
@@ -2012,6 +2167,51 @@ fn try_add_remove_sales_hooks() {
         .query_wasm_smart(marketplace, &query_hooks_msg)
         .unwrap();
     assert!(res.hooks.is_empty());
+}
+
+#[test]
+fn try_add_too_many_sales_hooks() {
+    let mut router = custom_mock_app();
+    // Setup intial accounts
+    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+    // Instantiate and configure contracts
+    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook1".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook2".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook3".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook4".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook5".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook6".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace, &add_hook_msg);
+    assert!(res.is_err());
 }
 
 #[test]
@@ -2056,7 +2256,7 @@ fn try_init_hook() {
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
     let msg = crate::msg::InstantiateMsg {
-        operators: vec!["operator".to_string()],
+        operators: vec!["operator1".to_string()],
         trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
@@ -2147,6 +2347,7 @@ fn try_hook_was_run() {
     );
     // Bidder makes bid that meets the ask criteria
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -2241,6 +2442,20 @@ fn try_collection_bids() {
         &coins(150, NATIVE_DENOM),
     );
     assert!(res.is_ok());
+
+    // An invalid collection bid is attempted by the bidder
+    let set_collection_bid = ExecuteMsg::SetCollectionBid {
+        collection: collection.to_string(),
+        finders_fee_bps: Some(10100),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_collection_bid,
+        &coins(151, NATIVE_DENOM),
+    );
+    assert!(res.is_err());
 
     // A collection bid is made by bidder2
     let set_collection_bid = ExecuteMsg::SetCollectionBid {
@@ -2431,6 +2646,7 @@ fn try_remove_stale_bid() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -2445,7 +2661,7 @@ fn try_remove_stale_bid() {
     );
     assert!(res.is_ok());
 
-    let operator = Addr::unchecked("operator".to_string());
+    let operator = Addr::unchecked("operator1".to_string());
 
     // Try to remove the bid (not yet stale) as an operator
     let remove_msg = ExecuteMsg::RemoveStaleBid {
@@ -2500,7 +2716,7 @@ fn try_remove_stale_collection_bid() {
     );
     assert!(res.is_ok());
 
-    let operator = Addr::unchecked("operator".to_string());
+    let operator = Addr::unchecked("operator1".to_string());
 
     // Try to remove the collection bid (not yet stale) as an operator
     let remove_col_msg = ExecuteMsg::RemoveStaleCollectionBid {
@@ -2535,8 +2751,31 @@ fn try_bid_finders_fee() {
     mint(&mut router, &creator, &collection, TOKEN_ID);
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
+    // Bidder makes failed bid with a large finder's fee
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: Some(5000),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let err = router
+        .execute_contract(
+            bidder.clone(),
+            marketplace.clone(),
+            &set_bid_msg,
+            &coins(100, NATIVE_DENOM),
+        )
+        .unwrap_err();
+    assert_eq!(
+        err.source().unwrap().to_string(),
+        ContractError::InvalidFindersFeeBps(5000).to_string()
+    );
+
     // Bidder makes bid with a finder's fee
     let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: Some(500),
@@ -2565,6 +2804,39 @@ fn try_bid_finders_fee() {
 
     let finder_balances = router.wrap().query_all_balances(finder).unwrap();
     assert_eq!(finder_balances, coins(5, NATIVE_DENOM));
+}
+
+#[test]
+fn try_bidder_cannot_be_finder() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // Bidder makes bid with a finder's fee
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: Some(500),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: Some(bidder.to_string()),
+    };
+    router
+        .execute_contract(
+            bidder,
+            marketplace.clone(),
+            &set_bid_msg,
+            &coins(100, NATIVE_DENOM),
+        )
+        .unwrap_err();
 }
 
 #[test]
@@ -2603,7 +2875,7 @@ fn try_ask_with_filter_inactive() {
         token_id: TOKEN_ID,
     };
     let res = router.execute_contract(
-        Addr::unchecked("operator"),
+        Addr::unchecked("operator1"),
         marketplace.clone(),
         &update_ask_state,
         &[],
@@ -2645,4 +2917,606 @@ fn try_ask_with_filter_inactive() {
         .query_wasm_smart(marketplace.clone(), &ask_msg)
         .unwrap();
     assert_eq!(res.asks.len(), 1);
+
+    // updating price of inactive ask throws error
+    let update_ask = ExecuteMsg::UpdateAskPrice {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(200, NATIVE_DENOM),
+    };
+    router
+        .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
+        .unwrap_err();
+}
+
+#[test]
+fn try_sync_ask() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // An ask is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(500), // 5%
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
+    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+
+    let update_ask_state = ExecuteMsg::SyncAsk {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+    };
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_ok());
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+
+    // transfer nft back
+    transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
+
+    // Transfer Back should have unchanged operation (still not active)
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_err());
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+
+    // Approving again should have a success sync ask after
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // SyncAsk should be ok
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_ok());
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 1);
+
+    // Approve for shorter period than ask
+    let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+        spender: marketplace.to_string(),
+        token_id: TOKEN_ID.to_string(),
+        expires: Some(Expiration::AtTime(
+            router.block_info().time.plus_seconds(MIN_EXPIRY - 10),
+        )),
+    };
+    let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
+    assert!(res.is_ok());
+
+    // SyncAsk should fail (Unchanged)
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_err());
+
+    let expiry_time = router
+        .block_info()
+        .time
+        .plus_seconds(MIN_EXPIRY - 5)
+        .seconds();
+    // move clock before ask expire but after approval expiration time
+    setup_block_time(&mut router, expiry_time);
+
+    // SyncAsk should succeed as approval is no longer valid
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &update_ask_state,
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // No more valid asks
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+}
+
+#[test]
+fn try_set_ask_reserve_for() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // Can't reserve to themselves.
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(110, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: Some(creator.clone().to_string()),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        finders_fee_bps: Some(0),
+    };
+    let err = router
+        .execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[])
+        .unwrap_err();
+    assert_eq!(
+        err.source().unwrap().to_string(),
+        ContractError::InvalidReserveAddress {
+            reason: "cannot reserve to the same address".to_owned(),
+        }
+        .to_string()
+    );
+    // Can't reserve for auction sale type
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(110, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: Some(bidder.to_string()),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        finders_fee_bps: Some(0),
+    };
+    let err = router
+        .execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[])
+        .unwrap_err();
+    assert_eq!(
+        err.source().unwrap().to_string(),
+        ContractError::InvalidReserveAddress {
+            reason: "can only reserve for fixed_price sales".to_owned(),
+        }
+        .to_string()
+    );
+
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(110, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: Some(bidder.to_string()),
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    let bidder2 = setup_second_bidder_account(&mut router).unwrap();
+    // Bidder2 makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder2,
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(110, NATIVE_DENOM),
+    );
+    assert!(res.is_err());
+    let err = res.unwrap_err();
+    assert_eq!(
+        err.source().unwrap().to_string(),
+        ContractError::TokenReserved {}.to_string()
+    );
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder,
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(110, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+}
+
+#[test]
+fn try_remove_stale_ask() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // An ask is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(500), // 5%
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    // trying to remove a valid ask
+    let remove_ask = ExecuteMsg::RemoveStaleAsk {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+    };
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_err());
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 1);
+
+    // burn the token
+    burn(&mut router, &creator, &collection, TOKEN_ID);
+
+    // try again to remove the ask
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_ok());
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // set ask again
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
+    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_err());
+
+    // transfer nft back
+    transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
+
+    // move time forward
+    let time = router.block_info().time;
+    setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).seconds());
+
+    // remove stale ask
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_ok());
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+}
+
+#[test]
+fn try_add_and_remove_operators() {
+    let mut router = custom_mock_app();
+    // Setup intial accounts
+    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+    // Instantiate and configure contracts
+    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+
+    let update_params_msg = SudoMsg::UpdateParams {
+        trading_fee_bps: Some(5),
+        ask_expiry: Some(ExpiryRange::new(1, 2)),
+        bid_expiry: Some(ExpiryRange::new(3, 4)),
+        operators: Some(vec!["operator2".to_string()]),
+        max_finders_fee_bps: Some(1),
+        min_price: Some(Uint128::from(5u128)),
+        stale_bid_duration: Some(10),
+        bid_removal_reward_bps: Some(20),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
+    assert!(res.is_ok());
+
+    // add single operator
+    let add_operator_msg = SudoMsg::AddOperator {
+        operator: "operator2".to_string(),
+    };
+
+    let res = router.wasm_sudo(marketplace.clone(), &add_operator_msg);
+    assert!(res.is_ok());
+
+    let query_params_msg = QueryMsg::Params {};
+    let mut res: ParamsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_params_msg)
+        .unwrap();
+    assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
+    assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
+    res.params.operators.sort();
+    assert_eq!(
+        res.params.operators,
+        vec![
+            Addr::unchecked("operator1".to_string()),
+            Addr::unchecked("operator2".to_string()),
+        ]
+    );
+
+    // remove single operator
+    let add_operator_msg = SudoMsg::RemoveOperator {
+        operator: "operator1".to_string(),
+    };
+
+    let res = router.wasm_sudo(marketplace.clone(), &add_operator_msg);
+    assert!(res.is_ok());
+
+    let query_params_msg = QueryMsg::Params {};
+    let res: ParamsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_params_msg)
+        .unwrap();
+    assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
+    assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
+
+    assert_eq!(res.params.trading_fee_percent, Decimal::percent(5));
+    assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
+    assert_eq!(res.params.bid_expiry, ExpiryRange::new(3, 4));
+    assert_eq!(res.params.operators, vec!["operator2".to_string()]);
+    assert_eq!(res.params.stale_bid_duration, Duration::Time(10));
+    assert_eq!(res.params.min_price, Uint128::from(5u128));
+    assert_eq!(res.params.bid_removal_reward_percent, Decimal::percent(20));
+    assert_eq!(
+        res.params.operators,
+        vec![Addr::unchecked("operator2".to_string()),]
+    );
+
+    // remove unexisting operator
+    let remove_operator = SudoMsg::RemoveOperator {
+        operator: "operator1".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace.clone(), &remove_operator);
+    assert!(res.is_err());
+    assert_eq!(
+        res.unwrap_err().to_string(),
+        ContractError::OperatorNotRegistered {}.to_string()
+    );
+
+    // add existing operator
+    let add_operator_msg = SudoMsg::AddOperator {
+        operator: "operator2".to_string(),
+    };
+    let res = router.wasm_sudo(marketplace, &add_operator_msg);
+    assert!(res.is_err());
+    assert_eq!(
+        res.unwrap_err().to_string(),
+        ContractError::OperatorAlreadyRegistered {}.to_string()
+    );
+}
+
+#[test]
+fn try_bid_sale_type() {
+    let mut router = custom_mock_app();
+
+    // Setup intial accounts
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+
+    // Instantiate and configure contracts
+    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+
+    // An asking price is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    assert!(res.is_ok());
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    // Check creator has been paid yet
+    let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
+    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+
+    // Check contract has zero balance
+    let contract_balances = router
+        .wrap()
+        .query_all_balances(marketplace.clone())
+        .unwrap();
+    assert_eq!(contract_balances, []);
+
+    transfer(&mut router, &bidder, &creator, &collection, TOKEN_ID);
+
+    let bidder2 = setup_second_bidder_account(&mut router).unwrap();
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder2.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+
+    assert!(res.is_err());
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        ContractError::AskNotFound {}.to_string()
+    );
+
+    // Bidder makes bid with Auction
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder2.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+
+    assert!(res.is_ok());
+
+    let query_bids_msg = QueryMsg::BidsByBidder {
+        bidder: bidder2.to_string(),
+        limit: None,
+        start_after: None,
+    };
+    let res: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_bids_msg)
+        .unwrap();
+    assert_eq!(res.bids.len(), 1);
+    assert_eq!(res.bids[0].price.u128(), 100u128);
 }
