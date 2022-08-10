@@ -455,8 +455,8 @@ fn try_set_accept_bid() {
 
     // Check money is transfered
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (fee)
-    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+    // 100  - 2 (fee) - 5 (listing fee)
+    assert_eq!(creator_native_balances, coins(100 - 2 - 5, NATIVE_DENOM));
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -533,8 +533,8 @@ fn try_set_accept_bid_no_ask() {
 
     // Check money is transfered
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (fee)
-    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+    // 100  - 2 (fee) - 5 (listing fee)
+    assert_eq!(creator_native_balances, coins(100 - 2 - 5, NATIVE_DENOM));
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -1590,8 +1590,8 @@ fn auto_accept_bid() {
 
     // Check money is transfered
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (fee)
-    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+    // 100  - 2 (fee) - 5 (listing fee)
+    assert_eq!(creator_native_balances, coins(100 - 2 - 5, NATIVE_DENOM));
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -1741,8 +1741,8 @@ fn try_ask_with_finders_fee() {
 
     // Check money is transfered
     let creator_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (network fee) - 5 (finders fee)
-    assert_eq!(creator_balances, coins(100 - 2 - 5, NATIVE_DENOM));
+    // 100  - 2 (network fee) - 5 (finders fee) - 5 (listing fee)
+    assert_eq!(creator_balances, coins(100 - 2 - 5 - 5, NATIVE_DENOM));
     let bidder_balances = router.wrap().query_all_balances(bidder).unwrap();
     assert_eq!(
         bidder_balances,
@@ -2039,8 +2039,11 @@ fn try_royalties() {
         coins(INITIAL_BALANCE + 10, NATIVE_DENOM)
     );
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100 - 10 (royalties) - 2 (fee)
-    assert_eq!(creator_native_balances, coins(100 - 10 - 2, NATIVE_DENOM));
+    // 100 - 10 (royalties) - 2 (fee) - 5 (listing fee)
+    assert_eq!(
+        creator_native_balances,
+        coins(100 - 10 - 2 - 5, NATIVE_DENOM)
+    );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -3462,7 +3465,7 @@ fn try_bid_sale_type() {
 
     // Check creator has been paid yet
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+    assert_eq!(creator_native_balances, coins(100 - 2 - 5, NATIVE_DENOM));
 
     // Check contract has zero balance
     let contract_balances = router

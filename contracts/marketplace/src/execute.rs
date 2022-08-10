@@ -1021,7 +1021,8 @@ fn payout(
     let params = SUDO_PARAMS.load(deps.storage)?;
 
     // Append Fair Burn message
-    let network_fee = payment * params.trading_fee_percent / Uint128::from(100u128);
+    let network_fee =
+        payment * params.trading_fee_percent / Uint128::from(100u128) + params.listing_fee;
     fair_burn(network_fee.u128(), None, res);
 
     let collection_info: CollectionInfoResponse = deps
