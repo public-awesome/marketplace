@@ -78,6 +78,7 @@
         "ask_expiry",
         "bid_expiry",
         "bid_removal_reward_percent",
+        "listing_fee",
         "max_finders_fee_percent",
         "min_price",
         "operators",
@@ -106,6 +107,14 @@
           "allOf": [
             {
               "$ref": "#/definitions/Decimal"
+            }
+          ]
+        },
+        "listing_fee": {
+          "description": "Listing fee to reduce spam",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint128"
             }
           ]
         },

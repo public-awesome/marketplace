@@ -81,6 +81,7 @@ fn setup_contracts(
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+        listing_fee: Uint128::from(5u128),
     };
     let marketplace = router
         .instantiate_contract(
@@ -1955,6 +1956,7 @@ fn try_royalties() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+        listing_fee: Uint128::from(5u128),
     };
     let marketplace = router
         .instantiate_contract(
@@ -2076,6 +2078,7 @@ fn try_sudo_update_params() {
         min_price: Some(Uint128::from(5u128)),
         stale_bid_duration: None,
         bid_removal_reward_bps: None,
+        listing_fee: Some(Uint128::from(5u128)),
     };
     router
         .wasm_sudo(marketplace.clone(), &update_params_msg)
@@ -2090,6 +2093,7 @@ fn try_sudo_update_params() {
         min_price: Some(Uint128::from(5u128)),
         stale_bid_duration: Some(10),
         bid_removal_reward_bps: Some(20),
+        listing_fee: Some(Uint128::from(5u128)),
     };
     let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
     assert!(res.is_ok());
@@ -2121,6 +2125,7 @@ fn try_sudo_update_params() {
         min_price: None,
         stale_bid_duration: None,
         bid_removal_reward_bps: None,
+        listing_fee: None,
     };
     let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
     assert!(res.is_ok());
@@ -2265,6 +2270,7 @@ fn try_init_hook() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+        listing_fee: Uint128::from(5u128),
     };
     let marketplace = router
         .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)
@@ -3329,6 +3335,7 @@ fn try_add_and_remove_operators() {
         min_price: Some(Uint128::from(5u128)),
         stale_bid_duration: Some(10),
         bid_removal_reward_bps: Some(20),
+        listing_fee: Some(Uint128::from(5u128)),
     };
     let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
     assert!(res.is_ok());

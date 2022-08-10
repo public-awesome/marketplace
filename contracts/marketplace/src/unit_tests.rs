@@ -123,6 +123,7 @@ fn setup_contract(deps: DepsMut) {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+        listing_fee: Uint128::from(5u128),
     };
     let info = mock_info(CREATOR, &[]);
     let res = instantiate(deps, mock_env(), info, msg).unwrap();
@@ -143,6 +144,7 @@ fn proper_initialization() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+        listing_fee: Uint128::from(5u128),
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 
@@ -166,6 +168,7 @@ fn bad_fees_initialization() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Height(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+        listing_fee: Uint128::from(5u128),
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
@@ -182,6 +185,7 @@ fn bad_fees_initialization() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Height(100),
         bid_removal_reward_bps: 10001,
+        listing_fee: Uint128::from(5u128),
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
@@ -198,6 +202,7 @@ fn bad_fees_initialization() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Height(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+        listing_fee: Uint128::from(5u128),
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
     let res = instantiate(deps.as_mut(), mock_env(), info, msg);
@@ -218,6 +223,7 @@ fn improper_initialization_stale_bid() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Height(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+        listing_fee: Uint128::from(5u128),
     };
     let info = mock_info("creator", &coins(1000, NATIVE_DENOM));
 

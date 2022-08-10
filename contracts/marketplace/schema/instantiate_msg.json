@@ -6,6 +6,7 @@
     "ask_expiry",
     "bid_expiry",
     "bid_removal_reward_bps",
+    "listing_fee",
     "max_finders_fee_bps",
     "min_price",
     "operators",
@@ -34,6 +35,14 @@
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "listing_fee": {
+      "description": "Listing fee to reduce spam",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        }
+      ]
     },
     "max_finders_fee_bps": {
       "description": "Max basis points for the finders fee",

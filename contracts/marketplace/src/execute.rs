@@ -68,6 +68,7 @@ pub fn instantiate(
         min_price: msg.min_price,
         stale_bid_duration: msg.stale_bid_duration,
         bid_removal_reward_percent: Decimal::percent(msg.bid_removal_reward_bps),
+        listing_fee: msg.listing_fee,
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 

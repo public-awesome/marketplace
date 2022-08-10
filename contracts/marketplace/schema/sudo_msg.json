@@ -40,6 +40,16 @@
               "format": "uint64",
               "minimum": 0.0
             },
+            "listing_fee": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
             "max_finders_fee_bps": {
               "type": [
                 "integer",
