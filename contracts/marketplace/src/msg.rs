@@ -31,6 +31,8 @@ pub struct InstantiateMsg {
     pub stale_bid_duration: Duration,
     /// Stale bid removal reward
     pub bid_removal_reward_bps: u64,
+    /// Listing fee to reduce spam
+    pub listing_fee: Uint128,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
@@ -128,6 +130,7 @@ pub enum SudoMsg {
         min_price: Option<Uint128>,
         stale_bid_duration: Option<u64>,
         bid_removal_reward_bps: Option<u64>,
+        listing_fee: Option<Uint128>,
     },
     /// Add a new operator
     /// Remove operator

@@ -28,6 +28,8 @@ pub struct SudoParams {
     pub stale_bid_duration: Duration,
     /// Stale bid removal reward
     pub bid_removal_reward_percent: Decimal,
+    /// Listing fee to reduce spam
+    pub listing_fee: Uint128,
 }
 
 pub const SUDO_PARAMS: Item<SudoParams> = Item::new("sudo-params");

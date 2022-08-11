@@ -18,6 +18,7 @@ pub struct ParamInfo {
     min_price: Option<Uint128>,
     stale_bid_duration: Option<u64>,
     bid_removal_reward_bps: Option<u64>,
+    listing_fee: Option<Uint128>,
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -34,6 +35,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             min_price,
             stale_bid_duration,
             bid_removal_reward_bps,
+            listing_fee,
         } => sudo_update_params(
             deps,
             env,
@@ -46,6 +48,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
                 min_price,
                 stale_bid_duration,
                 bid_removal_reward_bps,
+                listing_fee,
             },
         ),
         SudoMsg::AddOperator { operator } => sudo_add_operator(deps, api.addr_validate(&operator)?),
@@ -76,6 +79,7 @@ pub fn sudo_update_params(
         min_price,
         stale_bid_duration,
         bid_removal_reward_bps,
+        listing_fee,
     } = param_info;
     if let Some(max_finders_fee_bps) = max_finders_fee_bps {
         if max_finders_fee_bps > MAX_FEE_BPS {
@@ -120,6 +124,8 @@ pub fn sudo_update_params(
     params.bid_removal_reward_percent = bid_removal_reward_bps
         .map(Decimal::percent)
         .unwrap_or(params.bid_removal_reward_percent);
+
+    params.listing_fee = listing_fee.unwrap_or(params.listing_fee);
 
     SUDO_PARAMS.save(deps.storage, &params)?;
 

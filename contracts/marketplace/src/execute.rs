@@ -18,7 +18,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
-use cw_utils::{maybe_addr, must_pay, nonpayable, Duration, Expiration};
+use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use semver::Version;
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
@@ -68,6 +68,7 @@ pub fn instantiate(
         min_price: msg.min_price,
         stale_bid_duration: msg.stale_bid_duration,
         bid_removal_reward_percent: Decimal::percent(msg.bid_removal_reward_bps),
+        listing_fee: msg.listing_fee,
     };
     SUDO_PARAMS.save(deps.storage, &params)?;
 
@@ -264,7 +265,6 @@ pub fn execute_set_ask(
         expires,
     } = ask_info;
 
-    nonpayable(&info)?;
     price_validate(deps.storage, &price)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
 
@@ -278,6 +278,12 @@ pub fn execute_set_ask(
 
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_expiry.is_valid(&env.block, expires)?;
+
+    // Check if msg has correct listing fee
+    let listing_fee = may_pay(&info, NATIVE_DENOM)?;
+    if listing_fee != params.listing_fee {
+        return Err(ContractError::InvalidListingFee(listing_fee));
+    }
 
     if let Some(fee) = finders_fee_bps {
         if Decimal::percent(fee) > params.max_finders_fee_percent {
@@ -313,6 +319,12 @@ pub fn execute_set_ask(
     };
     store_ask(deps.storage, &ask)?;
 
+    // Append fair_burn msg
+    let mut res = Response::new();
+    if listing_fee > Uint128::zero() {
+        fair_burn(listing_fee.u128(), None, &mut res);
+    }
+
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Create)?;
 
     let event = Event::new("set-ask")
@@ -322,7 +334,7 @@ pub fn execute_set_ask(
         .add_attribute("price", price.to_string())
         .add_attribute("expires", expires.to_string());
 
-    Ok(Response::new().add_submessages(hook).add_event(event))
+    Ok(res.add_submessages(hook).add_event(event))
 }
 
 /// Removes the ask on a particular NFT

@@ -46,6 +46,9 @@ pub enum ContractError {
     #[error("PriceTooSmall: {0}")]
     PriceTooSmall(Uint128),
 
+    #[error("InvalidListingFee: {0}")]
+    InvalidListingFee(Uint128),
+
     #[error("Token reserved")]
     TokenReserved {},
 
