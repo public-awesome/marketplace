@@ -268,13 +268,6 @@ pub fn execute_set_ask(
     price_validate(deps.storage, &price)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
 
-    // Check if msg has correct listing fee
-    let params = SUDO_PARAMS.load(deps.storage)?;
-    let listing_fee = must_pay(&info, NATIVE_DENOM)?;
-    if listing_fee != params.listing_fee {
-        return Err(ContractError::InvalidListingFee(listing_fee));
-    }
-
     // Check if this contract is approved to transfer the token
     Cw721Contract(collection.clone()).approval(
         &deps.querier,
@@ -285,6 +278,12 @@ pub fn execute_set_ask(
 
     let params = SUDO_PARAMS.load(deps.storage)?;
     params.ask_expiry.is_valid(&env.block, expires)?;
+
+    // Check if msg has correct listing fee
+    let listing_fee = must_pay(&info, NATIVE_DENOM)?;
+    if listing_fee != params.listing_fee {
+        return Err(ContractError::InvalidListingFee(listing_fee));
+    }
 
     if let Some(fee) = finders_fee_bps {
         if Decimal::percent(fee) > params.max_finders_fee_percent {
@@ -320,6 +319,10 @@ pub fn execute_set_ask(
     };
     store_ask(deps.storage, &ask)?;
 
+    // Append fair_burn msg
+    let mut res = Response::new();
+    fair_burn(listing_fee.u128(), None, &mut res);
+
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Create)?;
 
     let event = Event::new("set-ask")
@@ -329,7 +332,7 @@ pub fn execute_set_ask(
         .add_attribute("price", price.to_string())
         .add_attribute("expires", expires.to_string());
 
-    Ok(Response::new().add_submessages(hook).add_event(event))
+    Ok(res.add_submessages(hook).add_event(event))
 }
 
 /// Removes the ask on a particular NFT
