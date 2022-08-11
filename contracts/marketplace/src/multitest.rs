@@ -221,7 +221,7 @@ fn add_funds_for_incremental_fee(
         .sudo(CwSudoMsg::Bank({
             BankSudo::Mint {
                 to_address: receiver.to_string(),
-                amount: fee_funds.clone(),
+                amount: fee_funds,
             }
         }))
         .map_err(|err| println!("{:?}", err))
