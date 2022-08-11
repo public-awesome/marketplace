@@ -265,9 +265,15 @@ pub fn execute_set_ask(
         expires,
     } = ask_info;
 
-    nonpayable(&info)?;
     price_validate(deps.storage, &price)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
+
+    // Check if msg has correct listing fee
+    let params = SUDO_PARAMS.load(deps.storage)?;
+    let listing_fee = must_pay(&info, NATIVE_DENOM)?;
+    if listing_fee != params.listing_fee {
+        return Err(ContractError::InvalidListingFee(listing_fee));
+    }
 
     // Check if this contract is approved to transfer the token
     Cw721Contract(collection.clone()).approval(
@@ -1021,8 +1027,7 @@ fn payout(
     let params = SUDO_PARAMS.load(deps.storage)?;
 
     // Append Fair Burn message
-    let network_fee =
-        payment * params.trading_fee_percent / Uint128::from(100u128) + params.listing_fee;
+    let network_fee = payment * params.trading_fee_percent / Uint128::from(100u128);
     fair_burn(network_fee.u128(), None, res);
 
     let collection_info: CollectionInfoResponse = deps
