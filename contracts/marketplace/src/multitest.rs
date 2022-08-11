@@ -25,6 +25,7 @@ use sg_std::NATIVE_DENOM;
 
 const TOKEN_ID: u32 = 123;
 const CREATION_FEE: u128 = 1_000_000_000;
+const LISTING_FEE: u128 = 5_000_000;
 const INITIAL_BALANCE: u128 = 2000;
 
 // Governance parameters
@@ -81,7 +82,7 @@ fn setup_contracts(
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
-        listing_fee: Uint128::from(5u128),
+        listing_fee: Uint128::from(LISTING_FEE),
     };
     let marketplace = router
         .instantiate_contract(
@@ -168,7 +169,7 @@ fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Contra
     let owner: Addr = Addr::unchecked("owner");
     let bidder: Addr = Addr::unchecked("bidder");
     let creator: Addr = Addr::unchecked("creator");
-    let creator_funds: Vec<Coin> = coins(CREATION_FEE, NATIVE_DENOM);
+    let creator_funds: Vec<Coin> = coins(CREATION_FEE + LISTING_FEE, NATIVE_DENOM);
     let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
     router
         .sudo(CwSudoMsg::Bank({
@@ -332,7 +333,12 @@ fn try_set_accept_bid() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY - 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_err());
 
     // An asking price is made by the creator
@@ -346,7 +352,12 @@ fn try_set_accept_bid() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Transfer nft from creator to owner. Creates a stale ask that needs to be updated
@@ -667,7 +678,12 @@ fn try_update_ask() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     let update_ask = ExecuteMsg::UpdateAskPrice {
@@ -768,7 +784,12 @@ fn try_query_asks() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // test after ask is made
@@ -873,7 +894,12 @@ fn try_query_sorted_asks() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
@@ -886,7 +912,12 @@ fn try_query_sorted_asks() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
@@ -899,7 +930,12 @@ fn try_query_sorted_asks() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     let query_asks_msg = QueryMsg::AsksSortedByPrice {
@@ -1032,7 +1068,12 @@ fn try_query_asks_by_seller() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Owner2 lists their token for sale
@@ -1046,7 +1087,12 @@ fn try_query_asks_by_seller() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        owner2.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Owner2 lists another token for sale
@@ -1060,7 +1106,12 @@ fn try_query_asks_by_seller() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(owner2.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        owner2.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     let res: AskCountResponse = router
@@ -1184,7 +1235,12 @@ fn try_query_sorted_bids() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
@@ -1197,7 +1253,12 @@ fn try_query_sorted_bids() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
@@ -1210,7 +1271,12 @@ fn try_query_sorted_bids() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Bidder makes bid
@@ -1400,7 +1466,12 @@ fn try_query_bids() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // test before bid is made
@@ -1530,14 +1601,24 @@ fn auto_accept_bid() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_err());
 
     // Creator Authorizes NFT
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
     // Now set_ask succeeds
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Bidder makes bid with a random token in the same amount as the ask
@@ -1638,7 +1719,12 @@ fn try_reserved_ask() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Non-bidder makes bid that meets the ask price
@@ -1717,7 +1803,12 @@ fn try_ask_with_finders_fee() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(500), // 5%
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     let finder = Addr::unchecked("finder".to_string());
@@ -1777,7 +1868,12 @@ fn remove_bid_refund() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Bidder makes bid
@@ -1850,7 +1946,12 @@ fn new_bid_refund() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Bidder makes bid
@@ -1956,7 +2057,7 @@ fn try_royalties() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
-        listing_fee: Uint128::from(5u128),
+        listing_fee: Uint128::from(LISTING_FEE),
     };
     let marketplace = router
         .instantiate_contract(
@@ -2012,7 +2113,12 @@ fn try_royalties() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Bidder makes bid
@@ -2081,7 +2187,7 @@ fn try_sudo_update_params() {
         min_price: Some(Uint128::from(5u128)),
         stale_bid_duration: None,
         bid_removal_reward_bps: None,
-        listing_fee: Some(Uint128::from(5u128)),
+        listing_fee: Some(Uint128::from(LISTING_FEE)),
     };
     router
         .wasm_sudo(marketplace.clone(), &update_params_msg)
@@ -2096,7 +2202,7 @@ fn try_sudo_update_params() {
         min_price: Some(Uint128::from(5u128)),
         stale_bid_duration: Some(10),
         bid_removal_reward_bps: Some(20),
-        listing_fee: Some(Uint128::from(5u128)),
+        listing_fee: Some(Uint128::from(LISTING_FEE)),
     };
     let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
     assert!(res.is_ok());
@@ -2110,8 +2216,10 @@ fn try_sudo_update_params() {
     assert_eq!(res.params.ask_expiry, ExpiryRange::new(1, 2));
     assert_eq!(res.params.bid_expiry, ExpiryRange::new(3, 4));
     assert_eq!(res.params.operators, vec!["operator1".to_string()]);
+    assert_eq!(res.params.min_price, Uint128::from(5u128));
     assert_eq!(res.params.stale_bid_duration, Duration::Time(10));
     assert_eq!(res.params.bid_removal_reward_percent, Decimal::percent(20));
+    assert_eq!(res.params.listing_fee, Uint128::from(LISTING_FEE));
 
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: None,
@@ -2273,7 +2381,7 @@ fn try_init_hook() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Time(100),
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
-        listing_fee: Uint128::from(5u128),
+        listing_fee: Uint128::from(LISTING_FEE),
     };
     let marketplace = router
         .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)
@@ -2348,7 +2456,12 @@ fn try_hook_was_run() {
     let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
     assert!(res.is_ok());
     // Now set_ask succeeds
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
     assert_eq!(
         "ask-hook-failed",
@@ -2873,7 +2986,12 @@ fn try_ask_with_filter_inactive() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(500), // 5%
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // transfer nft from creator to owner. Creates a stale ask that needs to be updated
@@ -2963,7 +3081,12 @@ fn try_sync_ask() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(500), // 5%
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
@@ -3117,7 +3240,12 @@ fn try_set_ask_reserve_for() {
         finders_fee_bps: Some(0),
     };
     let err = router
-        .execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[])
+        .execute_contract(
+            creator.clone(),
+            marketplace.clone(),
+            &set_ask,
+            &[coin(LISTING_FEE, NATIVE_DENOM)],
+        )
         .unwrap_err();
     assert_eq!(
         err.source().unwrap().to_string(),
@@ -3138,7 +3266,12 @@ fn try_set_ask_reserve_for() {
         finders_fee_bps: Some(0),
     };
     let err = router
-        .execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[])
+        .execute_contract(
+            creator.clone(),
+            marketplace.clone(),
+            &set_ask,
+            &[coin(LISTING_FEE, NATIVE_DENOM)],
+        )
         .unwrap_err();
     assert_eq!(
         err.source().unwrap().to_string(),
@@ -3158,7 +3291,12 @@ fn try_set_ask_reserve_for() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
@@ -3227,7 +3365,12 @@ fn try_remove_stale_ask() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(500), // 5%
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // trying to remove a valid ask
@@ -3278,7 +3421,12 @@ fn try_remove_stale_ask() {
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 
     // set ask again
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     let res = router.execute_contract(
@@ -3338,7 +3486,7 @@ fn try_add_and_remove_operators() {
         min_price: Some(Uint128::from(5u128)),
         stale_bid_duration: Some(10),
         bid_removal_reward_bps: Some(20),
-        listing_fee: Some(Uint128::from(5u128)),
+        listing_fee: Some(Uint128::from(LISTING_FEE)),
     };
     let res = router.wasm_sudo(marketplace.clone(), &update_params_msg);
     assert!(res.is_ok());
@@ -3443,7 +3591,12 @@ fn try_bid_sale_type() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    let res = router.execute_contract(creator.clone(), marketplace.clone(), &set_ask, &[]);
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(res.is_ok());
 
     // Bidder makes bid
