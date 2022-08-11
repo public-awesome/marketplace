@@ -25,7 +25,7 @@ use sg_std::NATIVE_DENOM;
 
 const TOKEN_ID: u32 = 123;
 const CREATION_FEE: u128 = 1_000_000_000;
-const LISTING_FEE: u128 = 5_000_000;
+const LISTING_FEE: u128 = 500;
 const INITIAL_BALANCE: u128 = 2000;
 
 // Governance parameters
@@ -169,7 +169,7 @@ fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Contra
     let owner: Addr = Addr::unchecked("owner");
     let bidder: Addr = Addr::unchecked("bidder");
     let creator: Addr = Addr::unchecked("creator");
-    let creator_funds: Vec<Coin> = coins(CREATION_FEE + LISTING_FEE, NATIVE_DENOM);
+    let creator_funds: Vec<Coin> = coins(CREATION_FEE, NATIVE_DENOM);
     let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
     router
         .sudo(CwSudoMsg::Bank({
@@ -208,6 +208,25 @@ fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Contra
     assert_eq!(creator_native_balances, creator_funds);
 
     Ok((owner, bidder, creator))
+}
+
+fn add_funds_for_incremental_fee(
+    router: &mut StargazeApp,
+    receiver: &Addr,
+    fee_amount: u128,
+    fee_count: u128,
+) -> Result<(), ContractError> {
+    let fee_funds = coins(fee_amount * fee_count, NATIVE_DENOM);
+    router
+        .sudo(CwSudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: receiver.to_string(),
+                amount: fee_funds.clone(),
+            }
+        }))
+        .map_err(|err| println!("{:?}", err))
+        .ok();
+    Ok(())
 }
 
 fn setup_second_bidder_account(router: &mut StargazeApp) -> Result<Addr, ContractError> {
@@ -317,6 +336,9 @@ fn try_set_accept_bid() {
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
@@ -466,8 +488,8 @@ fn try_set_accept_bid() {
 
     // Check money is transfered
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (fee) - 5 (listing fee)
-    assert_eq!(creator_native_balances, coins(100 - 2 - 5, NATIVE_DENOM));
+    // 100  - 2 (fee)
+    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -544,8 +566,8 @@ fn try_set_accept_bid_no_ask() {
 
     // Check money is transfered
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (fee) - 5 (listing fee)
-    assert_eq!(creator_native_balances, coins(100 - 2 - 5, NATIVE_DENOM));
+    // 100  - 2 (fee)
+    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -663,6 +685,9 @@ fn try_update_ask() {
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
@@ -755,6 +780,9 @@ fn try_query_asks() {
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
@@ -859,6 +887,9 @@ fn try_query_sorted_asks() {
 
     // Setup intial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 3u128).unwrap();
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
@@ -1024,15 +1055,10 @@ fn try_query_asks_by_seller() {
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     let owner2: Addr = Addr::unchecked("owner2");
-    router
-        .sudo(CwSudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: owner2.to_string(),
-                amount: coins(CREATION_FEE, NATIVE_DENOM),
-            }
-        }))
-        .map_err(|err| println!("{:?}", err))
-        .ok();
+    // Add funds to owner2 for creation fees
+    add_funds_for_incremental_fee(&mut router, &owner2, CREATION_FEE, 1u128).unwrap();
+    // Add funds to owner2 for listing fees
+    add_funds_for_incremental_fee(&mut router, &owner2, LISTING_FEE, 2u128).unwrap();
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
@@ -1203,6 +1229,9 @@ fn try_query_sorted_bids() {
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 3u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
@@ -1449,8 +1478,13 @@ fn try_query_bids() {
     let mut router = custom_mock_app();
     // Setup intial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
@@ -1587,6 +1621,9 @@ fn auto_accept_bid() {
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
 
@@ -1671,8 +1708,8 @@ fn auto_accept_bid() {
 
     // Check money is transfered
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (fee) - 5 (listing fee)
-    assert_eq!(creator_native_balances, coins(100 - 2 - 5, NATIVE_DENOM));
+    // 100  - 2 (fee)
+    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -1703,6 +1740,9 @@ fn try_reserved_ask() {
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
@@ -1788,6 +1828,9 @@ fn try_ask_with_finders_fee() {
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
@@ -1832,8 +1875,8 @@ fn try_ask_with_finders_fee() {
 
     // Check money is transfered
     let creator_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (network fee) - 5 (finders fee) - 5 (listing fee)
-    assert_eq!(creator_balances, coins(100 - 2 - 5 - 5, NATIVE_DENOM));
+    // 100  - 2 (network fee) - 5 (finders fee)
+    assert_eq!(creator_balances, coins(100 - 2 - 5, NATIVE_DENOM));
     let bidder_balances = router.wrap().query_all_balances(bidder).unwrap();
     assert_eq!(
         bidder_balances,
@@ -1852,6 +1895,12 @@ fn remove_bid_refund() {
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
@@ -1930,6 +1979,9 @@ fn new_bid_refund() {
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
@@ -2045,6 +2097,9 @@ fn try_royalties() {
     // Setup intial accounts
     let (curator, bidder, creator) = setup_accounts(&mut router).unwrap();
 
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
     let msg = crate::msg::InstantiateMsg {
@@ -2145,11 +2200,8 @@ fn try_royalties() {
         coins(INITIAL_BALANCE + 10, NATIVE_DENOM)
     );
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100 - 10 (royalties) - 2 (fee) - 5 (listing fee)
-    assert_eq!(
-        creator_native_balances,
-        coins(100 - 10 - 2 - 5, NATIVE_DENOM)
-    );
+    // 100 - 10 (royalties) - 2 (fee)
+    assert_eq!(creator_native_balances, coins(100 - 10 - 2, NATIVE_DENOM));
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -2414,6 +2466,8 @@ fn try_hook_was_run() {
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Add sales hook
     let add_hook_msg = SudoMsg::AddSaleHook {
@@ -2465,8 +2519,9 @@ fn try_hook_was_run() {
     assert!(res.is_ok());
     assert_eq!(
         "ask-hook-failed",
-        res.unwrap().events[3].attributes[1].value
+        res.unwrap().events[4].attributes[1].value
     );
+
     // Bidder makes bid that meets the ask criteria
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
@@ -2971,6 +3026,9 @@ fn try_ask_with_filter_inactive() {
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
@@ -3065,6 +3123,9 @@ fn try_sync_ask() {
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
@@ -3224,6 +3285,9 @@ fn try_set_ask_reserve_for() {
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
@@ -3349,6 +3413,9 @@ fn try_remove_stale_ask() {
 
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 2u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
@@ -3576,6 +3643,9 @@ fn try_bid_sale_type() {
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
 
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
@@ -3616,9 +3686,9 @@ fn try_bid_sale_type() {
     );
     assert!(res.is_ok());
 
-    // Check creator has been paid yet
+    // Check creator has been paid
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    assert_eq!(creator_native_balances, coins(100 - 2 - 5, NATIVE_DENOM));
+    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
 
     // Check contract has zero balance
     let contract_balances = router
