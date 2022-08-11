@@ -25,7 +25,7 @@ use sg_std::NATIVE_DENOM;
 
 const TOKEN_ID: u32 = 123;
 const CREATION_FEE: u128 = 1_000_000_000;
-const LISTING_FEE: u128 = 500;
+const LISTING_FEE: u128 = 0;
 const INITIAL_BALANCE: u128 = 2000;
 
 // Governance parameters
@@ -359,7 +359,7 @@ fn try_set_accept_bid() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_err());
 
@@ -378,7 +378,7 @@ fn try_set_accept_bid() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -707,7 +707,7 @@ fn try_update_ask() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -816,7 +816,7 @@ fn try_query_asks() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -929,7 +929,7 @@ fn try_query_sorted_asks() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
     // An asking price is made by the creator
@@ -947,7 +947,7 @@ fn try_query_sorted_asks() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
     // An asking price is made by the creator
@@ -965,7 +965,7 @@ fn try_query_sorted_asks() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -1098,7 +1098,7 @@ fn try_query_asks_by_seller() {
         owner.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -1117,7 +1117,7 @@ fn try_query_asks_by_seller() {
         owner2.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -1136,7 +1136,7 @@ fn try_query_asks_by_seller() {
         owner2.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -1268,7 +1268,7 @@ fn try_query_sorted_bids() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
     // An asking price is made by the creator
@@ -1286,7 +1286,7 @@ fn try_query_sorted_bids() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
     // An asking price is made by the creator
@@ -1304,7 +1304,7 @@ fn try_query_sorted_bids() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -1504,7 +1504,7 @@ fn try_query_bids() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -1642,7 +1642,7 @@ fn auto_accept_bid() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_err());
 
@@ -1654,7 +1654,7 @@ fn auto_accept_bid() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -1763,7 +1763,7 @@ fn try_reserved_ask() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -1850,7 +1850,7 @@ fn try_ask_with_finders_fee() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -1921,7 +1921,7 @@ fn remove_bid_refund() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -2002,7 +2002,7 @@ fn new_bid_refund() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -2172,7 +2172,7 @@ fn try_royalties() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -2514,12 +2514,12 @@ fn try_hook_was_run() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
     assert_eq!(
         "ask-hook-failed",
-        res.unwrap().events[4].attributes[1].value
+        res.unwrap().events[3].attributes[1].value
     );
 
     // Bidder makes bid that meets the ask criteria
@@ -3048,7 +3048,7 @@ fn try_ask_with_filter_inactive() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -3146,7 +3146,7 @@ fn try_sync_ask() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -3308,7 +3308,7 @@ fn try_set_ask_reserve_for() {
             creator.clone(),
             marketplace.clone(),
             &set_ask,
-            &[coin(LISTING_FEE, NATIVE_DENOM)],
+            &listing_funds(LISTING_FEE).unwrap(),
         )
         .unwrap_err();
     assert_eq!(
@@ -3334,7 +3334,7 @@ fn try_set_ask_reserve_for() {
             creator.clone(),
             marketplace.clone(),
             &set_ask,
-            &[coin(LISTING_FEE, NATIVE_DENOM)],
+            &listing_funds(LISTING_FEE).unwrap(),
         )
         .unwrap_err();
     assert_eq!(
@@ -3359,7 +3359,7 @@ fn try_set_ask_reserve_for() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -3436,7 +3436,7 @@ fn try_remove_stale_ask() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -3492,7 +3492,7 @@ fn try_remove_stale_ask() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -3665,7 +3665,7 @@ fn try_bid_sale_type() {
         creator.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
+        &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
 
@@ -3752,4 +3752,12 @@ fn try_bid_sale_type() {
         .unwrap();
     assert_eq!(res.bids.len(), 1);
     assert_eq!(res.bids[0].price.u128(), 100u128);
+}
+
+fn listing_funds(listing_fee: u128) -> Result<Vec<Coin>, ContractError> {
+    if listing_fee > 0 {
+        Ok(vec![coin(listing_fee, NATIVE_DENOM)])
+    } else {
+        Ok(vec![])
+    }
 }

@@ -18,7 +18,7 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
-use cw_utils::{maybe_addr, must_pay, nonpayable, Duration, Expiration};
+use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use semver::Version;
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
@@ -280,7 +280,7 @@ pub fn execute_set_ask(
     params.ask_expiry.is_valid(&env.block, expires)?;
 
     // Check if msg has correct listing fee
-    let listing_fee = must_pay(&info, NATIVE_DENOM)?;
+    let listing_fee = may_pay(&info, NATIVE_DENOM)?;
     if listing_fee != params.listing_fee {
         return Err(ContractError::InvalidListingFee(listing_fee));
     }
@@ -321,7 +321,9 @@ pub fn execute_set_ask(
 
     // Append fair_burn msg
     let mut res = Response::new();
-    fair_burn(listing_fee.u128(), None, &mut res);
+    if listing_fee > Uint128::zero() {
+        fair_burn(listing_fee.u128(), None, &mut res);
+    }
 
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Create)?;
 
