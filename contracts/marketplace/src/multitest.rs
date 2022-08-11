@@ -486,7 +486,7 @@ fn try_set_accept_bid() {
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
     assert!(res.is_ok());
 
-    // Check money is transfered
+    // Check money is transferred
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100  - 2 (fee)
     assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
@@ -564,7 +564,7 @@ fn try_set_accept_bid_no_ask() {
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
     assert!(res.is_ok());
 
-    // Check money is transfered
+    // Check money is transferred
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100  - 2 (fee)
     assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
@@ -1706,7 +1706,7 @@ fn auto_accept_bid() {
     // Bid is accepted, sale has been finalized
     assert_eq!(res.events[3].ty, "wasm-finalize-sale");
 
-    // Check money is transfered
+    // Check money is transferred
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100  - 2 (fee)
     assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
@@ -1873,7 +1873,7 @@ fn try_ask_with_finders_fee() {
     );
     assert!(res.is_ok());
 
-    // Check money is transfered
+    // Check money is transferred
     let creator_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100  - 2 (network fee) - 5 (finders fee)
     assert_eq!(creator_balances, coins(100 - 2 - 5, NATIVE_DENOM));
@@ -2193,7 +2193,7 @@ fn try_royalties() {
     );
     assert!(res.is_ok());
 
-    // Check money is transfered correctly and royalties paid
+    // Check money is transferred correctly and royalties paid
     let curator_native_balances = router.wrap().query_all_balances(curator).unwrap();
     assert_eq!(
         curator_native_balances,
