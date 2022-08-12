@@ -14,6 +14,10 @@ bid_expiry: ExpiryRange
  */
 bid_removal_reward_bps: number
 /**
+ * Listing fee to reduce spam
+ */
+listing_fee: Uint128
+/**
  * Max basis points for the finders fee
  */
 max_finders_fee_bps: number
