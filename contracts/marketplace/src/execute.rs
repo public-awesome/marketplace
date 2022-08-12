@@ -1295,7 +1295,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, Contra
     if version > new_version {
         return Err(StdError::generic_err("Cannot upgrade to a previous contract version").into());
     }
+    // if same version return
+    if version == new_version {
+        return Ok(Response::new());
+    }
 
+    // SudoParamsV015 represents the previous state from v0.15.0 version
     #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
     pub struct SudoParamsV015 {
         pub trading_fee_percent: Decimal,
@@ -1307,12 +1312,12 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, Contra
         pub stale_bid_duration: Duration,
         pub bid_removal_reward_percent: Decimal,
     }
-    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    // load state that contains the old struct type
     let params_item: Item<SudoParamsV015> = Item::new("sudo-params");
-
     let current_params = params_item.load(deps.storage)?;
 
+    // migrate to the new struct
     let new_sudo_params = SudoParams {
         trading_fee_percent: current_params.trading_fee_percent,
         ask_expiry: current_params.ask_expiry,
@@ -1324,6 +1329,10 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, Contra
         bid_removal_reward_percent: current_params.bid_removal_reward_percent,
         listing_fee: Uint128::zero(),
     };
+    // store migrated params
     SUDO_PARAMS.save(deps.storage, &new_sudo_params)?;
+
+    // set new contract version
+    set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     Ok(Response::new())
 }

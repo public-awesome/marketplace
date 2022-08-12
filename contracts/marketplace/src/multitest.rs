@@ -1,5 +1,6 @@
 #![cfg(test)]
 use crate::error::ContractError;
+use crate::execute::migrate;
 use crate::helpers::ExpiryRange;
 use crate::msg::{
     AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse,
@@ -8,7 +9,8 @@ use crate::msg::{
 use crate::msg::{
     BidsResponse, CollectionBidResponse, CollectionBidsResponse, ExecuteMsg, QueryMsg,
 };
-use crate::state::{Bid, SaleType};
+use crate::state::{Bid, SaleType, SUDO_PARAMS};
+use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
@@ -46,7 +48,8 @@ pub fn contract_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
         crate::query::query,
     )
     .with_sudo(crate::sudo::sudo)
-    .with_reply(crate::execute::reply);
+    .with_reply(crate::execute::reply)
+    .with_migrate(crate::execute::migrate);
     Box::new(contract)
 }
 
@@ -3760,4 +3763,65 @@ fn listing_funds(listing_fee: u128) -> Result<Vec<Coin>, ContractError> {
     } else {
         Ok(vec![])
     }
+}
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
+
+// SudoParamsV015 represents the previous state from v0.15.0 version
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct SudoParamsV015 {
+    pub trading_fee_percent: Decimal,
+    pub ask_expiry: ExpiryRange,
+    pub bid_expiry: ExpiryRange,
+    pub operators: Vec<Addr>,
+    pub max_finders_fee_percent: Decimal,
+    pub min_price: Uint128,
+    pub stale_bid_duration: Duration,
+    pub bid_removal_reward_percent: Decimal,
+}
+
+use cw2::set_contract_version;
+use cw_storage_plus::Item;
+#[test]
+fn try_migrate() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+
+    let old_params_item: Item<SudoParamsV015> = Item::new("sudo-params");
+
+    let old_params = SudoParamsV015 {
+        operators: vec![Addr::unchecked("operator1")],
+        trading_fee_percent: Decimal::percent(TRADING_FEE_BPS),
+        ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+        max_finders_fee_percent: Decimal::percent(MAX_FINDERS_FEE_BPS),
+        min_price: Uint128::from(5u128),
+        stale_bid_duration: Duration::Time(100),
+        bid_removal_reward_percent: Decimal::percent(BID_REMOVAL_REWARD_BPS),
+    };
+    old_params_item
+        .save(&mut deps.storage, &old_params)
+        .unwrap();
+    set_contract_version(&mut deps.storage, "crates.io:sg-marketplace", "0.15.0").unwrap();
+    migrate(deps.as_mut(), env, Empty {}).unwrap();
+    let new_params = SUDO_PARAMS.load(&deps.storage).unwrap();
+
+    assert_eq!(new_params.operators, old_params.operators);
+    assert_eq!(
+        new_params.trading_fee_percent,
+        old_params.trading_fee_percent
+    );
+    assert_eq!(new_params.ask_expiry, old_params.ask_expiry);
+    assert_eq!(new_params.bid_expiry, old_params.bid_expiry);
+    assert_eq!(
+        new_params.max_finders_fee_percent,
+        old_params.max_finders_fee_percent
+    );
+    assert_eq!(new_params.min_price, old_params.min_price);
+    assert_eq!(new_params.stale_bid_duration, old_params.stale_bid_duration);
+    assert_eq!(
+        new_params.bid_removal_reward_percent,
+        old_params.bid_removal_reward_percent
+    );
+    assert_eq!(new_params.listing_fee, Uint128::zero());
 }
