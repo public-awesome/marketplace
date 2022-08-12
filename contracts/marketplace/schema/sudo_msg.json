@@ -99,7 +99,7 @@
       "additionalProperties": false
     },
     {
-      "description": "Add a new operator Remove operator",
+      "description": "Add a new operator",
       "type": "object",
       "required": [
         "add_operator"
@@ -120,6 +120,7 @@
       "additionalProperties": false
     },
     {
+      "description": "Remove operator",
       "type": "object",
       "required": [
         "remove_operator"
