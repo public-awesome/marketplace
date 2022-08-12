@@ -3802,8 +3802,36 @@ fn try_migrate() {
     old_params_item
         .save(&mut deps.storage, &old_params)
         .unwrap();
+
+    // should error when different name
+    set_contract_version(&mut deps.storage, "crates.io:marketplace", "0.15.0").unwrap();
+    let err = migrate(deps.as_mut(), env.clone(), Empty {}).unwrap_err();
+
+    assert_eq!(
+        err.to_string(),
+        "Generic error: Cannot upgrade to a different contract"
+    );
+
+    // should error when version is greater version
+    set_contract_version(&mut deps.storage, "crates.io:sg-marketplace", "2.0.0").unwrap();
+    let err = migrate(deps.as_mut(), env.clone(), Empty {}).unwrap_err();
+    assert_eq!(
+        err.to_string(),
+        "Generic error: Cannot upgrade to a previous contract version"
+    );
+
+    // no op when same version
+    set_contract_version(
+        &mut deps.storage,
+        "crates.io:sg-marketplace",
+        env!("CARGO_PKG_VERSION"),
+    )
+    .unwrap();
+    migrate(deps.as_mut(), env.clone(), Empty {}).unwrap();
+
     set_contract_version(&mut deps.storage, "crates.io:sg-marketplace", "0.15.0").unwrap();
     migrate(deps.as_mut(), env, Empty {}).unwrap();
+
     let new_params = SUDO_PARAMS.load(&deps.storage).unwrap();
 
     assert_eq!(new_params.operators, old_params.operators);
