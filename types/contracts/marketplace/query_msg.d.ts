@@ -21,6 +21,14 @@ start_after?: (number | null)
 [k: string]: unknown
 }
 } | {
+reverse_asks: {
+collection: string
+include_inactive?: (boolean | null)
+limit?: (number | null)
+start_before?: (number | null)
+[k: string]: unknown
+}
+} | {
 asks_sorted_by_price: {
 collection: string
 include_inactive?: (boolean | null)

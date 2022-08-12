@@ -25,6 +25,10 @@ bid_expiry: ExpiryRange
  */
 bid_removal_reward_percent: Decimal
 /**
+ * Listing fee to reduce spam
+ */
+listing_fee: Uint128
+/**
  * Max value for the finders fee
  */
 max_finders_fee_percent: Decimal

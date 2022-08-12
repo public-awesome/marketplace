@@ -5,6 +5,7 @@ update_params: {
 ask_expiry?: (ExpiryRange | null)
 bid_expiry?: (ExpiryRange | null)
 bid_removal_reward_bps?: (number | null)
+listing_fee?: (Uint128 | null)
 max_finders_fee_bps?: (number | null)
 min_price?: (Uint128 | null)
 operators?: (string[] | null)
