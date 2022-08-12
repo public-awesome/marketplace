@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::helpers::map_validate;
+use crate::helpers::{map_validate, ExpiryRange};
 use crate::msg::{
     AskHookMsg, BidHookMsg, CollectionBidHookMsg, ExecuteMsg, HookAction, InstantiateMsg,
     SaleHookMsg,
@@ -18,8 +18,11 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
+use cw_storage_plus::Item;
 use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
+use schemars::JsonSchema;
 use semver::Version;
+use serde::{Deserialize, Serialize};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
@@ -1292,6 +1295,35 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, Contra
     if version > new_version {
         return Err(StdError::generic_err("Cannot upgrade to a previous contract version").into());
     }
+
+    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+    pub struct SudoParamsV015 {
+        pub trading_fee_percent: Decimal,
+        pub ask_expiry: ExpiryRange,
+        pub bid_expiry: ExpiryRange,
+        pub operators: Vec<Addr>,
+        pub max_finders_fee_percent: Decimal,
+        pub min_price: Uint128,
+        pub stale_bid_duration: Duration,
+        pub bid_removal_reward_percent: Decimal,
+    }
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    let params_item: Item<SudoParamsV015> = Item::new("sudo-params");
+
+    let current_params = params_item.load(deps.storage)?;
+
+    let new_sudo_params = SudoParams {
+        trading_fee_percent: current_params.trading_fee_percent,
+        ask_expiry: current_params.ask_expiry,
+        bid_expiry: current_params.bid_expiry,
+        operators: current_params.operators,
+        max_finders_fee_percent: current_params.max_finders_fee_percent,
+        min_price: current_params.min_price,
+        stale_bid_duration: current_params.stale_bid_duration,
+        bid_removal_reward_percent: current_params.bid_removal_reward_percent,
+        listing_fee: Uint128::zero(),
+    };
+    SUDO_PARAMS.save(deps.storage, &new_sudo_params)?;
     Ok(Response::new())
 }
