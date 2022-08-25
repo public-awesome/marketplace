@@ -309,7 +309,7 @@ pub fn execute_set_ask(
 
     let seller = info.sender;
     let ask = Ask {
-        sale_type,
+        sale_type: sale_type.clone(),
         collection: collection.clone(),
         token_id,
         seller: seller.clone(),
@@ -330,9 +330,14 @@ pub fn execute_set_ask(
 
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Create)?;
 
+    let sale_type_str = match sale_type {
+        SaleType::FixedPrice => "fixed_price",
+        SaleType::Auction => "auction",
+    };
     let event = Event::new("set-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
+        .add_attribute("sale_type", sale_type_str)
         .add_attribute("seller", seller)
         .add_attribute("price", price.to_string())
         .add_attribute("expires", expires.to_string());
@@ -517,9 +522,14 @@ pub fn execute_set_bid(
     } else {
         vec![]
     };
+    let sale_type_str = match sale_type {
+        SaleType::FixedPrice => "fixed_price",
+        SaleType::Auction => "auction",
+    };
 
     let event = Event::new("set-bid")
         .add_attribute("collection", collection.to_string())
+        .add_attribute("sale_type", sale_type_str)
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_attribute("bid_price", bid_price.to_string())
