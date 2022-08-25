@@ -4,6 +4,7 @@ use cw_utils::Duration;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use sg_controllers::Hooks;
+use std::fmt;
 
 use crate::helpers::ExpiryRange;
 
@@ -54,6 +55,15 @@ pub trait Order {
 pub enum SaleType {
     FixedPrice,
     Auction,
+}
+
+impl fmt::Display for SaleType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            SaleType::FixedPrice => write!(f, "fixed_price"),
+            SaleType::Auction => write!(f, "auction"),
+        }
+    }
 }
 
 /// Represents an ask on the marketplace
