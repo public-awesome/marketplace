@@ -823,8 +823,7 @@ pub fn execute_sync_ask(
         None,
     );
     if res.is_ok() == ask.is_active {
-        return Ok(Response::new());
-        // return Err(ContractError::AskUnchanged {});
+        return Err(ContractError::AskUnchanged {});
     }
     ask.is_active = res.is_ok();
     asks().save(deps.storage, key, &ask)?;
