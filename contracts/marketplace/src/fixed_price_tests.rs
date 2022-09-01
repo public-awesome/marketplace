@@ -62,7 +62,7 @@ fn try_set_bid_fixed_price() {
 
     // Bidder makes bid higher lower the asking price
     let res = router.execute_contract(
-        bidder.clone(),
+        bidder,
         marketplace.clone(),
         &set_bid_msg,
         &coins(50, NATIVE_DENOM),
