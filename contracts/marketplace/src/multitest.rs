@@ -25,19 +25,19 @@ use sg721::msg::{InstantiateMsg as Sg721InstantiateMsg, RoyaltyInfoResponse};
 use sg721::state::CollectionInfo;
 use sg_std::NATIVE_DENOM;
 
-const TOKEN_ID: u32 = 123;
-const CREATION_FEE: u128 = 1_000_000_000;
-const LISTING_FEE: u128 = 0;
-const INITIAL_BALANCE: u128 = 2000;
+pub const TOKEN_ID: u32 = 123;
+pub const CREATION_FEE: u128 = 1_000_000_000;
+pub const LISTING_FEE: u128 = 0;
+pub const INITIAL_BALANCE: u128 = 2000;
 
 // Governance parameters
-const TRADING_FEE_BPS: u64 = 200; // 2%
-const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
-const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
-const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
-const BID_REMOVAL_REWARD_BPS: u64 = 500; // 5%
+pub const TRADING_FEE_BPS: u64 = 200; // 2%
+pub const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
+pub const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
+pub const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
+pub const BID_REMOVAL_REWARD_BPS: u64 = 500; // 5%
 
-fn custom_mock_app() -> StargazeApp {
+pub fn custom_mock_app() -> StargazeApp {
     StargazeApp::default()
 }
 
@@ -62,14 +62,14 @@ pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
     Box::new(contract)
 }
 
-fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
+pub fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
     let mut block = router.block_info();
     block.time = Timestamp::from_seconds(seconds);
     router.set_block(block);
 }
 
 // Instantiates all needed contracts for testing
-fn setup_contracts(
+pub fn setup_contracts(
     router: &mut StargazeApp,
     creator: &Addr,
 ) -> Result<(Addr, Addr), ContractError> {
@@ -133,7 +133,7 @@ fn setup_contracts(
     Ok((marketplace, collection))
 }
 
-fn setup_collection(router: &mut StargazeApp, creator: &Addr) -> Result<Addr, ContractError> {
+pub fn setup_collection(router: &mut StargazeApp, creator: &Addr) -> Result<Addr, ContractError> {
     // Setup media contract
     let sg721_id = router.store_code(contract_sg721());
     let msg = Sg721InstantiateMsg {
@@ -168,7 +168,7 @@ fn setup_collection(router: &mut StargazeApp, creator: &Addr) -> Result<Addr, Co
 }
 
 // Intializes accounts with balances
-fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), ContractError> {
+pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), ContractError> {
     let owner: Addr = Addr::unchecked("owner");
     let bidder: Addr = Addr::unchecked("bidder");
     let creator: Addr = Addr::unchecked("creator");
@@ -213,7 +213,7 @@ fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Contra
     Ok((owner, bidder, creator))
 }
 
-fn add_funds_for_incremental_fee(
+pub fn add_funds_for_incremental_fee(
     router: &mut StargazeApp,
     receiver: &Addr,
     fee_amount: u128,
@@ -232,7 +232,7 @@ fn add_funds_for_incremental_fee(
     Ok(())
 }
 
-fn setup_second_bidder_account(router: &mut StargazeApp) -> Result<Addr, ContractError> {
+pub fn setup_second_bidder_account(router: &mut StargazeApp) -> Result<Addr, ContractError> {
     let bidder2: Addr = Addr::unchecked("bidder2");
     let funds: Vec<Coin> = coins(CREATION_FEE + INITIAL_BALANCE, NATIVE_DENOM);
     router
@@ -253,7 +253,7 @@ fn setup_second_bidder_account(router: &mut StargazeApp) -> Result<Addr, Contrac
 }
 
 // Mints an NFT for a creator
-fn mint(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
+pub fn mint(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
     let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
         token_id: token_id.to_string(),
         owner: creator.clone().to_string(),
@@ -269,7 +269,7 @@ fn mint(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u
     assert!(res.is_ok());
 }
 
-fn mint_for(
+pub fn mint_for(
     router: &mut StargazeApp,
     owner: &Addr,
     creator: &Addr,
@@ -291,7 +291,7 @@ fn mint_for(
     assert!(res.is_ok());
 }
 
-fn approve(
+pub fn approve(
     router: &mut StargazeApp,
     creator: &Addr,
     collection: &Addr,
@@ -322,7 +322,7 @@ fn transfer(
     assert!(res.is_ok());
 }
 
-fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
+pub fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
     let transfer_msg = Cw721ExecuteMsg::<Empty>::Burn {
         token_id: token_id.to_string(),
     };
@@ -3757,7 +3757,7 @@ fn try_bid_sale_type() {
     assert_eq!(res.bids[0].price.u128(), 100u128);
 }
 
-fn listing_funds(listing_fee: u128) -> Result<Vec<Coin>, ContractError> {
+pub fn listing_funds(listing_fee: u128) -> Result<Vec<Coin>, ContractError> {
     if listing_fee > 0 {
         Ok(vec![coin(listing_fee, NATIVE_DENOM)])
     } else {
