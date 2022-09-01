@@ -494,19 +494,20 @@ pub fn execute_set_bid(
     let bid = match existing_ask {
         Some(ask) => match ask.sale_type {
             SaleType::FixedPrice => {
-                if ask.price != bid_price {
-                    return Err(ContractError::InvalidPrice {});
+                if ask.price == bid_price {
+                    asks().remove(deps.storage, ask_key)?;
+                    finalize_sale(
+                        deps.as_ref(),
+                        ask,
+                        bid_price,
+                        bidder.clone(),
+                        finder,
+                        &mut res,
+                    )?;
+                    None
+                } else {
+                    save_bid(deps.storage)?
                 }
-                asks().remove(deps.storage, ask_key)?;
-                finalize_sale(
-                    deps.as_ref(),
-                    ask,
-                    bid_price,
-                    bidder.clone(),
-                    finder,
-                    &mut res,
-                )?;
-                None
             }
             SaleType::Auction => save_bid(deps.storage)?,
         },
@@ -822,7 +823,8 @@ pub fn execute_sync_ask(
         None,
     );
     if res.is_ok() == ask.is_active {
-        return Err(ContractError::AskUnchanged {});
+        return Ok(Response::new());
+        // return Err(ContractError::AskUnchanged {});
     }
     ask.is_active = res.is_ok();
     asks().save(deps.storage, key, &ask)?;
