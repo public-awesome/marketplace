@@ -32,7 +32,7 @@ fn try_set_bid_fixed_price() {
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
-    // router.execute_contract(sender, contract_addr, msg, send_funds)
+
     let res = router.execute_contract(
         creator.clone(),
         marketplace.clone(),
