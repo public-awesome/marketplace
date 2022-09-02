@@ -140,7 +140,15 @@ fn try_set_bid_fixed_price() {
     // bid should not be returned for bidder 2
     let res: BidResponse = router
         .wrap()
-        .query_wasm_smart(marketplace, &bid_query)
+        .query_wasm_smart(marketplace.clone(), &bid_query)
         .unwrap();
     assert_eq!(res.bid, None);
+
+    // Check creator has been paid
+    let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
+    assert_eq!(creator_native_balances, coins(150 - 3, NATIVE_DENOM));
+
+    // Check contract has first bid balance
+    let contract_balances = router.wrap().query_all_balances(marketplace).unwrap();
+    assert_eq!(contract_balances, coins(50, NATIVE_DENOM));
 }
