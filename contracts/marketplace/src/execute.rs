@@ -494,6 +494,7 @@ pub fn execute_set_bid(
     let bid = match existing_ask {
         Some(ask) => match ask.sale_type {
             SaleType::FixedPrice => {
+                // if the bid matches the exact price execute the sale
                 if ask.price == bid_price {
                     asks().remove(deps.storage, ask_key)?;
                     finalize_sale(
@@ -505,8 +506,12 @@ pub fn execute_set_bid(
                         &mut res,
                     )?;
                     None
-                } else {
+                } else if bid_price < ask.price {
+                    // if the bid is lower than the ask price, store the bid
                     save_bid(deps.storage)?
+                } else {
+                    // if the bid is higher return invalid price error
+                    return Err(ContractError::InvalidPrice {});
                 }
             }
             SaleType::Auction => save_bid(deps.storage)?,

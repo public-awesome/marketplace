@@ -67,5 +67,5 @@ fn try_set_bid_fixed_price() {
         &set_bid_msg,
         &coins(50, NATIVE_DENOM),
     );
-    assert!(res.is_err());
+    assert!(res.is_ok());
 }
