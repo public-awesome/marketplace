@@ -26,6 +26,7 @@ use serde::{Deserialize, Serialize};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
+use std::cmp::Ordering;
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -494,19 +495,27 @@ pub fn execute_set_bid(
     let bid = match existing_ask {
         Some(ask) => match ask.sale_type {
             SaleType::FixedPrice => {
-                if ask.price != bid_price {
-                    return Err(ContractError::InvalidPrice {});
+                // check if bid matches ask price then execute the sale
+                // if the bid is lower than the ask price save the bid
+                // otherwise return an error
+                match bid_price.cmp(&ask.price) {
+                    Ordering::Greater => {
+                        return Err(ContractError::InvalidPrice {});
+                    }
+                    Ordering::Less => save_bid(deps.storage)?,
+                    Ordering::Equal => {
+                        asks().remove(deps.storage, ask_key)?;
+                        finalize_sale(
+                            deps.as_ref(),
+                            ask,
+                            bid_price,
+                            bidder.clone(),
+                            finder,
+                            &mut res,
+                        )?;
+                        None
+                    }
                 }
-                asks().remove(deps.storage, ask_key)?;
-                finalize_sale(
-                    deps.as_ref(),
-                    ask,
-                    bid_price,
-                    bidder.clone(),
-                    finder,
-                    &mut res,
-                )?;
-                None
             }
             SaleType::Auction => save_bid(deps.storage)?,
         },

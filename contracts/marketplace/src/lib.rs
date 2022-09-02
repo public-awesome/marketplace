@@ -1,5 +1,7 @@
 mod error;
 pub mod execute;
+#[cfg(test)]
+mod fixed_price_tests;
 mod helpers;
 pub mod msg;
 #[cfg(test)]
