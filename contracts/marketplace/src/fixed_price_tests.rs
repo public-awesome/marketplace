@@ -1,11 +1,11 @@
-use crate::msg::ExecuteMsg;
+use crate::msg::{AskResponse, BidResponse, ExecuteMsg, QueryMsg};
 use crate::multitest::{
     approve, custom_mock_app, listing_funds, mint, setup_accounts, setup_contracts,
+    setup_second_bidder_account,
 };
 use crate::multitest::{LISTING_FEE, MIN_EXPIRY, TOKEN_ID};
 use crate::state::SaleType;
-use cosmwasm_std::{coin, coins};
-
+use cosmwasm_std::{coin, coins, Uint128};
 use cw_multi_test::Executor;
 use sg_std::NATIVE_DENOM;
 
@@ -60,12 +60,87 @@ fn try_set_bid_fixed_price() {
     );
     assert!(res.is_err());
 
-    // Bidder makes bid higher lower the asking price
+    // Bidder makes bid lower than the asking price
     let res = router.execute_contract(
-        bidder,
+        bidder.clone(),
         marketplace.clone(),
         &set_bid_msg,
         &coins(50, NATIVE_DENOM),
     );
     assert!(res.is_ok());
+    let ask_query = QueryMsg::Ask {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+    };
+
+    // ask should be returned
+    let res: AskResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_query)
+        .unwrap();
+    assert_ne!(res.ask, None);
+
+    let bid_query = QueryMsg::Bid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        bidder: bidder.to_string(),
+    };
+
+    // bid should be returned
+    let res: BidResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &bid_query)
+        .unwrap();
+    assert_ne!(res.bid, None);
+    let bid = res.bid.unwrap();
+    assert_eq!(bid.price, Uint128::from(50u128));
+
+    let bidder2 = setup_second_bidder_account(&mut router).unwrap();
+
+    // Bidder 2 makes a matching bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+
+    let res = router.execute_contract(
+        bidder2.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(150, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    // ask should have been removed
+    let res: AskResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_query)
+        .unwrap();
+    assert_eq!(res.ask, None);
+
+    // bid should be returned for bidder 1
+    let res: BidResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &bid_query)
+        .unwrap();
+    assert_ne!(res.bid, None);
+    let bid = res.bid.unwrap();
+    assert_eq!(bid.price, Uint128::from(50u128));
+
+    let bid_query = QueryMsg::Bid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        bidder: bidder2.to_string(),
+    };
+
+    // bid should not be returned for bidder 2
+    let res: BidResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace, &bid_query)
+        .unwrap();
+    assert_eq!(res.bid, None);
 }
