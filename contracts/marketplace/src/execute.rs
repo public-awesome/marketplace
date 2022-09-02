@@ -517,7 +517,17 @@ pub fn execute_set_bid(
                     }
                 }
             }
-            SaleType::Auction => save_bid(deps.storage)?,
+            SaleType::Auction => {
+                // check if bid price is equal or greater than ask price then place the bid
+                // otherwise return an error
+                match bid_price.cmp(&ask.price) {
+                    Ordering::Greater => save_bid(deps.storage)?,
+                    Ordering::Equal => save_bid(deps.storage)?,
+                    Ordering::Less => {
+                        return Err(ContractError::InvalidPrice {});
+                    }
+                }
+            }
         },
         None => save_bid(deps.storage)?,
     };
