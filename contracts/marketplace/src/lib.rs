@@ -1,3 +1,5 @@
+#[cfg(test)]
+mod auction_tests;
 mod error;
 pub mod execute;
 #[cfg(test)]
