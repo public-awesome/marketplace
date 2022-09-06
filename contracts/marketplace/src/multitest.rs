@@ -1526,7 +1526,7 @@ fn try_query_bids() {
 
     // Bidder makes bids
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1537,7 +1537,7 @@ fn try_query_bids() {
         bidder.clone(),
         marketplace.clone(),
         &set_bid_msg,
-        &coins(100, NATIVE_DENOM),
+        &coins(120, NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
@@ -1553,7 +1553,7 @@ fn try_query_bids() {
         bidder.clone(),
         marketplace.clone(),
         &set_bid_msg,
-        &coins(105, NATIVE_DENOM),
+        &coins(115, NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
@@ -1562,7 +1562,7 @@ fn try_query_bids() {
         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
         .unwrap();
     assert_eq!(res.bids[0].token_id, TOKEN_ID);
-    assert_eq!(res.bids[0].price.u128(), 100u128);
+    assert_eq!(res.bids[0].price.u128(), 120u128);
     let query_bids_msg = QueryMsg::Bids {
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
@@ -1574,7 +1574,7 @@ fn try_query_bids() {
         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
         .unwrap();
     assert_eq!(res.bids[0].token_id, TOKEN_ID + 1);
-    assert_eq!(res.bids[0].price.u128(), 105u128);
+    assert_eq!(res.bids[0].price.u128(), 115u128);
 
     let query_bids_msg = QueryMsg::BidsByBidder {
         bidder: bidder.to_string(),
