@@ -1261,7 +1261,7 @@ fn try_query_sorted_bids() {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
-        price: coin(110, NATIVE_DENOM),
+        price: coin(10, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
@@ -1279,7 +1279,7 @@ fn try_query_sorted_bids() {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
-        price: coin(109, NATIVE_DENOM),
+        price: coin(10, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
@@ -1297,7 +1297,7 @@ fn try_query_sorted_bids() {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 2,
-        price: coin(111, NATIVE_DENOM),
+        price: coin(10, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
@@ -1313,7 +1313,7 @@ fn try_query_sorted_bids() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1329,7 +1329,7 @@ fn try_query_sorted_bids() {
     assert!(res.is_ok());
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
         finders_fee_bps: None,
@@ -1345,7 +1345,7 @@ fn try_query_sorted_bids() {
     assert!(res.is_ok());
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 2,
         finders_fee_bps: None,
