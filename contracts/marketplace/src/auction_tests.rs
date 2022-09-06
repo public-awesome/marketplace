@@ -140,18 +140,27 @@ fn set_auction_bids() {
     let bid = res.bid.unwrap();
     assert_eq!(bid.price, Uint128::from(150u128));
 
-    // // ask should have been removed
-    // let res: AskResponse = router
-    //     .wrap()
-    //     .query_wasm_smart(marketplace.clone(), &ask_query)
-    //     .unwrap();
-    // assert_eq!(res.ask, None);
+    // Creator accepts bid
+    let accept_bid_msg = ExecuteMsg::AcceptBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        bidder: bidder.to_string(),
+        finder: None,
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
+    assert!(res.is_ok());
+    // ask should have been removed
+    let res: AskResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_query)
+        .unwrap();
+    assert_eq!(res.ask, None);
 
-    // // Check creator has been paid
-    // let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    // assert_eq!(creator_native_balances, coins(150 - 3, NATIVE_DENOM));
+    // Check creator has been paid
+    let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
+    assert_eq!(creator_native_balances, coins(200 - 4, NATIVE_DENOM));
 
-    // // Check contract has first bid balance
-    // let contract_balances = router.wrap().query_all_balances(marketplace).unwrap();
-    // assert_eq!(contract_balances, coins(50, NATIVE_DENOM));
+    // Check contract has second bid balance
+    let contract_balances = router.wrap().query_all_balances(marketplace).unwrap();
+    assert_eq!(contract_balances, coins(150, NATIVE_DENOM));
 }
