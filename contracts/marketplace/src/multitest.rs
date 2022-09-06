@@ -1914,7 +1914,7 @@ fn remove_bid_refund() {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
-        price: coin(110, NATIVE_DENOM),
+        price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
@@ -1930,7 +1930,7 @@ fn remove_bid_refund() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
