@@ -331,7 +331,7 @@ pub fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_i
 }
 
 #[test]
-fn try_set_accept_bid() {
+fn try_set_accept_fixed_price_bid() {
     let mut router = custom_mock_app();
 
     // Setup intial accounts
@@ -368,7 +368,7 @@ fn try_set_accept_bid() {
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
-        sale_type: SaleType::Auction,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         price: coin(110, NATIVE_DENOM),
