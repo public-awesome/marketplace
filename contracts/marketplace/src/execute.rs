@@ -456,12 +456,6 @@ pub fn execute_set_bid(
 
     let existing_ask = asks().may_load(deps.storage, ask_key.clone())?;
 
-    // if the bid is placed for fixed price only but there is no ask
-    // return an error
-    if sale_type == SaleType::FixedPrice && existing_ask.is_none() {
-        return Err(ContractError::AskNotFound {});
-    }
-
     if let Some(ask) = existing_ask.clone() {
         if ask.is_expired(&env.block) {
             return Err(ContractError::AskExpired {});
