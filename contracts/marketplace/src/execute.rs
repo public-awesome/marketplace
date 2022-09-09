@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::helpers::{map_validate, ExpiryRange};
+use crate::helpers::map_validate;
 use crate::msg::{
     AskHookMsg, BidHookMsg, CollectionBidHookMsg, ExecuteMsg, HookAction, InstantiateMsg,
     SaleHookMsg,
@@ -18,11 +18,8 @@ use cosmwasm_std::{
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
-use cw_storage_plus::Item;
 use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
-use schemars::JsonSchema;
 use semver::Version;
-use serde::{Deserialize, Serialize};
 use sg1::fair_burn;
 use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
@@ -459,12 +456,6 @@ pub fn execute_set_bid(
 
     let existing_ask = asks().may_load(deps.storage, ask_key.clone())?;
 
-    // if the bid is placed for fixed price only but there is no ask
-    // return an error
-    if sale_type == SaleType::FixedPrice && existing_ask.is_none() {
-        return Err(ContractError::AskNotFound {});
-    }
-
     if let Some(ask) = existing_ask.clone() {
         if ask.is_expired(&env.block) {
             return Err(ContractError::AskExpired {});
@@ -517,7 +508,17 @@ pub fn execute_set_bid(
                     }
                 }
             }
-            SaleType::Auction => save_bid(deps.storage)?,
+            SaleType::Auction => {
+                // check if bid price is equal or greater than ask price then place the bid
+                // otherwise return an error
+                match bid_price.cmp(&ask.price) {
+                    Ordering::Greater => save_bid(deps.storage)?,
+                    Ordering::Equal => save_bid(deps.storage)?,
+                    Ordering::Less => {
+                        return Err(ContractError::InvalidPrice {});
+                    }
+                }
+            }
         },
         None => save_bid(deps.storage)?,
     };
@@ -1310,38 +1311,6 @@ pub fn migrate(deps: DepsMut, _env: Env, _msg: Empty) -> Result<Response, Contra
     if version == new_version {
         return Ok(Response::new());
     }
-
-    // SudoParamsV015 represents the previous state from v0.15.0 version
-    #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-    pub struct SudoParamsV015 {
-        pub trading_fee_percent: Decimal,
-        pub ask_expiry: ExpiryRange,
-        pub bid_expiry: ExpiryRange,
-        pub operators: Vec<Addr>,
-        pub max_finders_fee_percent: Decimal,
-        pub min_price: Uint128,
-        pub stale_bid_duration: Duration,
-        pub bid_removal_reward_percent: Decimal,
-    }
-
-    // load state that contains the old struct type
-    let params_item: Item<SudoParamsV015> = Item::new("sudo-params");
-    let current_params = params_item.load(deps.storage)?;
-
-    // migrate to the new struct
-    let new_sudo_params = SudoParams {
-        trading_fee_percent: current_params.trading_fee_percent,
-        ask_expiry: current_params.ask_expiry,
-        bid_expiry: current_params.bid_expiry,
-        operators: current_params.operators,
-        max_finders_fee_percent: current_params.max_finders_fee_percent,
-        min_price: current_params.min_price,
-        stale_bid_duration: current_params.stale_bid_duration,
-        bid_removal_reward_percent: current_params.bid_removal_reward_percent,
-        listing_fee: Uint128::zero(),
-    };
-    // store migrated params
-    SUDO_PARAMS.save(deps.storage, &new_sudo_params)?;
 
     // set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;

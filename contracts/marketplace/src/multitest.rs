@@ -9,7 +9,7 @@ use crate::msg::{
 use crate::msg::{
     BidsResponse, CollectionBidResponse, CollectionBidsResponse, ExecuteMsg, QueryMsg,
 };
-use crate::state::{Bid, SaleType, SUDO_PARAMS};
+use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
@@ -167,7 +167,7 @@ pub fn setup_collection(router: &mut StargazeApp, creator: &Addr) -> Result<Addr
     Ok(collection)
 }
 
-// Intializes accounts with balances
+// initializes accounts with balances
 pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), ContractError> {
     let owner: Addr = Addr::unchecked("owner");
     let bidder: Addr = Addr::unchecked("bidder");
@@ -331,10 +331,10 @@ pub fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_i
 }
 
 #[test]
-fn try_set_accept_bid() {
+fn try_set_accept_fixed_price_bid() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -368,7 +368,7 @@ fn try_set_accept_bid() {
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
-        sale_type: SaleType::Auction,
+        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         price: coin(110, NATIVE_DENOM),
@@ -519,7 +519,7 @@ fn try_set_accept_bid() {
 fn try_set_accept_bid_no_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -682,7 +682,7 @@ fn try_set_accept_bid_high_fees() {
 fn try_update_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -778,7 +778,7 @@ fn try_update_ask() {
 fn try_query_asks() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -888,7 +888,7 @@ fn try_query_asks() {
 fn try_query_sorted_asks() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Add funds to creator for listing fees
@@ -1054,7 +1054,7 @@ fn try_query_sorted_asks() {
 fn try_query_asks_by_seller() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     let owner2: Addr = Addr::unchecked("owner2");
@@ -1227,7 +1227,7 @@ fn try_query_asks_by_seller() {
 fn try_query_sorted_bids() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1261,7 +1261,7 @@ fn try_query_sorted_bids() {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
-        price: coin(110, NATIVE_DENOM),
+        price: coin(10, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
@@ -1279,7 +1279,7 @@ fn try_query_sorted_bids() {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
-        price: coin(109, NATIVE_DENOM),
+        price: coin(10, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
@@ -1297,7 +1297,7 @@ fn try_query_sorted_bids() {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 2,
-        price: coin(111, NATIVE_DENOM),
+        price: coin(10, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
@@ -1313,7 +1313,7 @@ fn try_query_sorted_bids() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1329,7 +1329,7 @@ fn try_query_sorted_bids() {
     assert!(res.is_ok());
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
         finders_fee_bps: None,
@@ -1345,7 +1345,7 @@ fn try_query_sorted_bids() {
     assert!(res.is_ok());
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID + 2,
         finders_fee_bps: None,
@@ -1479,7 +1479,7 @@ fn try_query_sorted_bids() {
 #[test]
 fn try_query_bids() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1526,7 +1526,7 @@ fn try_query_bids() {
 
     // Bidder makes bids
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1537,7 +1537,7 @@ fn try_query_bids() {
         bidder.clone(),
         marketplace.clone(),
         &set_bid_msg,
-        &coins(100, NATIVE_DENOM),
+        &coins(120, NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
@@ -1553,7 +1553,7 @@ fn try_query_bids() {
         bidder.clone(),
         marketplace.clone(),
         &set_bid_msg,
-        &coins(105, NATIVE_DENOM),
+        &coins(115, NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
@@ -1562,7 +1562,7 @@ fn try_query_bids() {
         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
         .unwrap();
     assert_eq!(res.bids[0].token_id, TOKEN_ID);
-    assert_eq!(res.bids[0].price.u128(), 100u128);
+    assert_eq!(res.bids[0].price.u128(), 120u128);
     let query_bids_msg = QueryMsg::Bids {
         collection: collection.to_string(),
         token_id: TOKEN_ID + 1,
@@ -1574,7 +1574,7 @@ fn try_query_bids() {
         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
         .unwrap();
     assert_eq!(res.bids[0].token_id, TOKEN_ID + 1);
-    assert_eq!(res.bids[0].price.u128(), 105u128);
+    assert_eq!(res.bids[0].price.u128(), 115u128);
 
     let query_bids_msg = QueryMsg::BidsByBidder {
         bidder: bidder.to_string(),
@@ -1618,7 +1618,7 @@ fn try_query_bids() {
 fn auto_accept_bid() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1738,7 +1738,7 @@ fn auto_accept_bid() {
 fn try_reserved_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1825,7 +1825,7 @@ fn try_reserved_ask() {
 fn try_ask_with_finders_fee() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1893,7 +1893,7 @@ fn try_ask_with_finders_fee() {
 fn remove_bid_refund() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1914,7 +1914,7 @@ fn remove_bid_refund() {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
-        price: coin(110, NATIVE_DENOM),
+        price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
@@ -1930,7 +1930,7 @@ fn remove_bid_refund() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -1977,7 +1977,7 @@ fn remove_bid_refund() {
 fn new_bid_refund() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1995,7 +1995,7 @@ fn new_bid_refund() {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
-        price: coin(200, NATIVE_DENOM),
+        price: coin(50, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
@@ -2011,7 +2011,7 @@ fn new_bid_refund() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
@@ -2097,7 +2097,7 @@ fn new_bid_refund() {
 fn try_royalties() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (curator, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Add funds to creator for listing fees
@@ -2227,7 +2227,7 @@ fn try_royalties() {
 fn try_sudo_update_params() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -2309,7 +2309,7 @@ fn try_sudo_update_params() {
 #[test]
 fn try_add_remove_sales_hooks() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -2343,7 +2343,7 @@ fn try_add_remove_sales_hooks() {
 #[test]
 fn try_add_too_many_sales_hooks() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -2388,7 +2388,7 @@ fn try_add_too_many_sales_hooks() {
 #[test]
 fn try_add_remove_bid_hooks() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -2422,7 +2422,7 @@ fn try_add_remove_bid_hooks() {
 #[test]
 fn try_init_hook() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
@@ -2465,7 +2465,7 @@ fn try_init_hook() {
 #[test]
 fn try_hook_was_run() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
@@ -2563,7 +2563,7 @@ fn try_hook_was_run() {
 #[test]
 fn try_add_remove_listed_hooks() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -2598,7 +2598,7 @@ fn try_add_remove_listed_hooks() {
 fn try_collection_bids() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
 
@@ -2814,7 +2814,7 @@ fn try_collection_bids() {
 fn try_remove_stale_bid() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -2866,7 +2866,7 @@ fn try_remove_stale_bid() {
 fn try_remove_stale_collection_bid() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -2921,7 +2921,7 @@ fn try_remove_stale_collection_bid() {
 fn try_bid_finders_fee() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -2990,7 +2990,7 @@ fn try_bid_finders_fee() {
 fn try_bidder_cannot_be_finder() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3023,7 +3023,7 @@ fn try_bidder_cannot_be_finder() {
 fn try_ask_with_filter_inactive() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3121,7 +3121,7 @@ fn try_ask_with_filter_inactive() {
 fn try_sync_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3282,7 +3282,7 @@ fn try_sync_ask() {
 fn try_set_ask_reserve_for() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3411,7 +3411,7 @@ fn try_set_ask_reserve_for() {
 fn try_remove_stale_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3542,7 +3542,7 @@ fn try_remove_stale_ask() {
 #[test]
 fn try_add_and_remove_operators() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -3640,7 +3640,7 @@ fn try_add_and_remove_operators() {
 fn try_bid_sale_type() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3704,7 +3704,7 @@ fn try_bid_sale_type() {
 
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
 
-    // Bidder makes bid
+    // Bidder makes bid on NFT with no ask
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
@@ -3720,11 +3720,7 @@ fn try_bid_sale_type() {
         &coins(100, NATIVE_DENOM),
     );
 
-    assert!(res.is_err());
-    assert_eq!(
-        res.unwrap_err().source().unwrap().to_string(),
-        ContractError::AskNotFound {}.to_string()
-    );
+    assert!(res.is_ok());
 
     // Bidder makes bid with Auction
     let set_bid_msg = ExecuteMsg::SetBid {
@@ -3764,32 +3760,14 @@ pub fn listing_funds(listing_fee: u128) -> Result<Vec<Coin>, ContractError> {
         Ok(vec![])
     }
 }
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
-
-// SudoParamsV015 represents the previous state from v0.15.0 version
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-pub struct SudoParamsV015 {
-    pub trading_fee_percent: Decimal,
-    pub ask_expiry: ExpiryRange,
-    pub bid_expiry: ExpiryRange,
-    pub operators: Vec<Addr>,
-    pub max_finders_fee_percent: Decimal,
-    pub min_price: Uint128,
-    pub stale_bid_duration: Duration,
-    pub bid_removal_reward_percent: Decimal,
-}
 
 use cw2::set_contract_version;
-use cw_storage_plus::Item;
 #[test]
 fn try_migrate() {
     let mut deps = mock_dependencies();
     let env = mock_env();
 
-    let old_params_item: Item<SudoParamsV015> = Item::new("sudo-params");
-
-    let old_params = SudoParamsV015 {
+    let old_params = SudoParams {
         operators: vec![Addr::unchecked("operator1")],
         trading_fee_percent: Decimal::percent(TRADING_FEE_BPS),
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
@@ -3798,10 +3776,10 @@ fn try_migrate() {
         min_price: Uint128::from(5u128),
         stale_bid_duration: Duration::Time(100),
         bid_removal_reward_percent: Decimal::percent(BID_REMOVAL_REWARD_BPS),
+        listing_fee: Uint128::from(LISTING_FEE),
     };
-    old_params_item
-        .save(&mut deps.storage, &old_params)
-        .unwrap();
+
+    SUDO_PARAMS.save(&mut deps.storage, &old_params).unwrap();
 
     // should error when different name
     set_contract_version(&mut deps.storage, "crates.io:marketplace", "0.15.0").unwrap();
@@ -3829,7 +3807,7 @@ fn try_migrate() {
     .unwrap();
     migrate(deps.as_mut(), env.clone(), Empty {}).unwrap();
 
-    set_contract_version(&mut deps.storage, "crates.io:sg-marketplace", "0.15.0").unwrap();
+    set_contract_version(&mut deps.storage, "crates.io:sg-marketplace", "1.0.0").unwrap();
     migrate(deps.as_mut(), env, Empty {}).unwrap();
 
     let new_params = SUDO_PARAMS.load(&deps.storage).unwrap();
@@ -3851,5 +3829,5 @@ fn try_migrate() {
         new_params.bid_removal_reward_percent,
         old_params.bid_removal_reward_percent
     );
-    assert_eq!(new_params.listing_fee, Uint128::zero());
+    assert_eq!(new_params.listing_fee, old_params.listing_fee);
 }

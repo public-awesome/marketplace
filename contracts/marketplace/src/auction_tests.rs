@@ -10,7 +10,7 @@ use cw_multi_test::Executor;
 use sg_std::NATIVE_DENOM;
 
 #[test]
-fn try_set_bid_fixed_price() {
+fn set_auction_bids() {
     let mut router = custom_mock_app();
     // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
@@ -23,7 +23,7 @@ fn try_set_bid_fixed_price() {
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         price: coin(150, NATIVE_DENOM),
@@ -43,13 +43,22 @@ fn try_set_bid_fixed_price() {
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+        sale_type: SaleType::Auction,
         collection: collection.to_string(),
         token_id: TOKEN_ID,
         finders_fee_bps: None,
         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
+
+    // Bidder makes bid lower than the asking price
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_err());
 
     // Bidder makes bid higher than the asking price
     let res = router.execute_contract(
@@ -58,16 +67,8 @@ fn try_set_bid_fixed_price() {
         &set_bid_msg,
         &coins(200, NATIVE_DENOM),
     );
-    assert!(res.is_err());
-
-    // Bidder makes bid lower than the asking price
-    let res = router.execute_contract(
-        bidder.clone(),
-        marketplace.clone(),
-        &set_bid_msg,
-        &coins(50, NATIVE_DENOM),
-    );
     assert!(res.is_ok());
+
     let ask_query = QueryMsg::Ask {
         collection: collection.to_string(),
         token_id: TOKEN_ID,
@@ -93,11 +94,11 @@ fn try_set_bid_fixed_price() {
         .unwrap();
     assert_ne!(res.bid, None);
     let bid = res.bid.unwrap();
-    assert_eq!(bid.price, Uint128::from(50u128));
+    assert_eq!(bid.price, Uint128::from(200u128));
 
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
 
-    // Bidder 2 makes a matching bid
+    // Bidder 2 makes bid equal to the asking price
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
@@ -115,13 +116,6 @@ fn try_set_bid_fixed_price() {
     );
     assert!(res.is_ok());
 
-    // ask should have been removed
-    let res: AskResponse = router
-        .wrap()
-        .query_wasm_smart(marketplace.clone(), &ask_query)
-        .unwrap();
-    assert_eq!(res.ask, None);
-
     // bid should be returned for bidder 1
     let res: BidResponse = router
         .wrap()
@@ -129,7 +123,7 @@ fn try_set_bid_fixed_price() {
         .unwrap();
     assert_ne!(res.bid, None);
     let bid = res.bid.unwrap();
-    assert_eq!(bid.price, Uint128::from(50u128));
+    assert_eq!(bid.price, Uint128::from(200u128));
 
     let bid_query = QueryMsg::Bid {
         collection: collection.to_string(),
@@ -137,18 +131,36 @@ fn try_set_bid_fixed_price() {
         bidder: bidder2.to_string(),
     };
 
-    // bid should not be returned for bidder 2
+    // bid should  be returned for bidder 2
     let res: BidResponse = router
         .wrap()
         .query_wasm_smart(marketplace.clone(), &bid_query)
         .unwrap();
-    assert_eq!(res.bid, None);
+    assert_ne!(res.bid, None);
+    let bid = res.bid.unwrap();
+    assert_eq!(bid.price, Uint128::from(150u128));
+
+    // Creator accepts bid
+    let accept_bid_msg = ExecuteMsg::AcceptBid {
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        bidder: bidder.to_string(),
+        finder: None,
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
+    assert!(res.is_ok());
+    // ask should have been removed
+    let res: AskResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_query)
+        .unwrap();
+    assert_eq!(res.ask, None);
 
     // Check creator has been paid
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    assert_eq!(creator_native_balances, coins(150 - 3, NATIVE_DENOM));
+    assert_eq!(creator_native_balances, coins(200 - 4, NATIVE_DENOM));
 
-    // Check contract has first bid balance
+    // Check contract has second bid balance
     let contract_balances = router.wrap().query_all_balances(marketplace).unwrap();
-    assert_eq!(contract_balances, coins(50, NATIVE_DENOM));
+    assert_eq!(contract_balances, coins(150, NATIVE_DENOM));
 }
