@@ -167,7 +167,7 @@ pub fn setup_collection(router: &mut StargazeApp, creator: &Addr) -> Result<Addr
     Ok(collection)
 }
 
-// Intializes accounts with balances
+// initializes accounts with balances
 pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), ContractError> {
     let owner: Addr = Addr::unchecked("owner");
     let bidder: Addr = Addr::unchecked("bidder");
@@ -334,7 +334,7 @@ pub fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_i
 fn try_set_accept_fixed_price_bid() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -519,7 +519,7 @@ fn try_set_accept_fixed_price_bid() {
 fn try_set_accept_bid_no_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -682,7 +682,7 @@ fn try_set_accept_bid_high_fees() {
 fn try_update_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -778,7 +778,7 @@ fn try_update_ask() {
 fn try_query_asks() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -888,7 +888,7 @@ fn try_query_asks() {
 fn try_query_sorted_asks() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Add funds to creator for listing fees
@@ -1054,7 +1054,7 @@ fn try_query_sorted_asks() {
 fn try_query_asks_by_seller() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     let owner2: Addr = Addr::unchecked("owner2");
@@ -1227,7 +1227,7 @@ fn try_query_asks_by_seller() {
 fn try_query_sorted_bids() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1479,7 +1479,7 @@ fn try_query_sorted_bids() {
 #[test]
 fn try_query_bids() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1618,7 +1618,7 @@ fn try_query_bids() {
 fn auto_accept_bid() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1738,7 +1738,7 @@ fn auto_accept_bid() {
 fn try_reserved_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1825,7 +1825,7 @@ fn try_reserved_ask() {
 fn try_ask_with_finders_fee() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1893,7 +1893,7 @@ fn try_ask_with_finders_fee() {
 fn remove_bid_refund() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -1977,7 +1977,7 @@ fn remove_bid_refund() {
 fn new_bid_refund() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -2097,7 +2097,7 @@ fn new_bid_refund() {
 fn try_royalties() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (curator, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Add funds to creator for listing fees
@@ -2227,7 +2227,7 @@ fn try_royalties() {
 fn try_sudo_update_params() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -2309,7 +2309,7 @@ fn try_sudo_update_params() {
 #[test]
 fn try_add_remove_sales_hooks() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -2343,7 +2343,7 @@ fn try_add_remove_sales_hooks() {
 #[test]
 fn try_add_too_many_sales_hooks() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -2388,7 +2388,7 @@ fn try_add_too_many_sales_hooks() {
 #[test]
 fn try_add_remove_bid_hooks() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -2422,7 +2422,7 @@ fn try_add_remove_bid_hooks() {
 #[test]
 fn try_init_hook() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
@@ -2465,7 +2465,7 @@ fn try_init_hook() {
 #[test]
 fn try_hook_was_run() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
@@ -2563,7 +2563,7 @@ fn try_hook_was_run() {
 #[test]
 fn try_add_remove_listed_hooks() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -2598,7 +2598,7 @@ fn try_add_remove_listed_hooks() {
 fn try_collection_bids() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
 
@@ -2814,7 +2814,7 @@ fn try_collection_bids() {
 fn try_remove_stale_bid() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -2866,7 +2866,7 @@ fn try_remove_stale_bid() {
 fn try_remove_stale_collection_bid() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -2921,7 +2921,7 @@ fn try_remove_stale_collection_bid() {
 fn try_bid_finders_fee() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -2990,7 +2990,7 @@ fn try_bid_finders_fee() {
 fn try_bidder_cannot_be_finder() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3023,7 +3023,7 @@ fn try_bidder_cannot_be_finder() {
 fn try_ask_with_filter_inactive() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3121,7 +3121,7 @@ fn try_ask_with_filter_inactive() {
 fn try_sync_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3282,7 +3282,7 @@ fn try_sync_ask() {
 fn try_set_ask_reserve_for() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3411,7 +3411,7 @@ fn try_set_ask_reserve_for() {
 fn try_remove_stale_ask() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts
@@ -3542,7 +3542,7 @@ fn try_remove_stale_ask() {
 #[test]
 fn try_add_and_remove_operators() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
@@ -3640,7 +3640,7 @@ fn try_add_and_remove_operators() {
 fn try_bid_sale_type() {
     let mut router = custom_mock_app();
 
-    // Setup intial accounts
+    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
 
     // Instantiate and configure contracts

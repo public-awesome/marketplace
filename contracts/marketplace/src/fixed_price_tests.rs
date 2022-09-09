@@ -12,7 +12,7 @@ use sg_std::NATIVE_DENOM;
 #[test]
 fn try_set_bid_fixed_price() {
     let mut router = custom_mock_app();
-    // Setup intial accounts
+    // Setup initial accounts
     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
     // Instantiate and configure contracts
     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
