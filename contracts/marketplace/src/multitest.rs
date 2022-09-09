@@ -3704,7 +3704,7 @@ fn try_bid_sale_type() {
 
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
 
-    // Bidder makes bid
+    // Bidder makes bid on NFT with no ask
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
@@ -3720,11 +3720,7 @@ fn try_bid_sale_type() {
         &coins(100, NATIVE_DENOM),
     );
 
-    assert!(res.is_err());
-    assert_eq!(
-        res.unwrap_err().source().unwrap().to_string(),
-        ContractError::AskNotFound {}.to_string()
-    );
+    assert!(res.is_ok());
 
     // Bidder makes bid with Auction
     let set_bid_msg = ExecuteMsg::SetBid {
