@@ -1159,18 +1159,24 @@ fn only_owner(
 
 /// Checks that the collection is tradable
 fn only_tradable(deps: Deps, block: &BlockInfo, collection: &Addr) -> Result<bool, ContractError> {
-    let collection_info: CollectionInfoResponse = deps
+    let res: Result<CollectionInfoResponse, StdError> = deps
         .querier
-        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
-    match collection_info.start_trading_time {
-        Some(start_trading_time) => {
-            if start_trading_time > block.time {
-                Err(ContractError::CollectionNotTradable {})
-            } else {
-                Ok(true)
+        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {});
+
+    match res {
+        Ok(collection_info) => match collection_info.start_trading_time {
+            Some(start_trading_time) => {
+                if start_trading_time > block.time {
+                    Err(ContractError::CollectionNotTradable {})
+                } else {
+                    Ok(true)
+                }
             }
-        }
-        None => Ok(true),
+            // not set by collection, so tradable
+            None => Ok(true),
+        },
+        // not supported by collection
+        Err(_) => Ok(true),
     }
 }
 
