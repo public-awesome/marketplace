@@ -12,8 +12,8 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Empty, Env, Event, MessageInfo,
-    Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    coin, to_binary, Addr, BankMsg, BlockInfo, Coin, Decimal, Deps, DepsMut, Empty, Env, Event,
+    MessageInfo, Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
@@ -268,7 +268,7 @@ pub fn execute_set_ask(
 
     price_validate(deps.storage, &price)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
-    only_tradable(deps.as_ref(), &collection)?;
+    only_tradable(deps.as_ref(), &env.block, &collection)?;
 
     // Check if this contract is approved to transfer the token
     Cw721Contract(collection.clone()).approval(
@@ -588,7 +588,7 @@ pub fn execute_accept_bid(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
-    only_tradable(deps.as_ref(), &collection)?;
+    only_tradable(deps.as_ref(), &env.block, &collection)?;
     let bid_key = bid_key(&collection, token_id, &bidder);
     let ask_key = ask_key(&collection, token_id);
 
@@ -749,7 +749,7 @@ pub fn execute_accept_collection_bid(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
-    only_tradable(deps.as_ref(), &collection)?;
+    only_tradable(deps.as_ref(), &env.block, &collection)?;
     let bid_key = collection_bid_key(&collection, &bidder);
     let ask_key = ask_key(&collection, token_id);
 
@@ -1158,13 +1158,19 @@ fn only_owner(
 }
 
 /// Checks that the collection is tradable
-fn only_tradable(deps: Deps, collection: &Addr) -> Result<bool, ContractError> {
+fn only_tradable(deps: Deps, block: &BlockInfo, collection: &Addr) -> Result<bool, ContractError> {
     let collection_info: CollectionInfoResponse = deps
         .querier
         .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
     match collection_info.start_trading_time {
-        Some(start_trading_time) => return Ok(true),
-        None => return Ok(true),
+        Some(start_trading_time) => {
+            if start_trading_time > block.time {
+                Err(ContractError::CollectionNotTradable {})
+            } else {
+                Ok(true)
+            }
+        }
+        None => Ok(true),
     }
 }
 

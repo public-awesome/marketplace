@@ -81,4 +81,7 @@ pub enum ContractError {
 
     #[error("InvalidContractVersion")]
     InvalidContractVersion {},
+
+    #[error("Collection not tradable yet")]
+    CollectionNotTradable {},
 }
