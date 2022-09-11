@@ -156,7 +156,7 @@ pub fn setup_collection(
             payment_address: creator.to_string(),
             share: Decimal::percent(10),
         }),
-        start_trading_time: start_trading_time,
+        start_trading_time,
     };
     let msg = Sg721InstantiateMsg {
         name: String::from("Test Collection 2"),
@@ -3933,7 +3933,7 @@ fn try_start_trading_time() {
         finder: None,
     };
     let res = router.execute_contract(
-        bidder.clone(),
+        bidder,
         marketplace.clone(),
         &set_bid_msg,
         &coins(100, NATIVE_DENOM),
