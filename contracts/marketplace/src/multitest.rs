@@ -21,12 +21,16 @@ use sg_std::StargazeMsgWrapper;
 
 use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
 use cw_utils::{Duration, Expiration};
-use sg721::msg::{InstantiateMsg as Sg721InstantiateMsg, RoyaltyInfoResponse};
-use sg721::state::CollectionInfo;
+use sg721::{
+    CollectionInfo, ExecuteMsg as Sg721ExecuteMsg, InstantiateMsg as Sg721InstantiateMsg,
+    RoyaltyInfoResponse,
+};
+
 use sg_std::NATIVE_DENOM;
 
 pub const TOKEN_ID: u32 = 123;
-pub const CREATION_FEE: u128 = 1_000_000_000;
+pub const CREATION_FEE: u128 = 0;
+pub const CREATOR_INITIAL_BALANCE: u128 = 1000;
 pub const LISTING_FEE: u128 = 0;
 pub const INITIAL_BALANCE: u128 = 2000;
 
@@ -55,9 +59,9 @@ pub fn contract_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
 
 pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
     let contract = ContractWrapper::new(
-        sg721::contract::execute,
-        sg721::contract::instantiate,
-        sg721::contract::query,
+        sg721_base::entry::execute,
+        sg721_base::entry::instantiate,
+        sg721_base::entry::query,
     );
     Box::new(contract)
 }
@@ -108,6 +112,7 @@ pub fn setup_contracts(
         collection_info: CollectionInfo {
             creator: creator.to_string(),
             description: String::from("Stargaze Monkeys"),
+            start_trading_time: None,
             image:
                 "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
                     .to_string(),
@@ -119,15 +124,16 @@ pub fn setup_contracts(
         },
     };
     let collection = router
-        .instantiate_contract(
-            sg721_id,
-            creator.clone(),
-            &msg,
-            &coins(CREATION_FEE, NATIVE_DENOM),
-            "NFT",
-            None,
-        )
+        .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
         .unwrap();
+    // mark the collection contract as ready to mint
+    let res = router.execute_contract(
+        creator.clone(),
+        collection.clone(),
+        &Sg721ExecuteMsg::<Empty>::_Ready {},
+        &[],
+    );
+    assert!(res.is_ok());
     println!("collection: {:?}", collection);
 
     Ok((marketplace, collection))
@@ -151,18 +157,21 @@ pub fn setup_collection(router: &mut StargazeApp, creator: &Addr) -> Result<Addr
                 payment_address: creator.to_string(),
                 share: Decimal::percent(10),
             }),
+            start_trading_time: None,
         },
     };
     let collection = router
-        .instantiate_contract(
-            sg721_id,
-            creator.clone(),
-            &msg,
-            &coins(CREATION_FEE, NATIVE_DENOM),
-            "NFT",
-            None,
-        )
+        .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
         .unwrap();
+
+    // mark the collection contract as ready to mint
+    let res = router.execute_contract(
+        creator.clone(),
+        collection.clone(),
+        &Sg721ExecuteMsg::<Empty>::_Ready {},
+        &[],
+    );
+    assert!(res.is_ok());
     println!("collection 2: {:?}", collection);
     Ok(collection)
 }
@@ -172,7 +181,7 @@ pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Co
     let owner: Addr = Addr::unchecked("owner");
     let bidder: Addr = Addr::unchecked("bidder");
     let creator: Addr = Addr::unchecked("creator");
-    let creator_funds: Vec<Coin> = coins(CREATION_FEE, NATIVE_DENOM);
+    let creator_funds: Vec<Coin> = coins(CREATOR_INITIAL_BALANCE, NATIVE_DENOM);
     let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
     router
         .sudo(CwSudoMsg::Bank({
@@ -477,7 +486,10 @@ fn try_set_accept_fixed_price_bid() {
 
     // Check creator hasn't been paid yet
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    assert_eq!(creator_native_balances, vec![]);
+    assert_eq!(
+        creator_native_balances,
+        coins(CREATOR_INITIAL_BALANCE, NATIVE_DENOM)
+    );
 
     // Creator accepts bid
     let accept_bid_msg = ExecuteMsg::AcceptBid {
@@ -492,7 +504,10 @@ fn try_set_accept_fixed_price_bid() {
     // Check money is transferred
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100  - 2 (fee)
-    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+    assert_eq!(
+        creator_native_balances,
+        coins(CREATOR_INITIAL_BALANCE + 100 - 2, NATIVE_DENOM)
+    );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -555,7 +570,10 @@ fn try_set_accept_bid_no_ask() {
 
     // Check creator hasn't been paid yet
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    assert_eq!(creator_native_balances, vec![]);
+    assert_eq!(
+        creator_native_balances,
+        coins(CREATOR_INITIAL_BALANCE, NATIVE_DENOM)
+    );
 
     // Creator accepts bid
     let accept_bid_msg = ExecuteMsg::AcceptBid {
@@ -570,7 +588,10 @@ fn try_set_accept_bid_no_ask() {
     // Check money is transferred
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100  - 2 (fee)
-    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+    assert_eq!(
+        creator_native_balances,
+        coins(CREATOR_INITIAL_BALANCE + 100 - 2, NATIVE_DENOM)
+    );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -630,18 +651,20 @@ fn try_set_accept_bid_high_fees() {
                 payment_address: creator.to_string(),
                 share: Decimal::percent(100),
             }),
+            start_trading_time: None,
         },
     };
     let collection = router
-        .instantiate_contract(
-            sg721_id,
-            creator.clone(),
-            &msg,
-            &coins(CREATION_FEE, NATIVE_DENOM),
-            "NFT",
-            None,
-        )
+        .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
         .unwrap();
+    // mark the collection contract as ready to mint
+    let res = router.execute_contract(
+        creator.clone(),
+        collection.clone(),
+        &Sg721ExecuteMsg::<Empty>::_Ready {},
+        &[],
+    );
+    assert!(res.is_ok());
     println!("collection: {:?}", collection);
 
     // Mint NFT for creator
@@ -1711,8 +1734,11 @@ fn auto_accept_bid() {
 
     // Check money is transferred
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (fee)
-    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+    // CREATOR_INITIAL_BALANCE + 100  - 2 (fee)
+    assert_eq!(
+        creator_native_balances,
+        coins(CREATOR_INITIAL_BALANCE + 100 - 2, NATIVE_DENOM)
+    );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -1878,8 +1904,11 @@ fn try_ask_with_finders_fee() {
 
     // Check money is transferred
     let creator_balances = router.wrap().query_all_balances(creator).unwrap();
-    // 100  - 2 (network fee) - 5 (finders fee)
-    assert_eq!(creator_balances, coins(100 - 2 - 5, NATIVE_DENOM));
+    // CREATOR_INITIAL_BALANCE + 100  - 2 (network fee) - 5 (finders fee)
+    assert_eq!(
+        creator_balances,
+        coins(CREATOR_INITIAL_BALANCE + 100 - 2 - 5, NATIVE_DENOM)
+    );
     let bidder_balances = router.wrap().query_all_balances(bidder).unwrap();
     assert_eq!(
         bidder_balances,
@@ -2130,7 +2159,7 @@ fn try_royalties() {
 
     // Setup media contract with 10% royalties to a curator
     let sg721_id = router.store_code(contract_sg721());
-    let msg = sg721::msg::InstantiateMsg {
+    let msg = sg721::InstantiateMsg {
         name: String::from("Test Coin"),
         symbol: String::from("TEST"),
         minter: creator.to_string(),
@@ -2143,18 +2172,21 @@ fn try_royalties() {
                 payment_address: curator.to_string(),
                 share: Decimal::percent(10),
             }),
+            start_trading_time: None,
         },
     };
     let collection = router
-        .instantiate_contract(
-            sg721_id,
-            creator.clone(),
-            &msg,
-            &coins(CREATION_FEE, NATIVE_DENOM),
-            "NFT",
-            None,
-        )
+        .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
         .unwrap();
+
+    // mark the collection contract as ready to mint
+    let res = router.execute_contract(
+        creator.clone(),
+        collection.clone(),
+        &Sg721ExecuteMsg::<Empty>::_Ready {},
+        &[],
+    );
+    assert!(res.is_ok());
 
     // Mint NFT for creator
     mint(&mut router, &creator, &collection, TOKEN_ID);
@@ -2204,7 +2236,10 @@ fn try_royalties() {
     );
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100 - 10 (royalties) - 2 (fee)
-    assert_eq!(creator_native_balances, coins(100 - 10 - 2, NATIVE_DENOM));
+    assert_eq!(
+        creator_native_balances,
+        coins(CREATOR_INITIAL_BALANCE + 100 - 10 - 2, NATIVE_DENOM)
+    );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
         bidder_native_balances,
@@ -3691,7 +3726,10 @@ fn try_bid_sale_type() {
 
     // Check creator has been paid
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    assert_eq!(creator_native_balances, coins(100 - 2, NATIVE_DENOM));
+    assert_eq!(
+        creator_native_balances,
+        coins(CREATOR_INITIAL_BALANCE + 100 - 2, NATIVE_DENOM)
+    );
 
     // Check contract has zero balance
     let contract_balances = router

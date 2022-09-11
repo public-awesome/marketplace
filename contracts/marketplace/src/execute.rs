@@ -21,7 +21,7 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use semver::Version;
 use sg1::fair_burn;
-use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
+use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::cmp::Ordering;
 
@@ -268,6 +268,7 @@ pub fn execute_set_ask(
 
     price_validate(deps.storage, &price)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
+    only_tradable(deps.as_ref(), &collection)?;
 
     // Check if this contract is approved to transfer the token
     Cw721Contract(collection.clone()).approval(
@@ -587,7 +588,7 @@ pub fn execute_accept_bid(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
-
+    only_tradable(deps.as_ref(), &collection)?;
     let bid_key = bid_key(&collection, token_id, &bidder);
     let ask_key = ask_key(&collection, token_id);
 
@@ -748,7 +749,7 @@ pub fn execute_accept_collection_bid(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
-
+    only_tradable(deps.as_ref(), &collection)?;
     let bid_key = collection_bid_key(&collection, &bidder);
     let ask_key = ask_key(&collection, token_id);
 
@@ -1154,6 +1155,17 @@ fn only_owner(
     }
 
     Ok(res)
+}
+
+/// Checks that the collection is tradable
+fn only_tradable(deps: Deps, collection: &Addr) -> Result<bool, ContractError> {
+    let collection_info: CollectionInfoResponse = deps
+        .querier
+        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
+    match collection_info.start_trading_time {
+        Some(start_trading_time) => return Ok(true),
+        None => return Ok(true),
+    }
 }
 
 /// Checks to enforce only privileged operators
