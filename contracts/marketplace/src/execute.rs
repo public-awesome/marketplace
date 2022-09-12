@@ -12,8 +12,8 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Empty, Env, Event, MessageInfo,
-    Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    coin, to_binary, Addr, BankMsg, BlockInfo, Coin, Decimal, Deps, DepsMut, Empty, Env, Event,
+    MessageInfo, Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
@@ -21,7 +21,7 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use semver::Version;
 use sg1::fair_burn;
-use sg721::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
+use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::cmp::Ordering;
 
@@ -268,6 +268,7 @@ pub fn execute_set_ask(
 
     price_validate(deps.storage, &price)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
+    only_tradable(deps.as_ref(), &env.block, &collection)?;
 
     // Check if this contract is approved to transfer the token
     Cw721Contract(collection.clone()).approval(
@@ -587,7 +588,7 @@ pub fn execute_accept_bid(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
-
+    only_tradable(deps.as_ref(), &env.block, &collection)?;
     let bid_key = bid_key(&collection, token_id, &bidder);
     let ask_key = ask_key(&collection, token_id);
 
@@ -748,7 +749,7 @@ pub fn execute_accept_collection_bid(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
-
+    only_tradable(deps.as_ref(), &env.block, &collection)?;
     let bid_key = collection_bid_key(&collection, &bidder);
     let ask_key = ask_key(&collection, token_id);
 
@@ -1154,6 +1155,29 @@ fn only_owner(
     }
 
     Ok(res)
+}
+
+/// Checks that the collection is tradable
+fn only_tradable(deps: Deps, block: &BlockInfo, collection: &Addr) -> Result<bool, ContractError> {
+    let res: Result<CollectionInfoResponse, StdError> = deps
+        .querier
+        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {});
+
+    match res {
+        Ok(collection_info) => match collection_info.start_trading_time {
+            Some(start_trading_time) => {
+                if start_trading_time > block.time {
+                    Err(ContractError::CollectionNotTradable {})
+                } else {
+                    Ok(true)
+                }
+            }
+            // not set by collection, so tradable
+            None => Ok(true),
+        },
+        // not supported by collection
+        Err(_) => Ok(true),
+    }
 }
 
 /// Checks to enforce only privileged operators

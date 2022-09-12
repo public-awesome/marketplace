@@ -3,7 +3,7 @@ use crate::multitest::{
     approve, custom_mock_app, listing_funds, mint, setup_accounts, setup_contracts,
     setup_second_bidder_account,
 };
-use crate::multitest::{LISTING_FEE, MIN_EXPIRY, TOKEN_ID};
+use crate::multitest::{CREATOR_INITIAL_BALANCE, LISTING_FEE, MIN_EXPIRY, TOKEN_ID};
 use crate::state::SaleType;
 use cosmwasm_std::{coin, coins, Uint128};
 use cw_multi_test::Executor;
@@ -158,7 +158,10 @@ fn set_auction_bids() {
 
     // Check creator has been paid
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    assert_eq!(creator_native_balances, coins(200 - 4, NATIVE_DENOM));
+    assert_eq!(
+        creator_native_balances,
+        coins(CREATOR_INITIAL_BALANCE + 200 - 4, NATIVE_DENOM)
+    );
 
     // Check contract has second bid balance
     let contract_balances = router.wrap().query_all_balances(marketplace).unwrap();
