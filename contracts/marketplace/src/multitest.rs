@@ -4187,3 +4187,141 @@ fn try_start_trading_time() {
         .unwrap();
     assert_eq!(res.owner, bidder.to_string());
 }
+
+mod query {
+    use super::*;
+
+    #[test]
+    fn collections() {
+        let mut router = custom_mock_app();
+
+        // Setup initial accounts
+        let (_, _, creator) = setup_accounts(&mut router).unwrap();
+
+        // Instantiate marketplace contract
+        let marketplace_id = router.store_code(contract_marketplace());
+        let msg = crate::msg::InstantiateMsg {
+            operators: vec!["operator1".to_string()],
+            trading_fee_bps: TRADING_FEE_BPS,
+            ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+            bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
+            sale_hook: None,
+            max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
+            min_price: Uint128::from(5u128),
+            stale_bid_duration: Duration::Time(100),
+            bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
+            listing_fee: Uint128::from(LISTING_FEE),
+        };
+        let marketplace = router
+            .instantiate_contract(
+                marketplace_id,
+                creator.clone(),
+                &msg,
+                &[],
+                "Marketplace",
+                None,
+            )
+            .unwrap();
+        println!("marketplace: {:?}", marketplace);
+
+        // Setup media contract
+        let sg721_id = router.store_code(contract_sg721());
+        let msg = Sg721InstantiateMsg {
+        name: String::from("Test Coin"),
+        symbol: String::from("TEST"),
+        minter: creator.to_string(),
+        collection_info: CollectionInfo {
+            creator: creator.to_string(),
+            description: String::from("Stargaze Monkeys"),
+            start_trading_time: None,
+            image:
+                "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
+                    .to_string(),
+            external_link: Some("https://example.com/external.html".to_string()),
+            royalty_info: Some(RoyaltyInfoResponse {
+                payment_address: creator.to_string(),
+                share: Decimal::percent(10),
+            }),
+        },
+    };
+        let collection1 = router
+            .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "collection1", None)
+            .unwrap();
+        // mark the collection contract as ready to mint
+        let res = router.execute_contract(
+            creator.clone(),
+            collection1.clone(),
+            &Sg721ExecuteMsg::<Empty>::_Ready {},
+            &[],
+        );
+        assert!(res.is_ok());
+
+        let collection2 = router
+            .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "collection2", None)
+            .unwrap();
+        // mark the collection contract as ready to mint
+        let res = router.execute_contract(
+            creator.clone(),
+            collection2.clone(),
+            &Sg721ExecuteMsg::<Empty>::_Ready {},
+            &[],
+        );
+        assert!(res.is_ok());
+
+        // place two asks
+        mint(&mut router, &creator, &collection1, TOKEN_ID);
+        mint(&mut router, &creator, &collection2, TOKEN_ID);
+        approve(&mut router, &creator, &collection1, &marketplace, TOKEN_ID);
+        approve(&mut router, &creator, &collection2, &marketplace, TOKEN_ID);
+
+        let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
+            collection: collection1.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
+            reserve_for: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_bps: Some(0),
+        };
+        let res = router.execute_contract(
+            creator.clone(),
+            marketplace.clone(),
+            &set_ask,
+            &listing_funds(LISTING_FEE).unwrap(),
+        );
+        assert!(res.is_ok());
+
+        let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
+            collection: collection2.to_string(),
+            token_id: TOKEN_ID,
+            price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
+            reserve_for: None,
+            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_bps: Some(0),
+        };
+        let res = router.execute_contract(
+            creator.clone(),
+            marketplace.clone(),
+            &set_ask,
+            &listing_funds(LISTING_FEE).unwrap(),
+        );
+        assert!(res.is_ok());
+
+        // check collections query
+        let res: CollectionsResponse = router
+            .wrap()
+            .query_wasm_smart(
+                marketplace,
+                &QueryMsg::Collections {
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(res.collections[0], "contract1");
+        assert_eq!(res.collections[1], "contract2");
+    }
+}
