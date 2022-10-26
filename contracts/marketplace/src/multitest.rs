@@ -121,20 +121,21 @@ pub fn setup_contracts(
                 payment_address: creator.to_string(),
                 share: Decimal::percent(10),
             }),
+            explicit_content: None,
         },
     };
     let collection = router
         .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
         .unwrap();
-    // mark the collection contract as ready to mint
-    let res = router.execute_contract(
-        creator.clone(),
-        collection.clone(),
-        &Sg721ExecuteMsg::<Empty>::_Ready {},
-        &[],
-    );
-    assert!(res.is_ok());
-    println!("collection: {:?}", collection);
+    // // mark the collection contract as ready to mint
+    // let res = router.execute_contract(
+    //     creator.clone(),
+    //     collection.clone(),
+    //     &Sg721ExecuteMsg::<Empty>::_Ready {},
+    //     &[],
+    // );
+    // assert!(res.is_ok());
+    // println!("collection: {:?}", collection);
 
     Ok((marketplace, collection))
 }
@@ -157,6 +158,7 @@ pub fn setup_collection(
             share: Decimal::percent(10),
         }),
         start_trading_time,
+        explicit_content: None,
     };
     let msg = Sg721InstantiateMsg {
         name: String::from("Test Collection 2"),
@@ -168,17 +170,15 @@ pub fn setup_collection(
         .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
         .unwrap();
 
-    // mark the collection contract as ready to mint
-    let res = router.execute_contract(
-        creator.clone(),
-        collection.clone(),
-        &Sg721ExecuteMsg::<Empty>::_Ready {},
-        &[],
-    );
-    assert!(res.is_ok());
-    let update_msg = Sg721ExecuteMsg::<Empty>::UpdateCollectionInfo {
-        new_collection_info: collection_info,
-    };
+    // // mark the collection contract as ready to mint
+    // let res = router.execute_contract(
+    //     creator.clone(),
+    //     collection.clone(),
+    //     &Sg721ExecuteMsg::<Empty>::_Ready {},
+    //     &[],
+    // );
+    // assert!(res.is_ok());
+    let update_msg = Sg721ExecuteMsg::<Empty, Empty>::UpdateCollectionInfo { collection_info };
     // mark the collection contract as ready to mint
     let res = router.execute_contract(creator.clone(), collection.clone(), &update_msg, &[]);
     assert!(res.is_ok());
@@ -662,6 +662,7 @@ fn try_set_accept_bid_high_fees() {
                 share: Decimal::percent(100),
             }),
             start_trading_time: None,
+            explicit_content: None,
         },
     };
     let collection = router
@@ -2183,6 +2184,7 @@ fn try_royalties() {
                 share: Decimal::percent(10),
             }),
             start_trading_time: None,
+            explicit_content: None,
         },
     };
     let collection = router
