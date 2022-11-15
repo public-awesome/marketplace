@@ -293,7 +293,7 @@ pub fn execute_set_ask(
         };
     }
 
-    let reserved_for = "";
+    let mut reserve_for_str = "".to_string();
     if let Some(address) = reserve_for.clone() {
         if address == info.sender {
             return Err(ContractError::InvalidReserveAddress {
@@ -305,7 +305,7 @@ pub fn execute_set_ask(
                 reason: "can only reserve for fixed_price sales".to_string(),
             });
         }
-        reserved_for = address.as_str();
+        reserve_for_str = address.to_string()
     }
 
     let seller = info.sender;
@@ -337,7 +337,7 @@ pub fn execute_set_ask(
         .add_attribute("sale_type", sale_type.to_string())
         .add_attribute("seller", seller)
         .add_attribute("price", price.to_string())
-        .add_attribute("reserve_for", reserved_for)
+        .add_attribute("reserve_for", reserve_for_str)
         .add_attribute("expires", expires.to_string());
 
     Ok(res.add_submessages(hook).add_event(event))
