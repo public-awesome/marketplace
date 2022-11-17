@@ -8,6 +8,12 @@ mod helpers;
 pub mod msg;
 #[cfg(test)]
 mod multitest;
+#[cfg(test)]
+mod setup_minter;
+#[cfg(test)]
+mod setup_contracts;
+#[cfg(test)]
+mod setup_accounts_and_block;
 pub mod query;
 pub mod state;
 pub mod sudo;
