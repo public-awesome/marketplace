@@ -1,13 +1,20 @@
+
+use crate::{
+    setup_accounts_and_block::{setup_accounts, setup_block_time},
+    setup_contracts::{contract_factory, contract_minter, contract_sg721, custom_mock_app}, mock_collection_params::mock_collection_params_1,
+};
 use cosmwasm_std::{coin, coins, Addr, Timestamp};
 use cw_multi_test::Executor;
-use sg2::{msg::Sg2ExecuteMsg, tests::mock_collection_params};
+use sg2::{
+    msg::{CollectionParams, Sg2ExecuteMsg},
+    tests::mock_collection_params,
+};
 use sg_multi_test::StargazeApp;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use vending_factory::{
     msg::{VendingMinterCreateMsg, VendingMinterInitMsgExtension},
     state::{ParamsExtension, VendingMinterParams},
 };
-use crate::{setup_contracts::{contract_factory, contract_minter,contract_sg721, custom_mock_app}, setup_accounts_and_block::{setup_block_time, setup_accounts}};
 
 // use crate::tests_folder::collection_constants::{
 //     AIRDROP_MINT_FEE_BPS, AIRDROP_MINT_PRICE, CREATION_FEE, MAX_PER_ADDRESS_LIMIT, MAX_TOKEN_LIMIT,
@@ -45,10 +52,13 @@ pub fn mock_init_extension(splits_addr: Option<String>) -> VendingMinterInitMsgE
     }
 }
 
-pub fn mock_create_minter(splits_addr: Option<String>) -> VendingMinterCreateMsg {
+pub fn mock_create_minter(
+    splits_addr: Option<String>,
+    collection_params: CollectionParams,
+) -> VendingMinterCreateMsg {
     VendingMinterCreateMsg {
         init_msg: mock_init_extension(splits_addr),
-        collection_params: mock_collection_params(),
+        collection_params: collection_params,
     }
 }
 
@@ -74,6 +84,7 @@ fn setup_minter_contract(
     router: &mut StargazeApp,
     creator: &Addr,
     num_tokens: u32,
+    collection_params: CollectionParams,
     splits_addr: Option<String>,
 ) -> (Addr, vending_minter::msg::ConfigResponse) {
     let minter_code_id = router.store_code(contract_minter());
@@ -100,7 +111,7 @@ fn setup_minter_contract(
     let sg721_code_id = router.store_code(contract_sg721());
     println!("sg721_code_id: {}", sg721_code_id);
 
-    let mut msg = mock_create_minter(splits_addr);
+    let mut msg = mock_create_minter(splits_addr, collection_params);
     msg.init_msg.mint_price = coin(MINT_PRICE, NATIVE_DENOM);
     msg.init_msg.num_tokens = num_tokens;
     msg.collection_params.code_id = sg721_code_id;
@@ -128,10 +139,11 @@ fn setup_minter_contract(
 
 pub fn configure_minter(
     app: &mut StargazeApp,
+    collection_params: CollectionParams,
+    num_tokens: u32
 ) -> (Addr, Addr, Addr, Addr) {
     let (owner, bidder, creator) = setup_accounts(app).unwrap();
-    let num_tokens = 1;
-    let (minter_addr, config) = setup_minter_contract(app, &creator, num_tokens, None);
+    let (minter_addr, config) = setup_minter_contract(app, &creator, num_tokens, collection_params, None);
 
     // let whitelist_addr =
     //     configure_collection_whitelist(app, creator.clone(), buyer.clone(), minter_addr.clone());

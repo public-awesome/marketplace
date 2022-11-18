@@ -14,6 +14,8 @@ mod setup_minter;
 mod setup_contracts;
 #[cfg(test)]
 mod setup_accounts_and_block;
+#[cfg(test)]
+mod mock_collection_params;
 pub mod query;
 pub mod state;
 pub mod sudo;
