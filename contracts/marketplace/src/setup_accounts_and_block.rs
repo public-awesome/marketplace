@@ -5,8 +5,7 @@ use cw_multi_test::{BankSudo, SudoMsg};
 use sg_multi_test::StargazeApp;
 
 pub const TOKEN_ID: u32 = 123;
-pub const CREATION_FEE: u128 = 0;
-pub const CREATOR_INITIAL_BALANCE: u128 = 1000;
+pub const CREATOR_INITIAL_BALANCE: u128 = 5000000000;
 pub const LISTING_FEE: u128 = 0;
 pub const INITIAL_BALANCE: u128 = 5000000000;
 

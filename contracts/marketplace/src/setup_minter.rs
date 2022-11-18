@@ -28,8 +28,8 @@ pub const MAX_TOKEN_LIMIT: u32 = 10000;
 
 pub const MIN_MINT_PRICE: u128 = 50_000_000;
 pub const AIRDROP_MINT_PRICE: u128 = 0;
-pub const MINT_FEE_BPS: u64 = 1_000; // 10%
-pub const AIRDROP_MINT_FEE_BPS: u64 = 10_000; // 100%
+pub const MINT_FEE_FAIR_BURN: u64 = 1_000; // 10%
+pub const AIRDROP_MINT_FEE_FAIR_BURN: u64 = 10_000; // 100%
 pub const SHUFFLE_FEE: u128 = 500_000_000;
 pub const MAX_PER_ADDRESS_LIMIT: u32 = 50;
 
@@ -57,13 +57,13 @@ pub fn mock_params() -> VendingMinterParams {
         code_id: 1,
         creation_fee: coin(CREATION_FEE, NATIVE_DENOM),
         min_mint_price: coin(MIN_MINT_PRICE, NATIVE_DENOM),
-        mint_fee_bps: MINT_FEE_BPS,
+        mint_fee_bps: MINT_FEE_FAIR_BURN,
         max_trading_offset_secs: 60 * 60 * 24 * 7,
         extension: ParamsExtension {
             max_token_limit: MAX_TOKEN_LIMIT,
             max_per_address_limit: MAX_PER_ADDRESS_LIMIT,
             airdrop_mint_price: coin(AIRDROP_MINT_PRICE, NATIVE_DENOM),
-            airdrop_mint_fee_bps: AIRDROP_MINT_FEE_BPS,
+            airdrop_mint_fee_bps: AIRDROP_MINT_FEE_FAIR_BURN,
             shuffle_fee: coin(SHUFFLE_FEE, NATIVE_DENOM),
         },
     }
