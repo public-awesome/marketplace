@@ -867,9 +867,24 @@ pub fn execute_remove_stale_ask(
         Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false);
     let has_owner = res.is_ok();
     let expired = ask.is_expired(&env.block);
+    let mut has_approval = false;
+    // Check if marketplace still holds approval
+    // An approval will be removed when
+    // 1 - There is a transfer
+    // 2 - The approval expired (approvals can have different expiration times)
+    let res = Cw721Contract(collection.clone()).approval(
+        &deps.querier,
+        token_id.to_string(),
+        env.contract.address.to_string(),
+        None,
+    );
+
+    if res.is_ok() {
+        has_approval = true;
+    }
 
     // it has an owner and ask is still valid
-    if has_owner && !expired {
+    if has_owner && has_approval && !expired {
         return Err(ContractError::AskUnchanged {});
     }
 
@@ -881,7 +896,8 @@ pub fn execute_remove_stale_ask(
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("operator", info.sender.to_string())
         .add_attribute("expired", expired.to_string())
-        .add_attribute("has_owner", has_owner.to_string());
+        .add_attribute("has_owner", has_owner.to_string())
+        .add_attribute("has_approval", has_approval.to_string());
 
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
@@ -938,7 +954,7 @@ pub fn execute_remove_stale_bid(
         .add_submessages(hook))
 }
 
-/// Privileged operation to remove a stale colllection bid. Operators can call this to remove and refund bids that are still in the
+/// Privileged operation to remove a stale collection bid. Operators can call this to remove and refund bids that are still in the
 /// state after they have expired. As a reward they get a governance-determined percentage of the bid price.
 pub fn execute_remove_stale_collection_bid(
     deps: DepsMut,
@@ -1072,7 +1088,7 @@ fn payout(
     };
 
     match collection_info.royalty_info {
-        // If token supports royalities, payout shares to royalty recipient
+        // If token supports royalties, payout shares to royalty recipient
         Some(royalty) => {
             let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
             if payment < (network_fee + Uint128::from(finders_fee) + amount.amount) {
