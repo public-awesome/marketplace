@@ -3554,6 +3554,7 @@ fn try_remove_stale_ask() {
 
     // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
     transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+    approve(&mut router, &owner, &collection, &marketplace, TOKEN_ID);
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
         marketplace.clone(),
