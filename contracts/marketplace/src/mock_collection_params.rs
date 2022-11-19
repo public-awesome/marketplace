@@ -1,4 +1,4 @@
-use cosmwasm_std::Decimal;
+use cosmwasm_std::{Decimal, Timestamp, Uint128};
 use sg721::{CollectionInfo, RoyaltyInfoResponse};
 
 use sg2::msg::CollectionParams;
@@ -22,6 +22,21 @@ pub fn mock_collection_params_1() -> CollectionParams {
         },
     }
 }
+
+// pub fn mock_collection_for_owner() -> CollectionParams {
+//     CollectionInfoResponse {
+//         creator: "creator".to_string(),
+//         description: "Stargaze Monkeys".to_string(),
+//         image: "https://example.com/image.png".to_string(),
+//         external_link: None,
+//         explicit_content: Some(false),
+//         start_trading_time: Some(Timestamp::from_nanos(1647637200000000000)),
+//         royalty_info: Some(RoyaltyInfoResponse {
+//             payment_address: "creator".to_string(),
+//             share: Decimal::new(Uint128::new(100000000000000000)),
+//         }),
+//     }
+// }
 
 pub fn mock_collection_params_high_fee() -> CollectionParams {
     CollectionParams {

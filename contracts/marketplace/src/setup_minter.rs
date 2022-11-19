@@ -82,7 +82,7 @@ pub fn mock_params() -> VendingMinterParams {
 // Upload contract code and instantiate minter contract
 fn setup_minter_contract(
     router: &mut StargazeApp,
-    creator: &Addr,
+    minter_admin: &Addr,
     num_tokens: u32,
     collection_params: CollectionParams,
     splits_addr: Option<String>,
@@ -100,7 +100,7 @@ fn setup_minter_contract(
     let factory_addr = router
         .instantiate_contract(
             factory_code_id,
-            creator.clone(),
+            minter_admin.clone(),
             &vending_factory::msg::InstantiateMsg { params },
             &[],
             "factory",
@@ -115,11 +115,11 @@ fn setup_minter_contract(
     msg.init_msg.mint_price = coin(MINT_PRICE, NATIVE_DENOM);
     msg.init_msg.num_tokens = num_tokens;
     msg.collection_params.code_id = sg721_code_id;
-    msg.collection_params.info.creator = creator.to_string();
+    msg.collection_params.info.creator = minter_admin.to_string();
 
     let msg = Sg2ExecuteMsg::CreateMinter(msg);
 
-    let res = router.execute_contract(creator.clone(), factory_addr, &msg, &creation_fee);
+    let res = router.execute_contract(minter_admin.clone(), factory_addr, &msg, &creation_fee);
 
     assert!(res.is_ok());
 
@@ -139,15 +139,15 @@ fn setup_minter_contract(
 
 pub fn configure_minter(
     app: &mut StargazeApp,
+    minter_admin: Addr,
     collection_params: CollectionParams,
-    num_tokens: u32
-) -> (Addr, Addr, Addr, Addr) {
-    let (owner, bidder, creator) = setup_accounts(app).unwrap();
-    let (minter_addr, config) = setup_minter_contract(app, &creator, num_tokens, collection_params, None);
+    num_tokens: u32,
+) -> (Addr) {
+    let (minter_addr, config) = setup_minter_contract(app, &minter_admin, num_tokens, collection_params, None);
 
     // let whitelist_addr =
     //     configure_collection_whitelist(app, creator.clone(), buyer.clone(), minter_addr.clone());
 
     // setup_block_time(app, GENESIS_MINT_START_TIME);
-    (minter_addr, owner, bidder, creator)
+    (minter_addr)
 }
