@@ -23,6 +23,26 @@ pub fn mock_collection_params_1() -> CollectionParams {
     }
 }
 
+pub fn mock_curator_payment_address() -> CollectionParams {
+    CollectionParams {
+        code_id: 1,
+        name: String::from("Test Coin"),
+        symbol: String::from("TEST"),
+        info: CollectionInfo {
+            creator: "creator".to_string(),
+            description: String::from("Stargaze Monkeys"),
+            image: "https://example.com/image.png".to_string(),
+            external_link: Some("https://example.com/external.html".to_string()),
+            royalty_info: Some(RoyaltyInfoResponse {
+                payment_address: "curator".to_string(),
+                share: Decimal::percent(10),
+            }),
+            start_trading_time: None,
+            explicit_content: None,
+        },
+    }
+}
+
 // pub fn mock_collection_for_owner() -> CollectionParams {
 //     CollectionInfoResponse {
 //         creator: "creator".to_string(),
@@ -55,8 +75,7 @@ pub fn mock_collection_params_high_fee() -> CollectionParams {
                 share: Decimal::percent(100),
             }),
             start_trading_time: None,
-            explicit_content: None
+            explicit_content: None,
         },
     }
-    
 }
