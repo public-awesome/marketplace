@@ -149,5 +149,7 @@ pub fn configure_minter(
     //     configure_collection_whitelist(app, creator.clone(), buyer.clone(), minter_addr.clone());
 
     // setup_block_time(app, GENESIS_MINT_START_TIME);
+    println!("config is {:?}", config);
     (minter_addr)
 }
+
