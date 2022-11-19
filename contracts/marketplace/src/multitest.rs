@@ -1115,7 +1115,7 @@ fn try_query_sorted_asks() {
 #[test]
 fn try_query_asks_by_seller() {
     let mut router = custom_mock_app();
-    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
+    let (owner, _, _) = setup_accounts(&mut router).unwrap();
     let collection_params = mock_collection_params_1();
     let setup_params = SetupContractsParams {
         minter_admin: owner.clone(),
@@ -1136,7 +1136,7 @@ fn try_query_asks_by_seller() {
 
     mint(&mut router, &owner, &minter_addr);
     let nft_hash: HashSet<String> = HashSet::from([]);
-    let (nft_hash, token_id_0) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    let (_, token_id_0) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
     approve(
         &mut router,
         &owner,
@@ -1301,258 +1301,265 @@ fn try_query_asks_by_seller() {
     assert_eq!(res.asks.len(), 1);
 }
 
-// // #[test]
-// // fn try_query_sorted_bids() {
-// //     let mut router = custom_mock_app();
+#[test]
+fn try_query_sorted_bids() {
+    let mut router = custom_mock_app();
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let collection_params = mock_collection_params_1();
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_parms: collection_params,
+        num_tokens: 3,
+        router: &mut router
+    };
+    let (marketplace, minter_addr, collection) = setup_contracts(setup_params).unwrap();
+    setup_block_time(&mut router, 10000000000);
+    // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 3u128).unwrap();
 
-// //     // Setup initial accounts
-// //     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+    // Mint NFT for creator
+    mint(&mut router, &creator, &minter_addr);
+    let nft_hash: HashSet<String> = HashSet::from([]);
+    let (nft_hash, token_id_0) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_0);
+    mint(&mut router, &creator, &minter_addr);
+    let (nft_hash, token_id_1) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(
+        &mut router,
+        &creator,
+        &collection,
+        &marketplace,
+        token_id_1,
+    );
+    mint(&mut router, &creator, &minter_addr);
+    let (_, token_id_2) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(
+        &mut router,
+        &creator,
+        &collection,
+        &marketplace,
+        token_id_2,
+    );
 
-// //     // Instantiate and configure contracts
-// //     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+    // An asking price is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: token_id_0,
+        price: coin(10, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+    // An asking price is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: token_id_1,
+        price: coin(10, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+    // An asking price is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: token_id_2,
+        price: coin(10, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
 
-// //     // Add funds to creator for listing fees
-// //     add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 3u128).unwrap();
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: token_id_0,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(50, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: token_id_1,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(70, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id: token_id_2,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    router
+        .execute_contract(
+            bidder.clone(),
+            marketplace.clone(),
+            &set_bid_msg,
+            &coins(1, NATIVE_DENOM),
+        )
+        .unwrap_err();
+    let res = router.execute_contract(
+        bidder,
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(60, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
 
-// //     // Mint NFT for creator
-// //     mint(&mut router, &creator, &collection, TOKEN_ID);
-// //     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-// //     mint(&mut router, &creator, &collection, TOKEN_ID + 1);
-// //     approve(
-// //         &mut router,
-// //         &creator,
-// //         &collection,
-// //         &marketplace,
-// //         TOKEN_ID + 1,
-// //     );
-// //     mint(&mut router, &creator, &collection, TOKEN_ID + 2);
-// //     approve(
-// //         &mut router,
-// //         &creator,
-// //         &collection,
-// //         &marketplace,
-// //         TOKEN_ID + 2,
-// //     );
+    let query_bids_msg = QueryMsg::BidsSortedByPrice {
+        collection: collection.to_string(),
+        limit: None,
+        start_after: None,
+    };
+    let res: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_bids_msg)
+        .unwrap();
+    assert_eq!(res.bids.len(), 3);
+    assert_eq!(res.bids[0].price.u128(), 50u128);
+    assert_eq!(res.bids[1].price.u128(), 60u128);
+    assert_eq!(res.bids[2].price.u128(), 70u128);
 
-// //     // An asking price is made by the creator
-// //     let set_ask = ExecuteMsg::SetAsk {
-// //         sale_type: SaleType::Auction,
-// //         collection: collection.to_string(),
-// //         token_id: TOKEN_ID,
-// //         price: coin(10, NATIVE_DENOM),
-// //         funds_recipient: None,
-// //         reserve_for: None,
-// //         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-// //         finders_fee_bps: Some(0),
-// //     };
-// //     let res = router.execute_contract(
-// //         creator.clone(),
-// //         marketplace.clone(),
-// //         &set_ask,
-// //         &listing_funds(LISTING_FEE).unwrap(),
-// //     );
-// //     assert!(res.is_ok());
-// //     // An asking price is made by the creator
-// //     let set_ask = ExecuteMsg::SetAsk {
-// //         sale_type: SaleType::Auction,
-// //         collection: collection.to_string(),
-// //         token_id: TOKEN_ID + 1,
-// //         price: coin(10, NATIVE_DENOM),
-// //         funds_recipient: None,
-// //         reserve_for: None,
-// //         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-// //         finders_fee_bps: Some(0),
-// //     };
-// //     let res = router.execute_contract(
-// //         creator.clone(),
-// //         marketplace.clone(),
-// //         &set_ask,
-// //         &listing_funds(LISTING_FEE).unwrap(),
-// //     );
-// //     assert!(res.is_ok());
-// //     // An asking price is made by the creator
-// //     let set_ask = ExecuteMsg::SetAsk {
-// //         sale_type: SaleType::Auction,
-// //         collection: collection.to_string(),
-// //         token_id: TOKEN_ID + 2,
-// //         price: coin(10, NATIVE_DENOM),
-// //         funds_recipient: None,
-// //         reserve_for: None,
-// //         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-// //         finders_fee_bps: Some(0),
-// //     };
-// //     let res = router.execute_contract(
-// //         creator.clone(),
-// //         marketplace.clone(),
-// //         &set_ask,
-// //         &listing_funds(LISTING_FEE).unwrap(),
-// //     );
-// //     assert!(res.is_ok());
+    // test adding another bid to an existing ask
+    let bidder2: Addr = Addr::unchecked("bidder2");
+    let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
+    router
+        .sudo(CwSudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: bidder2.to_string(),
+                amount: funds,
+            }
+        }))
+        .map_err(|err| println!("{:?}", err))
+        .ok();
 
-// //     // Bidder makes bid
-// //     let set_bid_msg = ExecuteMsg::SetBid {
-// //         sale_type: SaleType::Auction,
-// //         collection: collection.to_string(),
-// //         token_id: TOKEN_ID,
-// //         finders_fee_bps: None,
-// //         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-// //         finder: None,
-// //     };
-// //     let res = router.execute_contract(
-// //         bidder.clone(),
-// //         marketplace.clone(),
-// //         &set_bid_msg,
-// //         &coins(50, NATIVE_DENOM),
-// //     );
-// //     assert!(res.is_ok());
-// //     // Bidder makes bid
-// //     let set_bid_msg = ExecuteMsg::SetBid {
-// //         sale_type: SaleType::Auction,
-// //         collection: collection.to_string(),
-// //         token_id: TOKEN_ID + 1,
-// //         finders_fee_bps: None,
-// //         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-// //         finder: None,
-// //     };
-// //     let res = router.execute_contract(
-// //         bidder.clone(),
-// //         marketplace.clone(),
-// //         &set_bid_msg,
-// //         &coins(70, NATIVE_DENOM),
-// //     );
-// //     assert!(res.is_ok());
-// //     // Bidder makes bid
-// //     let set_bid_msg = ExecuteMsg::SetBid {
-// //         sale_type: SaleType::Auction,
-// //         collection: collection.to_string(),
-// //         token_id: TOKEN_ID + 2,
-// //         finders_fee_bps: None,
-// //         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-// //         finder: None,
-// //     };
-// //     router
-// //         .execute_contract(
-// //             bidder.clone(),
-// //             marketplace.clone(),
-// //             &set_bid_msg,
-// //             &coins(1, NATIVE_DENOM),
-// //         )
-// //         .unwrap_err();
-// //     let res = router.execute_contract(
-// //         bidder,
-// //         marketplace.clone(),
-// //         &set_bid_msg,
-// //         &coins(60, NATIVE_DENOM),
-// //     );
-// //     assert!(res.is_ok());
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: token_id_0,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder2,
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(40, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
 
-// //     let query_bids_msg = QueryMsg::BidsSortedByPrice {
-// //         collection: collection.to_string(),
-// //         limit: None,
-// //         start_after: None,
-// //     };
-// //     let res: BidsResponse = router
-// //         .wrap()
-// //         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
-// //         .unwrap();
-// //     assert_eq!(res.bids.len(), 3);
-// //     assert_eq!(res.bids[0].price.u128(), 50u128);
-// //     assert_eq!(res.bids[1].price.u128(), 60u128);
-// //     assert_eq!(res.bids[2].price.u128(), 70u128);
+    let res: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_bids_msg)
+        .unwrap();
+    assert_eq!(res.bids.len(), 4);
+    assert_eq!(res.bids[0].price.u128(), 40u128);
+    assert_eq!(res.bids[1].price.u128(), 50u128);
+    assert_eq!(res.bids[2].price.u128(), 60u128);
+    assert_eq!(res.bids[3].price.u128(), 70u128);
 
-// //     // test adding another bid to an existing ask
-// //     let bidder2: Addr = Addr::unchecked("bidder2");
-// //     let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
-// //     router
-// //         .sudo(CwSudoMsg::Bank({
-// //             BankSudo::Mint {
-// //                 to_address: bidder2.to_string(),
-// //                 amount: funds,
-// //             }
-// //         }))
-// //         .map_err(|err| println!("{:?}", err))
-// //         .ok();
+    // test start_after query
+    let start_after = BidOffset {
+        price: res.bids[2].price,
+        token_id: res.bids[2].token_id,
+        bidder: res.bids[2].bidder.clone(),
+    };
+    let query_start_after_bids_msg = QueryMsg::BidsSortedByPrice {
+        collection: collection.to_string(),
+        limit: None,
+        start_after: Some(start_after),
+    };
+    let res: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &query_start_after_bids_msg)
+        .unwrap();
+    assert_eq!(res.bids.len(), 1);
+    assert_eq!(res.bids[0].price.u128(), 70u128);
 
-// //     // Bidder makes bid
-// //     let set_bid_msg = ExecuteMsg::SetBid {
-// //         sale_type: SaleType::FixedPrice,
-// //         collection: collection.to_string(),
-// //         token_id: TOKEN_ID,
-// //         finders_fee_bps: None,
-// //         expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
-// //         finder: None,
-// //     };
-// //     let res = router.execute_contract(
-// //         bidder2,
-// //         marketplace.clone(),
-// //         &set_bid_msg,
-// //         &coins(40, NATIVE_DENOM),
-// //     );
-// //     assert!(res.is_ok());
+    // test reverse bids query
+    let reverse_query_bids_msg = QueryMsg::ReverseBidsSortedByPrice {
+        collection: collection.to_string(),
+        limit: None,
+        start_before: None,
+    };
+    let res: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &reverse_query_bids_msg)
+        .unwrap();
+    assert_eq!(res.bids.len(), 4);
+    assert_eq!(res.bids[0].price.u128(), 70u128);
+    assert_eq!(res.bids[1].price.u128(), 60u128);
+    assert_eq!(res.bids[2].price.u128(), 50u128);
+    assert_eq!(res.bids[3].price.u128(), 40u128);
 
-// //     let res: BidsResponse = router
-// //         .wrap()
-// //         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
-// //         .unwrap();
-// //     assert_eq!(res.bids.len(), 4);
-// //     assert_eq!(res.bids[0].price.u128(), 40u128);
-// //     assert_eq!(res.bids[1].price.u128(), 50u128);
-// //     assert_eq!(res.bids[2].price.u128(), 60u128);
-// //     assert_eq!(res.bids[3].price.u128(), 70u128);
-
-// //     // test start_after query
-// //     let start_after = BidOffset {
-// //         price: res.bids[2].price,
-// //         token_id: res.bids[2].token_id,
-// //         bidder: res.bids[2].bidder.clone(),
-// //     };
-// //     let query_start_after_bids_msg = QueryMsg::BidsSortedByPrice {
-// //         collection: collection.to_string(),
-// //         limit: None,
-// //         start_after: Some(start_after),
-// //     };
-// //     let res: BidsResponse = router
-// //         .wrap()
-// //         .query_wasm_smart(marketplace.clone(), &query_start_after_bids_msg)
-// //         .unwrap();
-// //     assert_eq!(res.bids.len(), 1);
-// //     assert_eq!(res.bids[0].price.u128(), 70u128);
-
-// //     // test reverse bids query
-// //     let reverse_query_bids_msg = QueryMsg::ReverseBidsSortedByPrice {
-// //         collection: collection.to_string(),
-// //         limit: None,
-// //         start_before: None,
-// //     };
-// //     let res: BidsResponse = router
-// //         .wrap()
-// //         .query_wasm_smart(marketplace.clone(), &reverse_query_bids_msg)
-// //         .unwrap();
-// //     assert_eq!(res.bids.len(), 4);
-// //     assert_eq!(res.bids[0].price.u128(), 70u128);
-// //     assert_eq!(res.bids[1].price.u128(), 60u128);
-// //     assert_eq!(res.bids[2].price.u128(), 50u128);
-// //     assert_eq!(res.bids[3].price.u128(), 40u128);
-
-// //     // test start_before reverse bids query
-// //     let start_before = BidOffset {
-// //         price: res.bids[1].price,
-// //         token_id: res.bids[1].token_id,
-// //         bidder: res.bids[1].bidder.clone(),
-// //     };
-// //     let reverse_query_start_before_bids_msg = QueryMsg::ReverseBidsSortedByPrice {
-// //         collection: collection.to_string(),
-// //         limit: None,
-// //         start_before: Some(start_before),
-// //     };
-// //     let res: BidsResponse = router
-// //         .wrap()
-// //         .query_wasm_smart(marketplace, &reverse_query_start_before_bids_msg)
-// //         .unwrap();
-// //     assert_eq!(res.bids.len(), 2);
-// //     assert_eq!(res.bids[0].price.u128(), 50u128);
-// //     assert_eq!(res.bids[1].price.u128(), 40u128);
-// // }
+    // test start_before reverse bids query
+    let start_before = BidOffset {
+        price: res.bids[1].price,
+        token_id: res.bids[1].token_id,
+        bidder: res.bids[1].bidder.clone(),
+    };
+    let reverse_query_start_before_bids_msg = QueryMsg::ReverseBidsSortedByPrice {
+        collection: collection.to_string(),
+        limit: None,
+        start_before: Some(start_before),
+    };
+    let res: BidsResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace, &reverse_query_start_before_bids_msg)
+        .unwrap();
+    assert_eq!(res.bids.len(), 2);
+    assert_eq!(res.bids[0].price.u128(), 50u128);
+    assert_eq!(res.bids[1].price.u128(), 40u128);
+}
 
 // // #[test]
 // // fn try_query_bids() {
