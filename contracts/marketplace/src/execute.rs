@@ -331,15 +331,17 @@ pub fn execute_set_ask(
 
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Create)?;
 
-    let event = Event::new("set-ask")
+    let mut event = Event::new("set-ask")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("sale_type", sale_type.to_string())
         .add_attribute("seller", seller)
         .add_attribute("price", price.to_string())
-        .add_attribute("reserve_for", reserve_for_str)
         .add_attribute("expires", expires.to_string());
 
+    if !reserve_for_str.is_empty() {
+        event = event.add_attribute("reserve_for", reserve_for_str);
+    }
     Ok(res.add_submessages(hook).add_event(event))
 }
 
