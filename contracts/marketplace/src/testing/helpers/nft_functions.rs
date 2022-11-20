@@ -16,6 +16,7 @@ pub fn mint(router: &mut StargazeApp, creator: &Addr, minter_addr: &Addr) {
         &minter_msg,
         &coins(MINT_PRICE, NATIVE_DENOM),
     );
+    println!("mint res {:?}", res);
     assert!(res.is_ok());
 }
 
