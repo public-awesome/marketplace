@@ -1,9 +1,11 @@
-use crate::tests_folder::constants::{CREATOR_INITIAL_BALANCE, MINT_FEE_FAIR_BURN, MINT_PRICE};
+use crate::tests_folder::constants::{MINT_FEE_FAIR_BURN, MINT_PRICE};
 use cosmwasm_std::{coins, Addr, Decimal, Uint128};
 use cw721_base::ContractError;
 use cw_multi_test::{BankSudo, SudoMsg as CwSudoMsg};
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
+
+use super::constants::INITIAL_BALANCE;
 
 pub fn add_funds_for_incremental_fee(
     router: &mut StargazeApp,
@@ -27,5 +29,5 @@ pub fn add_funds_for_incremental_fee(
 pub fn get_creator_balance_after_fairburn_mint_fee() -> Uint128 {
     let fair_burn_percent = Decimal::percent(MINT_FEE_FAIR_BURN / 100);
     let mint_price = Uint128::from(MINT_PRICE);
-    Uint128::from(CREATOR_INITIAL_BALANCE) - (mint_price * fair_burn_percent)
+    Uint128::from(INITIAL_BALANCE) - (mint_price * fair_burn_percent)
 }

@@ -1,8 +1,5 @@
-// pub const TOKEN_ID: u32 = 123;
-pub const CREATOR_INITIAL_BALANCE: u128 = 5000000000;
 // pub const LISTING_FEE: u128 = 0;
 pub const INITIAL_BALANCE: u128 = 5000000000;
-
 pub const CREATION_FEE: u128 = 5_000_000_000;
 pub const MINT_PRICE: u128 = 100_000_000;
 

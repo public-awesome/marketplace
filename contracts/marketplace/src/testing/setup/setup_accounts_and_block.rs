@@ -1,10 +1,9 @@
+use crate::tests_folder::constants::INITIAL_BALANCE;
 use cosmwasm_std::{coins, Addr, Coin, Timestamp};
 use cw_multi_test::{BankSudo, SudoMsg};
 use sg721_base::ContractError;
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
-
-use crate::tests_folder::constants::INITIAL_BALANCE;
 
 pub fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
     let mut block = router.block_info();

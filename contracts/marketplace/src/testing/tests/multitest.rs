@@ -197,7 +197,6 @@ fn try_set_accept_fixed_price_bid() {
     // // // Check creator hasn't been paid yet
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
 
-    // let creator_initial_balance: u64 = CREATOR_INITIAL_BALANCE as u64;
     let final_balance = get_creator_balance_after_fairburn_mint_fee();
     assert_eq!(
         creator_native_balances,
@@ -1705,7 +1704,6 @@ fn try_ask_with_finders_fee() {
 
     // Check money is transferred
     let creator_balances = router.wrap().query_all_balances(creator).unwrap();
-    // CREATOR_INITIAL_BALANCE + 100  - 2 (network fee) - 5 (finders fee)
     let creator_balance_minus_fee = get_creator_balance_after_fairburn_mint_fee();
     assert_eq!(
         creator_balances,

@@ -3,6 +3,7 @@ use crate::tests_folder::constants::{
     MAX_TOKEN_LIMIT, MINT_FEE_FAIR_BURN, MINT_PRICE, MIN_MINT_PRICE, SHUFFLE_FEE,
 };
 use crate::tests_folder::msg::MinterCollectionResponse;
+use crate::tests_folder::msg::MinterSetupParams;
 use crate::tests_folder::setup_contracts::{contract_factory, contract_minter, contract_sg721};
 use cosmwasm_std::{coin, coins, Addr, Timestamp};
 use cw_multi_test::{AppResponse, Executor};
@@ -13,12 +14,6 @@ use vending_factory::{
     msg::{VendingMinterCreateMsg, VendingMinterInitMsgExtension},
     state::{ParamsExtension, VendingMinterParams},
 };
-
-use crate::tests_folder::msg::MinterSetupParams;
-
-// pub const INITIAL_BALANCE: u128 = 2_000_000_000;
-// pub const WHITELIST_AMOUNT: u128 = 66_000_000;
-// pub const WL_PER_ADDRESS_LIMIT: u32 = 1;
 
 pub fn mock_init_extension(splits_addr: Option<String>) -> VendingMinterInitMsgExtension {
     vending_factory::msg::VendingMinterInitMsgExtension {
