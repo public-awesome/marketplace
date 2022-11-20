@@ -26,7 +26,8 @@ fn set_auction_bids() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_marketplace_and_collections(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
