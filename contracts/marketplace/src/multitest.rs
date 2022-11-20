@@ -255,11 +255,8 @@ fn try_set_accept_fixed_price_bid() {
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
-    // // Add funds to creator for listing fees
-    // add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
     setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
 

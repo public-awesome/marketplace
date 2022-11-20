@@ -1,6 +1,6 @@
 use crate::setup_contracts::{contract_factory, contract_minter, contract_sg721};
 use cosmwasm_std::{coin, coins, Addr, Timestamp};
-use cw_multi_test::Executor;
+use cw_multi_test::{AppResponse, Executor};
 use sg2::msg::{CollectionParams, Sg2ExecuteMsg};
 use sg_multi_test::StargazeApp;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
@@ -79,6 +79,27 @@ pub struct MinterCollectionResponse {
     pub minter: Addr,
     pub collection: Addr,
 }
+
+fn parse_factory_response(res: &AppResponse) -> (Addr, Addr) {
+    let events = res.events.clone();
+    let mut contract_addrs: Vec<String> = vec![];
+    let vector_of_attribute_vectors = events
+        .iter()
+        .filter(|e| e.ty == "instantiate")
+        .map(|v| v.attributes.clone())
+        .collect::<Vec<_>>();
+    for vector in vector_of_attribute_vectors {
+        let contract_addr = vector
+            .iter()
+            .filter(|a| a.key == "_contract_addr")
+            .map(|e| e.value.clone())
+            .collect::<Vec<_>>();
+        contract_addrs = [contract_addrs.clone(), contract_addr].concat();
+    }
+    let minter_addr = Addr::unchecked(contract_addrs[0].clone());
+    let collection_addr = Addr::unchecked(contract_addrs[1].clone());
+    (minter_addr, collection_addr)
+}
 // Upload contract code and instantiate minter contract
 fn setup_minter_contract(setup_params: MinterSetupParams) -> MinterCollectionResponse {
     let minter_code_id = setup_params.minter_code_id;
@@ -112,23 +133,13 @@ fn setup_minter_contract(setup_params: MinterSetupParams) -> MinterCollectionRes
     let creation_fee = coins(CREATION_FEE, NATIVE_DENOM);
 
     let msg = Sg2ExecuteMsg::CreateMinter(msg);
-
     let res = router.execute_contract(minter_admin, factory_addr, &msg, &creation_fee);
     assert!(res.is_ok());
-    let minter_addr = res.unwrap().events[3].attributes[0].value.clone();
-
-    let config: vending_minter::msg::ConfigResponse = router
-        .wrap()
-        .query_wasm_smart(
-            minter_addr.clone(),
-            &vending_minter::msg::QueryMsg::Config {},
-        )
-        .unwrap();
-    let collection_addr = config.sg721_address;
+    let (minter_addr, collection_addr) = parse_factory_response(&res.unwrap());
 
     MinterCollectionResponse {
-        minter: Addr::unchecked(minter_addr),
-        collection: Addr::unchecked(collection_addr),
+        minter: minter_addr,
+        collection: collection_addr,
     }
 }
 
