@@ -53,7 +53,6 @@ fn set_auction_bids() {
         &set_ask,
         &listing_funds(LISTING_FEE).unwrap(),
     );
-    println!("res is {:?}", res);
     assert!(res.is_ok());
 
     // Bidder makes bid

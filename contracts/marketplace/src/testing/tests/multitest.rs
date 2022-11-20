@@ -421,9 +421,6 @@ fn try_update_ask() {
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
 
-    //     // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
@@ -527,9 +524,6 @@ fn try_query_asks() {
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // test before ask is made, without using pagination
     let query_asks_msg = QueryMsg::Asks {
@@ -889,7 +883,6 @@ fn try_query_asks_by_seller() {
         &set_ask,
         &listing_funds(LISTING_FEE).unwrap(),
     );
-    // println!("res is {:?}", res);
     assert!(res.is_ok());
 
     // Owner2 lists their token for sale
@@ -1030,8 +1023,6 @@ fn try_query_sorted_bids() {
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 3u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -1285,9 +1276,6 @@ fn try_query_bids() {
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
 
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     let nft_hash: HashSet<String> = HashSet::from([]);
@@ -1432,9 +1420,6 @@ fn auto_accept_bid() {
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
     setup_block_time(&mut router, start_time.seconds());
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
 
@@ -1562,8 +1547,6 @@ fn try_reserved_ask() {
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
     let token_id = 1;
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -1657,8 +1640,6 @@ fn try_ask_with_finders_fee() {
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
     let token_id = 1;
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -1736,12 +1717,6 @@ fn remove_bid_refund() {
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
     setup_block_time(&mut router, start_time.seconds());
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -1828,9 +1803,6 @@ fn new_bid_refund() {
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
     setup_block_time(&mut router, start_time.seconds());
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -2324,8 +2296,6 @@ fn try_hook_was_run() {
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
     setup_block_time(&mut router, start_time.seconds());
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Add sales hook
     let add_hook_msg = SudoMsg::AddSaleHook {
@@ -2670,7 +2640,6 @@ fn try_collection_bids() {
     };
 
     let res = router.execute_contract(creator.clone(), marketplace, &accept_collection_bid, &[]);
-    println!("res is {:?}", res);
     assert!(res.is_ok());
 }
 
@@ -2938,9 +2907,6 @@ fn try_ask_with_filter_inactive() {
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     setup_block_time(&mut router, start_time.seconds());
 
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -3045,9 +3011,6 @@ fn try_sync_ask() {
     let token_id = 1;
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     setup_block_time(&mut router, start_time.seconds());
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -3210,9 +3173,6 @@ fn try_set_ask_reserve_for() {
     let token_id = 1;
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     setup_block_time(&mut router, start_time.seconds());
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -3855,10 +3815,6 @@ fn try_start_trading_time() {
     );
 
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    println!(
-        "creator balance after two mints {:?}",
-        creator_native_balances
-    );
 
     // Bidder makes bid on NFT with no ask
     let set_bid_msg = ExecuteMsg::SetBid {
@@ -4051,7 +4007,6 @@ fn try_start_trading_time() {
         finder: None,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
-    println!("res is {:?}", res);
     assert!(res.is_ok());
 
     // Check money is transferred
