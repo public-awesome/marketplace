@@ -13,7 +13,7 @@ pub fn mock_collection_params_1(start_trading_time: Option<Timestamp>) -> Collec
             description: String::from("Stargaze Monkeys"),
             image: "https://example.com/image.png".to_string(),
             external_link: Some("https://example.com/external.html".to_string()),
-            start_trading_time: start_trading_time,
+            start_trading_time,
             explicit_content: Some(false),
             royalty_info: Some(RoyaltyInfoResponse {
                 payment_address: "creator".to_string(),
@@ -22,7 +22,6 @@ pub fn mock_collection_params_1(start_trading_time: Option<Timestamp>) -> Collec
         },
     }
 }
-
 
 pub fn mock_curator_payment_address(start_trading_time: Option<Timestamp>) -> CollectionParams {
     CollectionParams {
@@ -38,7 +37,7 @@ pub fn mock_curator_payment_address(start_trading_time: Option<Timestamp>) -> Co
                 payment_address: "curator".to_string(),
                 share: Decimal::percent(10),
             }),
-            start_trading_time: start_trading_time,
+            start_trading_time,
             explicit_content: None,
         },
     }
@@ -60,12 +59,11 @@ pub fn mock_collection_params_high_fee(start_trading_time: Option<Timestamp>) ->
                 payment_address: "creator".to_string(),
                 share: Decimal::percent(100),
             }),
-            start_trading_time: start_trading_time,
+            start_trading_time,
             explicit_content: None,
         },
     }
 }
-
 
 pub fn mock_collection_two(start_trading_time: Option<Timestamp>) -> CollectionParams {
     CollectionParams {
@@ -83,7 +81,7 @@ pub fn mock_collection_two(start_trading_time: Option<Timestamp>) -> CollectionP
                 payment_address: "creator".to_string(),
                 share: Decimal::percent(10),
             }),
-            start_trading_time: start_trading_time,
+            start_trading_time,
             explicit_content: None,
         },
     }

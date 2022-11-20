@@ -2,7 +2,8 @@
 use crate::error::ContractError;
 use crate::execute::migrate;
 use crate::helpers::ExpiryRange;
-use crate::msg::{AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse, Bidder,
+use crate::msg::{
+    AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse, Bidder,
     CollectionBidOffset, CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
 };
 use crate::msg::{
@@ -11,8 +12,7 @@ use crate::msg::{
 use crate::setup_accounts_and_block::{setup_accounts, setup_block_time, INITIAL_BALANCE};
 use crate::setup_contracts::{contract_marketplace, custom_mock_app};
 use crate::setup_minter::{
-    configure_minter, MinterCollectionResponse, MINT_FEE_FAIR_BURN,
-    MINT_PRICE,
+    configure_minter, MinterCollectionResponse, MINT_FEE_FAIR_BURN, MINT_PRICE,
 };
 use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
@@ -27,9 +27,7 @@ use sg_std::GENESIS_MINT_START_TIME;
 
 use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
 use cw_utils::{Duration, Expiration};
-use sg721::{
-    ExecuteMsg as Sg721ExecuteMsg
-};
+use sg721::ExecuteMsg as Sg721ExecuteMsg;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
@@ -92,7 +90,7 @@ pub fn setup_contracts(
     let marketplace = router
         .instantiate_contract(
             marketplace_id,
-            minter_admin.clone(),
+            minter_admin,
             &msg,
             &[],
             "Marketplace",
@@ -121,7 +119,7 @@ pub fn setup_contracts_with_marketplace_params(
     let marketplace = router
         .instantiate_contract(
             marketplace_id,
-            minter_admin.clone(),
+            minter_admin,
             &instantiate_msg,
             &[],
             "Marketplace",
@@ -245,27 +243,7 @@ pub fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_i
 pub fn get_creator_balance_after_fairburn_mint_fee() -> Uint128 {
     let fair_burn_percent = Decimal::percent(MINT_FEE_FAIR_BURN / 100);
     let mint_price = Uint128::from(MINT_PRICE);
-    let creator_balance_minus_fee =
-        Uint128::from(CREATOR_INITIAL_BALANCE) - (mint_price * fair_burn_percent);
-    creator_balance_minus_fee
-
-    // let mints_multiply: Decimal = match num_mints {
-    //     None => Decimal::new(Uint128::new(1)),
-    //     Some(mint_count) => Decimal::new(Uint128::new(2)),
-    // };
-    // let creator_initial_balance = Decimal::from_atomics(CREATOR_INITIAL_BALANCE, 18).unwrap();
-    // println!("creator initial balance {:?}", creator_initial_balance);
-    // let mint_price = Decimal::from_atomics(MINT_PRICE, 18).unwrap();
-    // println!("mint price {:?}", mint_price);
-    // let fairburn_percent = Decimal::from_atomics(MINT_FEE_FAIR_BURN, 4).unwrap();
-    // println!("fairburn percent {:?}", fairburn_percent);
-    // let mint_fairburn_price = mint_price * mints_multiply * fairburn_percent;
-    // println!("mint fairburn price: {}", mint_fairburn_price);
-    // let final_balance = creator_initial_balance - mint_fairburn_price;
-    // println!("final balance before atomic: {}", final_balance);
-    // let final_balance = final_balance.atomics();
-    // println!("{final_balance}");
-    // final_balance
+    Uint128::from(CREATOR_INITIAL_BALANCE) - (mint_price * fair_burn_percent)
 }
 
 #[test]
@@ -858,11 +836,11 @@ fn get_next_token_id_and_map(
     };
     let res: TokensResponse = router
         .wrap()
-        .query_wasm_smart(collection.clone(), &query_msg)
+        .query_wasm_smart(collection, &query_msg)
         .unwrap();
     let tokens_hash: HashSet<String> = HashSet::from_iter(res.tokens.iter().cloned());
-    let difference = tokens_hash.difference(&incoming_hash);
-    let nft_hash = HashSet::from(tokens_hash.clone());
+    let difference = tokens_hash.difference(incoming_hash);
+    let nft_hash = tokens_hash.clone();
     let token_id: Option<&String> = difference.into_iter().next();
     let token_id_unwrapped = token_id.unwrap().parse::<u32>().unwrap();
     (nft_hash, token_id_unwrapped)
@@ -2262,7 +2240,7 @@ fn try_sudo_update_params() {
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     let collection_params = mock_collection_params_1(Some(start_time));
     let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
+        minter_admin: creator,
         collection_params_vec: vec![collection_params],
         num_tokens: 1,
         router: &mut router,
@@ -2349,7 +2327,7 @@ fn try_add_remove_sales_hooks() {
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     let collection_params = mock_collection_params_1(Some(start_time));
     let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
+        minter_admin: creator,
         collection_params_vec: vec![collection_params],
         num_tokens: 1,
         router: &mut router,
@@ -2389,7 +2367,7 @@ fn try_add_too_many_sales_hooks() {
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     let collection_params = mock_collection_params_1(Some(start_time));
     let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
+        minter_admin: creator,
         collection_params_vec: vec![collection_params],
         num_tokens: 1,
         router: &mut router,
@@ -2429,7 +2407,7 @@ fn try_add_too_many_sales_hooks() {
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook7".to_string(),
     };
-    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    let res = router.wasm_sudo(marketplace, &add_hook_msg);
     assert!(res.is_err());
 }
 
@@ -2440,7 +2418,7 @@ fn try_add_remove_bid_hooks() {
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     let collection_params = mock_collection_params_1(Some(start_time));
     let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
+        minter_admin: creator,
         collection_params_vec: vec![collection_params],
         num_tokens: 1,
         router: &mut router,
@@ -2480,7 +2458,7 @@ fn try_init_hook() {
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     let collection_params = mock_collection_params_1(Some(start_time));
     let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
+        minter_admin: creator,
         collection_params_vec: vec![collection_params],
         num_tokens: 1,
         router: &mut router,
@@ -2634,7 +2612,7 @@ fn try_add_remove_listed_hooks() {
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     let collection_params = mock_collection_params_1(Some(start_time));
     let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
+        minter_admin: creator,
         collection_params_vec: vec![collection_params],
         num_tokens: 1,
         router: &mut router,
@@ -2671,7 +2649,7 @@ fn try_collection_bids() {
     let mut router = custom_mock_app();
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params_one = mock_collection_params_1(Some(start_time.clone()));
+    let collection_params_one = mock_collection_params_1(Some(start_time));
     let collection_params_two = mock_collection_two(Some(start_time));
 
     let setup_params = SetupContractsParams {
@@ -3699,7 +3677,7 @@ fn try_add_and_remove_operators() {
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     let collection_params = mock_collection_params_1(Some(start_time));
     let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
+        minter_admin: creator,
         collection_params_vec: vec![collection_params],
         num_tokens: 1,
         router: &mut router,

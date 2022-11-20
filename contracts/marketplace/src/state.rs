@@ -1,14 +1,13 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use cw_utils::Duration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use sg_controllers::Hooks;
 use std::fmt;
 
 use crate::helpers::ExpiryRange;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct SudoParams {
     /// Fair Burn fee for winning bids
     pub trading_fee_percent: Decimal,
@@ -50,8 +49,7 @@ pub trait Order {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum SaleType {
     FixedPrice,
     Auction,
@@ -67,7 +65,7 @@ impl fmt::Display for SaleType {
 }
 
 /// Represents an ask on the marketplace
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Ask {
     pub sale_type: SaleType,
     pub collection: Addr,
@@ -120,13 +118,17 @@ pub fn asks<'a>() -> IndexedMap<'a, AskKey, Ask, AskIndicies<'a>> {
             "asks",
             "asks__collection_price",
         ),
-        seller: MultiIndex::new(|_pk: &[u8], d: &Ask| d.seller.clone(), "asks", "asks__seller"),
+        seller: MultiIndex::new(
+            |_pk: &[u8], d: &Ask| d.seller.clone(),
+            "asks",
+            "asks__seller",
+        ),
     };
     IndexedMap::new("asks", indexes)
 }
 
 /// Represents a bid (offer) on the marketplace
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Bid {
     pub collection: Addr,
     pub token_id: TokenId,
@@ -209,7 +211,11 @@ pub fn bids<'a>() -> IndexedMap<'a, BidKey, Bid, BidIndicies<'a>> {
             "bids",
             "bids__collection_price",
         ),
-        bidder: MultiIndex::new(|_pk: &[u8], d: &Bid| d.bidder.clone(), "bids", "bids__bidder"),
+        bidder: MultiIndex::new(
+            |_pk: &[u8], d: &Bid| d.bidder.clone(),
+            "bids",
+            "bids__bidder",
+        ),
         bidder_expires_at: MultiIndex::new(
             |_pk: &[u8], d: &Bid| (d.bidder.clone(), d.expires_at.seconds()),
             "bids",
@@ -220,7 +226,7 @@ pub fn bids<'a>() -> IndexedMap<'a, BidKey, Bid, BidIndicies<'a>> {
 }
 
 /// Represents a bid (offer) across an entire collection in the marketplace
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct CollectionBid {
     pub collection: Addr,
     pub bidder: Addr,

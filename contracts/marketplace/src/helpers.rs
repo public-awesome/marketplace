@@ -1,12 +1,12 @@
 use crate::msg::ExecuteMsg;
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Addr, Api, BlockInfo, StdError, StdResult, Timestamp, WasmMsg};
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use sg_std::CosmosMsg;
 use thiserror::Error;
 
 /// MarketplaceContract is a wrapper around Addr that provides a lot of helpers
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct MarketplaceContract(pub Addr);
 
 impl MarketplaceContract {
@@ -47,7 +47,7 @@ pub enum ExpiryRangeError {
     InvalidExpiry {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ExpiryRange {
     pub min: u64,
     pub max: u64,

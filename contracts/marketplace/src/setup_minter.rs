@@ -10,11 +10,8 @@ use vending_factory::{
 };
 
 pub const CREATION_FEE: u128 = 5_000_000_000;
-pub const INITIAL_BALANCE: u128 = 2_000_000_000;
-
 pub const MINT_PRICE: u128 = 100_000_000;
-pub const WHITELIST_AMOUNT: u128 = 66_000_000;
-pub const WL_PER_ADDRESS_LIMIT: u32 = 1;
+
 pub const MAX_TOKEN_LIMIT: u32 = 10000;
 
 pub const MIN_MINT_PRICE: u128 = 50_000_000;
@@ -23,6 +20,10 @@ pub const MINT_FEE_FAIR_BURN: u64 = 1_000; // 10%
 pub const AIRDROP_MINT_FEE_FAIR_BURN: u64 = 10_000; // 100%
 pub const SHUFFLE_FEE: u128 = 500_000_000;
 pub const MAX_PER_ADDRESS_LIMIT: u32 = 50;
+
+// pub const INITIAL_BALANCE: u128 = 2_000_000_000;
+// pub const WHITELIST_AMOUNT: u128 = 66_000_000;
+// pub const WL_PER_ADDRESS_LIMIT: u32 = 1;
 
 pub fn mock_init_extension(splits_addr: Option<String>) -> VendingMinterInitMsgExtension {
     vending_factory::msg::VendingMinterInitMsgExtension {
@@ -113,8 +114,8 @@ fn setup_minter_contract(setup_params: MinterSetupParams) -> MinterCollectionRes
     let msg = Sg2ExecuteMsg::CreateMinter(msg);
 
     let res = router.execute_contract(
-        minter_admin.clone(),
-        factory_addr.clone(),
+        minter_admin,
+        factory_addr,
         &msg,
         &creation_fee,
     );

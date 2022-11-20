@@ -1,14 +1,13 @@
-use sg721_base::ContractError;
-use sg_std::NATIVE_DENOM;
-use cosmwasm_std::{coins, Addr, Timestamp, Coin};
+use cosmwasm_std::{coins, Addr, Coin, Timestamp};
 use cw_multi_test::{BankSudo, SudoMsg};
+use sg721_base::ContractError;
 use sg_multi_test::StargazeApp;
+use sg_std::NATIVE_DENOM;
 
-pub const TOKEN_ID: u32 = 123;
+// pub const TOKEN_ID: u32 = 123;
 pub const CREATOR_INITIAL_BALANCE: u128 = 5000000000;
-pub const LISTING_FEE: u128 = 0;
+// pub const LISTING_FEE: u128 = 0;
 pub const INITIAL_BALANCE: u128 = 5000000000;
-
 
 pub fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
     let mut block = router.block_info();
@@ -21,7 +20,7 @@ pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Co
     let owner: Addr = Addr::unchecked("owner");
     let bidder: Addr = Addr::unchecked("bidder");
     let creator: Addr = Addr::unchecked("creator");
-    let creator_funds: Vec<Coin> = coins(2* INITIAL_BALANCE, NATIVE_DENOM);
+    let creator_funds: Vec<Coin> = coins(2 * INITIAL_BALANCE, NATIVE_DENOM);
     let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
     router
         .sudo(SudoMsg::Bank({
