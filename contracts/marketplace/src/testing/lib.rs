@@ -1,3 +1,22 @@
+#[path = "./helpers/accounts.rs"]
+#[cfg(test)]
+mod accounts;
+#[path = "./helpers/funds.rs"]
+#[cfg(test)]
+mod funds;
+#[path = "./helpers/msg.rs"]
+#[cfg(test)]
+mod msg;
+#[path = "./helpers/nft_functions.rs"]
+#[cfg(test)]
+mod nft_functions;
+#[path = "./setup/setup_marketplace.rs"]
+#[cfg(test)]
+mod setup_marketplace;
+
+#[path = "./setup/constants.rs"]
+#[cfg(test)]
+mod constants;
 #[path = "./setup/mock_collection_params.rs"]
 #[cfg(test)]
 mod mock_collection_params;

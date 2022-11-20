@@ -4,10 +4,7 @@ use sg721_base::ContractError;
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
 
-// pub const TOKEN_ID: u32 = 123;
-pub const CREATOR_INITIAL_BALANCE: u128 = 5000000000;
-// pub const LISTING_FEE: u128 = 0;
-pub const INITIAL_BALANCE: u128 = 5000000000;
+use crate::tests_folder::constants::INITIAL_BALANCE;
 
 pub fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
     let mut block = router.block_info();

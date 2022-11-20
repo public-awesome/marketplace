@@ -9,19 +9,25 @@ use crate::msg::{
     BidsResponse, CollectionBidResponse, CollectionBidsResponse, ExecuteMsg, QueryMsg,
 };
 use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
-use crate::tests_folder::setup_accounts_and_block::{
-    setup_accounts, setup_block_time, INITIAL_BALANCE,
+use crate::tests_folder::accounts::setup_second_bidder_account;
+use crate::tests_folder::constants::{
+    BID_REMOVAL_REWARD_BPS, CREATION_FEE, INITIAL_BALANCE, LISTING_FEE, MAX_EXPIRY,
+    MAX_FINDERS_FEE_BPS, MINT_FEE_FAIR_BURN, MINT_PRICE, MIN_EXPIRY, TRADING_FEE_BPS,
 };
-use crate::tests_folder::setup_contracts::{contract_marketplace, custom_mock_app};
-use crate::tests_folder::setup_minter::{
-    configure_minter, MinterCollectionResponse, MINT_FEE_FAIR_BURN, MINT_PRICE,
+use crate::tests_folder::funds::{
+    add_funds_for_incremental_fee, get_creator_balance_after_fairburn_mint_fee,
+};
+use crate::tests_folder::msg::SetupContractsParams;
+use crate::tests_folder::nft_functions::{approve, burn, mint, mint_for, transfer};
+use crate::tests_folder::setup_accounts_and_block::{setup_accounts, setup_block_time};
+use crate::tests_folder::setup_contracts::custom_mock_app;
+use crate::tests_folder::setup_marketplace::{
+    setup_contracts, setup_contracts_with_marketplace_params,
 };
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
 use cw_multi_test::{BankSudo, Executor, SudoMsg as CwSudoMsg};
-use sg2::msg::CollectionParams;
-use sg721_base::msg::CollectionInfoResponse;
 use sg_controllers::HooksResponse;
 use sg_multi_test::StargazeApp;
 use sg_std::GENESIS_MINT_START_TIME;
@@ -37,208 +43,6 @@ use crate::tests_folder::mock_collection_params::{
     mock_curator_payment_address,
 };
 use sg_std::NATIVE_DENOM;
-
-pub const TOKEN_ID: u32 = 1_u32;
-
-use crate::tests_folder::setup_accounts_and_block::CREATOR_INITIAL_BALANCE;
-use crate::tests_folder::setup_minter::CREATION_FEE;
-pub const LISTING_FEE: u128 = 0;
-pub const SECOND_BIDDER_INITIAL_BALANCE: u128 = 2000;
-
-// Governance parameters
-pub const TRADING_FEE_BPS: u64 = 200; // 2%
-pub const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
-pub const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
-pub const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
-pub const BID_REMOVAL_REWARD_BPS: u64 = 500; // 5%
-
-pub struct SetupContractsParams<'a> {
-    minter_admin: Addr,
-    pub collection_params_vec: Vec<CollectionParams>,
-    pub num_tokens: u32,
-    pub router: &'a mut StargazeApp,
-}
-
-// Instantiates all needed contracts for testing
-pub fn setup_contracts(
-    params: SetupContractsParams,
-) -> Result<(Addr, Vec<MinterCollectionResponse>), ContractError> {
-    let router = params.router;
-    let collection_params_vec = params.collection_params_vec;
-    let num_tokens = params.num_tokens;
-    let minter_admin = params.minter_admin;
-
-    let minter_collections: Vec<MinterCollectionResponse> = configure_minter(
-        router,
-        minter_admin.clone(),
-        collection_params_vec,
-        num_tokens,
-    );
-    // Instantiate marketplace contract
-    let marketplace_id = router.store_code(contract_marketplace());
-    let msg = crate::msg::InstantiateMsg {
-        operators: vec!["operator1".to_string()],
-        trading_fee_bps: TRADING_FEE_BPS,
-        ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        sale_hook: None,
-        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
-        min_price: Uint128::from(5u128),
-        stale_bid_duration: Duration::Time(100),
-        bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
-        listing_fee: Uint128::from(LISTING_FEE),
-    };
-    let marketplace = router
-        .instantiate_contract(marketplace_id, minter_admin, &msg, &[], "Marketplace", None)
-        .unwrap();
-    Ok((marketplace, minter_collections))
-}
-
-pub fn setup_contracts_with_marketplace_params(
-    params: SetupContractsParams,
-    instantiate_msg: crate::msg::InstantiateMsg,
-) -> Result<(Addr, Vec<MinterCollectionResponse>), ContractError> {
-    let router = params.router;
-    let collection_params_vec = params.collection_params_vec;
-    let num_tokens = params.num_tokens;
-    let minter_admin = params.minter_admin;
-    let minter_collections: Vec<MinterCollectionResponse> = configure_minter(
-        router,
-        minter_admin.clone(),
-        collection_params_vec,
-        num_tokens,
-    );
-    // Instantiate marketplace contract
-    let marketplace_id = router.store_code(contract_marketplace());
-    let marketplace = router
-        .instantiate_contract(
-            marketplace_id,
-            minter_admin,
-            &instantiate_msg,
-            &[],
-            "Marketplace",
-            None,
-        )
-        .unwrap();
-    Ok((marketplace, minter_collections))
-}
-
-pub fn add_funds_for_incremental_fee(
-    router: &mut StargazeApp,
-    receiver: &Addr,
-    fee_amount: u128,
-    fee_count: u128,
-) -> Result<(), ContractError> {
-    let fee_funds = coins(fee_amount * fee_count, NATIVE_DENOM);
-    router
-        .sudo(CwSudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: receiver.to_string(),
-                amount: fee_funds,
-            }
-        }))
-        .map_err(|err| println!("{:?}", err))
-        .ok();
-    Ok(())
-}
-
-pub fn setup_second_bidder_account(router: &mut StargazeApp) -> Result<Addr, ContractError> {
-    let bidder2: Addr = Addr::unchecked("bidder2");
-    let funds: Vec<Coin> = coins(CREATION_FEE + SECOND_BIDDER_INITIAL_BALANCE, NATIVE_DENOM);
-    router
-        .sudo(CwSudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: bidder2.to_string(),
-                amount: funds.clone(),
-            }
-        }))
-        .map_err(|err| println!("{:?}", err))
-        .ok();
-
-    // Check native balances
-    let bidder_native_balances = router.wrap().query_all_balances(bidder2.clone()).unwrap();
-    assert_eq!(bidder_native_balances, funds);
-
-    Ok(bidder2)
-}
-
-// Mints an NFT for a creator
-pub fn mint(router: &mut StargazeApp, creator: &Addr, minter_addr: &Addr) {
-    let minter_msg = vending_minter::msg::ExecuteMsg::Mint {};
-    let res = router.execute_contract(
-        creator.clone(),
-        minter_addr.clone(),
-        &minter_msg,
-        &coins(MINT_PRICE, NATIVE_DENOM),
-    );
-    assert!(res.is_ok());
-}
-
-pub fn mint_for(
-    router: &mut StargazeApp,
-    owner: &Addr,
-    creator: &Addr,
-    collection: &Addr,
-    token_id: u32,
-) {
-    let mint_for_creator_msg = vending_minter::msg::ExecuteMsg::MintFor {
-        token_id,
-        recipient: creator.to_string(),
-    };
-    let res = router.execute_contract(
-        owner.clone(),
-        collection.clone(),
-        &mint_for_creator_msg,
-        &[],
-    );
-    println!("res is {:?}", res);
-    assert!(res.is_ok());
-}
-
-pub fn approve(
-    router: &mut StargazeApp,
-    creator: &Addr,
-    collection: &Addr,
-    marketplace: &Addr,
-    token_id: u32,
-) {
-    let approve_msg: Sg721ExecuteMsg<CollectionInfoResponse, Empty> = Sg721ExecuteMsg::Approve {
-        spender: marketplace.to_string(),
-        token_id: token_id.to_string(),
-        expires: None,
-    };
-    let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-    assert!(res.is_ok());
-}
-
-fn transfer(
-    router: &mut StargazeApp,
-    creator: &Addr,
-    recipient: &Addr,
-    collection: &Addr,
-    token_id: u32,
-) {
-    let transfer_msg: Sg721ExecuteMsg<Empty, Empty> = Sg721ExecuteMsg::TransferNft {
-        recipient: recipient.to_string(),
-        token_id: token_id.to_string(),
-    };
-    let res = router.execute_contract(creator.clone(), collection.clone(), &transfer_msg, &[]);
-    assert!(res.is_ok());
-}
-
-pub fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
-    let transfer_msg: Sg721ExecuteMsg<Empty, Empty> = Sg721ExecuteMsg::Burn {
-        token_id: token_id.to_string(),
-    };
-    let res = router.execute_contract(creator.clone(), collection.clone(), &transfer_msg, &[]);
-    assert!(res.is_ok());
-}
-
-pub fn get_creator_balance_after_fairburn_mint_fee() -> Uint128 {
-    let fair_burn_percent = Decimal::percent(MINT_FEE_FAIR_BURN / 100);
-    let mint_price = Uint128::from(MINT_PRICE);
-    Uint128::from(CREATOR_INITIAL_BALANCE) - (mint_price * fair_burn_percent)
-}
 
 #[test]
 fn try_set_accept_fixed_price_bid() {
@@ -259,7 +63,7 @@ fn try_set_accept_fixed_price_bid() {
     setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // Should error with expiry lower than min
     let set_ask = ExecuteMsg::SetAsk {
@@ -300,7 +104,7 @@ fn try_set_accept_fixed_price_bid() {
     assert!(res.is_ok());
 
     // // // Transfer nft from creator to owner. Creates a stale ask that needs to be updated
-    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+    transfer(&mut router, &creator, &owner, &collection, token_id);
 
     // // // Should error on non-admin trying to update active state
     let update_ask_state = ExecuteMsg::SyncAsk {
@@ -346,7 +150,7 @@ fn try_set_accept_fixed_price_bid() {
     approve(&mut router, &creator, &collection, &marketplace, token_id);
     let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
@@ -357,7 +161,7 @@ fn try_set_accept_fixed_price_bid() {
     assert!(res.is_ok());
     let ask_msg = QueryMsg::Ask {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res: AskResponse = router
         .wrap()
@@ -457,7 +261,7 @@ fn try_set_accept_bid_no_ask() {
     setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     //     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
@@ -612,7 +416,7 @@ fn try_update_ask() {
     setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     //     // Add funds to creator for listing fees
     add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
@@ -774,7 +578,7 @@ fn try_query_asks() {
         .wrap()
         .query_wasm_smart(marketplace.clone(), &query_asks_msg)
         .unwrap();
-    assert_eq!(res.asks[0].token_id, TOKEN_ID);
+    assert_eq!(res.asks[0].token_id, token_id);
 
     // test pagination, starting when token don't exist
     let query_asks_msg = QueryMsg::Asks {
@@ -1504,7 +1308,7 @@ fn try_query_bids() {
     // test before bid is made
     let query_bids_msg = QueryMsg::Bids {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         start_after: None,
         limit: None,
     };
@@ -1551,7 +1355,7 @@ fn try_query_bids() {
         .wrap()
         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
         .unwrap();
-    assert_eq!(res.bids[0].token_id, TOKEN_ID);
+    assert_eq!(res.bids[0].token_id, token_id_0);
     assert_eq!(res.bids[0].price.u128(), 120u128);
     let query_bids_msg = QueryMsg::Bids {
         collection: collection.to_string(),
@@ -3140,11 +2944,11 @@ fn try_ask_with_filter_inactive() {
     assert!(res.is_ok());
 
     // transfer nft from creator to owner. Creates a stale ask that needs to be updated
-    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+    transfer(&mut router, &creator, &owner, &collection, token_id);
 
     let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
@@ -3225,7 +3029,7 @@ fn try_sync_ask() {
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An ask is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
@@ -3298,7 +3102,7 @@ fn try_sync_ask() {
     assert_eq!(res.asks.len(), 0);
 
     // Approving again should have a success sync ask after
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // SyncAsk should be ok
     let res = router.execute_contract(
@@ -4335,81 +4139,6 @@ fn try_start_trading_time() {
         .unwrap();
     assert_eq!(res.owner, bidder.to_string());
 }
-
-//     let mut router = custom_mock_app();
-
-//     // Setup initial accounts
-//     let (_, _, creator) = setup_accounts(&mut router).unwrap();
-
-//     // Instantiate marketplace contract
-//     let marketplace_id = router.store_code(contract_marketplace());
-//     let msg = crate::msg::InstantiateMsg {
-//         operators: vec!["operator1".to_string()],
-//         trading_fee_bps: TRADING_FEE_BPS,
-//         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-//         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-//         sale_hook: None,
-//         max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
-//         min_price: Uint128::from(5u128),
-//         stale_bid_duration: Duration::Time(100),
-//         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
-//         listing_fee: Uint128::from(LISTING_FEE),
-//     };
-//     let marketplace = router
-//         .instantiate_contract(
-//             marketplace_id,
-//             creator.clone(),
-//             &msg,
-//             &[],
-//             "Marketplace",
-//             None,
-//         )
-//         .unwrap();
-//     println!("marketplace: {:?}", marketplace);
-
-//     // Setup media contract
-//     let sg721_id = router.store_code(contract_sg721());
-//     let msg = Sg721InstantiateMsg {
-//     name: String::from("Test Coin"),
-//     symbol: String::from("TEST"),
-//     minter: creator.to_string(),
-//     collection_info: CollectionInfo {
-//         creator: creator.to_string(),
-//         description: String::from("Stargaze Monkeys"),
-//         start_trading_time: None,
-//         image:
-//             "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
-//                 .to_string(),
-//         external_link: Some("https://example.com/external.html".to_string()),
-//         royalty_info: Some(RoyaltyInfoResponse {
-//             payment_address: creator.to_string(),
-//             share: Decimal::percent(10),
-//         }),
-//     },
-// };
-//     let collection1 = router
-//         .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "collection1", None)
-//         .unwrap();
-//     // mark the collection contract as ready to mint
-//     let res = router.execute_contract(
-//         creator.clone(),
-//         collection1.clone(),
-//         &Sg721ExecuteMsg::<Empty>::_Ready {},
-//         &[],
-//     );
-//     assert!(res.is_ok());
-
-//     let collection2 = router
-//         .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "collection2", None)
-//         .unwrap();
-//     // mark the collection contract as ready to mint
-//     let res = router.execute_contract(
-//         creator.clone(),
-//         collection2.clone(),
-//         &Sg721ExecuteMsg::<Empty>::_Ready {},
-//         &[],
-//     );
-//     assert!(res.is_ok());
 
 mod query {
     use super::*;

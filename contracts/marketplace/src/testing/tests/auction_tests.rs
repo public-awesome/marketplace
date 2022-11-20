@@ -1,28 +1,72 @@
 // use crate::msg::{AskResponse, BidResponse, ExecuteMsg, QueryMsg};
-// use crate::multitest::{
+// use crate::tests_folder::multitest::{
 //     approve, listing_funds, mint, setup_contracts,
 //     setup_second_bidder_account,
 // };
-// use crate::setup_accounts_and_block::setup_accounts;
-// use crate::setup_contracts::custom_mock_app;
-// use crate::multitest::{CREATOR_INITIAL_BALANCE, LISTING_FEE, MIN_EXPIRY, TOKEN_ID};
+// use crate::tests_folder::setup_accounts_and_block::setup_accounts;
+// use crate::tests_folder::setup_contracts::custom_mock_app;
+// use crate::tests_folder::setup_accounts_and_block::CREATOR_INITIAL_BALANCE;
+// use crate::tests_folder::multitest::{LISTING_FEE, MIN_EXPIRY, TOKEN_ID};
 // use crate::state::SaleType;
 // use cosmwasm_std::{coin, coins, Uint128};
 // use cw_multi_test::Executor;
 // use sg_std::NATIVE_DENOM;
 
+// use crate::error::ContractError;
+// use crate::execute::migrate;
+// use crate::helpers::ExpiryRange;
+// use crate::msg::{
+//     AskCountResponse, AskOffset, AsksResponse, BidOffset,
+//     CollectionBidOffset, CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
+// };
+// use crate::msg::{
+//     BidsResponse, CollectionBidResponse, CollectionBidsResponse,
+// };
+// use crate::state::{Bid, SudoParams, SUDO_PARAMS};
+// use crate::tests_folder::setup_accounts_and_block::{
+//     setup_block_time, INITIAL_BALANCE,
+// };
+// use crate::tests_folder::setup_contracts::{contract_marketplace};
+// use crate::tests_folder::setup_minter::{
+//     configure_minter, MinterCollectionResponse, MINT_FEE_FAIR_BURN, MINT_PRICE,
+// };
+// use cosmwasm_std::testing::{mock_dependencies, mock_env};
+// use cosmwasm_std::{Addr, Empty, Timestamp};
+// use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
+// use cw_multi_test::{BankSudo, SudoMsg as CwSudoMsg};
+// use sg2::msg::CollectionParams;
+// use sg721_base::msg::CollectionInfoResponse;
+// use sg_controllers::HooksResponse;
+// use sg_multi_test::StargazeApp;
+// use sg_std::GENESIS_MINT_START_TIME;
+
+// use cw_utils::{Duration, Expiration};
+// use sg721::ExecuteMsg as Sg721ExecuteMsg;
+// use std::collections::HashSet;
+// use std::iter::FromIterator;
+
+// use crate::tests_folder::mock_collection_params::{
+//     mock_collection_params_1, mock_collection_two,
+// };
+// use crate::tests_folder::setup_minter::CREATION_FEE;
+
 // #[test]
 // fn set_auction_bids() {
 //     let mut router = custom_mock_app();
-//     // Setup initial accounts
-//     let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-//     // Instantiate and configure contracts
-//     let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-//     // Mint NFT for creator
-//     mint(&mut router, &creator, &collection, TOKEN_ID);
-//     approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-
+//     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+//     add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
+//     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+//     let collection_params_1 = mock_collection_params_1(Some(start_time));
+//     let collection_params_2 = mock_collection_two(Some(start_time.plus_seconds(1)));
+//     let setup_params = SetupContractsParams {
+//         minter_admin: creator.clone(),
+//         collection_params_vec: vec![collection_params_1, collection_params_2],
+//         num_tokens: 2,
+//         router: &mut router,
+//     };
+//     let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+//     let minter_addr = minter_collections[0].minter.clone();
+//     let collection = minter_collections[0].collection.clone();
 //     // An asking price is made by the creator
 //     let set_ask = ExecuteMsg::SetAsk {
 //         sale_type: SaleType::Auction,

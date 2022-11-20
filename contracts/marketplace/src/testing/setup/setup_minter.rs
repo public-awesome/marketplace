@@ -1,3 +1,8 @@
+use crate::tests_folder::constants::{
+    AIRDROP_MINT_FEE_FAIR_BURN, AIRDROP_MINT_PRICE, CREATION_FEE, MAX_PER_ADDRESS_LIMIT,
+    MAX_TOKEN_LIMIT, MINT_FEE_FAIR_BURN, MINT_PRICE, MIN_MINT_PRICE, SHUFFLE_FEE,
+};
+use crate::tests_folder::msg::MinterCollectionResponse;
 use crate::tests_folder::setup_contracts::{contract_factory, contract_minter, contract_sg721};
 use cosmwasm_std::{coin, coins, Addr, Timestamp};
 use cw_multi_test::{AppResponse, Executor};
@@ -9,17 +14,7 @@ use vending_factory::{
     state::{ParamsExtension, VendingMinterParams},
 };
 
-pub const CREATION_FEE: u128 = 5_000_000_000;
-pub const MINT_PRICE: u128 = 100_000_000;
-
-pub const MAX_TOKEN_LIMIT: u32 = 10000;
-
-pub const MIN_MINT_PRICE: u128 = 50_000_000;
-pub const AIRDROP_MINT_PRICE: u128 = 0;
-pub const MINT_FEE_FAIR_BURN: u64 = 1_000; // 10%
-pub const AIRDROP_MINT_FEE_FAIR_BURN: u64 = 10_000; // 100%
-pub const SHUFFLE_FEE: u128 = 500_000_000;
-pub const MAX_PER_ADDRESS_LIMIT: u32 = 50;
+use crate::tests_folder::msg::MinterSetupParams;
 
 // pub const INITIAL_BALANCE: u128 = 2_000_000_000;
 // pub const WHITELIST_AMOUNT: u128 = 66_000_000;
@@ -62,22 +57,6 @@ pub fn mock_params() -> VendingMinterParams {
             shuffle_fee: coin(SHUFFLE_FEE, NATIVE_DENOM),
         },
     }
-}
-
-pub struct MinterSetupParams<'a> {
-    pub router: &'a mut StargazeApp,
-    minter_admin: Addr,
-    num_tokens: u32,
-    collection_params: CollectionParams,
-    splits_addr: Option<String>,
-    minter_code_id: u64,
-    factory_code_id: u64,
-    sg721_code_id: u64,
-}
-
-pub struct MinterCollectionResponse {
-    pub minter: Addr,
-    pub collection: Addr,
 }
 
 fn parse_factory_response(res: &AppResponse) -> (Addr, Addr) {
