@@ -22,7 +22,7 @@ use crate::tests_folder::nft_functions::{approve, burn, mint, mint_for, transfer
 use crate::tests_folder::setup_accounts_and_block::{setup_accounts, setup_block_time};
 use crate::tests_folder::setup_contracts::custom_mock_app;
 use crate::tests_folder::setup_marketplace::{
-    setup_contracts, setup_contracts_with_marketplace_params,
+    setup_marketplace_and_collections, setup_marketplace_and_collections_with_params,
 };
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};
@@ -56,7 +56,8 @@ fn try_set_accept_fixed_price_bid() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -254,7 +255,8 @@ fn try_set_accept_bid_no_ask() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -346,7 +348,8 @@ fn try_set_accept_bid_high_fees() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -409,7 +412,8 @@ fn try_update_ask() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -515,7 +519,8 @@ fn try_query_asks() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -653,7 +658,8 @@ fn try_query_sorted_asks() {
         num_tokens: 3,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
@@ -825,7 +831,8 @@ fn try_query_asks_by_seller() {
         num_tokens: 4,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
@@ -1019,7 +1026,8 @@ fn try_query_sorted_bids() {
         num_tokens: 3,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
@@ -1272,7 +1280,8 @@ fn try_query_bids() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
@@ -1418,7 +1427,8 @@ fn auto_accept_bid() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -1547,7 +1557,8 @@ fn try_reserved_ask() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
@@ -1641,7 +1652,8 @@ fn try_ask_with_finders_fee() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     setup_block_time(&mut router, start_time.seconds());
@@ -1720,7 +1732,8 @@ fn remove_bid_refund() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -1811,7 +1824,8 @@ fn new_bid_refund() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -1938,7 +1952,8 @@ fn try_royalties() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -2040,7 +2055,7 @@ fn try_sudo_update_params() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, _) = setup_contracts(setup_params).unwrap();
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
 
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: Some(5),
@@ -2127,7 +2142,7 @@ fn try_add_remove_sales_hooks() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, _) = setup_contracts(setup_params).unwrap();
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
 
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook".to_string(),
@@ -2167,7 +2182,7 @@ fn try_add_too_many_sales_hooks() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, _) = setup_contracts(setup_params).unwrap();
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
 
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook2".to_string(),
@@ -2218,7 +2233,7 @@ fn try_add_remove_bid_hooks() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, _) = setup_contracts(setup_params).unwrap();
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
 
     let add_bid_hook_msg = SudoMsg::AddBidHook {
         hook: "bid_hook".to_string(),
@@ -2270,7 +2285,8 @@ fn try_init_hook() {
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
         listing_fee: Uint128::from(LISTING_FEE),
     };
-    let (marketplace, _) = setup_contracts_with_marketplace_params(setup_params, msg).unwrap();
+    let (marketplace, _) =
+        setup_marketplace_and_collections_with_params(setup_params, msg).unwrap();
 
     let query_hooks_msg = QueryMsg::SaleHooks {};
     let res: HooksResponse = router
@@ -2304,7 +2320,8 @@ fn try_hook_was_run() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -2412,7 +2429,7 @@ fn try_add_remove_listed_hooks() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, _) = setup_contracts(setup_params).unwrap();
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
     let add_hook_msg = SudoMsg::AddAskHook {
         hook: "hook".to_string(),
     };
@@ -2453,7 +2470,8 @@ fn try_collection_bids() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
@@ -2670,7 +2688,8 @@ fn try_remove_stale_bid() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -2731,7 +2750,8 @@ fn try_remove_stale_collection_bid() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -2790,7 +2810,8 @@ fn try_bid_finders_fee() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -2868,7 +2889,8 @@ fn try_bidder_cannot_be_finder() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -2910,7 +2932,8 @@ fn try_ask_with_filter_inactive() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -3017,7 +3040,8 @@ fn try_sync_ask() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -3181,7 +3205,8 @@ fn try_set_ask_reserve_for() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -3319,7 +3344,8 @@ fn try_remove_stale_ask() {
         num_tokens: 2,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -3477,7 +3503,7 @@ fn try_add_and_remove_operators() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, _) = setup_contracts(setup_params).unwrap();
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     setup_block_time(&mut router, start_time.seconds());
 
@@ -3582,7 +3608,8 @@ fn try_bid_sale_type() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
@@ -3789,7 +3816,8 @@ fn try_start_trading_time() {
         num_tokens: 2,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter_addr = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
 
@@ -4157,7 +4185,8 @@ mod query {
             num_tokens: 1,
             router: &mut router,
         };
-        let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+        let (marketplace, minter_collections) =
+            setup_marketplace_and_collections(setup_params).unwrap();
         let minter1 = minter_collections[0].minter.clone();
         let collection1 = minter_collections[0].collection.clone();
 

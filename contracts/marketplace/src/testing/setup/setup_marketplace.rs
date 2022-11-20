@@ -12,7 +12,7 @@ use cw_multi_test::Executor;
 use cw_utils::Duration;
 
 // Instantiates all needed contracts for testing
-pub fn setup_contracts(
+pub fn setup_marketplace_and_collections(
     params: SetupContractsParams,
 ) -> Result<(Addr, Vec<MinterCollectionResponse>), ContractError> {
     let router = params.router;
@@ -46,7 +46,7 @@ pub fn setup_contracts(
     Ok((marketplace, minter_collections))
 }
 
-pub fn setup_contracts_with_marketplace_params(
+pub fn setup_marketplace_and_collections_with_params(
     params: SetupContractsParams,
     instantiate_msg: crate::msg::InstantiateMsg,
 ) -> Result<(Addr, Vec<MinterCollectionResponse>), ContractError> {

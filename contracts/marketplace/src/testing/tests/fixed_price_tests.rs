@@ -9,7 +9,7 @@ use crate::tests_folder::multitest::listing_funds;
 use crate::tests_folder::nft_functions::{approve, mint};
 use crate::tests_folder::setup_accounts_and_block::{setup_accounts, setup_block_time};
 use crate::tests_folder::setup_contracts::custom_mock_app;
-use crate::tests_folder::setup_marketplace::setup_contracts;
+use crate::tests_folder::setup_marketplace::setup_marketplace_and_collections;
 use cosmwasm_std::{coin, coins, Timestamp, Uint128};
 use cw_multi_test::Executor;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
@@ -26,7 +26,8 @@ fn try_set_bid_fixed_price() {
         num_tokens: 1,
         router: &mut router,
     };
-    let (marketplace, minter_collections) = setup_contracts(setup_params).unwrap();
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
     let minter = minter_collections[0].minter.clone();
     let collection = minter_collections[0].collection.clone();
     let token_id = 1;
