@@ -1,4 +1,3 @@
-#[cfg(test)]
 use std::vec;
 
 use crate::error::ContractError;

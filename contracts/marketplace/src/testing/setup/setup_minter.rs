@@ -1,4 +1,4 @@
-use crate::setup_contracts::{contract_factory, contract_minter, contract_sg721};
+use crate::tests_folder::setup_contracts::{contract_factory, contract_minter, contract_sg721};
 use cosmwasm_std::{coin, coins, Addr, Timestamp};
 use cw_multi_test::{AppResponse, Executor};
 use sg2::msg::{CollectionParams, Sg2ExecuteMsg};

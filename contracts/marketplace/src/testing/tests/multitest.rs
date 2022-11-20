@@ -1,4 +1,3 @@
-#![cfg(test)]
 use crate::error::ContractError;
 use crate::execute::migrate;
 use crate::helpers::ExpiryRange;
@@ -9,12 +8,14 @@ use crate::msg::{
 use crate::msg::{
     BidsResponse, CollectionBidResponse, CollectionBidsResponse, ExecuteMsg, QueryMsg,
 };
-use crate::setup_accounts_and_block::{setup_accounts, setup_block_time, INITIAL_BALANCE};
-use crate::setup_contracts::{contract_marketplace, custom_mock_app};
-use crate::setup_minter::{
+use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
+use crate::tests_folder::setup_accounts_and_block::{
+    setup_accounts, setup_block_time, INITIAL_BALANCE,
+};
+use crate::tests_folder::setup_contracts::{contract_marketplace, custom_mock_app};
+use crate::tests_folder::setup_minter::{
     configure_minter, MinterCollectionResponse, MINT_FEE_FAIR_BURN, MINT_PRICE,
 };
-use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
@@ -31,7 +32,7 @@ use sg721::ExecuteMsg as Sg721ExecuteMsg;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
-use crate::mock_collection_params::{
+use crate::tests_folder::mock_collection_params::{
     mock_collection_params_1, mock_collection_params_high_fee, mock_collection_two,
     mock_curator_payment_address,
 };
@@ -39,8 +40,8 @@ use sg_std::NATIVE_DENOM;
 
 pub const TOKEN_ID: u32 = 1_u32;
 
-use crate::setup_accounts_and_block::CREATOR_INITIAL_BALANCE;
-use crate::setup_minter::CREATION_FEE;
+use crate::tests_folder::setup_accounts_and_block::CREATOR_INITIAL_BALANCE;
+use crate::tests_folder::setup_minter::CREATION_FEE;
 pub const LISTING_FEE: u128 = 0;
 pub const SECOND_BIDDER_INITIAL_BALANCE: u128 = 2000;
 
