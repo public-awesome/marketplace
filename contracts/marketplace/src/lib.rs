@@ -5,18 +5,18 @@ pub mod execute;
 #[cfg(test)]
 mod fixed_price_tests;
 mod helpers;
+#[cfg(test)]
+mod mock_collection_params;
 pub mod msg;
 #[cfg(test)]
 mod multitest;
-#[cfg(test)]
-mod setup_minter;
-#[cfg(test)]
-mod setup_contracts;
+pub mod query;
 #[cfg(test)]
 mod setup_accounts_and_block;
 #[cfg(test)]
-mod mock_collection_params;
-pub mod query;
+mod setup_contracts;
+#[cfg(test)]
+mod setup_minter;
 pub mod state;
 pub mod sudo;
 #[cfg(test)]

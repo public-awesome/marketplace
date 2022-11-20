@@ -5,7 +5,6 @@ use crate::{
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128};
 use cw_utils::Duration;
-use schemars::JsonSchema;
 
 #[cw_serde]
 pub struct InstantiateMsg {

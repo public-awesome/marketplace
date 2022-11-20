@@ -43,7 +43,7 @@ pub fn mock_create_minter(
 ) -> VendingMinterCreateMsg {
     VendingMinterCreateMsg {
         init_msg: mock_init_extension(splits_addr),
-        collection_params: collection_params,
+        collection_params,
     }
 }
 
@@ -113,12 +113,7 @@ fn setup_minter_contract(setup_params: MinterSetupParams) -> MinterCollectionRes
 
     let msg = Sg2ExecuteMsg::CreateMinter(msg);
 
-    let res = router.execute_contract(
-        minter_admin,
-        factory_addr,
-        &msg,
-        &creation_fee,
-    );
+    let res = router.execute_contract(minter_admin, factory_addr, &msg, &creation_fee);
     assert!(res.is_ok());
     let minter_addr = res.unwrap().events[3].attributes[0].value.clone();
 

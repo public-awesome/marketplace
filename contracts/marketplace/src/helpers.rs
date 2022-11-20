@@ -1,7 +1,6 @@
 use crate::msg::ExecuteMsg;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Addr, Api, BlockInfo, StdError, StdResult, Timestamp, WasmMsg};
-use schemars::JsonSchema;
 use sg_std::CosmosMsg;
 use thiserror::Error;
 

@@ -3,7 +3,7 @@ use crate::error::ContractError;
 use crate::execute::migrate;
 use crate::helpers::ExpiryRange;
 use crate::msg::{
-    AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse, Bidder,
+    AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse,
     CollectionBidOffset, CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
 };
 use crate::msg::{
@@ -88,14 +88,7 @@ pub fn setup_contracts(
         listing_fee: Uint128::from(LISTING_FEE),
     };
     let marketplace = router
-        .instantiate_contract(
-            marketplace_id,
-            minter_admin,
-            &msg,
-            &[],
-            "Marketplace",
-            None,
-        )
+        .instantiate_contract(marketplace_id, minter_admin, &msg, &[], "Marketplace", None)
         .unwrap();
     Ok((marketplace, minter_collections))
 }
@@ -274,7 +267,7 @@ fn try_set_accept_fixed_price_bid() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
@@ -314,7 +307,7 @@ fn try_set_accept_fixed_price_bid() {
     // // // Should error on non-admin trying to update active state
     let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
     };
     router
         .execute_contract(creator.clone(), marketplace.clone(), &update_ask_state, &[])
@@ -341,7 +334,7 @@ fn try_set_accept_fixed_price_bid() {
 
     let ask_msg = QueryMsg::Ask {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
     };
     let res: AskResponse = router
         .wrap()
@@ -378,7 +371,7 @@ fn try_set_accept_fixed_price_bid() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -411,7 +404,7 @@ fn try_set_accept_fixed_price_bid() {
     // // Creator accepts bid
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         bidder: bidder.to_string(),
         finder: None,
     };
@@ -503,7 +496,7 @@ fn try_set_accept_bid_no_ask() {
     // Creator accepts bid
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         bidder: bidder.to_string(),
         finder: None,
     };
@@ -591,7 +584,7 @@ fn try_set_accept_bid_high_fees() {
 
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         bidder: bidder.to_string(),
         finder: Some(owner.to_string()),
     };
@@ -630,7 +623,7 @@ fn try_update_ask() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
@@ -647,7 +640,7 @@ fn try_update_ask() {
 
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(200, NATIVE_DENOM),
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[]);
@@ -655,7 +648,7 @@ fn try_update_ask() {
 
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(200, "bobo"),
     };
     router
@@ -664,7 +657,7 @@ fn try_update_ask() {
 
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(0, NATIVE_DENOM),
     };
     router
@@ -679,7 +672,7 @@ fn try_update_ask() {
     );
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(150, NATIVE_DENOM),
     };
     router
@@ -691,7 +684,7 @@ fn try_update_ask() {
     // confirm ask removed
     let remove_ask_msg = ExecuteMsg::RemoveAsk {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &remove_ask_msg, &[]);
     assert!(res.is_ok());
@@ -701,7 +694,7 @@ fn try_update_ask() {
             marketplace.to_string(),
             &QueryMsg::Ask {
                 collection: collection.to_string(),
-                token_id: token_id,
+                token_id,
             },
         )
         .unwrap();
@@ -749,7 +742,7 @@ fn try_query_asks() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
@@ -1638,7 +1631,7 @@ fn auto_accept_bid() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
@@ -1678,7 +1671,7 @@ fn auto_accept_bid() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -1696,7 +1689,7 @@ fn auto_accept_bid() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -1768,7 +1761,7 @@ fn try_reserved_ask() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: Some(bidder.to_string()),
@@ -1787,7 +1780,7 @@ fn try_reserved_ask() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -1809,7 +1802,7 @@ fn try_reserved_ask() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -1862,7 +1855,7 @@ fn try_ask_with_finders_fee() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
@@ -1883,7 +1876,7 @@ fn try_ask_with_finders_fee() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: Some(finder.to_string()),
@@ -1944,7 +1937,7 @@ fn remove_bid_refund() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
@@ -1963,7 +1956,7 @@ fn remove_bid_refund() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -1994,7 +1987,7 @@ fn remove_bid_refund() {
     // Bidder removes bid
     let remove_bid_msg = ExecuteMsg::RemoveBid {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
     };
     let res = router.execute_contract(bidder.clone(), marketplace, &remove_bid_msg, &[]);
     assert!(res.is_ok());
@@ -2032,7 +2025,7 @@ fn new_bid_refund() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(50, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
@@ -2051,7 +2044,7 @@ fn new_bid_refund() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -2082,7 +2075,7 @@ fn new_bid_refund() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -2112,12 +2105,12 @@ fn new_bid_refund() {
     // Check new bid has been saved
     let query_bid_msg = QueryMsg::Bid {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         bidder: bidder.to_string(),
     };
     let bid = Bid {
         collection,
-        token_id: token_id,
+        token_id,
         bidder,
         price: Uint128::from(150u128),
         expires_at: (start_time.plus_seconds(MIN_EXPIRY + 1)),
@@ -2163,7 +2156,7 @@ fn try_royalties() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
@@ -2182,7 +2175,7 @@ fn try_royalties() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -2574,7 +2567,7 @@ fn try_hook_was_run() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -3010,7 +3003,7 @@ fn try_bid_finders_fee() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: Some(5000),
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -3032,7 +3025,7 @@ fn try_bid_finders_fee() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: Some(500),
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
@@ -3050,7 +3043,7 @@ fn try_bid_finders_fee() {
     // Token owner accepts the bid with a finder address
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         bidder: bidder.to_string(),
         finder: Some(finder.to_string()),
     };
@@ -3088,7 +3081,7 @@ fn try_bidder_cannot_be_finder() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         finders_fee_bps: Some(500),
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: Some(bidder.to_string()),
@@ -3202,7 +3195,7 @@ fn try_ask_with_filter_inactive() {
     // updating price of inactive ask throws error
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(200, NATIVE_DENOM),
     };
     router
@@ -3260,7 +3253,7 @@ fn try_sync_ask() {
 
     let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
     };
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
@@ -3430,7 +3423,7 @@ fn try_set_ask_reserve_for() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: token_id,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: Some(bidder.to_string()),
