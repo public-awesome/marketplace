@@ -1,9 +1,7 @@
-use cosmwasm_std::{Timestamp};
 use cw_multi_test::{Contract, ContractWrapper};
 
 use sg_multi_test::StargazeApp;
 use sg_std::StargazeMsgWrapper;
-
 
 pub fn custom_mock_app() -> StargazeApp {
     StargazeApp::default()
@@ -47,11 +45,4 @@ pub fn contract_minter() -> Box<dyn Contract<StargazeMsgWrapper>> {
     )
     .with_reply(vending_minter::contract::reply);
     Box::new(contract)
-}
-
-
-pub fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
-    let mut block = router.block_info();
-    block.time = Timestamp::from_seconds(seconds);
-    router.set_block(block);
 }

@@ -1,30 +1,13 @@
-use crate::{
-    mock_collection_params::mock_collection_params_1,
-    multitest::SetupContractsParams,
-    setup_accounts_and_block::{setup_accounts, setup_block_time},
-    setup_contracts::{contract_factory, contract_minter, contract_sg721, custom_mock_app},
-};
+use crate::setup_contracts::{contract_factory, contract_minter, contract_sg721};
 use cosmwasm_std::{coin, coins, Addr, Timestamp};
 use cw_multi_test::Executor;
-use sg2::{
-    msg::{CollectionParams, Sg2ExecuteMsg},
-    tests::mock_collection_params,
-};
+use sg2::msg::{CollectionParams, Sg2ExecuteMsg};
 use sg_multi_test::StargazeApp;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use vending_factory::{
     msg::{VendingMinterCreateMsg, VendingMinterInitMsgExtension},
     state::{ParamsExtension, VendingMinterParams},
 };
-
-// use crate::tests_folder::collection_constants::{
-//     AIRDROP_MINT_FEE_BPS, AIRDROP_MINT_PRICE, CREATION_FEE, MAX_PER_ADDRESS_LIMIT, MAX_TOKEN_LIMIT,
-//     MINT_FEE_BPS, MINT_PRICE, MIN_MINT_PRICE, SHUFFLE_FEE,
-// };
-// use crate::tests_folder::setup_accounts_and_block::{setup_accounts, setup_block_time};
-// use crate::tests_folder::setup_contracts::{
-//     contract_factory, contract_minter, contract_sg721, mock_minter,
-// };
 
 pub const CREATION_FEE: u128 = 5_000_000_000;
 pub const INITIAL_BALANCE: u128 = 2_000_000_000;
@@ -136,9 +119,7 @@ fn setup_minter_contract(setup_params: MinterSetupParams) -> MinterCollectionRes
         &creation_fee,
     );
     assert!(res.is_ok());
-    println!("res factory is {:?}", res);
     let minter_addr = res.unwrap().events[3].attributes[0].value.clone();
-    println!("minder addr return is {:?}", minter_addr);
 
     let config: vending_minter::msg::ConfigResponse = router
         .wrap()

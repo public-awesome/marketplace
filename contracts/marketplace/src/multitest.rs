@@ -2,39 +2,33 @@
 use crate::error::ContractError;
 use crate::execute::migrate;
 use crate::helpers::ExpiryRange;
-use crate::msg::{
-    self, AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse, Bidder,
+use crate::msg::{AskCountResponse, AskOffset, AskResponse, AsksResponse, BidOffset, BidResponse, Bidder,
     CollectionBidOffset, CollectionOffset, CollectionsResponse, ParamsResponse, SudoMsg,
 };
 use crate::msg::{
     BidsResponse, CollectionBidResponse, CollectionBidsResponse, ExecuteMsg, QueryMsg,
 };
 use crate::setup_accounts_and_block::{setup_accounts, setup_block_time, INITIAL_BALANCE};
-use crate::setup_contracts::{contract_marketplace, contract_sg721, custom_mock_app};
+use crate::setup_contracts::{contract_marketplace, custom_mock_app};
 use crate::setup_minter::{
-    configure_minter, MinterCollectionResponse, AIRDROP_MINT_FEE_FAIR_BURN, MINT_FEE_FAIR_BURN,
+    configure_minter, MinterCollectionResponse, MINT_FEE_FAIR_BURN,
     MINT_PRICE,
 };
 use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
-use cosmwasm_std::{Addr, Empty, Timestamp, Uint64};
-use cw20::TokenInfoResponse;
-use cw721::{Approval, Cw721QueryMsg, NumTokensResponse, OwnerOfResponse, TokensResponse};
-use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
-use cw721_base::Extension;
-use cw_multi_test::{BankSudo, Contract, ContractWrapper, Executor, SudoMsg as CwSudoMsg};
+use cosmwasm_std::{Addr, Empty, Timestamp};
+use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
+use cw_multi_test::{BankSudo, Executor, SudoMsg as CwSudoMsg};
 use sg2::msg::CollectionParams;
-use sg2::tests::mock_collection_params;
 use sg721_base::msg::CollectionInfoResponse;
 use sg_controllers::HooksResponse;
 use sg_multi_test::StargazeApp;
-use sg_std::{StargazeMsgWrapper, GENESIS_MINT_START_TIME};
+use sg_std::GENESIS_MINT_START_TIME;
 
 use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
 use cw_utils::{Duration, Expiration};
 use sg721::{
-    CollectionInfo, ExecuteMsg as Sg721ExecuteMsg, InstantiateMsg as Sg721InstantiateMsg,
-    RoyaltyInfoResponse,
+    ExecuteMsg as Sg721ExecuteMsg
 };
 use std::collections::HashSet;
 use std::iter::FromIterator;
@@ -105,8 +99,6 @@ pub fn setup_contracts(
             None,
         )
         .unwrap();
-
-    let collection = Addr::unchecked("contract2");
     Ok((marketplace, minter_collections))
 }
 
@@ -187,7 +179,6 @@ pub fn mint(router: &mut StargazeApp, creator: &Addr, minter_addr: &Addr) {
         &minter_msg,
         &coins(MINT_PRICE, NATIVE_DENOM),
     );
-    println!("res is {:?}", res);
     assert!(res.is_ok());
 }
 
@@ -225,8 +216,7 @@ pub fn approve(
         expires: None,
     };
     let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-    // println!("res is {:?}", res.unwrap_err().root_cause());
-    // assert!(res.is_ok());
+    assert!(res.is_ok());
 }
 
 fn transfer(
@@ -2242,7 +2232,10 @@ fn try_royalties() {
     let creator_balance_after_fee = get_creator_balance_after_fairburn_mint_fee();
     assert_eq!(
         creator_native_balances,
-        coins(creator_balance_after_fee.u128() + 100 - 10 - 2, NATIVE_DENOM)
+        coins(
+            creator_balance_after_fee.u128() + 100 - 10 - 2,
+            NATIVE_DENOM
+        )
     );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(

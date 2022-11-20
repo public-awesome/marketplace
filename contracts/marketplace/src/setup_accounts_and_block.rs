@@ -9,15 +9,6 @@ pub const CREATOR_INITIAL_BALANCE: u128 = 5000000000;
 pub const LISTING_FEE: u128 = 0;
 pub const INITIAL_BALANCE: u128 = 5000000000;
 
-// // Set blockchain time to after mint by default
-// pub fn setup_block_time(router: &mut StargazeApp, nanos: u64, height: Option<u64>) {
-//     let mut block = router.block_info();
-//     block.time = Timestamp::from_nanos(nanos);
-//     if let Some(h) = height {
-//         block.height = h;
-//     }
-//     router.set_block(block);
-// }
 
 pub fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
     let mut block = router.block_info();
