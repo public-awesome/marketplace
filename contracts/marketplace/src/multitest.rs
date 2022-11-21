@@ -3552,6 +3552,38 @@ fn try_remove_stale_ask() {
     );
     assert!(res.is_err());
 
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    // set ask again
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+
+    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_ok());
+
+    // transfer nft back
+    transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    // set ask again
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+
     // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
     transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
     approve(&mut router, &owner, &collection, &marketplace, TOKEN_ID);

@@ -880,10 +880,10 @@ pub fn execute_remove_stale_ask(
     let has_owner = res.is_ok();
     let expired = ask.is_expired(&env.block);
     let mut has_approval = false;
-    // Check if marketplace still holds approval
-    // An approval will be removed when
-    // 1 - There is a transfer
-    // 2 - The approval expired (approvals can have different expiration times)
+    // Check if marketplace still holds approval for the collection/token_id
+    // A CW721 approval will be removed when
+    // 1 - There is a transfer or burn
+    // 2 - The approval expired (CW721 approvals can have different expiration times)
     let res = Cw721Contract(collection.clone()).approval(
         &deps.querier,
         token_id.to_string(),
