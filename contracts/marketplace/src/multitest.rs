@@ -4386,4 +4386,23 @@ fn max_set_ask_amount() {
         res.unwrap_err().source().unwrap().to_string(),
         "PriceTooSmall: 1".to_string()
     );
+
+    // An asking price is made by the creator at the limit of 100M
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: TOKEN_ID,
+        price: coin(100_000_000_000_000u128, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
 }
