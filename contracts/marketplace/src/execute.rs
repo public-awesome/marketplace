@@ -31,6 +31,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // bps fee can not exceed 100%
 const MAX_FEE_BPS: u64 = 10000;
+// max 100M STARS
+const MAX_FIXED_PRICE_ASK_AMOUNT: u128 = 100_000_000_000_000u128;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -267,6 +269,11 @@ pub fn execute_set_ask(
     } = ask_info;
 
     price_validate(deps.storage, &price)?;
+    // validate only for asks
+    if price.amount.u128() > MAX_FIXED_PRICE_ASK_AMOUNT {
+        return Err(ContractError::PriceTooHigh(price.amount));
+    }
+
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
     only_tradable(deps.as_ref(), &env.block, &collection)?;
 
@@ -938,7 +945,7 @@ pub fn execute_remove_stale_bid(
         .add_submessages(hook))
 }
 
-/// Privileged operation to remove a stale colllection bid. Operators can call this to remove and refund bids that are still in the
+/// Privileged operation to remove a stale collection bid. Operators can call this to remove and refund bids that are still in the
 /// state after they have expired. As a reward they get a governance-determined percentage of the bid price.
 pub fn execute_remove_stale_collection_bid(
     deps: DepsMut,
