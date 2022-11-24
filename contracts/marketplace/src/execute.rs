@@ -300,7 +300,11 @@ pub fn execute_set_ask(
         };
     }
 
-    let mut reserve_for_str = "".to_string();
+    let mut event = Event::new("set-ask")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("sale_type", sale_type.to_string());
+
     if let Some(address) = reserve_for.clone() {
         if address == info.sender {
             return Err(ContractError::InvalidReserveAddress {
@@ -312,13 +316,13 @@ pub fn execute_set_ask(
                 reason: "can only reserve for fixed_price sales".to_string(),
             });
         }
-        reserve_for_str = address.to_string()
+        event = event.add_attribute("reserve_for", address.to_string());
     }
 
     let seller = info.sender;
     let ask = Ask {
-        sale_type: sale_type.clone(),
-        collection: collection.clone(),
+        sale_type,
+        collection,
         token_id,
         seller: seller.clone(),
         price: price.amount,
@@ -338,17 +342,11 @@ pub fn execute_set_ask(
 
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Create)?;
 
-    let mut event = Event::new("set-ask")
-        .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string())
-        .add_attribute("sale_type", sale_type.to_string())
+    event = event
         .add_attribute("seller", seller)
         .add_attribute("price", price.to_string())
         .add_attribute("expires", expires.to_string());
 
-    if !reserve_for_str.is_empty() {
-        event = event.add_attribute("reserve_for", reserve_for_str);
-    }
     Ok(res.add_submessages(hook).add_event(event))
 }
 
