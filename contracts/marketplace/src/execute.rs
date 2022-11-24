@@ -321,8 +321,8 @@ pub fn execute_set_ask(
 
     let seller = info.sender;
     let ask = Ask {
-        sale_type: sale_type.clone(),
-        collection: collection.clone(),
+        sale_type,
+        collection,
         token_id,
         seller: seller.clone(),
         price: price.amount,
