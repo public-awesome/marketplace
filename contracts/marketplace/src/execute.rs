@@ -32,6 +32,8 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 // bps fee can not exceed 100%
 const MAX_FEE_BPS: u64 = 10000;
+// max 100M STARS
+const MAX_FIXED_PRICE_ASK_AMOUNT: u128 = 100_000_000_000_000u128;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -268,6 +270,11 @@ pub fn execute_set_ask(
     } = ask_info;
 
     price_validate(deps.storage, &price)?;
+    // validate only for asks
+    if price.amount.u128() > MAX_FIXED_PRICE_ASK_AMOUNT {
+        return Err(ContractError::PriceTooHigh(price.amount));
+    }
+
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
     only_tradable(deps.as_ref(), &env.block, &collection)?;
 
@@ -294,6 +301,11 @@ pub fn execute_set_ask(
         };
     }
 
+    let mut event = Event::new("set-ask")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("sale_type", sale_type.to_string());
+
     if let Some(address) = reserve_for.clone() {
         if address == info.sender {
             return Err(ContractError::InvalidReserveAddress {
@@ -305,12 +317,13 @@ pub fn execute_set_ask(
                 reason: "can only reserve for fixed_price sales".to_string(),
             });
         }
+        event = event.add_attribute("reserve_for", address.to_string());
     }
 
     let seller = info.sender;
     let ask = Ask {
-        sale_type: sale_type.clone(),
-        collection: collection.clone(),
+        sale_type,
+        collection,
         token_id,
         seller: seller.clone(),
         price: price.amount,
@@ -330,10 +343,7 @@ pub fn execute_set_ask(
 
     let hook = prepare_ask_hook(deps.as_ref(), &ask, HookAction::Create)?;
 
-    let event = Event::new("set-ask")
-        .add_attribute("collection", collection.to_string())
-        .add_attribute("token_id", token_id.to_string())
-        .add_attribute("sale_type", sale_type.to_string())
+    event = event
         .add_attribute("seller", seller)
         .add_attribute("price", price.to_string())
         .add_attribute("expires", expires.to_string());
@@ -871,9 +881,23 @@ pub fn execute_remove_stale_ask(
     );
     let has_owner = res.is_ok();
     let expired = ask.is_expired(&env.block);
+    let mut has_approval = false;
+    // Check if marketplace still holds approval for the collection/token_id
+    // A CW721 approval will be removed when
+    // 1 - There is a transfer or burn
+    // 2 - The approval expired (CW721 approvals can have different expiration times)
+    let res = Cw721Contract::<Empty, Empty>(collection.clone(), PhantomData, PhantomData).owner_of(
+        &deps.querier,
+        token_id.to_string(),
+        false,
+    );
+
+    if res.is_ok() {
+        has_approval = true;
+    }
 
     // it has an owner and ask is still valid
-    if has_owner && !expired {
+    if has_owner && has_approval && !expired {
         return Err(ContractError::AskUnchanged {});
     }
 
@@ -885,7 +909,8 @@ pub fn execute_remove_stale_ask(
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("operator", info.sender.to_string())
         .add_attribute("expired", expired.to_string())
-        .add_attribute("has_owner", has_owner.to_string());
+        .add_attribute("has_owner", has_owner.to_string())
+        .add_attribute("has_approval", has_approval.to_string());
 
     Ok(Response::new().add_event(event).add_submessages(hook))
 }
@@ -942,7 +967,7 @@ pub fn execute_remove_stale_bid(
         .add_submessages(hook))
 }
 
-/// Privileged operation to remove a stale colllection bid. Operators can call this to remove and refund bids that are still in the
+/// Privileged operation to remove a stale collection bid. Operators can call this to remove and refund bids that are still in the
 /// state after they have expired. As a reward they get a governance-determined percentage of the bid price.
 pub fn execute_remove_stale_collection_bid(
     deps: DepsMut,
@@ -1076,7 +1101,7 @@ fn payout(
     };
 
     match collection_info.royalty_info {
-        // If token supports royalities, payout shares to royalty recipient
+        // If token supports royalties, payout shares to royalty recipient
         Some(royalty) => {
             let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
             if payment < (network_fee + Uint128::from(finders_fee) + amount.amount) {

@@ -1,11 +1,11 @@
 use crate::error::ContractError;
-use crate::tests_folder::constants::{
+use crate::testing::helpers::msg::{MinterCollectionResponse, SetupContractsParams};
+use crate::testing::setup::constants::{
     BID_REMOVAL_REWARD_BPS, LISTING_FEE, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY,
     TRADING_FEE_BPS,
 };
-use crate::tests_folder::msg::{MinterCollectionResponse, SetupContractsParams};
-use crate::tests_folder::setup_contracts::contract_marketplace;
-use crate::tests_folder::setup_minter::configure_minter;
+use crate::testing::setup::setup_contracts::contract_marketplace;
+use crate::testing::setup::setup_minter::configure_minter;
 use crate::ExpiryRange;
 use cosmwasm_std::{Addr, Uint128};
 use cw_multi_test::Executor;

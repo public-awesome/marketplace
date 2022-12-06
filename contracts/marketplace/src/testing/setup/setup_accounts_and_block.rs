@@ -1,4 +1,4 @@
-use crate::tests_folder::constants::INITIAL_BALANCE;
+use crate::testing::setup::constants::INITIAL_BALANCE;
 use cosmwasm_std::{coins, Addr, Coin, Timestamp};
 use cw_multi_test::{BankSudo, SudoMsg};
 use sg721_base::ContractError;

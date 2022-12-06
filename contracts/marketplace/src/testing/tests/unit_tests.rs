@@ -7,7 +7,7 @@ use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::query::{query_ask_count, query_asks_by_seller, query_bids_by_bidder};
 use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SaleType};
 
-use crate::tests_folder::constants::{
+use crate::testing::setup::constants::{
     BID_REMOVAL_REWARD_BPS, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY, TRADING_FEE_BASIS_POINTS,
 };
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};

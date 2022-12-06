@@ -1,11 +1,10 @@
-use crate::tests_folder::constants::{MINT_FEE_FAIR_BURN, MINT_PRICE};
+use crate::testing::setup::constants::INITIAL_BALANCE;
+use crate::testing::setup::constants::{MINT_FEE_FAIR_BURN, MINT_PRICE};
 use cosmwasm_std::{coins, Addr, Decimal, Uint128};
 use cw721_base::ContractError;
 use cw_multi_test::{BankSudo, SudoMsg as CwSudoMsg};
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
-
-use super::constants::INITIAL_BALANCE;
 
 pub fn add_funds_for_incremental_fee(
     router: &mut StargazeApp,

@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::tests_folder::constants::{CREATION_FEE, SECOND_BIDDER_INITIAL_BALANCE};
+use crate::testing::setup::constants::{CREATION_FEE, SECOND_BIDDER_INITIAL_BALANCE};
 use cosmwasm_std::{coins, Addr, Coin};
 use cw_multi_test::{BankSudo, SudoMsg as CwSudoMsg};
 use sg_multi_test::StargazeApp;
