@@ -4207,86 +4207,92 @@ mod query {
     }
 }
 
-// #[test]
-// fn max_set_ask_amount() {
-//     let mut router = custom_mock_app();
-//     let (_, _, creator) = setup_accounts(&mut router).unwrap();
-//     add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
-//     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-//     let collection_params_1 = mock_collection_params_1(Some(start_time));
-//     let collection_params_2 = mock_collection_two(Some(start_time));
-//     let setup_params = SetupContractsParams {
-//         minter_admin: creator.clone(),
-//         collection_params_vec: vec![collection_params_1, collection_params_2],
-//         num_tokens: 1,
-//         router: &mut router,
-//     };
-//     let (marketplace, minter_collections) =
-//         setup_marketplace_and_collections(setup_params).unwrap();
-//     let collection = minter_collections[0].collection.clone();
-//     let token_id = 1;
+#[test]
+fn max_set_ask_amount() {
+    let mut router = custom_mock_app();
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params_1 = mock_collection_params_1(Some(start_time));
+    let collection_params_2 = mock_collection_two(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params_1, collection_params_2],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
+    let token_id = 1;
 
-//     // An asking price is made by the creator
-//     let set_ask = ExecuteMsg::SetAsk {
-//         sale_type: SaleType::FixedPrice,
-//         collection: collection.to_string(),
-//         token_id,
-//         price: coin(100_000_000_000_001u128, NATIVE_DENOM),
-//         funds_recipient: None,
-//         reserve_for: None,
-//         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
-//         finders_fee_bps: Some(0),
-//     };
-//     let res = router.execute_contract(
-//         creator.clone(),
-//         marketplace.clone(),
-//         &set_ask,
-//         &listing_funds(LISTING_FEE).unwrap(),
-//     );
-//     assert_eq!(
-//         res.unwrap_err().source().unwrap().to_string(),
-//         "PriceTooHigh: 100000000000001".to_string()
-//     );
+    // Mint NFT for creator
+    mint(&mut router, &creator, &minter);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
-//     // An asking price is made by the creator
-//     let set_ask = ExecuteMsg::SetAsk {
-//         sale_type: SaleType::FixedPrice,
-//         collection: collection.to_string(),
-//         token_id,
-//         price: coin(1, NATIVE_DENOM),
-//         funds_recipient: None,
-//         reserve_for: None,
-//         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
-//         finders_fee_bps: Some(0),
-//     };
-//     let res = router.execute_contract(
-//         creator.clone(),
-//         marketplace.clone(),
-//         &set_ask,
-//         &listing_funds(LISTING_FEE).unwrap(),
-//     );
-//     assert_eq!(
-//         res.unwrap_err().source().unwrap().to_string(),
-//         "PriceTooSmall: 1".to_string()
-//     );
+    // An asking price is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(100_000_000_000_001u128, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        "PriceTooHigh: 100000000000001".to_string()
+    );
 
-//     // An asking price is made by the creator at the limit of 100M
-//     let set_ask = ExecuteMsg::SetAsk {
-//         sale_type: SaleType::FixedPrice,
-//         collection: collection.to_string(),
-//         token_id,
-//         price: coin(100_000_000_000_000u128, NATIVE_DENOM),
-//         funds_recipient: None,
-//         reserve_for: None,
-//         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
-//         finders_fee_bps: Some(0),
-//     };
-//     let res = router.execute_contract(
-//         creator.clone(),
-//         marketplace.clone(),
-//         &set_ask,
-//         &listing_funds(LISTING_FEE).unwrap(),
-//     );
-//     println!("res {:?}", res.unwrap_err());
-//     assert!(res.is_ok());
-// }
+    // An asking price is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(1, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        "PriceTooSmall: 1".to_string()
+    );
+
+    // An asking price is made by the creator at the limit of 100M
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(100_000_000_000_000u128, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+}
