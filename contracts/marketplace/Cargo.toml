@@ -45,7 +45,7 @@ cw721 = "0.16.0"
 cw721-base = { version = "0.16.0", features = ["library"] }
 schemars =  "0.8.11"
 serde = { version =  "1.0.145", default-features = false, features = ["derive"] }
-sg721-base = { version = "0.21.1", features = ["library"] }
+sg721-base = { version = "0.21.5", features = ["library"] }
 sg721 = { version = "0.21.5", features = ["library"] }
 thiserror = { version = "1.0.31" }
 sg-std = "0.21.5"
@@ -58,11 +58,11 @@ cosmwasm-schema = { version = "1.1.5" }
 
 [dev-dependencies]
 cute = "0.3.0"
-vending-factory = { version = "0.21.1"}
-vending-minter = { version = "0.21.1"}
+vending-factory = { version = "0.21.5"}
+vending-minter = { version = "0.21.5"}
 cw-multi-test = { version = "0.16.0" }
 sg-multi-test = "0.21.5"
-base-minter = "0.21.1"
+base-minter = "0.21.5"
 
 [profile.release]
 rpath = false
