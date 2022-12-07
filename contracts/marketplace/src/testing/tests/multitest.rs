@@ -38,7 +38,7 @@ use sg721::ExecuteMsg as Sg721ExecuteMsg;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 
-use crate::testing::setup::mock_collection_params::{
+use sg2::tests::{
     mock_collection_params_1, mock_collection_params_high_fee, mock_collection_two,
     mock_curator_payment_address,
 };

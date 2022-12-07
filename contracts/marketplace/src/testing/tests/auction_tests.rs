@@ -3,7 +3,6 @@ use crate::state::SaleType;
 use crate::testing::helpers::funds::calculated_creator_balance_after_fairburn;
 use crate::testing::helpers::nft_functions::{approve, mint};
 use crate::testing::setup::constants::{LISTING_FEE, MIN_EXPIRY};
-use crate::testing::setup::mock_collection_params::mock_collection_params_1;
 use crate::testing::setup::msg::SetupContractsParams;
 use crate::testing::setup::setup_accounts::setup_second_bidder_account;
 use crate::testing::setup::setup_accounts_and_block::{setup_accounts, setup_block_time};
@@ -12,6 +11,7 @@ use crate::testing::setup::setup_marketplace::setup_marketplace_and_collections;
 use crate::testing::tests::multitest::listing_funds;
 use cosmwasm_std::{coin, coins, Timestamp, Uint128};
 use cw_multi_test::Executor;
+use sg2::tests::mock_collection_params_1;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 
 #[test]

@@ -46,13 +46,13 @@ cw721-base = { version = "0.16.0", features = ["library"] }
 schemars =  "0.8.11"
 serde = { version =  "1.0.145", default-features = false, features = ["derive"] }
 sg721-base = { version = "0.21.1", features = ["library"] }
-sg721 = { version = "0.21.1", features = ["library"] }
+sg721 = { version = "0.21.5", features = ["library"] }
 thiserror = { version = "1.0.31" }
-sg-std = "0.21.1"
+sg-std = "0.21.5"
 cw-utils = "0.16.0"
-sg1 = "0.21.1"
-sg2 = "0.21.1"
-sg-controllers = "0.21.1"
+sg1 = "0.21.5"
+sg2 = "0.21.5"
+sg-controllers = "0.21.5"
 semver = "1"
 cosmwasm-schema = { version = "1.1.5" }
 
@@ -61,7 +61,7 @@ cute = "0.3.0"
 vending-factory = { version = "0.21.1"}
 vending-minter = { version = "0.21.1"}
 cw-multi-test = { version = "0.16.0" }
-sg-multi-test = "0.21.1"
+sg-multi-test = "0.21.5"
 base-minter = "0.21.1"
 
 [profile.release]

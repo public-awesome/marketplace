@@ -857,9 +857,9 @@ dependencies = [
 
 [[package]]
 name = "sg-controllers"
-version = "0.21.1"
+version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ce430d97e4784f1864ce35e449a779b09715be06ca76d4b8be25e5fbc34b266"
+checksum = "842ef34ac7964238c4e3008a5d9fc0dec8d3123dc3dc3cb879939426ee5f0973"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -904,9 +904,9 @@ dependencies = [
 
 [[package]]
 name = "sg-multi-test"
-version = "0.21.1"
+version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ff944d1c9a1cb686089567016cf2e00b78d8e29e8649df733a111cf8d785f2d"
+checksum = "7e6221f08390165b16e7f949c2cff09fb7e3400ec5122bb3f7f5cb2e8eed511d"
 dependencies = [
  "anyhow",
  "cosmwasm-std",
@@ -918,9 +918,9 @@ dependencies = [
 
 [[package]]
 name = "sg-std"
-version = "0.21.1"
+version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5e45fef93e29e96d1ab8e981a29b17d9cb53862365047413dd8160c6f9750d0"
+checksum = "3fb1ab8f301c256f640c5a4aa5f2de487927ca52d649c38d43152a15d0b0908b"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -952,9 +952,9 @@ dependencies = [
 
 [[package]]
 name = "sg1"
-version = "0.21.1"
+version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "088b183e3edfa9ba93edc7d63edcf5fbb7a093222e4a34fbd6af7387facb63cc"
+checksum = "15bf8f259e383322ca9fd06faccaa20c4899bc03c94d793edd72874a66df21e2"
 dependencies = [
  "cosmwasm-std",
  "cw-utils",
@@ -965,9 +965,9 @@ dependencies = [
 
 [[package]]
 name = "sg2"
-version = "0.21.1"
+version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23ce728360d270cd06aefde7d039d5d6aeb464c6afc990f04010281e61cae207"
+checksum = "389f9328ce018944d6989288c58cde8dda1c6ef4b03785d35ddf721da68c6822"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -993,9 +993,9 @@ dependencies = [
 
 [[package]]
 name = "sg721"
-version = "0.21.1"
+version = "0.21.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65ff1510440e61dab222fd473b04af06c97eef82703b6d5e89e8ef70716ff6cf"
+checksum = "e6cc64c55e678b701bbc7f5c90b7dc819ee2d6d7afc1b6613a3cb7ca0051cbdc"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
