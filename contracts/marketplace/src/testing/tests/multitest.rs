@@ -1,4 +1,3 @@
-#![cfg(test)]
 use crate::error::ContractError;
 use crate::execute::migrate;
 use crate::helpers::ExpiryRange;
@@ -10,371 +9,72 @@ use crate::msg::{
     BidsResponse, CollectionBidResponse, CollectionBidsResponse, ExecuteMsg, QueryMsg,
 };
 use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
+use crate::testing::helpers::funds::{
+    add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn,
+};
+use crate::testing::helpers::nft_functions::{approve, burn, mint, mint_for, transfer};
+use crate::testing::setup::constants::{
+    BID_REMOVAL_REWARD_BPS, CREATION_FEE, INITIAL_BALANCE, LISTING_FEE, MAX_EXPIRY,
+    MAX_FINDERS_FEE_BPS, MINT_FEE_FAIR_BURN, MINT_PRICE, MIN_EXPIRY, TRADING_FEE_BPS,
+};
+use crate::testing::setup::msg::SetupContractsParams;
+use crate::testing::setup::setup_accounts::setup_second_bidder_account;
+use crate::testing::setup::setup_accounts_and_block::{setup_accounts, setup_block_time};
+use crate::testing::setup::setup_contracts::custom_mock_app;
+use crate::testing::setup::setup_marketplace::{
+    setup_marketplace_and_collections, setup_marketplace_and_collections_with_params,
+};
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};
-use cw721::{Cw721QueryMsg, OwnerOfResponse};
-use cw721_base::msg::{ExecuteMsg as Cw721ExecuteMsg, MintMsg};
-use cw_multi_test::{BankSudo, Contract, ContractWrapper, Executor, SudoMsg as CwSudoMsg};
+use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
+use cw_multi_test::{BankSudo, Executor, SudoMsg as CwSudoMsg};
 use sg_controllers::HooksResponse;
 use sg_multi_test::StargazeApp;
-use sg_std::StargazeMsgWrapper;
+use sg_std::GENESIS_MINT_START_TIME;
 
 use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
 use cw_utils::{Duration, Expiration};
-use sg721::{
-    CollectionInfo, ExecuteMsg as Sg721ExecuteMsg, InstantiateMsg as Sg721InstantiateMsg,
-    RoyaltyInfoResponse,
+use sg721::ExecuteMsg as Sg721ExecuteMsg;
+use std::collections::HashSet;
+use std::iter::FromIterator;
+
+use sg2::tests::{
+    mock_collection_params_1, mock_collection_params_high_fee, mock_collection_two,
+    mock_curator_payment_address,
 };
-
 use sg_std::NATIVE_DENOM;
-
-pub const TOKEN_ID: u32 = 123;
-pub const CREATION_FEE: u128 = 0;
-pub const CREATOR_INITIAL_BALANCE: u128 = 1000;
-pub const LISTING_FEE: u128 = 0;
-pub const INITIAL_BALANCE: u128 = 2000;
-
-// Governance parameters
-pub const TRADING_FEE_BPS: u64 = 200; // 2%
-pub const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
-pub const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
-pub const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
-pub const BID_REMOVAL_REWARD_BPS: u64 = 500; // 5%
-
-pub fn custom_mock_app() -> StargazeApp {
-    StargazeApp::default()
-}
-
-pub fn contract_marketplace() -> Box<dyn Contract<StargazeMsgWrapper>> {
-    let contract = ContractWrapper::new(
-        crate::execute::execute,
-        crate::execute::instantiate,
-        crate::query::query,
-    )
-    .with_sudo(crate::sudo::sudo)
-    .with_reply(crate::execute::reply)
-    .with_migrate(crate::execute::migrate);
-    Box::new(contract)
-}
-
-pub fn contract_sg721() -> Box<dyn Contract<StargazeMsgWrapper>> {
-    let contract = ContractWrapper::new(
-        sg721_base::entry::execute,
-        sg721_base::entry::instantiate,
-        sg721_base::entry::query,
-    );
-    Box::new(contract)
-}
-
-pub fn setup_block_time(router: &mut StargazeApp, seconds: u64) {
-    let mut block = router.block_info();
-    block.time = Timestamp::from_seconds(seconds);
-    router.set_block(block);
-}
-
-// Instantiates all needed contracts for testing
-pub fn setup_contracts(
-    router: &mut StargazeApp,
-    creator: &Addr,
-) -> Result<(Addr, Addr), ContractError> {
-    // Instantiate marketplace contract
-    let marketplace_id = router.store_code(contract_marketplace());
-    let msg = crate::msg::InstantiateMsg {
-        operators: vec!["operator1".to_string()],
-        trading_fee_bps: TRADING_FEE_BPS,
-        ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        sale_hook: None,
-        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
-        min_price: Uint128::from(5u128),
-        stale_bid_duration: Duration::Time(100),
-        bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
-        listing_fee: Uint128::from(LISTING_FEE),
-    };
-    let marketplace = router
-        .instantiate_contract(
-            marketplace_id,
-            creator.clone(),
-            &msg,
-            &[],
-            "Marketplace",
-            None,
-        )
-        .unwrap();
-    println!("marketplace: {:?}", marketplace);
-
-    // Setup media contract
-    let sg721_id = router.store_code(contract_sg721());
-    let msg = Sg721InstantiateMsg {
-        name: String::from("Test Coin"),
-        symbol: String::from("TEST"),
-        minter: creator.to_string(),
-        collection_info: CollectionInfo {
-            creator: creator.to_string(),
-            description: String::from("Stargaze Monkeys"),
-            start_trading_time: None,
-            image:
-                "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
-                    .to_string(),
-            external_link: Some("https://example.com/external.html".to_string()),
-            royalty_info: Some(RoyaltyInfoResponse {
-                payment_address: creator.to_string(),
-                share: Decimal::percent(10),
-            }),
-        },
-    };
-    let collection = router
-        .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
-        .unwrap();
-    // mark the collection contract as ready to mint
-    let res = router.execute_contract(
-        creator.clone(),
-        collection.clone(),
-        &Sg721ExecuteMsg::<Empty>::_Ready {},
-        &[],
-    );
-    assert!(res.is_ok());
-    println!("collection: {:?}", collection);
-
-    Ok((marketplace, collection))
-}
-
-pub fn setup_collection(
-    router: &mut StargazeApp,
-    creator: &Addr,
-    start_trading_time: Option<Timestamp>,
-) -> Result<Addr, ContractError> {
-    // Setup media contract
-    let sg721_id = router.store_code(contract_sg721());
-    let collection_info = CollectionInfo {
-        creator: creator.to_string(),
-        description: String::from("Stargaze Monkeys 2"),
-        image: "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
-            .to_string(),
-        external_link: Some("https://example.com/external.html".to_string()),
-        royalty_info: Some(RoyaltyInfoResponse {
-            payment_address: creator.to_string(),
-            share: Decimal::percent(10),
-        }),
-        start_trading_time,
-    };
-    let msg = Sg721InstantiateMsg {
-        name: String::from("Test Collection 2"),
-        symbol: String::from("TEST 2"),
-        minter: creator.to_string(),
-        collection_info: collection_info.clone(),
-    };
-    let collection = router
-        .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
-        .unwrap();
-
-    // mark the collection contract as ready to mint
-    let res = router.execute_contract(
-        creator.clone(),
-        collection.clone(),
-        &Sg721ExecuteMsg::<Empty>::_Ready {},
-        &[],
-    );
-    assert!(res.is_ok());
-    let update_msg = Sg721ExecuteMsg::<Empty>::UpdateCollectionInfo {
-        new_collection_info: collection_info,
-    };
-    // mark the collection contract as ready to mint
-    let res = router.execute_contract(creator.clone(), collection.clone(), &update_msg, &[]);
-    assert!(res.is_ok());
-    println!("collection 2: {:?}", collection);
-    Ok(collection)
-}
-
-// initializes accounts with balances
-pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), ContractError> {
-    let owner: Addr = Addr::unchecked("owner");
-    let bidder: Addr = Addr::unchecked("bidder");
-    let creator: Addr = Addr::unchecked("creator");
-    let creator_funds: Vec<Coin> = coins(CREATOR_INITIAL_BALANCE, NATIVE_DENOM);
-    let funds: Vec<Coin> = coins(INITIAL_BALANCE, NATIVE_DENOM);
-    router
-        .sudo(CwSudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: owner.to_string(),
-                amount: funds.clone(),
-            }
-        }))
-        .map_err(|err| println!("{:?}", err))
-        .ok();
-    router
-        .sudo(CwSudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: bidder.to_string(),
-                amount: funds.clone(),
-            }
-        }))
-        .map_err(|err| println!("{:?}", err))
-        .ok();
-    router
-        .sudo(CwSudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: creator.to_string(),
-                amount: creator_funds.clone(),
-            }
-        }))
-        .map_err(|err| println!("{:?}", err))
-        .ok();
-
-    // Check native balances
-    let owner_native_balances = router.wrap().query_all_balances(owner.clone()).unwrap();
-    assert_eq!(owner_native_balances, funds);
-    let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
-    assert_eq!(bidder_native_balances, funds);
-    let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    assert_eq!(creator_native_balances, creator_funds);
-
-    Ok((owner, bidder, creator))
-}
-
-pub fn add_funds_for_incremental_fee(
-    router: &mut StargazeApp,
-    receiver: &Addr,
-    fee_amount: u128,
-    fee_count: u128,
-) -> Result<(), ContractError> {
-    let fee_funds = coins(fee_amount * fee_count, NATIVE_DENOM);
-    router
-        .sudo(CwSudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: receiver.to_string(),
-                amount: fee_funds,
-            }
-        }))
-        .map_err(|err| println!("{:?}", err))
-        .ok();
-    Ok(())
-}
-
-pub fn setup_second_bidder_account(router: &mut StargazeApp) -> Result<Addr, ContractError> {
-    let bidder2: Addr = Addr::unchecked("bidder2");
-    let funds: Vec<Coin> = coins(CREATION_FEE + INITIAL_BALANCE, NATIVE_DENOM);
-    router
-        .sudo(CwSudoMsg::Bank({
-            BankSudo::Mint {
-                to_address: bidder2.to_string(),
-                amount: funds.clone(),
-            }
-        }))
-        .map_err(|err| println!("{:?}", err))
-        .ok();
-
-    // Check native balances
-    let bidder_native_balances = router.wrap().query_all_balances(bidder2.clone()).unwrap();
-    assert_eq!(bidder_native_balances, funds);
-
-    Ok(bidder2)
-}
-
-// Mints an NFT for a creator
-pub fn mint(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
-    let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
-        token_id: token_id.to_string(),
-        owner: creator.clone().to_string(),
-        token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-        extension: Empty {},
-    });
-    let res = router.execute_contract(
-        creator.clone(),
-        collection.clone(),
-        &mint_for_creator_msg,
-        &[],
-    );
-    assert!(res.is_ok());
-}
-
-pub fn mint_for(
-    router: &mut StargazeApp,
-    owner: &Addr,
-    creator: &Addr,
-    collection: &Addr,
-    token_id: u32,
-) {
-    let mint_for_creator_msg = Cw721ExecuteMsg::Mint(MintMsg {
-        token_id: token_id.to_string(),
-        owner: owner.to_string(),
-        token_uri: Some("https://starships.example.com/Starship/Enterprise.json".into()),
-        extension: Empty {},
-    });
-    let res = router.execute_contract(
-        creator.clone(),
-        collection.clone(),
-        &mint_for_creator_msg,
-        &[],
-    );
-    assert!(res.is_ok());
-}
-
-pub fn approve(
-    router: &mut StargazeApp,
-    creator: &Addr,
-    collection: &Addr,
-    marketplace: &Addr,
-    token_id: u32,
-) {
-    let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
-        spender: marketplace.to_string(),
-        token_id: token_id.to_string(),
-        expires: None,
-    };
-    let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
-    assert!(res.is_ok());
-}
-
-fn transfer(
-    router: &mut StargazeApp,
-    creator: &Addr,
-    recipient: &Addr,
-    collection: &Addr,
-    token_id: u32,
-) {
-    let transfer_msg = Cw721ExecuteMsg::<Empty>::TransferNft {
-        recipient: recipient.to_string(),
-        token_id: token_id.to_string(),
-    };
-    let res = router.execute_contract(creator.clone(), collection.clone(), &transfer_msg, &[]);
-    assert!(res.is_ok());
-}
-
-pub fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
-    let transfer_msg = Cw721ExecuteMsg::<Empty>::Burn {
-        token_id: token_id.to_string(),
-    };
-    let res = router.execute_contract(creator.clone(), collection.clone(), &transfer_msg, &[]);
-    assert!(res.is_ok());
-}
 
 #[test]
 fn try_set_accept_fixed_price_bid() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // Should error with expiry lower than min
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY - 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY - 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -385,15 +85,15 @@ fn try_set_accept_fixed_price_bid() {
     );
     assert!(res.is_err());
 
-    // An asking price is made by the creator
+    // // // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -404,19 +104,19 @@ fn try_set_accept_fixed_price_bid() {
     );
     assert!(res.is_ok());
 
-    // Transfer nft from creator to owner. Creates a stale ask that needs to be updated
-    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+    // // // Transfer nft from creator to owner. Creates a stale ask that needs to be updated
+    transfer(&mut router, &creator, &owner, &collection, token_id);
 
-    // Should error on non-admin trying to update active state
+    // // // Should error on non-admin trying to update active state
     let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     router
         .execute_contract(creator.clone(), marketplace.clone(), &update_ask_state, &[])
         .unwrap_err();
 
-    // Should not error on admin updating active state to false
+    // // // Should not error on admin updating active state to false
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
         marketplace.clone(),
@@ -425,7 +125,7 @@ fn try_set_accept_fixed_price_bid() {
     );
     assert!(res.is_ok());
 
-    // Should error when ask is unchanged
+    // // // Should error when ask is unchanged
     router
         .execute_contract(
             Addr::unchecked("operator1"),
@@ -437,7 +137,7 @@ fn try_set_accept_fixed_price_bid() {
 
     let ask_msg = QueryMsg::Ask {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res: AskResponse = router
         .wrap()
@@ -445,13 +145,13 @@ fn try_set_accept_fixed_price_bid() {
         .unwrap();
     assert!(!res.ask.unwrap().is_active);
 
-    // Reset active state
-    transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
-    // after transfer, needs another approval
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    // // // Reset active state
+    transfer(&mut router, &owner, &creator, &collection, token_id);
+    // // after transfer, needs another approval
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
     let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
@@ -462,7 +162,7 @@ fn try_set_accept_fixed_price_bid() {
     assert!(res.is_ok());
     let ask_msg = QueryMsg::Ask {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res: AskResponse = router
         .wrap()
@@ -470,13 +170,13 @@ fn try_set_accept_fixed_price_bid() {
         .unwrap();
     assert!(res.ask.unwrap().is_active);
 
-    // Bidder makes bid
+    // // // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -487,36 +187,38 @@ fn try_set_accept_fixed_price_bid() {
     );
     assert!(res.is_ok());
 
-    // Check contract has been paid
+    // // // Check contract has been paid
     let contract_balances = router
         .wrap()
         .query_all_balances(marketplace.clone())
         .unwrap();
     assert_eq!(contract_balances, coins(100, NATIVE_DENOM));
 
-    // Check creator hasn't been paid yet
+    // // // Check creator hasn't been paid yet
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
+
+    let final_balance = calculated_creator_balance_after_fairburn();
     assert_eq!(
         creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE, NATIVE_DENOM)
+        coins(final_balance.u128(), NATIVE_DENOM)
     );
 
-    // Creator accepts bid
+    // // Creator accepts bid
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         bidder: bidder.to_string(),
         finder: None,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
     assert!(res.is_ok());
 
-    // Check money is transferred
+    // // Check money is transferred
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100  - 2 (fee)
     assert_eq!(
         creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE + 100 - 2, NATIVE_DENOM)
+        coins(final_balance.u128() + 100 - 2, NATIVE_DENOM)
     );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
@@ -524,9 +226,9 @@ fn try_set_accept_fixed_price_bid() {
         coins(INITIAL_BALANCE - 100, NATIVE_DENOM)
     );
 
-    // Check NFT is transferred
+    // // Check NFT is transferred
     let query_owner_msg = Cw721QueryMsg::OwnerOf {
-        token_id: TOKEN_ID.to_string(),
+        token_id: token_id.to_string(),
         include_expired: None,
     };
     let res: OwnerOfResponse = router
@@ -535,7 +237,7 @@ fn try_set_accept_fixed_price_bid() {
         .unwrap();
     assert_eq!(res.owner, bidder.to_string());
 
-    // Check contract has zero balance
+    // // Check contract has zero balance
     let contract_balances = router.wrap().query_all_balances(marketplace).unwrap();
     assert_eq!(contract_balances, []);
 }
@@ -543,24 +245,32 @@ fn try_set_accept_fixed_price_bid() {
 #[test]
 fn try_set_accept_bid_no_ask() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
-    // Bidder makes bid
+    //     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -579,16 +289,17 @@ fn try_set_accept_bid_no_ask() {
     assert_eq!(contract_balances, coins(100, NATIVE_DENOM));
 
     // Check creator hasn't been paid yet
+    let final_balance = calculated_creator_balance_after_fairburn();
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
     assert_eq!(
         creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE, NATIVE_DENOM)
+        coins(final_balance.u128(), NATIVE_DENOM)
     );
 
     // Creator accepts bid
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         bidder: bidder.to_string(),
         finder: None,
     };
@@ -600,7 +311,7 @@ fn try_set_accept_bid_no_ask() {
     // 100  - 2 (fee)
     assert_eq!(
         creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE + 100 - 2, NATIVE_DENOM)
+        coins(final_balance.u128() + 100 - 2, NATIVE_DENOM)
     );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
@@ -610,7 +321,7 @@ fn try_set_accept_bid_no_ask() {
 
     // Check NFT is transferred
     let query_owner_msg = Cw721QueryMsg::OwnerOf {
-        token_id: TOKEN_ID.to_string(),
+        token_id: token_id.to_string(),
         include_expired: None,
     };
     let res: OwnerOfResponse = router
@@ -626,13 +337,23 @@ fn try_set_accept_bid_no_ask() {
 
 #[test]
 fn try_set_accept_bid_high_fees() {
-    // Setup initial accounts
-    // Instantiate and configure contracts
-    // Setup bid with high finders fee, network fee, royalty share so seller gets nothing
-    // Should throw error
     let mut router = custom_mock_app();
     let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_high_fee(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
+
     let creator_funds: Vec<Coin> = coins(CREATION_FEE, NATIVE_DENOM);
 
     router
@@ -644,65 +365,32 @@ fn try_set_accept_bid_high_fees() {
         }))
         .map_err(|err| println!("{:?}", err))
         .ok();
-
-    let sg721_id = router.store_code(contract_sg721());
-    let msg = Sg721InstantiateMsg {
-        name: String::from("Test Coin"),
-        symbol: String::from("TEST"),
-        minter: creator.to_string(),
-        collection_info: CollectionInfo {
-            creator: creator.to_string(),
-            description: String::from("Stargaze Monkeys"),
-            image:
-                "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
-                    .to_string(),
-            external_link: Some("https://example.com/external.html".to_string()),
-            royalty_info: Some(RoyaltyInfoResponse {
-                payment_address: creator.to_string(),
-                share: Decimal::percent(100),
-            }),
-            start_trading_time: None,
-        },
-    };
-    let collection = router
-        .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
-        .unwrap();
-    // mark the collection contract as ready to mint
-    let res = router.execute_contract(
-        creator.clone(),
-        collection.clone(),
-        &Sg721ExecuteMsg::<Empty>::_Ready {},
-        &[],
-    );
-    assert!(res.is_ok());
-    println!("collection: {:?}", collection);
-
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: Some(10),
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: Some(owner.to_string()),
     };
     let res = router.execute_contract(
         bidder.clone(),
         marketplace.clone(),
         &set_bid_msg,
-        &coins(100, NATIVE_DENOM),
+        &coins(10000, NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         bidder: bidder.to_string(),
-        finder: None,
+        finder: Some(owner.to_string()),
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
     assert_eq!(
@@ -714,25 +402,30 @@ fn try_set_accept_bid_high_fees() {
 #[test]
 fn try_update_ask() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
@@ -749,7 +442,7 @@ fn try_update_ask() {
 
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(200, NATIVE_DENOM),
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[]);
@@ -757,7 +450,7 @@ fn try_update_ask() {
 
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(200, "bobo"),
     };
     router
@@ -766,7 +459,7 @@ fn try_update_ask() {
 
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(0, NATIVE_DENOM),
     };
     router
@@ -775,10 +468,13 @@ fn try_update_ask() {
 
     // can not update ask price for expired ask
     let time = router.block_info().time;
-    setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).seconds());
+    setup_block_time(
+        &mut router,
+        start_time.plus_seconds(MIN_EXPIRY + 2).seconds(),
+    );
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(150, NATIVE_DENOM),
     };
     router
@@ -790,7 +486,7 @@ fn try_update_ask() {
     // confirm ask removed
     let remove_ask_msg = ExecuteMsg::RemoveAsk {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &remove_ask_msg, &[]);
     assert!(res.is_ok());
@@ -800,7 +496,7 @@ fn try_update_ask() {
             marketplace.to_string(),
             &QueryMsg::Ask {
                 collection: collection.to_string(),
-                token_id: TOKEN_ID,
+                token_id,
             },
         )
         .unwrap();
@@ -810,19 +506,24 @@ fn try_update_ask() {
 #[test]
 fn try_query_asks() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // test before ask is made, without using pagination
     let query_asks_msg = QueryMsg::Asks {
@@ -841,11 +542,11 @@ fn try_query_asks() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -861,27 +562,27 @@ fn try_query_asks() {
         .wrap()
         .query_wasm_smart(marketplace.clone(), &query_asks_msg)
         .unwrap();
-    assert_eq!(res.asks[0].token_id, TOKEN_ID);
+    assert_eq!(res.asks[0].token_id, token_id);
     assert_eq!(res.asks[0].price.u128(), 110);
 
     // test pagination, starting when tokens exist
     let query_asks_msg = QueryMsg::Asks {
         collection: collection.to_string(),
         include_inactive: Some(true),
-        start_after: Some(TOKEN_ID - 1),
+        start_after: Some(token_id - 1),
         limit: None,
     };
     let res: AsksResponse = router
         .wrap()
         .query_wasm_smart(marketplace.clone(), &query_asks_msg)
         .unwrap();
-    assert_eq!(res.asks[0].token_id, TOKEN_ID);
+    assert_eq!(res.asks[0].token_id, token_id);
 
     // test pagination, starting when token don't exist
     let query_asks_msg = QueryMsg::Asks {
         collection: collection.to_string(),
         include_inactive: Some(true),
-        start_after: Some(TOKEN_ID),
+        start_after: Some(token_id),
         limit: None,
     };
     let res: AsksResponse = router
@@ -894,7 +595,7 @@ fn try_query_asks() {
     let query_reverse_asks_msg = QueryMsg::ReverseAsks {
         collection: collection.to_string(),
         include_inactive: Some(true),
-        start_before: Some(TOKEN_ID + 1),
+        start_before: Some(token_id + 1),
         limit: None,
     };
     let res: AsksResponse = router
@@ -914,51 +615,79 @@ fn try_query_asks() {
             },
         )
         .unwrap();
-    assert_eq!(res.collections[0], "contract1");
+    assert_eq!(res.collections[0], "contract2");
+}
+
+fn get_next_token_id_and_map(
+    router: &mut StargazeApp,
+    incoming_hash: &HashSet<String>,
+    collection: Addr,
+) -> (HashSet<std::string::String>, u32) {
+    let query_msg = sg721_base::msg::QueryMsg::AllTokens {
+        start_after: None,
+        limit: None,
+    };
+    let res: TokensResponse = router
+        .wrap()
+        .query_wasm_smart(collection, &query_msg)
+        .unwrap();
+    let tokens_hash: HashSet<String> = HashSet::from_iter(res.tokens.iter().cloned());
+    let difference = tokens_hash.difference(incoming_hash);
+    let nft_hash = tokens_hash.clone();
+    let token_id: Option<&String> = difference.into_iter().next();
+    let token_id_unwrapped = token_id.unwrap().parse::<u32>().unwrap();
+    (nft_hash, token_id_unwrapped)
 }
 
 #[test]
 fn try_query_sorted_asks() {
     let mut router = custom_mock_app();
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 3,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, start_time.seconds());
+    // Mint NFT for creator
 
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 3u128).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Mint NFTs for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-    mint(&mut router, &creator, &collection, TOKEN_ID + 1);
+    mint(&mut router, &creator, &minter_addr);
+    let nft_hash: HashSet<String> = HashSet::from([]);
+    let (nft_hash, token_id_0) =
+        get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
     approve(
         &mut router,
         &creator,
-        &collection,
+        &collection.clone(),
         &marketplace,
-        TOKEN_ID + 1,
+        token_id_0,
     );
-    mint(&mut router, &creator, &collection, TOKEN_ID + 2);
-    approve(
-        &mut router,
-        &creator,
-        &collection,
-        &marketplace,
-        TOKEN_ID + 2,
-    );
+    // // Add funds to creator for listing fees
+    add_funds_for_incremental_fee(&mut router, &creator, MINT_PRICE, 3u128).unwrap();
 
+    mint(&mut router, &creator, &minter_addr);
+    let (nft_hash, token_id_1) =
+        get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_1);
+    mint(&mut router, &creator, &minter_addr);
+    let (_, token_id_2) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_2);
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -972,11 +701,11 @@ fn try_query_sorted_asks() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 1,
+        token_id: token_id_1,
         price: coin(109, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -990,11 +719,11 @@ fn try_query_sorted_asks() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 2,
+        token_id: token_id_2,
         price: coin(111, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1086,48 +815,66 @@ fn try_query_sorted_asks() {
 #[test]
 fn try_query_asks_by_seller() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
-
+    let (owner, _, _) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: owner.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 4,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, start_time.seconds());
+    // Mint NFT for creator
     let owner2: Addr = Addr::unchecked("owner2");
     // Add funds to owner2 for creation fees
-    add_funds_for_incremental_fee(&mut router, &owner2, CREATION_FEE, 1u128).unwrap();
+    add_funds_for_incremental_fee(&mut router, &owner, CREATION_FEE, 1u128).unwrap();
     // Add funds to owner2 for listing fees
     add_funds_for_incremental_fee(&mut router, &owner2, LISTING_FEE, 2u128).unwrap();
 
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+    //     // Mint NFT for creator
 
-    // Mint NFT for creator
-    mint_for(&mut router, &owner, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &owner, &collection, &marketplace, TOKEN_ID);
-    mint_for(&mut router, &owner2, &creator, &collection, TOKEN_ID + 1);
+    mint(&mut router, &owner, &minter_addr);
+    let nft_hash: HashSet<String> = HashSet::from([]);
+    let (_, token_id_0) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
     approve(
         &mut router,
-        &owner2,
-        &collection,
+        &owner,
+        &collection.clone(),
         &marketplace,
-        TOKEN_ID + 1,
+        token_id_0,
     );
-    mint_for(&mut router, &owner2, &creator, &collection, TOKEN_ID + 2);
+
+    mint_for(&mut router, &owner, &owner2, &minter_addr, token_id_0 + 1);
     approve(
         &mut router,
         &owner2,
         &collection,
         &marketplace,
-        TOKEN_ID + 2,
+        token_id_0 + 1,
+    );
+    mint_for(&mut router, &owner, &owner2, &minter_addr, token_id_0 + 2);
+    approve(
+        &mut router,
+        &owner2,
+        &collection,
+        &marketplace,
+        token_id_0 + 2,
     );
 
     // Owner1 lists their token for sale
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1142,11 +889,11 @@ fn try_query_asks_by_seller() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 1,
+        token_id: token_id_0 + 1,
         price: coin(109, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1161,11 +908,11 @@ fn try_query_asks_by_seller() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 2,
+        token_id: token_id_0 + 2,
         price: coin(111, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1219,7 +966,7 @@ fn try_query_asks_by_seller() {
         include_inactive: Some(true),
         start_after: Some(CollectionOffset::new(
             "non-existing-collection".to_string(),
-            TOKEN_ID,
+            token_id_0,
         )),
         limit: None,
     };
@@ -1246,7 +993,10 @@ fn try_query_asks_by_seller() {
     let query_asks_msg = QueryMsg::AsksBySeller {
         seller: owner2.to_string(),
         include_inactive: Some(true),
-        start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID + 1)),
+        start_after: Some(CollectionOffset::new(
+            collection.to_string(),
+            token_id_0 + 1,
+        )),
         limit: None,
     };
     let res: AsksResponse = router
@@ -1259,45 +1009,44 @@ fn try_query_asks_by_seller() {
 #[test]
 fn try_query_sorted_bids() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 3u128).unwrap();
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 3,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, start_time.seconds());
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-    mint(&mut router, &creator, &collection, TOKEN_ID + 1);
-    approve(
-        &mut router,
-        &creator,
-        &collection,
-        &marketplace,
-        TOKEN_ID + 1,
-    );
-    mint(&mut router, &creator, &collection, TOKEN_ID + 2);
-    approve(
-        &mut router,
-        &creator,
-        &collection,
-        &marketplace,
-        TOKEN_ID + 2,
-    );
+    mint(&mut router, &creator, &minter_addr);
+    let nft_hash: HashSet<String> = HashSet::from([]);
+    let (nft_hash, token_id_0) =
+        get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_0);
+    mint(&mut router, &creator, &minter_addr);
+    let (nft_hash, token_id_1) =
+        get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_1);
+    mint(&mut router, &creator, &minter_addr);
+    let (_, token_id_2) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_2);
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         price: coin(10, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1311,11 +1060,11 @@ fn try_query_sorted_bids() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 1,
+        token_id: token_id_1,
         price: coin(10, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1329,11 +1078,11 @@ fn try_query_sorted_bids() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 2,
+        token_id: token_id_2,
         price: coin(10, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1348,9 +1097,9 @@ fn try_query_sorted_bids() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -1364,9 +1113,9 @@ fn try_query_sorted_bids() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 1,
+        token_id: token_id_1,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -1380,9 +1129,9 @@ fn try_query_sorted_bids() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 2,
+        token_id: token_id_2,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     router
@@ -1432,9 +1181,9 @@ fn try_query_sorted_bids() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -1512,28 +1261,36 @@ fn try_query_sorted_bids() {
 #[test]
 fn try_query_bids() {
     let mut router = custom_mock_app();
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, start_time.seconds());
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    let nft_hash: HashSet<String> = HashSet::from([]);
+    let (_, token_id_0) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_0);
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1547,7 +1304,7 @@ fn try_query_bids() {
     // test before bid is made
     let query_bids_msg = QueryMsg::Bids {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         start_after: None,
         limit: None,
     };
@@ -1561,9 +1318,9 @@ fn try_query_bids() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 10),
         finder: None,
     };
     let res = router.execute_contract(
@@ -1577,9 +1334,9 @@ fn try_query_bids() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 1,
+        token_id: token_id_0 + 1,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -1594,11 +1351,11 @@ fn try_query_bids() {
         .wrap()
         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
         .unwrap();
-    assert_eq!(res.bids[0].token_id, TOKEN_ID);
+    assert_eq!(res.bids[0].token_id, token_id_0);
     assert_eq!(res.bids[0].price.u128(), 120u128);
     let query_bids_msg = QueryMsg::Bids {
         collection: collection.to_string(),
-        token_id: TOKEN_ID + 1,
+        token_id: token_id_0 + 1,
         start_after: None,
         limit: None,
     };
@@ -1606,12 +1363,15 @@ fn try_query_bids() {
         .wrap()
         .query_wasm_smart(marketplace.clone(), &query_bids_msg)
         .unwrap();
-    assert_eq!(res.bids[0].token_id, TOKEN_ID + 1);
+    assert_eq!(res.bids[0].token_id, token_id_0 + 1);
     assert_eq!(res.bids[0].price.u128(), 115u128);
 
     let query_bids_msg = QueryMsg::BidsByBidder {
         bidder: bidder.to_string(),
-        start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID - 1)),
+        start_after: Some(CollectionOffset::new(
+            collection.to_string(),
+            token_id_0 - 1,
+        )),
         limit: None,
     };
     let res: BidsResponse = router
@@ -1621,7 +1381,10 @@ fn try_query_bids() {
     assert_eq!(res.bids.len(), 2);
     let query_bids_msg = QueryMsg::BidsByBidderSortedByExpiration {
         bidder: bidder.to_string(),
-        start_after: Some(CollectionOffset::new(collection.to_string(), TOKEN_ID - 1)),
+        start_after: Some(CollectionOffset::new(
+            collection.to_string(),
+            token_id_0 - 1,
+        )),
         limit: None,
     };
     let res: BidsResponse = router
@@ -1631,47 +1394,44 @@ fn try_query_bids() {
     assert_eq!(res.bids.len(), 2);
     assert_eq!(
         res.bids[0].expires_at.seconds(),
-        router
-            .block_info()
-            .time
-            .plus_seconds(MIN_EXPIRY + 1)
-            .seconds()
+        start_time.plus_seconds(MIN_EXPIRY + 1).seconds()
     );
     assert_eq!(
         res.bids[1].expires_at.seconds(),
-        router
-            .block_info()
-            .time
-            .plus_seconds(MIN_EXPIRY + 10)
-            .seconds()
+        start_time.plus_seconds(MIN_EXPIRY + 10).seconds()
     );
 }
 
 #[test]
 fn auto_accept_bid() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
 
     // An ask is made by the creator, but fails because NFT is not authorized
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1683,7 +1443,7 @@ fn auto_accept_bid() {
     assert!(res.is_err());
 
     // Creator Authorizes NFT
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // Now set_ask succeeds
     let res = router.execute_contract(
@@ -1707,9 +1467,9 @@ fn auto_accept_bid() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     router
@@ -1725,9 +1485,9 @@ fn auto_accept_bid() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router
@@ -1741,13 +1501,12 @@ fn auto_accept_bid() {
 
     // Bid is accepted, sale has been finalized
     assert_eq!(res.events[3].ty, "wasm-finalize-sale");
-
-    // Check money is transferred
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    // CREATOR_INITIAL_BALANCE + 100  - 2 (fee)
+    let creator_balance_minus_fee = calculated_creator_balance_after_fairburn();
+    // Check money is transferred
     assert_eq!(
         creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE + 100 - 2, NATIVE_DENOM)
+        coins(creator_balance_minus_fee.u128() + 100 - 2, NATIVE_DENOM)
     );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
@@ -1760,7 +1519,7 @@ fn auto_accept_bid() {
 
     // Check NFT is transferred
     let query_owner_msg = Cw721QueryMsg::OwnerOf {
-        token_id: TOKEN_ID.to_string(),
+        token_id: token_id.to_string(),
         include_expired: None,
     };
     let res: OwnerOfResponse = router
@@ -1773,29 +1532,35 @@ fn auto_accept_bid() {
 #[test]
 fn try_reserved_ask() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, start_time.seconds());
+    let token_id = 1;
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An ask is made by the owner
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: Some(bidder.to_string()),
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1810,9 +1575,9 @@ fn try_reserved_ask() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let err = router
@@ -1832,9 +1597,9 @@ fn try_reserved_ask() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -1847,7 +1612,7 @@ fn try_reserved_ask() {
 
     // Check NFT is transferred to bidder (with reserved address)
     let query_owner_msg = Cw721QueryMsg::OwnerOf {
-        token_id: TOKEN_ID.to_string(),
+        token_id: token_id.to_string(),
         include_expired: None,
     };
     let res: OwnerOfResponse = router
@@ -1860,29 +1625,35 @@ fn try_reserved_ask() {
 #[test]
 fn try_ask_with_finders_fee() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, start_time.seconds());
+    let token_id = 1;
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An ask is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(500), // 5%
     };
     let res = router.execute_contract(
@@ -1899,9 +1670,9 @@ fn try_ask_with_finders_fee() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: Some(finder.to_string()),
     };
     let res = router.execute_contract(
@@ -1914,10 +1685,10 @@ fn try_ask_with_finders_fee() {
 
     // Check money is transferred
     let creator_balances = router.wrap().query_all_balances(creator).unwrap();
-    // CREATOR_INITIAL_BALANCE + 100  - 2 (network fee) - 5 (finders fee)
+    let creator_balance_minus_fee = calculated_creator_balance_after_fairburn();
     assert_eq!(
         creator_balances,
-        coins(CREATOR_INITIAL_BALANCE + 100 - 2 - 5, NATIVE_DENOM)
+        coins(creator_balance_minus_fee.u128() + 100 - 2 - 5, NATIVE_DENOM)
     );
     let bidder_balances = router.wrap().query_all_balances(bidder).unwrap();
     assert_eq!(
@@ -1931,32 +1702,34 @@ fn try_ask_with_finders_fee() {
 #[test]
 fn remove_bid_refund() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -1971,9 +1744,9 @@ fn remove_bid_refund() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
 
@@ -2002,7 +1775,7 @@ fn remove_bid_refund() {
     // Bidder removes bid
     let remove_bid_msg = ExecuteMsg::RemoveBid {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res = router.execute_contract(bidder.clone(), marketplace, &remove_bid_msg, &[]);
     assert!(res.is_ok());
@@ -2015,29 +1788,34 @@ fn remove_bid_refund() {
 #[test]
 fn new_bid_refund() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An ask is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(50, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -2052,9 +1830,9 @@ fn new_bid_refund() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -2083,9 +1861,9 @@ fn new_bid_refund() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -2113,15 +1891,15 @@ fn new_bid_refund() {
     // Check new bid has been saved
     let query_bid_msg = QueryMsg::Bid {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         bidder: bidder.to_string(),
     };
     let bid = Bid {
         collection,
-        token_id: TOKEN_ID,
+        token_id,
         bidder,
         price: Uint128::from(150u128),
-        expires_at: (router.block_info().time.plus_seconds(MIN_EXPIRY + 1)),
+        expires_at: (start_time.plus_seconds(MIN_EXPIRY + 1)),
         finders_fee_bps: None,
     };
 
@@ -2135,82 +1913,41 @@ fn new_bid_refund() {
 #[test]
 fn try_royalties() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (curator, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
-
-    // Instantiate marketplace contract
-    let marketplace_id = router.store_code(contract_marketplace());
-    let msg = crate::msg::InstantiateMsg {
-        operators: vec!["operator1".to_string()],
-        trading_fee_bps: TRADING_FEE_BPS,
-        ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-        sale_hook: None,
-        max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
-        min_price: Uint128::from(5u128),
-        stale_bid_duration: Duration::Time(100),
-        bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
-        listing_fee: Uint128::from(LISTING_FEE),
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_curator_payment_address(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
     };
-    let marketplace = router
-        .instantiate_contract(
-            marketplace_id,
-            creator.clone(),
-            &msg,
-            &[],
-            "Marketplace",
-            None,
-        )
-        .unwrap();
-
-    // Setup media contract with 10% royalties to a curator
-    let sg721_id = router.store_code(contract_sg721());
-    let msg = sg721::InstantiateMsg {
-        name: String::from("Test Coin"),
-        symbol: String::from("TEST"),
-        minter: creator.to_string(),
-        collection_info: CollectionInfo {
-            creator: creator.to_string(),
-            description: String::from("Stargaze Monkeys"),
-            image: "https://example.com/image.png".to_string(),
-            external_link: Some("https://example.com/external.html".to_string()),
-            royalty_info: Some(RoyaltyInfoResponse {
-                payment_address: curator.to_string(),
-                share: Decimal::percent(10),
-            }),
-            start_trading_time: None,
-        },
-    };
-    let collection = router
-        .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "NFT", None)
-        .unwrap();
-
-    // mark the collection contract as ready to mint
-    let res = router.execute_contract(
-        creator.clone(),
-        collection.clone(),
-        &Sg721ExecuteMsg::<Empty>::_Ready {},
-        &[],
-    );
-    assert!(res.is_ok());
-
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
+    add_funds_for_incremental_fee(
+        &mut router,
+        &Addr::unchecked("curator"),
+        INITIAL_BALANCE,
+        1u128,
+    )
+    .unwrap();
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An ask is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -2225,9 +1962,9 @@ fn try_royalties() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -2239,16 +1976,24 @@ fn try_royalties() {
     assert!(res.is_ok());
 
     // Check money is transferred correctly and royalties paid
-    let curator_native_balances = router.wrap().query_all_balances(curator).unwrap();
+    let curator_native_balances = router
+        .wrap()
+        .query_all_balances("curator".to_string())
+        .unwrap();
     assert_eq!(
         curator_native_balances,
         coins(INITIAL_BALANCE + 10, NATIVE_DENOM)
     );
+
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100 - 10 (royalties) - 2 (fee)
+    let creator_balance_after_fee = calculated_creator_balance_after_fairburn();
     assert_eq!(
         creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE + 100 - 10 - 2, NATIVE_DENOM)
+        coins(
+            creator_balance_after_fee.u128() + 100 - 10 - 2,
+            NATIVE_DENOM
+        )
     );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
@@ -2258,7 +2003,7 @@ fn try_royalties() {
 
     // Check NFT is transferred
     let query_owner_msg = Cw721QueryMsg::OwnerOf {
-        token_id: TOKEN_ID.to_string(),
+        token_id: token_id.to_string(),
         include_expired: None,
     };
     let res: OwnerOfResponse = router
@@ -2271,12 +2016,16 @@ fn try_royalties() {
 #[test]
 fn try_sudo_update_params() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator,
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
 
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: Some(5),
@@ -2354,10 +2103,16 @@ fn try_sudo_update_params() {
 #[test]
 fn try_add_remove_sales_hooks() {
     let mut router = custom_mock_app();
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-    // Instantiate and configure contracts
-    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator,
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
 
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook".to_string(),
@@ -2388,16 +2143,16 @@ fn try_add_remove_sales_hooks() {
 #[test]
 fn try_add_too_many_sales_hooks() {
     let mut router = custom_mock_app();
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-    // Instantiate and configure contracts
-    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
-
-    let add_hook_msg = SudoMsg::AddSaleHook {
-        hook: "hook1".to_string(),
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator,
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
     };
-    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
-    assert!(res.is_ok());
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
 
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook2".to_string(),
@@ -2426,6 +2181,12 @@ fn try_add_too_many_sales_hooks() {
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook6".to_string(),
     };
+    let res = router.wasm_sudo(marketplace.clone(), &add_hook_msg);
+    assert!(res.is_ok());
+
+    let add_hook_msg = SudoMsg::AddSaleHook {
+        hook: "hook7".to_string(),
+    };
     let res = router.wasm_sudo(marketplace, &add_hook_msg);
     assert!(res.is_err());
 }
@@ -2433,10 +2194,16 @@ fn try_add_too_many_sales_hooks() {
 #[test]
 fn try_add_remove_bid_hooks() {
     let mut router = custom_mock_app();
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-    // Instantiate and configure contracts
-    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator,
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
 
     let add_bid_hook_msg = SudoMsg::AddBidHook {
         hook: "bid_hook".to_string(),
@@ -2467,10 +2234,15 @@ fn try_add_remove_bid_hooks() {
 #[test]
 fn try_init_hook() {
     let mut router = custom_mock_app();
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-    // Instantiate marketplace contract
-    let marketplace_id = router.store_code(contract_marketplace());
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator,
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
     let msg = crate::msg::InstantiateMsg {
         operators: vec!["operator1".to_string()],
         trading_fee_bps: TRADING_FEE_BPS,
@@ -2483,9 +2255,8 @@ fn try_init_hook() {
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
         listing_fee: Uint128::from(LISTING_FEE),
     };
-    let marketplace = router
-        .instantiate_contract(marketplace_id, creator, &msg, &[], "Marketplace", None)
-        .unwrap();
+    let (marketplace, _) =
+        setup_marketplace_and_collections_with_params(setup_params, msg).unwrap();
 
     let query_hooks_msg = QueryMsg::SaleHooks {};
     let res: HooksResponse = router
@@ -2510,12 +2281,21 @@ fn try_init_hook() {
 #[test]
 fn try_hook_was_run() {
     let mut router = custom_mock_app();
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
 
     // Add sales hook
     let add_hook_msg = SudoMsg::AddSaleHook {
@@ -2536,23 +2316,23 @@ fn try_hook_was_run() {
     let _res = router.wasm_sudo(marketplace.clone(), &add_ask_hook_msg);
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
 
     // An ask is made by the creator, but fails because NFT is not authorized
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     // Creator Authorizes NFT
-    let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+    let approve_msg: Sg721ExecuteMsg<Empty, Empty> = Sg721ExecuteMsg::Approve {
         spender: marketplace.to_string(),
-        token_id: TOKEN_ID.to_string(),
+        token_id: token_id.to_string(),
         expires: None,
     };
     let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
@@ -2574,9 +2354,9 @@ fn try_hook_was_run() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
 
@@ -2595,7 +2375,7 @@ fn try_hook_was_run() {
 
     // NFT is still transferred despite a sale finalized hook failing
     let query_owner_msg = Cw721QueryMsg::OwnerOf {
-        token_id: TOKEN_ID.to_string(),
+        token_id: token_id.to_string(),
         include_expired: None,
     };
     let res: OwnerOfResponse = router
@@ -2608,11 +2388,16 @@ fn try_hook_was_run() {
 #[test]
 fn try_add_remove_listed_hooks() {
     let mut router = custom_mock_app();
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-    // Instantiate and configure contracts
-    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
-
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator,
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
     let add_hook_msg = SudoMsg::AddAskHook {
         hook: "hook".to_string(),
     };
@@ -2642,23 +2427,37 @@ fn try_add_remove_listed_hooks() {
 #[test]
 fn try_collection_bids() {
     let mut router = custom_mock_app();
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params_one = mock_collection_params_1(Some(start_time));
+    let collection_params_two = mock_collection_two(Some(start_time));
 
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params_one, collection_params_two],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
+    add_funds_for_incremental_fee(&mut router, &creator, INITIAL_BALANCE, 1u128).unwrap();
 
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+    let collection_two = minter_collections[1].collection.clone();
+    let token_id = 1;
 
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // A collection bid is made by the bidder
     let set_collection_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 10),
     };
     let res = router.execute_contract(
         bidder.clone(),
@@ -2672,7 +2471,7 @@ fn try_collection_bids() {
     let set_collection_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
         finders_fee_bps: Some(10100),
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 10),
     };
     let res = router.execute_contract(
         bidder.clone(),
@@ -2686,7 +2485,7 @@ fn try_collection_bids() {
     let set_collection_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 5),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 5),
     };
     let res = router.execute_contract(
         bidder2.clone(),
@@ -2751,14 +2550,10 @@ fn try_collection_bids() {
     assert_eq!(res.bids.len(), 1);
     assert_eq!(res.bids[0].price.u128(), 180u128);
 
-    // test querying all sorted collection bids by bidder sorted by expiration
-    // add another collection
-    let collection2 = setup_collection(&mut router, &bidder2, None).unwrap();
-    // set another collection bid
     let set_collection_bid = ExecuteMsg::SetCollectionBid {
-        collection: collection2.to_string(),
+        collection: collection_two.to_string(),
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 10),
     };
     let res = router.execute_contract(
         bidder2.clone(),
@@ -2779,19 +2574,11 @@ fn try_collection_bids() {
     assert_eq!(res.bids.len(), 2);
     assert_eq!(
         res.bids[0].expires_at.seconds(),
-        router
-            .block_info()
-            .time
-            .plus_seconds(MIN_EXPIRY + 5)
-            .seconds()
+        start_time.plus_seconds(MIN_EXPIRY + 5).seconds()
     );
     assert_eq!(
         res.bids[1].expires_at.seconds(),
-        router
-            .block_info()
-            .time
-            .plus_seconds(MIN_EXPIRY + 10)
-            .seconds()
+        start_time.plus_seconds(MIN_EXPIRY + 10).seconds()
     );
 
     // test querying all sorted collection bids by bidder in reverse
@@ -2847,10 +2634,11 @@ fn try_collection_bids() {
     // A collection bid is accepted
     let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         bidder: bidder.to_string(),
         finder: None,
     };
+
     let res = router.execute_contract(creator.clone(), marketplace, &accept_collection_bid, &[]);
     assert!(res.is_ok());
 }
@@ -2858,24 +2646,33 @@ fn try_collection_bids() {
 #[test]
 fn try_remove_stale_bid() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // Bidder makes bid
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -2887,19 +2684,20 @@ fn try_remove_stale_bid() {
     assert!(res.is_ok());
 
     let operator = Addr::unchecked("operator1".to_string());
-
     // Try to remove the bid (not yet stale) as an operator
     let remove_msg = ExecuteMsg::RemoveStaleBid {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         bidder: bidder.to_string(),
     };
     router
         .execute_contract(operator.clone(), marketplace.clone(), &remove_msg, &[])
         .unwrap_err();
 
-    setup_block_time(&mut router, 10000000000);
-
+    setup_block_time(
+        &mut router,
+        start_time.plus_seconds(MIN_EXPIRY + 101).seconds(),
+    );
     let res = router.execute_contract(operator.clone(), marketplace.clone(), &remove_msg, &[]);
     assert!(res.is_ok());
 
@@ -2910,22 +2708,27 @@ fn try_remove_stale_bid() {
 #[test]
 fn try_remove_stale_collection_bid() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
-    let expiry_time = router
-        .block_info()
-        .time
-        .plus_seconds(MIN_EXPIRY + 1)
-        .seconds();
+    let expiry_time = start_time.plus_seconds(MIN_EXPIRY + 1).seconds();
 
     // Bidder makes collection bid
     let set_col_bid_msg = ExecuteMsg::SetCollectionBid {
@@ -2965,24 +2768,34 @@ fn try_remove_stale_collection_bid() {
 #[test]
 fn try_bid_finders_fee() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // Bidder makes failed bid with a large finder's fee
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: Some(5000),
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let err = router
@@ -3002,9 +2815,9 @@ fn try_bid_finders_fee() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: Some(500),
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -3020,7 +2833,7 @@ fn try_bid_finders_fee() {
     // Token owner accepts the bid with a finder address
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         bidder: bidder.to_string(),
         finder: Some(finder.to_string()),
     };
@@ -3034,24 +2847,34 @@ fn try_bid_finders_fee() {
 #[test]
 fn try_bidder_cannot_be_finder() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
-    let (_owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // Bidder makes bid with a finder's fee
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: Some(500),
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: Some(bidder.to_string()),
     };
     router
@@ -3067,29 +2890,36 @@ fn try_bidder_cannot_be_finder() {
 #[test]
 fn try_ask_with_filter_inactive() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An ask is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(500), // 5%
     };
     let res = router.execute_contract(
@@ -3101,11 +2931,11 @@ fn try_ask_with_filter_inactive() {
     assert!(res.is_ok());
 
     // transfer nft from creator to owner. Creates a stale ask that needs to be updated
-    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+    transfer(&mut router, &creator, &owner, &collection, token_id);
 
     let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
@@ -3154,7 +2984,7 @@ fn try_ask_with_filter_inactive() {
     // updating price of inactive ask throws error
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(200, NATIVE_DENOM),
     };
     router
@@ -3165,29 +2995,36 @@ fn try_ask_with_filter_inactive() {
 #[test]
 fn try_sync_ask() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An ask is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(500), // 5%
     };
     let res = router.execute_contract(
@@ -3199,11 +3036,11 @@ fn try_sync_ask() {
     assert!(res.is_ok());
 
     // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
-    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
+    transfer(&mut router, &creator, &owner, &collection, token_id);
 
     let update_ask_state = ExecuteMsg::SyncAsk {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
     };
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
@@ -3226,7 +3063,7 @@ fn try_sync_ask() {
     assert_eq!(res.asks.len(), 0);
 
     // transfer nft back
-    transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
+    transfer(&mut router, &owner, &creator, &collection, token_id);
 
     // Transfer Back should have unchanged operation (still not active)
     let res = router.execute_contract(
@@ -3250,7 +3087,7 @@ fn try_sync_ask() {
     assert_eq!(res.asks.len(), 0);
 
     // Approving again should have a success sync ask after
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // SyncAsk should be ok
     let res = router.execute_contract(
@@ -3273,12 +3110,10 @@ fn try_sync_ask() {
     assert_eq!(res.asks.len(), 1);
 
     // Approve for shorter period than ask
-    let approve_msg = Cw721ExecuteMsg::<Empty>::Approve {
+    let approve_msg: Sg721ExecuteMsg<Empty, Empty> = Sg721ExecuteMsg::Approve {
         spender: marketplace.to_string(),
-        token_id: TOKEN_ID.to_string(),
-        expires: Some(Expiration::AtTime(
-            router.block_info().time.plus_seconds(MIN_EXPIRY - 10),
-        )),
+        token_id: token_id.to_string(),
+        expires: Some(Expiration::AtTime(start_time.plus_seconds(MIN_EXPIRY - 10))),
     };
     let res = router.execute_contract(creator.clone(), collection.clone(), &approve_msg, &[]);
     assert!(res.is_ok());
@@ -3292,11 +3127,7 @@ fn try_sync_ask() {
     );
     assert!(res.is_err());
 
-    let expiry_time = router
-        .block_info()
-        .time
-        .plus_seconds(MIN_EXPIRY - 5)
-        .seconds();
+    let expiry_time = start_time.plus_seconds(MIN_EXPIRY - 5).seconds();
     // move clock before ask expire but after approval expiration time
     setup_block_time(&mut router, expiry_time);
 
@@ -3326,29 +3157,36 @@ fn try_sync_ask() {
 #[test]
 fn try_set_ask_reserve_for() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // Can't reserve to themselves.
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: Some(creator.clone().to_string()),
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 10),
         finders_fee_bps: Some(0),
     };
     let err = router
@@ -3370,11 +3208,11 @@ fn try_set_ask_reserve_for() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: Some(bidder.to_string()),
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 10),
         finders_fee_bps: Some(0),
     };
     let err = router
@@ -3396,11 +3234,11 @@ fn try_set_ask_reserve_for() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: Some(bidder.to_string()),
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 10),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -3416,9 +3254,9 @@ fn try_set_ask_reserve_for() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -3438,9 +3276,9 @@ fn try_set_ask_reserve_for() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -3455,29 +3293,38 @@ fn try_set_ask_reserve_for() {
 #[test]
 fn try_remove_stale_ask() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (owner, _, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 2u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 2,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    let nft_hash = HashSet::from([]);
+    let (nft_hash, token_id_0) =
+        get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_0);
 
     // An ask is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(500), // 5%
     };
     let res = router.execute_contract(
@@ -3491,7 +3338,7 @@ fn try_remove_stale_ask() {
     // trying to remove a valid ask
     let remove_ask = ExecuteMsg::RemoveStaleAsk {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: token_id_0,
     };
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
@@ -3515,7 +3362,7 @@ fn try_remove_stale_ask() {
     assert_eq!(res.asks.len(), 1);
 
     // burn the token
-    burn(&mut router, &creator, &collection, TOKEN_ID);
+    burn(&mut router, &creator, &collection, token_id_0);
 
     // try again to remove the ask
     let res = router.execute_contract(
@@ -3532,8 +3379,21 @@ fn try_remove_stale_ask() {
     assert_eq!(res.asks.len(), 0);
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    let (_, token_id_1) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_1);
+
+    add_funds_for_incremental_fee(&mut router, &creator, 100, 2u128).unwrap();
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: token_id_1,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(500), // 5%
+    };
 
     // set ask again
     let res = router.execute_contract(
@@ -3551,42 +3411,9 @@ fn try_remove_stale_ask() {
         &[],
     );
     assert!(res.is_err());
-
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-    // set ask again
-    let res = router.execute_contract(
-        creator.clone(),
-        marketplace.clone(),
-        &set_ask,
-        &listing_funds(LISTING_FEE).unwrap(),
-    );
-    assert!(res.is_ok());
-
-    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
-
-    let res = router.execute_contract(
-        Addr::unchecked("operator1"),
-        marketplace.clone(),
-        &remove_ask,
-        &[],
-    );
-    assert!(res.is_ok());
-
-    // transfer nft back
-    transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-    // set ask again
-    let res = router.execute_contract(
-        creator.clone(),
-        marketplace.clone(),
-        &set_ask,
-        &listing_funds(LISTING_FEE).unwrap(),
-    );
-    assert!(res.is_ok());
 
     // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
-    transfer(&mut router, &creator, &owner, &collection, TOKEN_ID);
-    approve(&mut router, &owner, &collection, &marketplace, TOKEN_ID);
+    transfer(&mut router, &creator, &owner, &collection, token_id_1);
     let res = router.execute_contract(
         Addr::unchecked("operator1"),
         marketplace.clone(),
@@ -3596,11 +3423,16 @@ fn try_remove_stale_ask() {
     assert!(res.is_err());
 
     // transfer nft back
-    transfer(&mut router, &owner, &creator, &collection, TOKEN_ID);
+    transfer(&mut router, &owner, &creator, &collection, token_id_1);
 
     // move time forward
     let time = router.block_info().time;
     setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).seconds());
+
+    let remove_ask = ExecuteMsg::RemoveStaleAsk {
+        collection: collection.to_string(),
+        token_id: token_id_1,
+    };
 
     // remove stale ask
     let res = router.execute_contract(
@@ -3620,10 +3452,18 @@ fn try_remove_stale_ask() {
 #[test]
 fn try_add_and_remove_operators() {
     let mut router = custom_mock_app();
-    // Setup initial accounts
-    let (_owner, _, creator) = setup_accounts(&mut router).unwrap();
-    // Instantiate and configure contracts
-    let (marketplace, _) = setup_contracts(&mut router, &creator).unwrap();
+    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator,
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
 
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: Some(5),
@@ -3717,29 +3557,35 @@ fn try_add_and_remove_operators() {
 #[test]
 fn try_bid_sale_type() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params = mock_collection_params_1(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let token_id = 1;
+    setup_block_time(&mut router, start_time.seconds());
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -3754,9 +3600,9 @@ fn try_bid_sale_type() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -3768,10 +3614,11 @@ fn try_bid_sale_type() {
     assert!(res.is_ok());
 
     // Check creator has been paid
+    let creator_balance_minus_fee = calculated_creator_balance_after_fairburn();
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
     assert_eq!(
         creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE + 100 - 2, NATIVE_DENOM)
+        coins(creator_balance_minus_fee.u128() + 100 - 2, NATIVE_DENOM)
     );
 
     // Check contract has zero balance
@@ -3781,7 +3628,7 @@ fn try_bid_sale_type() {
         .unwrap();
     assert_eq!(contract_balances, []);
 
-    transfer(&mut router, &bidder, &creator, &collection, TOKEN_ID);
+    transfer(&mut router, &bidder, &creator, &collection, token_id);
 
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
 
@@ -3789,9 +3636,9 @@ fn try_bid_sale_type() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -3807,9 +3654,9 @@ fn try_bid_sale_type() {
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::Auction,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -3916,35 +3763,66 @@ fn try_migrate() {
 #[test]
 fn try_start_trading_time() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params_1 = mock_collection_params_1(Some(start_time));
+    let collection_params_2 = mock_collection_two(Some(start_time.plus_seconds(1)));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params_1, collection_params_2],
+        num_tokens: 2,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter_addr = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
 
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
+    let minter_2 = minter_collections[1].minter.clone();
+    let collection_2 = minter_collections[1].collection.clone();
 
-    // Start trading in 24 hours
-    let start_trading_time = router.block_info().time.plus_seconds(24 * 60 * 60);
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
+
     // test querying all sorted collection bids by bidder sorted by expiration
-    // add another collection
-    let collection2 = setup_collection(&mut router, &creator, Some(start_trading_time)).unwrap();
+    // Mint NFT for creator
+    mint(&mut router, &creator, &minter_addr);
 
-    // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    // after transfer, needs another approval
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
-    // Mint NFT for creator
-    mint(&mut router, &creator, &collection2, TOKEN_ID);
-    // after transfer, needs another approval
-    approve(&mut router, &creator, &collection2, &marketplace, TOKEN_ID);
+    // // after transfer, needs another approval
+    let nft_hash_minter_1: HashSet<String> = HashSet::from([]);
+    let (_, minter_1_token_id_0) =
+        get_next_token_id_and_map(&mut router, &nft_hash_minter_1, collection.clone());
+    approve(
+        &mut router,
+        &creator,
+        &collection,
+        &marketplace,
+        minter_1_token_id_0,
+    );
+    // // Mint NFT for creator
+    mint(&mut router, &creator, &minter_2);
+    // // after transfer, needs another approval
+    let nft_hash_minter_2: HashSet<String> = HashSet::from([]);
+    let (_, minter_2_token_id_0) =
+        get_next_token_id_and_map(&mut router, &nft_hash_minter_2, collection_2.clone());
+    approve(
+        &mut router,
+        &creator,
+        &collection_2,
+        &marketplace,
+        minter_2_token_id_0,
+    );
+
+    let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
 
     // Bidder makes bid on NFT with no ask
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: minter_1_token_id_0,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -3959,10 +3837,10 @@ fn try_start_trading_time() {
     // Bidder makes bid on NFT with no ask to collection 2
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
-        collection: collection2.to_string(),
-        token_id: TOKEN_ID,
+        collection: collection_2.to_string(),
+        token_id: minter_2_token_id_0,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
     };
     let res = router.execute_contract(
@@ -3978,9 +3856,9 @@ fn try_start_trading_time() {
 
     // A collection bid is made by the bidder
     let set_collection_bid = ExecuteMsg::SetCollectionBid {
-        collection: collection2.to_string(),
+        collection: collection_2.to_string(),
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 10),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 10),
     };
     let res = router.execute_contract(
         bidder2.clone(),
@@ -3994,11 +3872,11 @@ fn try_start_trading_time() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: minter_1_token_id_0,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -4013,12 +3891,12 @@ fn try_start_trading_time() {
     // An asking price is made by the creator to collection 2 (should fail)
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
-        collection: collection2.to_string(),
-        token_id: TOKEN_ID,
+        collection: collection_2.to_string(),
+        token_id: minter_2_token_id_0,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -4035,16 +3913,22 @@ fn try_start_trading_time() {
     );
 
     // Check creator hasn't been paid yet
-    let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
+    let (uint128_two, fair_burn_percent) = (
+        Uint128::from(2u32),
+        Decimal::percent(MINT_FEE_FAIR_BURN / 100),
+    );
+    let mint_price = Uint128::from(MINT_PRICE);
+    let creator_balance_minus_two_fees =
+        Uint128::from(INITIAL_BALANCE) - (mint_price * uint128_two * fair_burn_percent);
     assert_eq!(
-        creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE, NATIVE_DENOM)
+        creator_native_balances[0],
+        coin((creator_balance_minus_two_fees).u128(), NATIVE_DENOM)
     );
 
     // Creator accepts bid
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id: minter_1_token_id_0,
         bidder: bidder.to_string(),
         finder: None,
     };
@@ -4056,7 +3940,10 @@ fn try_start_trading_time() {
     // 100  - 2 (fee)
     assert_eq!(
         creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE + 100 - 2, NATIVE_DENOM)
+        coins(
+            creator_balance_minus_two_fees.u128() + 100 - 2,
+            NATIVE_DENOM
+        )
     );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(
@@ -4066,7 +3953,7 @@ fn try_start_trading_time() {
 
     // Check NFT is transferred
     let query_owner_msg = Cw721QueryMsg::OwnerOf {
-        token_id: TOKEN_ID.to_string(),
+        token_id: minter_1_token_id_0.to_string(),
         include_expired: None,
     };
     let res: OwnerOfResponse = router
@@ -4077,8 +3964,8 @@ fn try_start_trading_time() {
 
     // Creator tries to accept accept bid on collection 2 (should fail)
     let accept_bid_msg = ExecuteMsg::AcceptCollectionBid {
-        collection: collection2.to_string(),
-        token_id: TOKEN_ID,
+        collection: collection_2.to_string(),
+        token_id: minter_2_token_id_0,
         bidder: bidder2.to_string(),
         finder: None,
     };
@@ -4089,12 +3976,10 @@ fn try_start_trading_time() {
         "Collection not tradable yet".to_string()
     );
 
-    // Creator tries to accept a collection bid
-
     // A collection bid is accepted
     let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
-        collection: collection2.to_string(),
-        token_id: TOKEN_ID,
+        collection: collection_2.to_string(),
+        token_id: minter_2_token_id_0,
         bidder: bidder2.to_string(),
         finder: None,
     };
@@ -4112,12 +3997,12 @@ fn try_start_trading_time() {
     );
 
     // move time to start trading time
-    setup_block_time(&mut router, start_trading_time.plus_seconds(1).seconds());
+    setup_block_time(&mut router, start_time.plus_seconds(1).seconds());
 
     // Creator tries to accept accept bid on collection 2  should work now
     let accept_bid_msg = ExecuteMsg::AcceptBid {
-        collection: collection2.to_string(),
-        token_id: TOKEN_ID,
+        collection: collection_2.to_string(),
+        token_id: minter_2_token_id_0,
         bidder: bidder.to_string(),
         finder: None,
     };
@@ -4129,21 +4014,30 @@ fn try_start_trading_time() {
     // 200  - 4  sold 2 items
     assert_eq!(
         creator_native_balances,
-        coins(CREATOR_INITIAL_BALANCE + 200 - 4, NATIVE_DENOM)
+        coins(
+            creator_balance_minus_two_fees.u128() + 200 - 4,
+            NATIVE_DENOM
+        )
     );
 
     // bidder approves marketplace to transfer NFT
-    approve(&mut router, &bidder, &collection2, &marketplace, TOKEN_ID);
+    approve(
+        &mut router,
+        &bidder,
+        &collection_2,
+        &marketplace,
+        minter_2_token_id_0,
+    );
 
     // An asking price is made by the bidder to collection
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
-        collection: collection2.to_string(),
-        token_id: TOKEN_ID,
+        collection: collection_2.to_string(),
+        token_id: minter_2_token_id_0,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 2),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -4156,8 +4050,8 @@ fn try_start_trading_time() {
 
     // A collection bid is accepted
     let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
-        collection: collection2.to_string(),
-        token_id: TOKEN_ID,
+        collection: collection_2.to_string(),
+        token_id: minter_2_token_id_0,
         bidder: bidder2.to_string(),
         finder: None,
     };
@@ -4171,17 +4065,23 @@ fn try_start_trading_time() {
 
     assert!(res.is_ok());
 
-    approve(&mut router, &bidder2, &collection2, &marketplace, TOKEN_ID);
+    approve(
+        &mut router,
+        &bidder2,
+        &collection_2,
+        &marketplace,
+        minter_2_token_id_0,
+    );
 
     // An asking price is made by the bidder to collection
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
-        collection: collection2.to_string(),
-        token_id: TOKEN_ID,
+        collection: collection_2.to_string(),
+        token_id: minter_2_token_id_0,
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 2),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -4195,10 +4095,10 @@ fn try_start_trading_time() {
     // Bidder buys now
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
-        collection: collection2.to_string(),
-        token_id: TOKEN_ID,
+        collection: collection_2.to_string(),
+        token_id: minter_2_token_id_0,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 2),
         finder: None,
     };
     let res = router.execute_contract(
@@ -4211,12 +4111,12 @@ fn try_start_trading_time() {
 
     // Check NFT is transferred
     let query_owner_msg = Cw721QueryMsg::OwnerOf {
-        token_id: TOKEN_ID.to_string(),
+        token_id: minter_2_token_id_0.to_string(),
         include_expired: None,
     };
     let res: OwnerOfResponse = router
         .wrap()
-        .query_wasm_smart(collection2, &query_owner_msg)
+        .query_wasm_smart(collection_2, &query_owner_msg)
         .unwrap();
     assert_eq!(res.owner, bidder.to_string());
 }
@@ -4227,94 +4127,42 @@ mod query {
     #[test]
     fn collections() {
         let mut router = custom_mock_app();
-
-        // Setup initial accounts
         let (_, _, creator) = setup_accounts(&mut router).unwrap();
-
-        // Instantiate marketplace contract
-        let marketplace_id = router.store_code(contract_marketplace());
-        let msg = crate::msg::InstantiateMsg {
-            operators: vec!["operator1".to_string()],
-            trading_fee_bps: TRADING_FEE_BPS,
-            ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-            bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
-            sale_hook: None,
-            max_finders_fee_bps: MAX_FINDERS_FEE_BPS,
-            min_price: Uint128::from(5u128),
-            stale_bid_duration: Duration::Time(100),
-            bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
-            listing_fee: Uint128::from(LISTING_FEE),
+        add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
+        let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+        let collection_params_1 = mock_collection_params_1(Some(start_time));
+        let collection_params_2 = mock_collection_two(Some(start_time));
+        let setup_params = SetupContractsParams {
+            minter_admin: creator.clone(),
+            collection_params_vec: vec![collection_params_1, collection_params_2],
+            num_tokens: 1,
+            router: &mut router,
         };
-        let marketplace = router
-            .instantiate_contract(
-                marketplace_id,
-                creator.clone(),
-                &msg,
-                &[],
-                "Marketplace",
-                None,
-            )
-            .unwrap();
-        println!("marketplace: {:?}", marketplace);
+        let (marketplace, minter_collections) =
+            setup_marketplace_and_collections(setup_params).unwrap();
+        let minter1 = minter_collections[0].minter.clone();
+        let collection1 = minter_collections[0].collection.clone();
 
-        // Setup media contract
-        let sg721_id = router.store_code(contract_sg721());
-        let msg = Sg721InstantiateMsg {
-        name: String::from("Test Coin"),
-        symbol: String::from("TEST"),
-        minter: creator.to_string(),
-        collection_info: CollectionInfo {
-            creator: creator.to_string(),
-            description: String::from("Stargaze Monkeys"),
-            start_trading_time: None,
-            image:
-                "ipfs://bafybeigi3bwpvyvsmnbj46ra4hyffcxdeaj6ntfk5jpic5mx27x6ih2qvq/images/1.png"
-                    .to_string(),
-            external_link: Some("https://example.com/external.html".to_string()),
-            royalty_info: Some(RoyaltyInfoResponse {
-                payment_address: creator.to_string(),
-                share: Decimal::percent(10),
-            }),
-        },
-    };
-        let collection1 = router
-            .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "collection1", None)
-            .unwrap();
-        // mark the collection contract as ready to mint
-        let res = router.execute_contract(
-            creator.clone(),
-            collection1.clone(),
-            &Sg721ExecuteMsg::<Empty>::_Ready {},
-            &[],
-        );
-        assert!(res.is_ok());
+        let minter2 = minter_collections[1].minter.clone();
+        let collection2 = minter_collections[1].collection.clone();
 
-        let collection2 = router
-            .instantiate_contract(sg721_id, creator.clone(), &msg, &[], "collection2", None)
-            .unwrap();
-        // mark the collection contract as ready to mint
-        let res = router.execute_contract(
-            creator.clone(),
-            collection2.clone(),
-            &Sg721ExecuteMsg::<Empty>::_Ready {},
-            &[],
-        );
-        assert!(res.is_ok());
-
+        let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+        setup_block_time(&mut router, start_time.seconds());
+        let token_id = 1;
         // place two asks
-        mint(&mut router, &creator, &collection1, TOKEN_ID);
-        mint(&mut router, &creator, &collection2, TOKEN_ID);
-        approve(&mut router, &creator, &collection1, &marketplace, TOKEN_ID);
-        approve(&mut router, &creator, &collection2, &marketplace, TOKEN_ID);
+        mint(&mut router, &creator, &minter1);
+        mint(&mut router, &creator, &minter2);
+        approve(&mut router, &creator, &collection1, &marketplace, token_id);
+        approve(&mut router, &creator, &collection2, &marketplace, token_id);
 
         let set_ask = ExecuteMsg::SetAsk {
             sale_type: SaleType::FixedPrice,
             collection: collection1.to_string(),
-            token_id: TOKEN_ID,
+            token_id,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
-            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            expires: start_time.plus_seconds(MIN_EXPIRY + 1),
             finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(
@@ -4328,11 +4176,11 @@ mod query {
         let set_ask = ExecuteMsg::SetAsk {
             sale_type: SaleType::FixedPrice,
             collection: collection2.to_string(),
-            token_id: TOKEN_ID,
+            token_id,
             price: coin(110, NATIVE_DENOM),
             funds_recipient: None,
             reserve_for: None,
-            expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+            expires: start_time.plus_seconds(MIN_EXPIRY + 1),
             finders_fee_bps: Some(0),
         };
         let res = router.execute_contract(
@@ -4354,37 +4202,46 @@ mod query {
                 },
             )
             .unwrap();
-        assert_eq!(res.collections[0], "contract1");
-        assert_eq!(res.collections[1], "contract2");
+        assert_eq!(res.collections[0], collection1);
+        assert_eq!(res.collections[1], collection2);
     }
 }
 
 #[test]
 fn max_set_ask_amount() {
     let mut router = custom_mock_app();
-
-    // Setup initial accounts
     let (_, _, creator) = setup_accounts(&mut router).unwrap();
-
-    // Instantiate and configure contracts
-    let (marketplace, collection) = setup_contracts(&mut router, &creator).unwrap();
-
-    // Add funds to creator for listing fees
-    add_funds_for_incremental_fee(&mut router, &creator, LISTING_FEE, 1u128).unwrap();
+    add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let collection_params_1 = mock_collection_params_1(Some(start_time));
+    let collection_params_2 = mock_collection_two(Some(start_time));
+    let setup_params = SetupContractsParams {
+        minter_admin: creator.clone(),
+        collection_params_vec: vec![collection_params_1, collection_params_2],
+        num_tokens: 1,
+        router: &mut router,
+    };
+    let (marketplace, minter_collections) =
+        setup_marketplace_and_collections(setup_params).unwrap();
+    let minter = minter_collections[0].minter.clone();
+    let collection = minter_collections[0].collection.clone();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.seconds());
+    let token_id = 1;
 
     // Mint NFT for creator
-    mint(&mut router, &creator, &collection, TOKEN_ID);
-    approve(&mut router, &creator, &collection, &marketplace, TOKEN_ID);
+    mint(&mut router, &creator, &minter);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100_000_000_000_001u128, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -4402,11 +4259,11 @@ fn max_set_ask_amount() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(1, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -4424,11 +4281,11 @@ fn max_set_ask_amount() {
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id: TOKEN_ID,
+        token_id,
         price: coin(100_000_000_000_000u128, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(

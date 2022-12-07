@@ -2,12 +2,11 @@ use crate::{
     helpers::ExpiryRange,
     state::{Ask, Bid, CollectionBid, SaleType, SudoParams, TokenId},
 };
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128};
 use cw_utils::Duration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct InstantiateMsg {
     /// Fair Burn fee for winning bids
     /// 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
@@ -35,8 +34,7 @@ pub struct InstantiateMsg {
     pub listing_fee: Uint128,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum ExecuteMsg {
     /// List an NFT on the marketplace by creating a new ask
     SetAsk {
@@ -116,8 +114,7 @@ pub enum ExecuteMsg {
     RemoveStaleCollectionBid { collection: String, bidder: String },
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum SudoMsg {
     /// Update the contract parameters
     /// Can only be called by governance
@@ -155,7 +152,7 @@ pub type Bidder = String;
 pub type Seller = String;
 
 /// Offset for ask pagination
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct AskOffset {
     pub price: Uint128,
     pub token_id: TokenId,
@@ -168,7 +165,7 @@ impl AskOffset {
 }
 
 /// Offset for bid pagination
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct BidOffset {
     pub price: Uint128,
     pub token_id: TokenId,
@@ -185,7 +182,7 @@ impl BidOffset {
     }
 }
 /// Offset for collection pagination
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct CollectionOffset {
     pub collection: String,
     pub token_id: TokenId,
@@ -201,7 +198,7 @@ impl CollectionOffset {
 }
 
 /// Offset for collection bid pagination
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct CollectionBidOffset {
     pub price: Uint128,
     pub collection: Collection,
@@ -218,8 +215,7 @@ impl CollectionBidOffset {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum QueryMsg {
     /// List of collections that have asks on them
     /// Return type: `CollectionsResponse`
@@ -367,53 +363,52 @@ pub enum QueryMsg {
     Params {},
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct AskResponse {
     pub ask: Option<Ask>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct AsksResponse {
     pub asks: Vec<Ask>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct AskCountResponse {
     pub count: u32,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct CollectionsResponse {
     pub collections: Vec<Addr>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct BidResponse {
     pub bid: Option<Bid>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct BidsResponse {
     pub bids: Vec<Bid>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct ParamsResponse {
     pub params: SudoParams,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct CollectionBidResponse {
     pub bid: Option<CollectionBid>,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct CollectionBidsResponse {
     pub bids: Vec<CollectionBid>,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct SaleHookMsg {
     pub collection: String,
     pub token_id: u32,
@@ -447,22 +442,19 @@ impl SaleHookMsg {
 }
 
 // This is just a helper to properly serialize the above message
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum SaleExecuteMsg {
     SaleHook(SaleHookMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum HookAction {
     Create,
     Update,
     Delete,
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct AskHookMsg {
     pub ask: Ask,
 }
@@ -484,16 +476,14 @@ impl AskHookMsg {
 }
 
 // This is just a helper to properly serialize the above message
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum AskHookExecuteMsg {
     AskCreatedHook(AskHookMsg),
     AskUpdatedHook(AskHookMsg),
     AskDeletedHook(AskHookMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct BidHookMsg {
     pub bid: Bid,
 }
@@ -515,16 +505,14 @@ impl BidHookMsg {
 }
 
 // This is just a helper to properly serialize the above message
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum BidExecuteMsg {
     BidCreatedHook(BidHookMsg),
     BidUpdatedHook(BidHookMsg),
     BidDeletedHook(BidHookMsg),
 }
 
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub struct CollectionBidHookMsg {
     pub collection_bid: CollectionBid,
 }
@@ -546,8 +534,7 @@ impl CollectionBidHookMsg {
 }
 
 // This is just a helper to properly serialize the above message
-#[derive(Serialize, Deserialize, Clone, PartialEq, JsonSchema, Debug)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum CollectionBidExecuteMsg {
     CollectionBidCreatedHook(CollectionBidHookMsg),
     CollectionBidUpdatedHook(CollectionBidHookMsg),

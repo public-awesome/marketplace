@@ -24,6 +24,7 @@ use sg1::fair_burn;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::cmp::Ordering;
+use std::marker::PhantomData;
 
 // Version info for migration info
 const CONTRACT_NAME: &str = "crates.io:sg-marketplace";
@@ -278,7 +279,7 @@ pub fn execute_set_ask(
     only_tradable(deps.as_ref(), &env.block, &collection)?;
 
     // Check if this contract is approved to transfer the token
-    Cw721Contract(collection.clone()).approval(
+    Cw721Contract::<Empty, Empty>(collection.clone(), PhantomData, PhantomData).approval(
         &deps.querier,
         token_id.to_string(),
         env.contract.address.to_string(),
@@ -836,7 +837,7 @@ pub fn execute_sync_ask(
     // An approval will be removed when
     // 1 - There is a transfer
     // 2 - The approval expired (approvals can have different expiration times)
-    let res = Cw721Contract(collection.clone()).approval(
+    let res = Cw721Contract::<Empty, Empty>(collection.clone(), PhantomData, PhantomData).approval(
         &deps.querier,
         token_id.to_string(),
         env.contract.address.to_string(),
@@ -873,8 +874,11 @@ pub fn execute_remove_stale_ask(
     let key = ask_key(&collection, token_id);
     let ask = asks().load(deps.storage, key.clone())?;
 
-    let res =
-        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false);
+    let res = Cw721Contract::<Empty, Empty>(collection.clone(), PhantomData, PhantomData).owner_of(
+        &deps.querier,
+        token_id.to_string(),
+        false,
+    );
     let has_owner = res.is_ok();
     let expired = ask.is_expired(&env.block);
     let mut has_approval = false;
@@ -882,11 +886,10 @@ pub fn execute_remove_stale_ask(
     // A CW721 approval will be removed when
     // 1 - There is a transfer or burn
     // 2 - The approval expired (CW721 approvals can have different expiration times)
-    let res = Cw721Contract(collection.clone()).approval(
+    let res = Cw721Contract::<Empty, Empty>(collection.clone(), PhantomData, PhantomData).owner_of(
         &deps.querier,
         token_id.to_string(),
-        env.contract.address.to_string(),
-        None,
+        false,
     );
 
     if res.is_ok() {
@@ -1174,8 +1177,8 @@ fn only_owner(
     collection: &Addr,
     token_id: u32,
 ) -> Result<OwnerOfResponse, ContractError> {
-    let res =
-        Cw721Contract(collection.clone()).owner_of(&deps.querier, token_id.to_string(), false)?;
+    let res = Cw721Contract::<Empty, Empty>(collection.clone(), PhantomData, PhantomData)
+        .owner_of(&deps.querier, token_id.to_string(), false)?;
     if res.owner != info.sender {
         return Err(ContractError::UnauthorizedOwner {});
     }

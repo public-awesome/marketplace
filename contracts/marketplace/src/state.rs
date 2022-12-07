@@ -1,14 +1,13 @@
+use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, BlockInfo, Decimal, Timestamp, Uint128};
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
 use cw_utils::Duration;
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use sg_controllers::Hooks;
 use std::fmt;
 
 use crate::helpers::ExpiryRange;
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct SudoParams {
     /// Fair Burn fee for winning bids
     pub trading_fee_percent: Decimal,
@@ -50,8 +49,7 @@ pub trait Order {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
-#[serde(rename_all = "snake_case")]
+#[cw_serde]
 pub enum SaleType {
     FixedPrice,
     Auction,
@@ -67,7 +65,7 @@ impl fmt::Display for SaleType {
 }
 
 /// Represents an ask on the marketplace
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Ask {
     pub sale_type: SaleType,
     pub collection: Addr,
@@ -110,19 +108,27 @@ impl<'a> IndexList<Ask> for AskIndicies<'a> {
 
 pub fn asks<'a>() -> IndexedMap<'a, AskKey, Ask, AskIndicies<'a>> {
     let indexes = AskIndicies {
-        collection: MultiIndex::new(|d: &Ask| d.collection.clone(), "asks", "asks__collection"),
+        collection: MultiIndex::new(
+            |_pk: &[u8], d: &Ask| d.collection.clone(),
+            "asks",
+            "asks__collection",
+        ),
         collection_price: MultiIndex::new(
-            |d: &Ask| (d.collection.clone(), d.price.u128()),
+            |_pk: &[u8], d: &Ask| (d.collection.clone(), d.price.u128()),
             "asks",
             "asks__collection_price",
         ),
-        seller: MultiIndex::new(|d: &Ask| d.seller.clone(), "asks", "asks__seller"),
+        seller: MultiIndex::new(
+            |_pk: &[u8], d: &Ask| d.seller.clone(),
+            "asks",
+            "asks__seller",
+        ),
     };
     IndexedMap::new("asks", indexes)
 }
 
 /// Represents a bid (offer) on the marketplace
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct Bid {
     pub collection: Addr,
     pub token_id: TokenId,
@@ -190,20 +196,28 @@ impl<'a> IndexList<Bid> for BidIndicies<'a> {
 
 pub fn bids<'a>() -> IndexedMap<'a, BidKey, Bid, BidIndicies<'a>> {
     let indexes = BidIndicies {
-        collection: MultiIndex::new(|d: &Bid| d.collection.clone(), "bids", "bids__collection"),
+        collection: MultiIndex::new(
+            |_pk: &[u8], d: &Bid| d.collection.clone(),
+            "bids",
+            "bids__collection",
+        ),
         collection_token_id: MultiIndex::new(
-            |d: &Bid| (d.collection.clone(), d.token_id),
+            |_pk: &[u8], d: &Bid| (d.collection.clone(), d.token_id),
             "bids",
             "bids__collection_token_id",
         ),
         collection_price: MultiIndex::new(
-            |d: &Bid| (d.collection.clone(), d.price.u128()),
+            |_pk: &[u8], d: &Bid| (d.collection.clone(), d.price.u128()),
             "bids",
             "bids__collection_price",
         ),
-        bidder: MultiIndex::new(|d: &Bid| d.bidder.clone(), "bids", "bids__bidder"),
+        bidder: MultiIndex::new(
+            |_pk: &[u8], d: &Bid| d.bidder.clone(),
+            "bids",
+            "bids__bidder",
+        ),
         bidder_expires_at: MultiIndex::new(
-            |d: &Bid| (d.bidder.clone(), d.expires_at.seconds()),
+            |_pk: &[u8], d: &Bid| (d.bidder.clone(), d.expires_at.seconds()),
             "bids",
             "bids__bidder_expires_at",
         ),
@@ -212,7 +226,7 @@ pub fn bids<'a>() -> IndexedMap<'a, BidKey, Bid, BidIndicies<'a>> {
 }
 
 /// Represents a bid (offer) across an entire collection in the marketplace
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+#[cw_serde]
 pub struct CollectionBid {
     pub collection: Addr,
     pub bidder: Addr,
@@ -259,22 +273,22 @@ pub fn collection_bids<'a>(
 ) -> IndexedMap<'a, CollectionBidKey, CollectionBid, CollectionBidIndicies<'a>> {
     let indexes = CollectionBidIndicies {
         collection: MultiIndex::new(
-            |d: &CollectionBid| d.collection.clone(),
+            |_pk: &[u8], d: &CollectionBid| d.collection.clone(),
             "col_bids",
             "col_bids__collection",
         ),
         collection_price: MultiIndex::new(
-            |d: &CollectionBid| (d.collection.clone(), d.price.u128()),
+            |_pk: &[u8], d: &CollectionBid| (d.collection.clone(), d.price.u128()),
             "col_bids",
             "col_bids__collection_price",
         ),
         bidder: MultiIndex::new(
-            |d: &CollectionBid| d.bidder.clone(),
+            |_pk: &[u8], d: &CollectionBid| d.bidder.clone(),
             "col_bids",
             "col_bids__bidder",
         ),
         bidder_expires_at: MultiIndex::new(
-            |d: &CollectionBid| (d.bidder.clone(), d.expires_at.seconds()),
+            |_pk: &[u8], d: &CollectionBid| (d.bidder.clone(), d.expires_at.seconds()),
             "col_bids",
             "col_bids__bidder_expires_at",
         ),

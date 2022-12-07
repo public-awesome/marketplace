@@ -1,4 +1,3 @@
-#[cfg(test)]
 use std::vec;
 
 use crate::error::ContractError;
@@ -8,6 +7,9 @@ use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::query::{query_ask_count, query_asks_by_seller, query_bids_by_bidder};
 use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SaleType};
 
+use crate::testing::setup::constants::{
+    BID_REMOVAL_REWARD_BPS, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY, TRADING_FEE_BASIS_POINTS,
+};
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{coin, coins, Addr, DepsMut, Timestamp, Uint128};
 use cw_utils::Duration;
@@ -16,13 +18,6 @@ use sg_std::NATIVE_DENOM;
 const CREATOR: &str = "creator";
 const COLLECTION: &str = "collection";
 const TOKEN_ID: u32 = 123;
-
-// Governance parameters
-const TRADING_FEE_BASIS_POINTS: u64 = 200; // 2%
-const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
-const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
-const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
-const BID_REMOVAL_REWARD_BPS: u64 = 500; // 5%
 
 #[test]
 fn ask_indexed_map() {
