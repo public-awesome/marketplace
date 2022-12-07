@@ -25,7 +25,7 @@ pub fn add_funds_for_incremental_fee(
     Ok(())
 }
 
-pub fn get_creator_balance_after_fairburn_mint_fee() -> Uint128 {
+pub fn calculated_creator_balance_after_fairburn() -> Uint128 {
     let fair_burn_percent = Decimal::percent(MINT_FEE_FAIR_BURN / 100);
     let mint_price = Uint128::from(MINT_PRICE);
     Uint128::from(INITIAL_BALANCE) - (mint_price * fair_burn_percent)

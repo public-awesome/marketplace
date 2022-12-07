@@ -9,16 +9,16 @@ use crate::msg::{
     BidsResponse, CollectionBidResponse, CollectionBidsResponse, ExecuteMsg, QueryMsg,
 };
 use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
-use crate::testing::helpers::accounts::setup_second_bidder_account;
 use crate::testing::helpers::funds::{
-    add_funds_for_incremental_fee, get_creator_balance_after_fairburn_mint_fee,
+    add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn,
 };
-use crate::testing::helpers::msg::SetupContractsParams;
 use crate::testing::helpers::nft_functions::{approve, burn, mint, mint_for, transfer};
 use crate::testing::setup::constants::{
     BID_REMOVAL_REWARD_BPS, CREATION_FEE, INITIAL_BALANCE, LISTING_FEE, MAX_EXPIRY,
     MAX_FINDERS_FEE_BPS, MINT_FEE_FAIR_BURN, MINT_PRICE, MIN_EXPIRY, TRADING_FEE_BPS,
 };
+use crate::testing::setup::msg::SetupContractsParams;
+use crate::testing::setup::setup_accounts::setup_second_bidder_account;
 use crate::testing::setup::setup_accounts_and_block::{setup_accounts, setup_block_time};
 use crate::testing::setup::setup_contracts::custom_mock_app;
 use crate::testing::setup::setup_marketplace::{
@@ -197,7 +197,7 @@ fn try_set_accept_fixed_price_bid() {
     // // // Check creator hasn't been paid yet
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
 
-    let final_balance = get_creator_balance_after_fairburn_mint_fee();
+    let final_balance = calculated_creator_balance_after_fairburn();
     assert_eq!(
         creator_native_balances,
         coins(final_balance.u128(), NATIVE_DENOM)
@@ -289,7 +289,7 @@ fn try_set_accept_bid_no_ask() {
     assert_eq!(contract_balances, coins(100, NATIVE_DENOM));
 
     // Check creator hasn't been paid yet
-    let final_balance = get_creator_balance_after_fairburn_mint_fee();
+    let final_balance = calculated_creator_balance_after_fairburn();
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
     assert_eq!(
         creator_native_balances,
@@ -1502,7 +1502,7 @@ fn auto_accept_bid() {
     // Bid is accepted, sale has been finalized
     assert_eq!(res.events[3].ty, "wasm-finalize-sale");
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
-    let creator_balance_minus_fee = get_creator_balance_after_fairburn_mint_fee();
+    let creator_balance_minus_fee = calculated_creator_balance_after_fairburn();
     // Check money is transferred
     assert_eq!(
         creator_native_balances,
@@ -1685,7 +1685,7 @@ fn try_ask_with_finders_fee() {
 
     // Check money is transferred
     let creator_balances = router.wrap().query_all_balances(creator).unwrap();
-    let creator_balance_minus_fee = get_creator_balance_after_fairburn_mint_fee();
+    let creator_balance_minus_fee = calculated_creator_balance_after_fairburn();
     assert_eq!(
         creator_balances,
         coins(creator_balance_minus_fee.u128() + 100 - 2 - 5, NATIVE_DENOM)
@@ -1987,7 +1987,7 @@ fn try_royalties() {
 
     let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
     // 100 - 10 (royalties) - 2 (fee)
-    let creator_balance_after_fee = get_creator_balance_after_fairburn_mint_fee();
+    let creator_balance_after_fee = calculated_creator_balance_after_fairburn();
     assert_eq!(
         creator_native_balances,
         coins(
@@ -3614,7 +3614,7 @@ fn try_bid_sale_type() {
     assert!(res.is_ok());
 
     // Check creator has been paid
-    let creator_balance_minus_fee = get_creator_balance_after_fairburn_mint_fee();
+    let creator_balance_minus_fee = calculated_creator_balance_after_fairburn();
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
     assert_eq!(
         creator_native_balances,

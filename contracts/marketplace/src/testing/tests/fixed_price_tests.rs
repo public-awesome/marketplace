@@ -1,11 +1,11 @@
 use crate::msg::{AskResponse, BidResponse, ExecuteMsg, QueryMsg};
 use crate::state::SaleType;
-use crate::testing::helpers::accounts::setup_second_bidder_account;
-use crate::testing::helpers::funds::get_creator_balance_after_fairburn_mint_fee;
-use crate::testing::helpers::msg::SetupContractsParams;
+use crate::testing::helpers::funds::calculated_creator_balance_after_fairburn;
 use crate::testing::helpers::nft_functions::{approve, mint};
 use crate::testing::setup::constants::{LISTING_FEE, MIN_EXPIRY};
 use crate::testing::setup::mock_collection_params::mock_collection_params_1;
+use crate::testing::setup::msg::SetupContractsParams;
+use crate::testing::setup::setup_accounts::setup_second_bidder_account;
 use crate::testing::setup::setup_accounts_and_block::{setup_accounts, setup_block_time};
 use crate::testing::setup::setup_contracts::custom_mock_app;
 use crate::testing::setup::setup_marketplace::setup_marketplace_and_collections;
@@ -160,7 +160,7 @@ fn try_set_bid_fixed_price() {
 
     // Check creator has been paid
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
-    let creator_balance_after_fee = get_creator_balance_after_fairburn_mint_fee();
+    let creator_balance_after_fee = calculated_creator_balance_after_fairburn();
     assert_eq!(
         creator_native_balances,
         coins(creator_balance_after_fee.u128() + 150 - 3, NATIVE_DENOM)

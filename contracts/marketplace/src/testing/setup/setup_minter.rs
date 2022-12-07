@@ -1,9 +1,9 @@
-use crate::testing::helpers::msg::MinterCollectionResponse;
-use crate::testing::helpers::msg::MinterSetupParams;
 use crate::testing::setup::constants::{
     AIRDROP_MINT_FEE_FAIR_BURN, AIRDROP_MINT_PRICE, CREATION_FEE, MAX_PER_ADDRESS_LIMIT,
     MAX_TOKEN_LIMIT, MINT_FEE_FAIR_BURN, MINT_PRICE, MIN_MINT_PRICE, SHUFFLE_FEE,
 };
+use crate::testing::setup::msg::MinterCollectionResponse;
+use crate::testing::setup::msg::MinterSetupParams;
 use crate::testing::setup::setup_contracts::{contract_factory, contract_minter, contract_sg721};
 use cosmwasm_std::{coin, coins, Addr, Timestamp};
 use cw_multi_test::{AppResponse, Executor};
