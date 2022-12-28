@@ -63,7 +63,7 @@ vending-minter = { version = "0.21.8"}
 cw-multi-test = { version = "0.16.0" }
 sg-multi-test = "0.21.8"
 base-minter = "0.21.8"
-test-suite = { git = "https://github.com/public-awesome/launchpad.git", rev = "95d04ccfe36f003c1c44047390f433c5f822a4b0" }
+test-suite = { git = "https://github.com/public-awesome/launchpad.git", rev = "95d04ccfe36f003c1c44047390f433c5f822a4b0", edition = "2018" }
 
 [profile.release]
 rpath = false
