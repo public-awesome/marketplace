@@ -65,6 +65,7 @@ sg-multi-test = "0.21.8"
 base-minter = "0.21.8"
 test-suite = { git = "https://github.com/public-awesome/launchpad.git", branch = "humanalgorithm/add-export-test-suite", features = ["library"] }
 
+
 [profile.release]
 rpath = false
 lto = true
