@@ -1,6 +1,6 @@
 use crate::testing::setup::msg::MarketAccounts;
 use crate::testing::setup::setup_accounts::setup_accounts;
-use cosmwasm_std::{Addr, Timestamp};
+use cosmwasm_std::Timestamp;
 use sg2::tests::{
     mock_collection_params_1, mock_collection_params_high_fee, mock_collection_two,
     mock_curator_payment_address,
@@ -14,9 +14,6 @@ use test_suite::common_setup::{
         vending_minter::setup::{configure_minter, vending_minter_code_ids},
     },
 };
-
-use crate::testing::setup::msg::MarketplaceTemplateResponse;
-use crate::testing::setup::setup_marketplace::setup_marketplace;
 
 pub fn standard_minter_template(num_tokens: u32) -> VendingTemplateResponse<MarketAccounts> {
     let mut app = custom_mock_app();

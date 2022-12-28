@@ -1,5 +1,5 @@
 use crate::testing::setup::constants::INITIAL_BALANCE;
-use cosmwasm_std::{coins, Addr, Coin, Timestamp};
+use cosmwasm_std::{coins, Addr, Coin};
 use cw_multi_test::{BankSudo, SudoMsg};
 use sg721_base::ContractError;
 use sg_multi_test::StargazeApp;

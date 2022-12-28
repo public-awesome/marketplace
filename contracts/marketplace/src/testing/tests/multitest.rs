@@ -20,12 +20,6 @@ use crate::testing::setup::constants::{
 use crate::testing::setup::setup_marketplace::{
     setup_marketplace, setup_marketplace_and_collections_with_params,
 };
-// use crate::testing::setup::msg::SetupContractsParams;
-// use crate::testing::setup::setup_accounts::{setup_accounts, setup_block_time};
-// use crate::testing::setup::setup_contracts::custom_mock_app;
-// use crate::testing::setup::setup_marketplace::{
-//     setup_marketplace_and_collections, setup_marketplace_and_collections_with_params,
-// };
 use crate::testing::setup::setup_second_bidder_account::setup_second_bidder_account;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};
@@ -38,7 +32,6 @@ use sg_std::GENESIS_MINT_START_TIME;
 use cosmwasm_std::{coin, coins, Coin, Decimal, Uint128};
 use cw_utils::{Duration, Expiration};
 use sg721::ExecuteMsg as Sg721ExecuteMsg;
-use std::char::MAX;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
@@ -46,10 +39,6 @@ use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 use crate::testing::setup::templates::{
     minter_template_high_fee, minter_template_owner_admin, minter_two_collections,
     minter_two_collections_with_time, minter_with_curator, standard_minter_template,
-};
-use sg2::tests::{
-    mock_collection_params_1, mock_collection_params_high_fee, mock_collection_two,
-    mock_curator_payment_address,
 };
 use sg_std::NATIVE_DENOM;
 
@@ -394,17 +383,10 @@ fn try_set_accept_bid_high_fees() {
     );
 }
 
-pub fn setup_block_time_2(router: &mut StargazeApp, seconds: u64) {
-    let mut block = router.block_info();
-    block.time = Timestamp::from_seconds(seconds);
-    router.set_block(block);
-}
-
 #[test]
 fn try_update_ask() {
     let vt = standard_minter_template(1);
-    let (mut router, owner, creator, bidder) =
-        (vt.router, vt.accts.owner, vt.accts.creator, vt.accts.bidder);
+    let (mut router, creator) = (vt.router, vt.accts.creator);
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
@@ -471,7 +453,7 @@ fn try_update_ask() {
         token_id,
         price: coin(150, NATIVE_DENOM),
     };
-    let res = router
+    router
         .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
         .unwrap_err();
     // reset time to original
@@ -981,7 +963,7 @@ fn try_query_sorted_bids() {
     let vt = standard_minter_template(3);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -1226,7 +1208,7 @@ fn try_query_bids() {
     let vt = standard_minter_template(3);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -1363,7 +1345,7 @@ fn auto_accept_bid() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -1570,7 +1552,7 @@ fn try_ask_with_finders_fee() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -1640,7 +1622,7 @@ fn remove_bid_refund() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -1719,7 +1701,7 @@ fn new_bid_refund() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -1837,7 +1819,7 @@ fn try_royalties() {
     let vt = minter_with_curator(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -1932,7 +1914,7 @@ fn try_royalties() {
 fn try_sudo_update_params() {
     let vt = standard_minter_template(1);
     let (mut router, owner) = (vt.router, vt.accts.owner);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     let update_params_msg = SudoMsg::UpdateParams {
@@ -2012,7 +1994,7 @@ fn try_sudo_update_params() {
 fn try_add_remove_sales_hooks() {
     let vt = standard_minter_template(1);
     let (mut router, owner) = (vt.router, vt.accts.owner);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     let add_hook_msg = SudoMsg::AddSaleHook {
@@ -2045,7 +2027,7 @@ fn try_add_remove_sales_hooks() {
 fn try_add_too_many_sales_hooks() {
     let vt = standard_minter_template(1);
     let (mut router, owner) = (vt.router, vt.accts.owner);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook2".to_string(),
@@ -2088,7 +2070,7 @@ fn try_add_too_many_sales_hooks() {
 fn try_add_remove_bid_hooks() {
     let vt = standard_minter_template(1);
     let (mut router, owner) = (vt.router, vt.accts.owner);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     let add_bid_hook_msg = SudoMsg::AddBidHook {
@@ -2163,7 +2145,7 @@ fn try_hook_was_run() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -2262,7 +2244,7 @@ fn try_hook_was_run() {
 fn try_add_remove_listed_hooks() {
     let vt = standard_minter_template(1);
     let (mut router, owner) = (vt.router, vt.accts.owner);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let add_hook_msg = SudoMsg::AddAskHook {
         hook: "hook".to_string(),
@@ -2295,7 +2277,7 @@ fn try_collection_bids() {
     let vt = minter_two_collections(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -2506,7 +2488,7 @@ fn try_remove_stale_bid() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
@@ -2561,7 +2543,7 @@ fn try_remove_stale_collection_bid() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
@@ -2616,7 +2598,7 @@ fn try_bid_finders_fee() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
@@ -2687,7 +2669,7 @@ fn try_bidder_cannot_be_finder() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
@@ -2961,7 +2943,7 @@ fn try_sync_ask() {
     };
     let res: AsksResponse = router
         .wrap()
-        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .query_wasm_smart(marketplace, &ask_msg)
         .unwrap();
     assert_eq!(res.asks.len(), 0);
 }
@@ -2971,7 +2953,7 @@ fn try_set_ask_reserve_for() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
@@ -3248,7 +3230,7 @@ fn try_remove_stale_ask() {
 fn try_add_and_remove_operators() {
     let vt = standard_minter_template(1);
     let (mut router, owner) = (vt.router, vt.accts.owner);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     setup_block_time(&mut router, start_time.nanos(), None);
 
@@ -3346,7 +3328,7 @@ fn try_bid_sale_type() {
     let vt = standard_minter_template(1);
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
@@ -3538,7 +3520,7 @@ fn try_start_trading_time() {
     let vt = minter_two_collections_with_time(2, start_time, start_time.plus_seconds(1));
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
-    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
@@ -3882,178 +3864,157 @@ fn try_start_trading_time() {
     assert_eq!(res.owner, bidder.to_string());
 }
 
-// mod query {
-//     use super::*;
+mod query {
+    use super::*;
 
-//     #[test]
-//     fn collections() {
-//         let mut router = custom_mock_app();
-//         let (_, _, creator) = setup_accounts(&mut router).unwrap();
-//         add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
-//         let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-//         let collection_params_1 = mock_collection_params_1(Some(start_time));
-//         let collection_params_2 = mock_collection_two(Some(start_time));
-//         let setup_params = SetupContractsParams {
-//             minter_admin: creator.clone(),
-//             collection_params_vec: vec![collection_params_1, collection_params_2],
-//             num_tokens: 1,
-//             router: &mut router,
-//         };
-//         let (marketplace, minter_collections) =
-//             setup_marketplace_and_collections(setup_params).unwrap();
-//         let minter1 = minter_collections[0].minter.clone();
-//         let collection1 = minter_collections[0].collection.clone();
+    #[test]
+    fn collections() {
+        let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+        let vt = minter_two_collections(1);
+        let (mut router, owner, creator) = (vt.router, vt.accts.owner, vt.accts.creator);
+        add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
+        let marketplace = setup_marketplace(&mut router, owner).unwrap();
+        let minter1 = vt.collection_response_vec[0].minter.clone().unwrap();
+        let collection1 = vt.collection_response_vec[0].collection.clone().unwrap();
 
-//         let minter2 = minter_collections[1].minter.clone();
-//         let collection2 = minter_collections[1].collection.clone();
+        let minter2 = vt.collection_response_vec[1].minter.clone().unwrap();
+        let collection2 = vt.collection_response_vec[1].collection.clone().unwrap();
+        setup_block_time(&mut router, start_time.nanos(), None);
 
-//         let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-//         setup_block_time(&mut router, start_time.seconds());
-//         let token_id = 1;
-//         // place two asks
-//         mint(&mut router, &creator, &minter1);
-//         mint(&mut router, &creator, &minter2);
-//         approve(&mut router, &creator, &collection1, &marketplace, token_id);
-//         approve(&mut router, &creator, &collection2, &marketplace, token_id);
+        let token_id = 1;
+        // place two asks
+        mint(&mut router, &creator, &minter1);
+        mint(&mut router, &creator, &minter2);
+        approve(&mut router, &creator, &collection1, &marketplace, token_id);
+        approve(&mut router, &creator, &collection2, &marketplace, token_id);
 
-//         let set_ask = ExecuteMsg::SetAsk {
-//             sale_type: SaleType::FixedPrice,
-//             collection: collection1.to_string(),
-//             token_id,
-//             price: coin(110, NATIVE_DENOM),
-//             funds_recipient: None,
-//             reserve_for: None,
-//             expires: start_time.plus_seconds(MIN_EXPIRY + 1),
-//             finders_fee_bps: Some(0),
-//         };
-//         let res = router.execute_contract(
-//             creator.clone(),
-//             marketplace.clone(),
-//             &set_ask,
-//             &listing_funds(LISTING_FEE).unwrap(),
-//         );
-//         assert!(res.is_ok());
+        let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
+            collection: collection1.to_string(),
+            token_id,
+            price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
+            reserve_for: None,
+            expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_bps: Some(0),
+        };
+        let res = router.execute_contract(
+            creator.clone(),
+            marketplace.clone(),
+            &set_ask,
+            &listing_funds(LISTING_FEE).unwrap(),
+        );
+        assert!(res.is_ok());
 
-//         let set_ask = ExecuteMsg::SetAsk {
-//             sale_type: SaleType::FixedPrice,
-//             collection: collection2.to_string(),
-//             token_id,
-//             price: coin(110, NATIVE_DENOM),
-//             funds_recipient: None,
-//             reserve_for: None,
-//             expires: start_time.plus_seconds(MIN_EXPIRY + 1),
-//             finders_fee_bps: Some(0),
-//         };
-//         let res = router.execute_contract(
-//             creator.clone(),
-//             marketplace.clone(),
-//             &set_ask,
-//             &listing_funds(LISTING_FEE).unwrap(),
-//         );
-//         assert!(res.is_ok());
+        let set_ask = ExecuteMsg::SetAsk {
+            sale_type: SaleType::FixedPrice,
+            collection: collection2.to_string(),
+            token_id,
+            price: coin(110, NATIVE_DENOM),
+            funds_recipient: None,
+            reserve_for: None,
+            expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+            finders_fee_bps: Some(0),
+        };
+        let res = router.execute_contract(
+            creator.clone(),
+            marketplace.clone(),
+            &set_ask,
+            &listing_funds(LISTING_FEE).unwrap(),
+        );
+        assert!(res.is_ok());
 
-//         // check collections query
-//         let res: CollectionsResponse = router
-//             .wrap()
-//             .query_wasm_smart(
-//                 marketplace,
-//                 &QueryMsg::Collections {
-//                     start_after: None,
-//                     limit: None,
-//                 },
-//             )
-//             .unwrap();
-//         assert_eq!(res.collections[0], collection1);
-//         assert_eq!(res.collections[1], collection2);
-//     }
-// }
+        // check collections query
+        let res: CollectionsResponse = router
+            .wrap()
+            .query_wasm_smart(
+                marketplace,
+                &QueryMsg::Collections {
+                    start_after: None,
+                    limit: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(res.collections[0], collection1);
+        assert_eq!(res.collections[1], collection2);
+    }
+}
 
-// #[test]
-// fn max_set_ask_amount() {
-//     let mut router = custom_mock_app();
-//     let (_, _, creator) = setup_accounts(&mut router).unwrap();
-//     add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
-//     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-//     let collection_params_1 = mock_collection_params_1(Some(start_time));
-//     let collection_params_2 = mock_collection_two(Some(start_time));
-//     let setup_params = SetupContractsParams {
-//         minter_admin: creator.clone(),
-//         collection_params_vec: vec![collection_params_1, collection_params_2],
-//         num_tokens: 1,
-//         router: &mut router,
-//     };
-//     let (marketplace, minter_collections) =
-//         setup_marketplace_and_collections(setup_params).unwrap();
-//     let minter = minter_collections[0].minter.clone();
-//     let collection = minter_collections[0].collection.clone();
-//     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-//     setup_block_time(&mut router, start_time.seconds());
-//     let token_id = 1;
+#[test]
+fn max_set_ask_amount() {
+    let vt = standard_minter_template(1);
+    let (mut router, owner, creator) = (vt.router, vt.accts.owner, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.nanos(), None);
+    let token_id = 1;
 
-//     // Mint NFT for creator
-//     mint(&mut router, &creator, &minter);
-//     approve(&mut router, &creator, &collection, &marketplace, token_id);
+    // Mint NFT for creator
+    mint(&mut router, &creator, &minter);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
 
-//     // An asking price is made by the creator
-//     let set_ask = ExecuteMsg::SetAsk {
-//         sale_type: SaleType::FixedPrice,
-//         collection: collection.to_string(),
-//         token_id,
-//         price: coin(100_000_000_000_001u128, NATIVE_DENOM),
-//         funds_recipient: None,
-//         reserve_for: None,
-//         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
-//         finders_fee_bps: Some(0),
-//     };
-//     let res = router.execute_contract(
-//         creator.clone(),
-//         marketplace.clone(),
-//         &set_ask,
-//         &listing_funds(LISTING_FEE).unwrap(),
-//     );
-//     assert_eq!(
-//         res.unwrap_err().source().unwrap().to_string(),
-//         "PriceTooHigh: 100000000000001".to_string()
-//     );
+    // An asking price is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(100_000_000_000_001u128, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        "PriceTooHigh: 100000000000001".to_string()
+    );
 
-//     // An asking price is made by the creator
-//     let set_ask = ExecuteMsg::SetAsk {
-//         sale_type: SaleType::FixedPrice,
-//         collection: collection.to_string(),
-//         token_id,
-//         price: coin(1, NATIVE_DENOM),
-//         funds_recipient: None,
-//         reserve_for: None,
-//         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
-//         finders_fee_bps: Some(0),
-//     };
-//     let res = router.execute_contract(
-//         creator.clone(),
-//         marketplace.clone(),
-//         &set_ask,
-//         &listing_funds(LISTING_FEE).unwrap(),
-//     );
-//     assert_eq!(
-//         res.unwrap_err().source().unwrap().to_string(),
-//         "PriceTooSmall: 1".to_string()
-//     );
+    // An asking price is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(1, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        "PriceTooSmall: 1".to_string()
+    );
 
-//     // An asking price is made by the creator at the limit of 100M
-//     let set_ask = ExecuteMsg::SetAsk {
-//         sale_type: SaleType::FixedPrice,
-//         collection: collection.to_string(),
-//         token_id,
-//         price: coin(100_000_000_000_000u128, NATIVE_DENOM),
-//         funds_recipient: None,
-//         reserve_for: None,
-//         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
-//         finders_fee_bps: Some(0),
-//     };
-//     let res = router.execute_contract(
-//         creator.clone(),
-//         marketplace.clone(),
-//         &set_ask,
-//         &listing_funds(LISTING_FEE).unwrap(),
-//     );
-//     assert!(res.is_ok());
-// }
+    // An asking price is made by the creator at the limit of 100M
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(100_000_000_000_000u128, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+}
