@@ -26,9 +26,9 @@ jobs:
       - run:
           name: Version information
           command: rustc --version; cargo --version; rustup --version
-      - restore_cache:
-          keys:
-            - cargocache-marketplace-rust:1.59.0-{{ checksum "~/project/Cargo.lock" }}
+      # - restore_cache:
+      #     keys:
+      #       - cargocache-marketplace-rust:1.59.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Unit Tests
           environment:
@@ -46,10 +46,10 @@ jobs:
               git status && git --no-pager diff
               exit 1
             fi
-      - save_cache:
-          paths:
-            - /usr/local/cargo/registry
-            - target
+      # - save_cache:
+      #     paths:
+      #       - /usr/local/cargo/registry
+      #       - target
           key: cargocache-marketplace-rust:1.59.0-{{ checksum "~/project/Cargo.lock" }}
 
   lint:

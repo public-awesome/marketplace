@@ -17,10 +17,10 @@ use crate::testing::setup::constants::{
     BID_REMOVAL_REWARD_BPS, CREATION_FEE, INITIAL_BALANCE, LISTING_FEE, MAX_EXPIRY,
     MAX_FINDERS_FEE_BPS, MINT_FEE_FAIR_BURN, MINT_PRICE, MIN_EXPIRY, TRADING_FEE_BPS,
 };
+use crate::testing::setup::setup_accounts::setup_second_bidder_account;
 use crate::testing::setup::setup_marketplace::{
     setup_marketplace, setup_marketplace_and_collections_with_params,
 };
-use crate::testing::setup::setup_second_bidder_account::setup_second_bidder_account;
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};
 use cw721::{Cw721QueryMsg, OwnerOfResponse, TokensResponse};
