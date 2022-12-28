@@ -42,7 +42,7 @@ dependencies = [
 [[package]]
 name = "base-factory"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -86,9 +86,9 @@ dependencies = [
 [[package]]
 name = "base-minter"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
- "base-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "base-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus",
@@ -103,7 +103,7 @@ dependencies = [
  "sg2",
  "sg4",
  "sg721",
- "sg721-base 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "sg721-base 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "thiserror",
  "url",
 ]
@@ -558,7 +558,7 @@ dependencies = [
 [[package]]
 name = "ethereum-verify"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -984,7 +984,7 @@ dependencies = [
 [[package]]
 name = "sg-eth-airdrop"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -997,12 +997,12 @@ dependencies = [
  "schemars",
  "serde",
  "sg-std",
- "sg-whitelist 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "sg-whitelist 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "sg1",
  "sha2 0.10.6",
  "sha3",
  "thiserror",
- "vending-minter 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "vending-minter 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "whitelist-immutable",
 ]
 
@@ -1055,7 +1055,7 @@ dependencies = [
 [[package]]
 name = "sg-splits"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1105,7 +1105,7 @@ dependencies = [
 [[package]]
 name = "sg-whitelist"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1210,7 +1210,7 @@ dependencies = [
 [[package]]
 name = "sg721-base"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1229,7 +1229,7 @@ dependencies = [
 [[package]]
 name = "sg721-nt"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1241,7 +1241,7 @@ dependencies = [
  "serde",
  "sg-std",
  "sg721",
- "sg721-base 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "sg721-base 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
 ]
 
 [[package]]
@@ -1343,11 +1343,11 @@ dependencies = [
 [[package]]
 name = "test-suite"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "anyhow",
- "base-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
- "base-minter 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "base-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
+ "base-minter 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-multi-test",
@@ -1359,13 +1359,13 @@ dependencies = [
  "sg-multi-test",
  "sg-splits",
  "sg-std",
- "sg-whitelist 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "sg-whitelist 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "sg2",
  "sg721",
- "sg721-base 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "sg721-base 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "sg721-nt",
- "vending-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
- "vending-minter 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "vending-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
+ "vending-minter 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "whitelist-immutable",
 ]
 
@@ -1479,9 +1479,9 @@ dependencies = [
 [[package]]
 name = "vending-factory"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
- "base-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "base-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "cosmwasm-schema",
  "cosmwasm-std",
  "cw-storage-plus",
@@ -1529,7 +1529,7 @@ dependencies = [
 [[package]]
 name = "vending-minter"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1543,7 +1543,7 @@ dependencies = [
  "schemars",
  "serde",
  "sg-std",
- "sg-whitelist 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "sg-whitelist 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
  "sg1",
  "sg2",
  "sg4",
@@ -1552,7 +1552,7 @@ dependencies = [
  "shuffle 0.1.7 (git+https://github.com/webmaster128/shuffle?branch=rm-getrandom)",
  "thiserror",
  "url",
- "vending-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite)",
+ "vending-factory 0.21.8 (git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde)",
 ]
 
 [[package]]
@@ -1576,7 +1576,7 @@ checksum = "fd6fbd9a79829dd1ad0cc20627bf1ed606756a7f77edff7b66b7064f9cb327c6"
 [[package]]
 name = "whitelist-immutable"
 version = "0.21.8"
-source = "git+https://github.com/public-awesome/launchpad.git?branch=humanalgorithm/add-export-test-suite#95d04ccfe36f003c1c44047390f433c5f822a4b0"
+source = "git+https://github.com/public-awesome/launchpad.git?rev=e12df0c083266f322a87158d989f9b0c62f9bcde#e12df0c083266f322a87158d989f9b0c62f9bcde"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
