@@ -1,10 +1,12 @@
-use crate::testing::setup::constants::INITIAL_BALANCE;
-use crate::testing::setup::constants::{MINT_FEE_FAIR_BURN, MINT_PRICE};
+use crate::testing::setup::setup_accounts::INITIAL_BALANCE;
 use cosmwasm_std::{coins, Addr, Decimal, Uint128};
 use cw721_base::ContractError;
 use cw_multi_test::{BankSudo, SudoMsg as CwSudoMsg};
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
+
+use crate::testing::helpers::nft_functions::MINT_PRICE;
+pub const MINT_FEE_FAIR_BURN: u64 = 1_000; // 10%
 
 pub fn add_funds_for_incremental_fee(
     router: &mut StargazeApp,

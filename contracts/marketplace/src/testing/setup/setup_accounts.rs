@@ -1,11 +1,14 @@
 use crate::error::ContractError;
-use crate::testing::setup::constants::INITIAL_BALANCE;
-use crate::testing::setup::constants::{CREATION_FEE, SECOND_BIDDER_INITIAL_BALANCE};
 use cosmwasm_std::{coins, Addr, Coin};
 use cw_multi_test::SudoMsg as CwSudoMsg;
 use cw_multi_test::{BankSudo, SudoMsg};
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
+
+pub const INITIAL_BALANCE: u128 = 5000000000;
+pub const CREATION_FEE: u128 = 5_000_000_000;
+pub const MINT_PRICE: u128 = 100_000_000;
+pub const SECOND_BIDDER_INITIAL_BALANCE: u128 = 2000;
 
 // initializes accounts with balances
 pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), ContractError> {

@@ -10,16 +10,15 @@ use crate::msg::{
 };
 use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
 use crate::testing::helpers::funds::{
-    add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn,
+    add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn, MINT_FEE_FAIR_BURN,
 };
 use crate::testing::helpers::nft_functions::{approve, burn, mint, mint_for, transfer};
-use crate::testing::setup::constants::{
-    BID_REMOVAL_REWARD_BPS, CREATION_FEE, INITIAL_BALANCE, LISTING_FEE, MAX_EXPIRY,
-    MAX_FINDERS_FEE_BPS, MINT_FEE_FAIR_BURN, MINT_PRICE, MIN_EXPIRY, TRADING_FEE_BPS,
+use crate::testing::setup::setup_accounts::{
+    setup_second_bidder_account, CREATION_FEE, INITIAL_BALANCE, MINT_PRICE,
 };
-use crate::testing::setup::setup_accounts::setup_second_bidder_account;
 use crate::testing::setup::setup_marketplace::{
-    setup_marketplace, setup_marketplace_and_collections_with_params,
+    setup_marketplace, setup_marketplace_and_collections_with_params, BID_REMOVAL_REWARD_BPS,
+    LISTING_FEE, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY, TRADING_FEE_BPS,
 };
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};

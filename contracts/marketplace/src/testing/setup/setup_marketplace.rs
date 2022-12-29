@@ -1,8 +1,4 @@
 use crate::error::ContractError;
-use crate::testing::setup::constants::{
-    BID_REMOVAL_REWARD_BPS, LISTING_FEE, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY,
-    TRADING_FEE_BPS,
-};
 use crate::ExpiryRange;
 use cosmwasm_std::{Addr, Uint128};
 use cw_multi_test::Executor;
@@ -10,6 +6,14 @@ use cw_utils::Duration;
 use sg_multi_test::StargazeApp;
 
 use crate::testing::setup::setup_contracts::contract_marketplace;
+
+pub const LISTING_FEE: u128 = 0;
+// Governance parameters
+pub const TRADING_FEE_BPS: u64 = 200; // 2%
+pub const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
+pub const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
+pub const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
+pub const BID_REMOVAL_REWARD_BPS: u64 = 500; // 5%
 
 pub fn setup_marketplace(
     router: &mut StargazeApp,
