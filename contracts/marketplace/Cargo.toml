@@ -63,7 +63,7 @@ vending-minter = { version = "0.21.8"}
 cw-multi-test = { version = "0.16.0" }
 sg-multi-test = "0.21.8"
 base-minter = "0.21.8"
-test-suite = { git = "https://github.com/public-awesome/launchpad.git", rev = "e12df0c083266f322a87158d989f9b0c62f9bcde", features = ["library"] }
+test-suite = { git = "https://github.com/public-awesome/launchpad.git", rev = "7df0c7d36878952d34d35a75d7795ef7b13b837e", features = ["library"] }
 
 
 [profile.release]
