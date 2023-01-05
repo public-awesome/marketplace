@@ -5,7 +5,8 @@ use cw_multi_test::{BankSudo, SudoMsg};
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
 
-pub const INITIAL_BALANCE: u128 = 5000000000;
+// all amounts in ustars
+pub const INITIAL_BALANCE: u128 = 5_000_000_000;
 pub const CREATION_FEE: u128 = 5_000_000_000;
 pub const MINT_PRICE: u128 = 100_000_000;
 pub const SECOND_BIDDER_INITIAL_BALANCE: u128 = 2000;
