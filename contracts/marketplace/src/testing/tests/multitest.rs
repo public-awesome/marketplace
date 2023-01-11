@@ -10,19 +10,15 @@ use crate::msg::{
 };
 use crate::state::{Bid, SaleType, SudoParams, SUDO_PARAMS};
 use crate::testing::helpers::funds::{
-    add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn,
+    add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn, MINT_FEE_FAIR_BURN,
 };
 use crate::testing::helpers::nft_functions::{approve, burn, mint, mint_for, transfer};
-use crate::testing::setup::constants::{
-    BID_REMOVAL_REWARD_BPS, CREATION_FEE, INITIAL_BALANCE, LISTING_FEE, MAX_EXPIRY,
-    MAX_FINDERS_FEE_BPS, MINT_FEE_FAIR_BURN, MINT_PRICE, MIN_EXPIRY, TRADING_FEE_BPS,
+use crate::testing::setup::setup_accounts::{
+    setup_second_bidder_account, CREATION_FEE, INITIAL_BALANCE, MINT_PRICE,
 };
-use crate::testing::setup::msg::SetupContractsParams;
-use crate::testing::setup::setup_accounts::setup_second_bidder_account;
-use crate::testing::setup::setup_accounts_and_block::{setup_accounts, setup_block_time};
-use crate::testing::setup::setup_contracts::custom_mock_app;
 use crate::testing::setup::setup_marketplace::{
-    setup_marketplace_and_collections, setup_marketplace_and_collections_with_params,
+    setup_marketplace, setup_marketplace_and_collections_with_params, BID_REMOVAL_REWARD_BPS,
+    LISTING_FEE, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY, TRADING_FEE_BPS,
 };
 use cosmwasm_std::testing::{mock_dependencies, mock_env};
 use cosmwasm_std::{Addr, Empty, Timestamp};
@@ -37,31 +33,33 @@ use cw_utils::{Duration, Expiration};
 use sg721::ExecuteMsg as Sg721ExecuteMsg;
 use std::collections::HashSet;
 use std::iter::FromIterator;
+use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
-use sg2::tests::{
-    mock_collection_params_1, mock_collection_params_high_fee, mock_collection_two,
-    mock_curator_payment_address,
+use crate::testing::setup::templates::{
+    minter_template_high_fee, minter_template_owner_admin, minter_two_collections,
+    minter_two_collections_with_time, minter_with_curator, standard_minter_template,
 };
 use sg_std::NATIVE_DENOM;
 
+pub fn listing_funds(listing_fee: u128) -> Result<Vec<Coin>, ContractError> {
+    if listing_fee > 0 {
+        Ok(vec![coin(listing_fee, NATIVE_DENOM)])
+    } else {
+        Ok(vec![])
+    }
+}
+
 #[test]
 fn try_set_accept_fixed_price_bid() {
-    let mut router = custom_mock_app();
-    let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, creator, bidder) =
+        (vt.router, vt.accts.owner, vt.accts.creator, vt.accts.bidder);
+    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -244,22 +242,14 @@ fn try_set_accept_fixed_price_bid() {
 
 #[test]
 fn try_set_accept_bid_no_ask() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -337,22 +327,15 @@ fn try_set_accept_bid_no_ask() {
 
 #[test]
 fn try_set_accept_bid_high_fees() {
-    let mut router = custom_mock_app();
-    let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_high_fee(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = minter_template_high_fee(1);
+    let (mut router, owner, creator, bidder) =
+        (vt.router, vt.accts.owner, vt.accts.creator, vt.accts.bidder);
+    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     let creator_funds: Vec<Coin> = coins(CREATION_FEE, NATIVE_DENOM);
 
@@ -401,26 +384,17 @@ fn try_set_accept_bid_high_fees() {
 
 #[test]
 fn try_update_ask() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, creator) = (vt.router, vt.accts.creator);
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
+    setup_block_time(&mut router, start_time.nanos(), None);
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
-
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
         sale_type: SaleType::FixedPrice,
@@ -429,7 +403,7 @@ fn try_update_ask() {
         price: coin(110, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
     };
     let res = router.execute_contract(
@@ -470,7 +444,8 @@ fn try_update_ask() {
     let time = router.block_info().time;
     setup_block_time(
         &mut router,
-        start_time.plus_seconds(MIN_EXPIRY + 2).seconds(),
+        start_time.plus_seconds(MAX_EXPIRY).nanos(),
+        None,
     );
     let update_ask = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
@@ -481,7 +456,7 @@ fn try_update_ask() {
         .execute_contract(creator.clone(), marketplace.clone(), &update_ask, &[])
         .unwrap_err();
     // reset time to original
-    setup_block_time(&mut router, time.seconds());
+    setup_block_time(&mut router, time.nanos(), None);
 
     // confirm ask removed
     let remove_ask_msg = ExecuteMsg::RemoveAsk {
@@ -505,22 +480,14 @@ fn try_update_ask() {
 
 #[test]
 fn try_query_asks() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, creator) = (vt.router, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -641,21 +608,13 @@ fn get_next_token_id_and_map(
 
 #[test]
 fn try_query_sorted_asks() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(3);
+    let (mut router, creator) = (vt.router, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 3,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     // Mint NFT for creator
 
     mint(&mut router, &creator, &minter_addr);
@@ -814,21 +773,13 @@ fn try_query_sorted_asks() {
 
 #[test]
 fn try_query_asks_by_seller() {
-    let mut router = custom_mock_app();
-    let (owner, _, _) = setup_accounts(&mut router).unwrap();
+    let vt = minter_template_owner_admin(4);
+    let (mut router, owner) = (vt.router, vt.accts.owner);
+    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: owner.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 4,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     // Mint NFT for creator
     let owner2: Addr = Addr::unchecked("owner2");
     // Add funds to owner2 for creation fees
@@ -1008,21 +959,14 @@ fn try_query_asks_by_seller() {
 
 #[test]
 fn try_query_sorted_bids() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(3);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 3,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -1260,21 +1204,14 @@ fn try_query_sorted_bids() {
 
 #[test]
 fn try_query_bids() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(3);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -1404,22 +1341,16 @@ fn try_query_bids() {
 
 #[test]
 fn auto_accept_bid() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
+
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
 
@@ -1442,7 +1373,7 @@ fn auto_accept_bid() {
     );
     assert!(res.is_err());
 
-    // Creator Authorizes NFT
+    // // Creator Authorizes NFT
     approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // Now set_ask succeeds
@@ -1531,21 +1462,14 @@ fn auto_accept_bid() {
 
 #[test]
 fn try_reserved_ask() {
-    let mut router = custom_mock_app();
-    let (owner, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let token_id = 1;
 
     // Mint NFT for creator
@@ -1624,21 +1548,14 @@ fn try_reserved_ask() {
 
 #[test]
 fn try_ask_with_finders_fee() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let token_id = 1;
 
     // Mint NFT for creator
@@ -1701,22 +1618,15 @@ fn try_ask_with_finders_fee() {
 
 #[test]
 fn remove_bid_refund() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -1787,22 +1697,15 @@ fn remove_bid_refund() {
 
 #[test]
 fn new_bid_refund() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -1912,22 +1815,15 @@ fn new_bid_refund() {
 
 #[test]
 fn try_royalties() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = minter_with_curator(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_curator_payment_address(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
     add_funds_for_incremental_fee(
         &mut router,
         &Addr::unchecked("curator"),
@@ -2015,17 +1911,10 @@ fn try_royalties() {
 
 #[test]
 fn try_sudo_update_params() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator,
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner) = (vt.router, vt.accts.owner);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: Some(5),
@@ -2102,17 +1991,10 @@ fn try_sudo_update_params() {
 
 #[test]
 fn try_add_remove_sales_hooks() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator,
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner) = (vt.router, vt.accts.owner);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook".to_string(),
@@ -2142,18 +2024,10 @@ fn try_add_remove_sales_hooks() {
 
 #[test]
 fn try_add_too_many_sales_hooks() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator,
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
-
+    let vt = standard_minter_template(1);
+    let (mut router, owner) = (vt.router, vt.accts.owner);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let add_hook_msg = SudoMsg::AddSaleHook {
         hook: "hook2".to_string(),
     };
@@ -2193,17 +2067,10 @@ fn try_add_too_many_sales_hooks() {
 
 #[test]
 fn try_add_remove_bid_hooks() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator,
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner) = (vt.router, vt.accts.owner);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     let add_bid_hook_msg = SudoMsg::AddBidHook {
         hook: "bid_hook".to_string(),
@@ -2233,16 +2100,10 @@ fn try_add_remove_bid_hooks() {
 
 #[test]
 fn try_init_hook() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator,
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
+    let vt = standard_minter_template(1);
+    let (mut router, creator) = (vt.router, vt.accts.creator);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+
     let msg = crate::msg::InstantiateMsg {
         operators: vec!["operator1".to_string()],
         trading_fee_bps: TRADING_FEE_BPS,
@@ -2255,8 +2116,8 @@ fn try_init_hook() {
         bid_removal_reward_bps: BID_REMOVAL_REWARD_BPS,
         listing_fee: Uint128::from(LISTING_FEE),
     };
-    let (marketplace, _) =
-        setup_marketplace_and_collections_with_params(setup_params, msg).unwrap();
+    let marketplace =
+        setup_marketplace_and_collections_with_params(&mut router, creator, msg).unwrap();
 
     let query_hooks_msg = QueryMsg::SaleHooks {};
     let res: HooksResponse = router
@@ -2280,22 +2141,15 @@ fn try_init_hook() {
 
 #[test]
 fn try_hook_was_run() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
 
     // Add sales hook
     let add_hook_msg = SudoMsg::AddSaleHook {
@@ -2387,17 +2241,10 @@ fn try_hook_was_run() {
 
 #[test]
 fn try_add_remove_listed_hooks() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator,
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner) = (vt.router, vt.accts.owner);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let add_hook_msg = SudoMsg::AddAskHook {
         hook: "hook".to_string(),
     };
@@ -2426,29 +2273,21 @@ fn try_add_remove_listed_hooks() {
 
 #[test]
 fn try_collection_bids() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let vt = minter_two_collections(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params_one = mock_collection_params_1(Some(start_time));
-    let collection_params_two = mock_collection_two(Some(start_time));
-
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params_one, collection_params_two],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
     add_funds_for_incremental_fee(&mut router, &creator, INITIAL_BALANCE, 1u128).unwrap();
 
-    let collection_two = minter_collections[1].collection.clone();
+    let collection_two = vt.collection_response_vec[1].collection.clone().unwrap();
     let token_id = 1;
 
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -2645,23 +2484,15 @@ fn try_collection_bids() {
 
 #[test]
 fn try_remove_stale_bid() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -2696,7 +2527,8 @@ fn try_remove_stale_bid() {
 
     setup_block_time(
         &mut router,
-        start_time.plus_seconds(MIN_EXPIRY + 101).seconds(),
+        start_time.plus_seconds(MIN_EXPIRY + 101).nanos(),
+        None,
     );
     let res = router.execute_contract(operator.clone(), marketplace.clone(), &remove_msg, &[]);
     assert!(res.is_ok());
@@ -2707,23 +2539,15 @@ fn try_remove_stale_bid() {
 
 #[test]
 fn try_remove_stale_collection_bid() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
     approve(&mut router, &creator, &collection, &marketplace, token_id);
@@ -2756,7 +2580,10 @@ fn try_remove_stale_collection_bid() {
         .unwrap_err();
 
     // make bid stale by adding stale_bid_duration
-    setup_block_time(&mut router, expiry_time + 100);
+    let new_time = Timestamp::from_seconds(expiry_time)
+        .plus_seconds(100)
+        .nanos();
+    setup_block_time(&mut router, new_time, None);
 
     let res = router.execute_contract(operator.clone(), marketplace.clone(), &remove_col_msg, &[]);
     assert!(res.is_ok());
@@ -2767,23 +2594,15 @@ fn try_remove_stale_collection_bid() {
 
 #[test]
 fn try_bid_finders_fee() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -2846,23 +2665,15 @@ fn try_bid_finders_fee() {
 
 #[test]
 fn try_bidder_cannot_be_finder() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -2889,23 +2700,14 @@ fn try_bidder_cannot_be_finder() {
 
 #[test]
 fn try_ask_with_filter_inactive() {
-    let mut router = custom_mock_app();
-    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, creator) = (vt.router, vt.accts.owner, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -2994,23 +2796,14 @@ fn try_ask_with_filter_inactive() {
 
 #[test]
 fn try_sync_ask() {
-    let mut router = custom_mock_app();
-    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, creator) = (vt.router, vt.accts.owner, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -3127,9 +2920,9 @@ fn try_sync_ask() {
     );
     assert!(res.is_err());
 
-    let expiry_time = start_time.plus_seconds(MIN_EXPIRY - 5).seconds();
+    let expiry_time = start_time.plus_seconds(MIN_EXPIRY - 5);
     // move clock before ask expire but after approval expiration time
-    setup_block_time(&mut router, expiry_time);
+    setup_block_time(&mut router, expiry_time.nanos(), None);
 
     // SyncAsk should succeed as approval is no longer valid
     let res = router.execute_contract(
@@ -3149,30 +2942,22 @@ fn try_sync_ask() {
     };
     let res: AsksResponse = router
         .wrap()
-        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .query_wasm_smart(marketplace, &ask_msg)
         .unwrap();
     assert_eq!(res.asks.len(), 0);
 }
 
 #[test]
 fn try_set_ask_reserve_for() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -3292,22 +3077,13 @@ fn try_set_ask_reserve_for() {
 
 #[test]
 fn try_remove_stale_ask() {
-    let mut router = custom_mock_app();
-    let (owner, _, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(2);
+    let (mut router, owner, creator) = (vt.router, vt.accts.owner, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 2,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -3427,7 +3203,7 @@ fn try_remove_stale_ask() {
 
     // move time forward
     let time = router.block_info().time;
-    setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).seconds());
+    setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).nanos(), None);
 
     let remove_ask = ExecuteMsg::RemoveStaleAsk {
         collection: collection.to_string(),
@@ -3451,19 +3227,11 @@ fn try_remove_stale_ask() {
 
 #[test]
 fn try_add_and_remove_operators() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner) = (vt.router, vt.accts.owner);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator,
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, _) = setup_marketplace_and_collections(setup_params).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
 
     let update_params_msg = SudoMsg::UpdateParams {
         trading_fee_bps: Some(5),
@@ -3556,22 +3324,15 @@ fn try_add_and_remove_operators() {
 
 #[test]
 fn try_bid_sale_type() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params = mock_collection_params_1(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
-    setup_block_time(&mut router, start_time.seconds());
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.nanos(), None);
 
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -3681,14 +3442,6 @@ fn try_bid_sale_type() {
     assert_eq!(res.bids[0].price.u128(), 100u128);
 }
 
-pub fn listing_funds(listing_fee: u128) -> Result<Vec<Coin>, ContractError> {
-    if listing_fee > 0 {
-        Ok(vec![coin(listing_fee, NATIVE_DENOM)])
-    } else {
-        Ok(vec![])
-    }
-}
-
 use cw2::set_contract_version;
 #[test]
 fn try_migrate() {
@@ -3762,30 +3515,19 @@ fn try_migrate() {
 
 #[test]
 fn try_start_trading_time() {
-    let mut router = custom_mock_app();
-    let (_, bidder, creator) = setup_accounts(&mut router).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let vt = minter_two_collections_with_time(2, start_time, start_time.plus_seconds(1));
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+
+    let minter_2 = vt.collection_response_vec[1].minter.clone().unwrap();
+    let collection_2 = vt.collection_response_vec[1].collection.clone().unwrap();
+    setup_block_time(&mut router, start_time.nanos(), None);
     add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params_1 = mock_collection_params_1(Some(start_time));
-    let collection_params_2 = mock_collection_two(Some(start_time.plus_seconds(1)));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params_1, collection_params_2],
-        num_tokens: 2,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter_addr = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
 
-    let minter_2 = minter_collections[1].minter.clone();
-    let collection_2 = minter_collections[1].collection.clone();
-
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
-
-    // test querying all sorted collection bids by bidder sorted by expiration
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
 
@@ -3997,7 +3739,7 @@ fn try_start_trading_time() {
     );
 
     // move time to start trading time
-    setup_block_time(&mut router, start_time.plus_seconds(1).seconds());
+    setup_block_time(&mut router, start_time.plus_seconds(1).nanos(), None);
 
     // Creator tries to accept accept bid on collection 2  should work now
     let accept_bid_msg = ExecuteMsg::AcceptBid {
@@ -4126,28 +3868,18 @@ mod query {
 
     #[test]
     fn collections() {
-        let mut router = custom_mock_app();
-        let (_, _, creator) = setup_accounts(&mut router).unwrap();
+        let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+        let vt = minter_two_collections(1);
+        let (mut router, owner, creator) = (vt.router, vt.accts.owner, vt.accts.creator);
         add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
-        let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-        let collection_params_1 = mock_collection_params_1(Some(start_time));
-        let collection_params_2 = mock_collection_two(Some(start_time));
-        let setup_params = SetupContractsParams {
-            minter_admin: creator.clone(),
-            collection_params_vec: vec![collection_params_1, collection_params_2],
-            num_tokens: 1,
-            router: &mut router,
-        };
-        let (marketplace, minter_collections) =
-            setup_marketplace_and_collections(setup_params).unwrap();
-        let minter1 = minter_collections[0].minter.clone();
-        let collection1 = minter_collections[0].collection.clone();
+        let marketplace = setup_marketplace(&mut router, owner).unwrap();
+        let minter1 = vt.collection_response_vec[0].minter.clone().unwrap();
+        let collection1 = vt.collection_response_vec[0].collection.clone().unwrap();
 
-        let minter2 = minter_collections[1].minter.clone();
-        let collection2 = minter_collections[1].collection.clone();
+        let minter2 = vt.collection_response_vec[1].minter.clone().unwrap();
+        let collection2 = vt.collection_response_vec[1].collection.clone().unwrap();
+        setup_block_time(&mut router, start_time.nanos(), None);
 
-        let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-        setup_block_time(&mut router, start_time.seconds());
         let token_id = 1;
         // place two asks
         mint(&mut router, &creator, &minter1);
@@ -4209,24 +3941,13 @@ mod query {
 
 #[test]
 fn max_set_ask_amount() {
-    let mut router = custom_mock_app();
-    let (_, _, creator) = setup_accounts(&mut router).unwrap();
-    add_funds_for_incremental_fee(&mut router, &creator, CREATION_FEE, 1u128).unwrap();
+    let vt = standard_minter_template(1);
+    let (mut router, owner, creator) = (vt.router, vt.accts.owner, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    let collection_params_1 = mock_collection_params_1(Some(start_time));
-    let collection_params_2 = mock_collection_two(Some(start_time));
-    let setup_params = SetupContractsParams {
-        minter_admin: creator.clone(),
-        collection_params_vec: vec![collection_params_1, collection_params_2],
-        num_tokens: 1,
-        router: &mut router,
-    };
-    let (marketplace, minter_collections) =
-        setup_marketplace_and_collections(setup_params).unwrap();
-    let minter = minter_collections[0].minter.clone();
-    let collection = minter_collections[0].collection.clone();
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
-    setup_block_time(&mut router, start_time.seconds());
+    setup_block_time(&mut router, start_time.nanos(), None);
     let token_id = 1;
 
     // Mint NFT for creator

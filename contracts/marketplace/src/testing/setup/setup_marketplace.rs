@@ -1,32 +1,24 @@
 use crate::error::ContractError;
-use crate::testing::setup::constants::{
-    BID_REMOVAL_REWARD_BPS, LISTING_FEE, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY,
-    TRADING_FEE_BPS,
-};
-use crate::testing::setup::msg::{MinterCollectionResponse, SetupContractsParams};
-use crate::testing::setup::setup_contracts::contract_marketplace;
-use crate::testing::setup::setup_minter::configure_minter;
 use crate::ExpiryRange;
 use cosmwasm_std::{Addr, Uint128};
 use cw_multi_test::Executor;
 use cw_utils::Duration;
+use sg_multi_test::StargazeApp;
 
-// Instantiates all needed contracts for testing
-pub fn setup_marketplace_and_collections(
-    params: SetupContractsParams,
-) -> Result<(Addr, Vec<MinterCollectionResponse>), ContractError> {
-    let router = params.router;
-    let collection_params_vec = params.collection_params_vec;
-    let num_tokens = params.num_tokens;
-    let minter_admin = params.minter_admin;
+use crate::testing::setup::setup_contracts::contract_marketplace;
 
-    let minter_collections: Vec<MinterCollectionResponse> = configure_minter(
-        router,
-        minter_admin.clone(),
-        collection_params_vec,
-        num_tokens,
-    );
-    // Instantiate marketplace contract
+pub const LISTING_FEE: u128 = 0;
+// Governance parameters
+pub const TRADING_FEE_BPS: u64 = 200; // 2%
+pub const MIN_EXPIRY: u64 = 24 * 60 * 60; // 24 hours (in seconds)
+pub const MAX_EXPIRY: u64 = 180 * 24 * 60 * 60; // 6 months (in seconds)
+pub const MAX_FINDERS_FEE_BPS: u64 = 1000; // 10%
+pub const BID_REMOVAL_REWARD_BPS: u64 = 500; // 5%
+
+pub fn setup_marketplace(
+    router: &mut StargazeApp,
+    marketplace_admin: Addr,
+) -> Result<Addr, ContractError> {
     let marketplace_id = router.store_code(contract_marketplace());
     let msg = crate::msg::InstantiateMsg {
         operators: vec!["operator1".to_string()],
@@ -41,36 +33,34 @@ pub fn setup_marketplace_and_collections(
         listing_fee: Uint128::from(LISTING_FEE),
     };
     let marketplace = router
-        .instantiate_contract(marketplace_id, minter_admin, &msg, &[], "Marketplace", None)
+        .instantiate_contract(
+            marketplace_id,
+            marketplace_admin,
+            &msg,
+            &[],
+            "Marketplace",
+            None,
+        )
         .unwrap();
-    Ok((marketplace, minter_collections))
+    Ok(marketplace)
 }
 
 pub fn setup_marketplace_and_collections_with_params(
-    params: SetupContractsParams,
+    router: &mut StargazeApp,
+    marketplace_admin: Addr,
     instantiate_msg: crate::msg::InstantiateMsg,
-) -> Result<(Addr, Vec<MinterCollectionResponse>), ContractError> {
-    let router = params.router;
-    let collection_params_vec = params.collection_params_vec;
-    let num_tokens = params.num_tokens;
-    let minter_admin = params.minter_admin;
-    let minter_collections: Vec<MinterCollectionResponse> = configure_minter(
-        router,
-        minter_admin.clone(),
-        collection_params_vec,
-        num_tokens,
-    );
+) -> Result<Addr, ContractError> {
     // Instantiate marketplace contract
     let marketplace_id = router.store_code(contract_marketplace());
     let marketplace = router
         .instantiate_contract(
             marketplace_id,
-            minter_admin,
+            marketplace_admin,
             &instantiate_msg,
             &[],
             "Marketplace",
             None,
         )
         .unwrap();
-    Ok((marketplace, minter_collections))
+    Ok(marketplace)
 }

@@ -6,9 +6,8 @@ use crate::helpers::ExpiryRange;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::query::{query_ask_count, query_asks_by_seller, query_bids_by_bidder};
 use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SaleType};
-
-use crate::testing::setup::constants::{
-    BID_REMOVAL_REWARD_BPS, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY, TRADING_FEE_BASIS_POINTS,
+use crate::testing::setup::setup_marketplace::{
+    BID_REMOVAL_REWARD_BPS, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY, TRADING_FEE_BPS,
 };
 use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
 use cosmwasm_std::{coin, coins, Addr, DepsMut, Timestamp, Uint128};
@@ -110,7 +109,7 @@ fn bid_indexed_map() {
 fn setup_contract(deps: DepsMut) {
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+        trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         sale_hook: None,
@@ -131,7 +130,7 @@ fn proper_initialization() {
 
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+        trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         sale_hook: None,
@@ -172,7 +171,7 @@ fn bad_fees_initialization() {
     // throw error if bid removal reward bps > 100%
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+        trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         sale_hook: None,
@@ -189,7 +188,7 @@ fn bad_fees_initialization() {
     // throw error if finders fee bps > 100%
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+        trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         sale_hook: None,
@@ -210,7 +209,7 @@ fn improper_initialization_stale_bid() {
 
     let msg = InstantiateMsg {
         operators: vec!["operator".to_string()],
-        trading_fee_bps: TRADING_FEE_BASIS_POINTS,
+        trading_fee_bps: TRADING_FEE_BPS,
         ask_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         bid_expiry: ExpiryRange::new(MIN_EXPIRY, MAX_EXPIRY),
         sale_hook: None,

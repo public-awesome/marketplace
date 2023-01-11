@@ -1,4 +1,3 @@
-use crate::testing::setup::constants::MINT_PRICE;
 use cosmwasm_std::coins;
 use cosmwasm_std::{Addr, Empty};
 use cw_multi_test::Executor;
@@ -6,6 +5,8 @@ use sg721::ExecuteMsg as Sg721ExecuteMsg;
 use sg721_base::msg::CollectionInfoResponse;
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
+
+pub const MINT_PRICE: u128 = 100_000_000;
 
 // Mints an NFT for a creator
 pub fn mint(router: &mut StargazeApp, creator: &Addr, minter_addr: &Addr) {
@@ -70,7 +71,7 @@ pub fn transfer(
     let res = router.execute_contract(creator.clone(), collection.clone(), &transfer_msg, &[]);
     assert!(res.is_ok());
 }
-#[allow(dead_code)]
+
 pub fn burn(router: &mut StargazeApp, creator: &Addr, collection: &Addr, token_id: u32) {
     let transfer_msg: Sg721ExecuteMsg<Empty, Empty> = Sg721ExecuteMsg::Burn {
         token_id: token_id.to_string(),
