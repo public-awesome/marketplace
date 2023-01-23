@@ -508,6 +508,22 @@ pub fn execute_set_bid(
                     Ordering::Less => save_bid(deps.storage)?,
                     Ordering::Equal => {
                         asks().remove(deps.storage, ask_key)?;
+                        let owner = match Cw721Contract::<Empty, Empty>(
+                            ask.collection.clone(),
+                            PhantomData,
+                            PhantomData,
+                        )
+                        .owner_of(
+                            &deps.querier,
+                            ask.token_id.to_string(),
+                            false,
+                        ) {
+                            Ok(res) => res.owner,
+                            Err(_) => return Err(ContractError::InvalidListing {}),
+                        };
+                        if ask.seller != owner {
+                            return Err(ContractError::InvalidListing {});
+                        }
                         finalize_sale(
                             deps.as_ref(),
                             ask,
@@ -608,29 +624,22 @@ pub fn execute_accept_bid(
         return Err(ContractError::BidExpired {});
     }
 
-    let ask = if let Some(existing_ask) = asks().may_load(deps.storage, ask_key.clone())? {
-        if existing_ask.is_expired(&env.block) {
-            return Err(ContractError::AskExpired {});
-        }
-        if !existing_ask.is_active {
-            return Err(ContractError::AskNotActive {});
-        }
+    if asks().may_load(deps.storage, ask_key.clone())?.is_some() {
         asks().remove(deps.storage, ask_key)?;
-        existing_ask
-    } else {
-        // Create a temporary Ask
-        Ask {
-            sale_type: SaleType::Auction,
-            collection: collection.clone(),
-            token_id,
-            price: bid.price,
-            expires_at: bid.expires_at,
-            is_active: true,
-            seller: info.sender,
-            funds_recipient: None,
-            reserve_for: None,
-            finders_fee_bps: bid.finders_fee_bps,
-        }
+    }
+
+    // Create a temporary Ask
+    let ask = Ask {
+        sale_type: SaleType::Auction,
+        collection: collection.clone(),
+        token_id,
+        price: bid.price,
+        expires_at: bid.expires_at,
+        is_active: true,
+        seller: info.sender.clone(),
+        funds_recipient: Some(info.sender),
+        reserve_for: None,
+        finders_fee_bps: bid.finders_fee_bps,
     };
 
     // Remove accepted bid
@@ -770,29 +779,22 @@ pub fn execute_accept_collection_bid(
     }
     collection_bids().remove(deps.storage, bid_key)?;
 
-    let ask = if let Some(existing_ask) = asks().may_load(deps.storage, ask_key.clone())? {
-        if existing_ask.is_expired(&env.block) {
-            return Err(ContractError::AskExpired {});
-        }
-        if !existing_ask.is_active {
-            return Err(ContractError::AskNotActive {});
-        }
+    if asks().may_load(deps.storage, ask_key.clone())?.is_some() {
         asks().remove(deps.storage, ask_key)?;
-        existing_ask
-    } else {
-        // Create a temporary Ask
-        Ask {
-            sale_type: SaleType::Auction,
-            collection: collection.clone(),
-            token_id,
-            price: bid.price,
-            expires_at: bid.expires_at,
-            is_active: true,
-            seller: info.sender.clone(),
-            funds_recipient: None,
-            reserve_for: None,
-            finders_fee_bps: bid.finders_fee_bps,
-        }
+    }
+
+    // Create a temporary Ask
+    let ask = Ask {
+        sale_type: SaleType::Auction,
+        collection: collection.clone(),
+        token_id,
+        price: bid.price,
+        expires_at: bid.expires_at,
+        is_active: true,
+        seller: info.sender.clone(),
+        funds_recipient: Some(info.sender.clone()),
+        reserve_for: None,
+        finders_fee_bps: bid.finders_fee_bps,
     };
 
     let mut res = Response::new();

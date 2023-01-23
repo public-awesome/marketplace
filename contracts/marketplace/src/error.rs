@@ -34,6 +34,9 @@ pub enum ContractError {
     #[error("AskNotFound")]
     AskNotFound {},
 
+    #[error("InvalidListing/StaleListing")]
+    InvalidListing {},
+
     #[error("BidExpired")]
     BidExpired {},
 
