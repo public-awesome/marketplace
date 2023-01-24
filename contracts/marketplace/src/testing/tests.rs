@@ -1,8 +1,18 @@
 #[cfg(test)]
-mod auction_tests;
+mod admin;
 #[cfg(test)]
-mod fixed_price_tests;
+mod asks;
 #[cfg(test)]
-mod multitest;
+mod auction;
 #[cfg(test)]
-mod unit_tests;
+mod bids;
+#[cfg(test)]
+mod finders_fee_and_royalties;
+#[cfg(test)]
+mod fixed_price;
+#[cfg(test)]
+mod hooks;
+#[cfg(test)]
+mod query;
+#[cfg(test)]
+mod unit;
