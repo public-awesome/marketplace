@@ -1,5 +1,5 @@
 use crate::testing::setup::setup_accounts::INITIAL_BALANCE;
-use cosmwasm_std::{coins, Addr, Decimal, Uint128};
+use cosmwasm_std::{coin, coins, Addr, Coin, Decimal, Uint128};
 use cw721_base::ContractError;
 use cw_multi_test::{BankSudo, SudoMsg as CwSudoMsg};
 use sg_multi_test::StargazeApp;
@@ -31,4 +31,12 @@ pub fn calculated_creator_balance_after_fairburn() -> Uint128 {
     let fair_burn_percent = Decimal::percent(MINT_FEE_FAIR_BURN / 100);
     let mint_price = Uint128::from(MINT_PRICE);
     Uint128::from(INITIAL_BALANCE) - (mint_price * fair_burn_percent)
+}
+
+pub fn listing_funds(listing_fee: u128) -> Result<Vec<Coin>, ContractError> {
+    if listing_fee > 0 {
+        Ok(vec![coin(listing_fee, NATIVE_DENOM)])
+    } else {
+        Ok(vec![])
+    }
 }

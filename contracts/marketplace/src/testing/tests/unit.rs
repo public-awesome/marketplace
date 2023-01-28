@@ -68,7 +68,6 @@ fn ask_indexed_map() {
 }
 
 #[test]
-
 fn bid_indexed_map() {
     let mut deps = mock_dependencies();
     let collection = Addr::unchecked(COLLECTION);
