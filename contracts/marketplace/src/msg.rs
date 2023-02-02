@@ -2,9 +2,10 @@ use crate::{
     helpers::ExpiryRange,
     state::{Ask, Bid, CollectionBid, SaleType, SudoParams, TokenId},
 };
-use cosmwasm_schema::cw_serde;
+use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128};
 use cw_utils::Duration;
+use sg_controllers::HooksResponse;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -216,21 +217,22 @@ impl CollectionBidOffset {
 }
 
 #[cw_serde]
+#[derive(QueryResponses)]
 pub enum QueryMsg {
     /// List of collections that have asks on them
-    /// Return type: `CollectionsResponse`
+    #[returns(CollectionsResponse)]
     Collections {
         start_after: Option<Collection>,
         limit: Option<u32>,
     },
     /// Get the current ask for specific NFT
-    /// Return type: `CurrentAskResponse`
+    #[returns(AsksResponse)]
     Ask {
         collection: Collection,
         token_id: TokenId,
     },
     /// Get all asks for a collection
-    /// Return type: `AsksResponse`
+    #[returns(AsksResponse)]
     Asks {
         collection: Collection,
         include_inactive: Option<bool>,
@@ -238,7 +240,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Get all asks for a collection in reverse
-    /// Return type: `AsksResponse`
+    #[returns(AsksResponse)]
     ReverseAsks {
         collection: Collection,
         include_inactive: Option<bool>,
@@ -246,7 +248,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Get all asks for a collection, sorted by price
-    /// Return type: `AsksResponse`
+    #[returns(AsksResponse)]
     AsksSortedByPrice {
         collection: Collection,
         include_inactive: Option<bool>,
@@ -254,7 +256,7 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Get all asks for a collection, sorted by price in reverse
-    /// Return type: `AsksResponse`
+    #[returns(AsksResponse)]
     ReverseAsksSortedByPrice {
         collection: Collection,
         include_inactive: Option<bool>,
@@ -262,10 +264,10 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Count of all asks
-    /// Return type: `AskCountResponse`
+    #[returns(AskCountResponse)]
     AskCount { collection: Collection },
     /// Get all asks by seller
-    /// Return type: `AsksResponse`
+    #[returns(AsksResponse)]
     AsksBySeller {
         seller: Seller,
         include_inactive: Option<bool>,
@@ -273,28 +275,28 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Get data for a specific bid
-    /// Return type: `BidResponse`
+    #[returns(BidResponse)]
     Bid {
         collection: Collection,
         token_id: TokenId,
         bidder: Bidder,
     },
     /// Get all bids by a bidder
-    /// Return type: `BidsResponse`
+    #[returns(BidsResponse)]
     BidsByBidder {
         bidder: Bidder,
         start_after: Option<CollectionOffset>,
         limit: Option<u32>,
     },
     /// Get all bids by a bidder, sorted by expiration
-    /// Return type: `BidsResponse`
+    #[returns(BidsResponse)]
     BidsByBidderSortedByExpiration {
         bidder: Bidder,
         start_after: Option<CollectionOffset>,
         limit: Option<u32>,
     },
     /// Get all bids for a specific NFT
-    /// Return type: `BidsResponse`
+    #[returns(BidsResponse)]
     Bids {
         collection: Collection,
         token_id: TokenId,
@@ -302,64 +304,64 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
     /// Get all bids for a collection, sorted by price
-    /// Return type: `BidsResponse`
+    #[returns(BidsResponse)]
     BidsSortedByPrice {
         collection: Collection,
         start_after: Option<BidOffset>,
         limit: Option<u32>,
     },
     /// Get all bids for a collection, sorted by price in reverse
-    /// Return type: `BidsResponse`
+    #[returns(BidsResponse)]
     ReverseBidsSortedByPrice {
         collection: Collection,
         start_before: Option<BidOffset>,
         limit: Option<u32>,
     },
     /// Get data for a specific collection bid
-    /// Return type: `CollectionBidResponse`
+    #[returns(CollectionBidResponse)]
     CollectionBid {
         collection: Collection,
         bidder: Bidder,
     },
     /// Get all collection bids by a bidder
-    /// Return type: `CollectionBidsResponse`
+    #[returns(CollectionBidResponse)]
     CollectionBidsByBidder {
         bidder: Bidder,
         start_after: Option<CollectionOffset>,
         limit: Option<u32>,
     },
     /// Get all collection bids by a bidder, sorted by expiration
-    /// Return type: `CollectionBidsResponse`
+    #[returns(CollectionBidResponse)]
     CollectionBidsByBidderSortedByExpiration {
         bidder: Collection,
         start_after: Option<CollectionBidOffset>,
         limit: Option<u32>,
     },
     /// Get all collection bids for a collection sorted by price
-    /// Return type: `CollectionBidsResponse`
+    #[returns(CollectionBidResponse)]
     CollectionBidsSortedByPrice {
         collection: Collection,
         start_after: Option<CollectionBidOffset>,
         limit: Option<u32>,
     },
     /// Get all collection bids for a collection sorted by price in reverse
-    /// Return type: `CollectionBidsResponse`
+    #[returns(CollectionBidResponse)]
     ReverseCollectionBidsSortedByPrice {
         collection: Collection,
         start_before: Option<CollectionBidOffset>,
         limit: Option<u32>,
     },
     /// Show all registered ask hooks
-    /// Return type: `HooksResponse`
+    #[returns(HooksResponse)]
     AskHooks {},
     /// Show all registered bid hooks
-    /// Return type: `HooksResponse`
+    #[returns(HooksResponse)]
     BidHooks {},
     /// Show all registered sale hooks
-    /// Return type: `HooksResponse`
+    #[returns(HooksResponse)]
     SaleHooks {},
     /// Get the config for the contract
-    /// Return type: `ParamsResponse`
+    #[returns(ParamsResponse)]
     Params {},
 }
 
