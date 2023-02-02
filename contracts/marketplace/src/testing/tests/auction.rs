@@ -1,8 +1,8 @@
 use crate::msg::{AskResponse, BidResponse, ExecuteMsg, QueryMsg};
 use crate::state::SaleType;
 use crate::testing::helpers::funds::{calculated_creator_balance_after_fairburn, listing_funds};
-use crate::testing::helpers::nft_functions::{approve, mint};
-use crate::testing::setup::setup_accounts::setup_second_bidder_account;
+use crate::testing::helpers::nft_functions::{approve, mint, transfer};
+use crate::testing::setup::setup_accounts::{setup_second_bidder_account, INITIAL_BALANCE};
 use crate::testing::setup::setup_marketplace::{setup_marketplace, LISTING_FEE, MIN_EXPIRY};
 use crate::testing::setup::templates::standard_minter_template;
 use cosmwasm_std::{coin, coins, Timestamp, Uint128};
