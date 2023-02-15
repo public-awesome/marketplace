@@ -6,6 +6,6 @@ import (
 	"github.com/stretchr/testify/suite"
 )
 
-func TestMarketplaceTestSuite(t *testing.T) {
+func TestSGTestSuite(t *testing.T) {
 	suite.Run(t, new(SGTestSuite))
 }
