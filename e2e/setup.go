@@ -1,7 +1,6 @@
 package e2e_test
 
 import (
-	"testing"
 	"time"
 
 	wasmkeeper "github.com/CosmWasm/wasmd/x/wasm/keeper"
@@ -49,11 +48,8 @@ func (suite *SGTestSuite) SetupSuite() {
 	suite.msgServer = wasmkeeper.NewMsgServerImpl(wasmkeeper.NewDefaultPermissionKeeper(suite.app.WasmKeeper))
 
 	// setup contracts
-	suite.contracts.marketplace, err = StoreContract(suite.parentCtx, suite.msgServer, suite.accounts[0].Address.String(), "sg721_base.wasm")
+	// 1 - sg_marketplace
+	suite.contracts.marketplace, err = StoreContract(suite.parentCtx, suite.msgServer, suite.accounts[0].Address.String(), "sg_marketplace.wasm")
 	suite.Require().NoError(err)
 	suite.Require().Equal(uint64(1), suite.contracts.marketplace)
-}
-
-func TestMarketplaceTestSuite(t *testing.T) {
-	suite.Run(t, new(SGTestSuite))
 }
