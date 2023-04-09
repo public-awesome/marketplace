@@ -205,7 +205,7 @@ fn try_buy_now() {
     };
 
     let res = router.execute_contract(
-        bidder.clone(),
+        bidder,
         marketplace.clone(),
         &set_bid_msg,
         &coins(150, NATIVE_DENOM),
@@ -234,7 +234,7 @@ fn try_buy_now() {
     };
 
     let res = router.execute_contract(
-        bidder2.clone(),
+        bidder2,
         marketplace.clone(),
         &set_bid_msg,
         &coins(150, NATIVE_DENOM),

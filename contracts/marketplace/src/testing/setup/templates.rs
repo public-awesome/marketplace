@@ -186,7 +186,7 @@ pub fn mock_with_royalties(
             description: String::from("Stargaze Monkeys"),
             image: "https://example.com/image.png".to_string(),
             external_link: Some("https://example.com/external.html".to_string()),
-            royalty_info: royalty_info,
+            royalty_info,
             start_trading_time,
             explicit_content: None,
         },
