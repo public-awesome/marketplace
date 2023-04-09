@@ -21,6 +21,7 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use semver::Version;
 use sg1::fair_burn;
+use sg721::RoyaltyInfoResponse;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::cmp::Ordering;
@@ -1066,6 +1067,18 @@ fn finalize_sale(
     Ok(())
 }
 
+/// Check royalties are non-zero
+fn parse_royalties(royalty_info: Option<RoyaltyInfoResponse>) -> Option<RoyaltyInfoResponse> {
+    match royalty_info {
+        Some(royalty) => {
+            if royalty.share.is_zero() {
+                return None;
+            }
+            Some(royalty)
+        }
+        None => None,
+    }
+}
 /// Payout a bid
 fn payout(
     deps: Deps,
@@ -1102,7 +1115,7 @@ fn payout(
         None => 0,
     };
 
-    match collection_info.royalty_info {
+    match parse_royalties(collection_info.royalty_info) {
         // If token supports royalties, payout shares to royalty recipient
         Some(royalty) => {
             let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
@@ -1113,13 +1126,11 @@ fn payout(
                 to_address: royalty.payment_address.to_string(),
                 amount: vec![amount.clone()],
             }));
-
             let event = Event::new("royalty-payout")
                 .add_attribute("collection", collection.to_string())
                 .add_attribute("amount", amount.to_string())
                 .add_attribute("recipient", royalty.payment_address.to_string());
             res.events.push(event);
-
             let seller_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(
