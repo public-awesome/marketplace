@@ -10,14 +10,14 @@ use sg721::{CollectionInfo, RoyaltyInfoResponse};
 use sg_std::GENESIS_MINT_START_TIME;
 use test_suite::common_setup::{
     contract_boxes::custom_mock_app,
-    msg::{MinterCollectionResponse, VendingTemplateResponse},
+    msg::{MinterCollectionResponse, MinterTemplateResponse},
     setup_minter::{
         common::minter_params::minter_params_token,
         vending_minter::setup::{configure_minter, vending_minter_code_ids},
     },
 };
 
-pub fn standard_minter_template(num_tokens: u32) -> VendingTemplateResponse<MarketAccounts> {
+pub fn standard_minter_template(num_tokens: u32) -> MinterTemplateResponse<MarketAccounts> {
     let mut app = custom_mock_app();
     let (owner, bidder, creator) = setup_accounts(&mut app).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -31,7 +31,7 @@ pub fn standard_minter_template(num_tokens: u32) -> VendingTemplateResponse<Mark
         vec![minter_params],
         code_ids,
     );
-    VendingTemplateResponse {
+    MinterTemplateResponse {
         router: app,
         collection_response_vec: minter_collection_response,
         accts: MarketAccounts {
@@ -42,7 +42,7 @@ pub fn standard_minter_template(num_tokens: u32) -> VendingTemplateResponse<Mark
     }
 }
 
-pub fn minter_template_high_fee(num_tokens: u32) -> VendingTemplateResponse<MarketAccounts> {
+pub fn minter_template_high_fee(num_tokens: u32) -> MinterTemplateResponse<MarketAccounts> {
     let mut app = custom_mock_app();
     let (owner, bidder, creator) = setup_accounts(&mut app).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -56,7 +56,7 @@ pub fn minter_template_high_fee(num_tokens: u32) -> VendingTemplateResponse<Mark
         vec![minter_params],
         code_ids,
     );
-    VendingTemplateResponse {
+    MinterTemplateResponse {
         router: app,
         collection_response_vec: minter_collection_response,
         accts: MarketAccounts {
@@ -67,7 +67,7 @@ pub fn minter_template_high_fee(num_tokens: u32) -> VendingTemplateResponse<Mark
     }
 }
 
-pub fn minter_template_owner_admin(num_tokens: u32) -> VendingTemplateResponse<MarketAccounts> {
+pub fn minter_template_owner_admin(num_tokens: u32) -> MinterTemplateResponse<MarketAccounts> {
     let mut app = custom_mock_app();
     let (owner, bidder, creator) = setup_accounts(&mut app).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -81,7 +81,7 @@ pub fn minter_template_owner_admin(num_tokens: u32) -> VendingTemplateResponse<M
         vec![minter_params],
         code_ids,
     );
-    VendingTemplateResponse {
+    MinterTemplateResponse {
         router: app,
         collection_response_vec: minter_collection_response,
         accts: MarketAccounts {
@@ -95,7 +95,7 @@ pub fn minter_template_owner_admin(num_tokens: u32) -> VendingTemplateResponse<M
 pub fn minter_with_royalties(
     num_tokens: u32,
     royalty_info: Option<RoyaltyInfoResponse>,
-) -> VendingTemplateResponse<MarketAccounts> {
+) -> MinterTemplateResponse<MarketAccounts> {
     let mut app = custom_mock_app();
     let (owner, bidder, creator) = setup_accounts(&mut app).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -110,7 +110,7 @@ pub fn minter_with_royalties(
         vec![minter_params],
         code_ids,
     );
-    VendingTemplateResponse {
+    MinterTemplateResponse {
         router: app,
         collection_response_vec: minter_collection_response,
         accts: MarketAccounts {
@@ -121,7 +121,7 @@ pub fn minter_with_royalties(
     }
 }
 
-pub fn minter_with_curator(num_tokens: u32) -> VendingTemplateResponse<MarketAccounts> {
+pub fn minter_with_curator(num_tokens: u32) -> MinterTemplateResponse<MarketAccounts> {
     let mut app = custom_mock_app();
     let (owner, bidder, creator) = setup_accounts(&mut app).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -135,7 +135,7 @@ pub fn minter_with_curator(num_tokens: u32) -> VendingTemplateResponse<MarketAcc
         vec![minter_params],
         code_ids,
     );
-    VendingTemplateResponse {
+    MinterTemplateResponse {
         router: app,
         collection_response_vec: minter_collection_response,
         accts: MarketAccounts {
@@ -146,7 +146,7 @@ pub fn minter_with_curator(num_tokens: u32) -> VendingTemplateResponse<MarketAcc
     }
 }
 
-pub fn minter_two_collections(num_tokens: u32) -> VendingTemplateResponse<MarketAccounts> {
+pub fn minter_two_collections(num_tokens: u32) -> MinterTemplateResponse<MarketAccounts> {
     let mut app = custom_mock_app();
     let (owner, bidder, creator) = setup_accounts(&mut app).unwrap();
     let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
@@ -162,7 +162,7 @@ pub fn minter_two_collections(num_tokens: u32) -> VendingTemplateResponse<Market
         vec![minter_params, minter_params_two],
         code_ids,
     );
-    VendingTemplateResponse {
+    MinterTemplateResponse {
         router: app,
         collection_response_vec: minter_collection_response,
         accts: MarketAccounts {
@@ -197,7 +197,7 @@ pub fn minter_two_collections_with_time(
     num_tokens: u32,
     time_one: Timestamp,
     time_two: Timestamp,
-) -> VendingTemplateResponse<MarketAccounts> {
+) -> MinterTemplateResponse<MarketAccounts> {
     let mut app = custom_mock_app();
     let (owner, bidder, creator) = setup_accounts(&mut app).unwrap();
     let collection_params = mock_collection_params_1(Some(time_one));
@@ -212,7 +212,7 @@ pub fn minter_two_collections_with_time(
         vec![minter_params, minter_params_two],
         code_ids,
     );
-    VendingTemplateResponse {
+    MinterTemplateResponse {
         router: app,
         collection_response_vec: minter_collection_response,
         accts: MarketAccounts {

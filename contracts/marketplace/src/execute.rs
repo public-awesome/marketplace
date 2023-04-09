@@ -160,6 +160,27 @@ pub fn execute(
                 finder: maybe_addr(api, finder)?,
                 finders_fee_bps,
             },
+            false,
+        ),
+        ExecuteMsg::BuyNow {
+            collection,
+            token_id,
+            expires,
+            finder,
+            finders_fee_bps,
+        } => execute_set_bid(
+            deps,
+            env,
+            info,
+            SaleType::FixedPrice,
+            BidInfo {
+                collection: api.addr_validate(&collection)?,
+                token_id,
+                expires,
+                finder: maybe_addr(api, finder)?,
+                finders_fee_bps,
+            },
+            true,
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -418,6 +439,7 @@ pub fn execute_set_bid(
     info: MessageInfo,
     sale_type: SaleType,
     bid_info: BidInfo,
+    buy_now: bool,
 ) -> Result<Response, ContractError> {
     let BidInfo {
         collection,
@@ -481,6 +503,8 @@ pub fn execute_set_bid(
                 return Err(ContractError::TokenReserved {});
             }
         }
+    } else if buy_now {
+        return Err(ContractError::ItemNotForSale {});
     }
 
     let save_bid = |store| -> StdResult<_> {
