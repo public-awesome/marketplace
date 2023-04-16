@@ -200,6 +200,18 @@ pub fn execute(
             api.addr_validate(&bidder)?,
             maybe_addr(api, finder)?,
         ),
+        ExecuteMsg::RejectBid {
+            collection,
+            token_id,
+            bidder,
+        } => execute_reject_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            api.addr_validate(&bidder)?,
+        ),
         ExecuteMsg::UpdateAskPrice {
             collection,
             token_id,
@@ -689,6 +701,40 @@ pub fn execute_accept_bid(
         .add_attribute("price", bid.price.to_string());
 
     Ok(res.add_event(event))
+}
+
+pub fn execute_reject_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+    bidder: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_owner(deps.as_ref(), &info, &collection, token_id)?;
+
+    let bid_key = bid_key(&collection, token_id, &bidder);
+
+    let bid = bids().load(deps.storage, bid_key.clone())?;
+    if bid.is_expired(&env.block) {
+        return Err(ContractError::BidExpired {});
+    }
+
+    bids().remove(deps.storage, bid_key)?;
+
+    let refund_msg = BankMsg::Send {
+        to_address: bidder.to_string(),
+        amount: vec![coin(bid.price.u128(), NATIVE_DENOM.to_string())],
+    };
+
+    let event = Event::new("reject-bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("bidder", bidder)
+        .add_attribute("price", bid.price.to_string());
+
+    Ok(Response::new().add_event(event).add_message(refund_msg))
 }
 
 /// Place a collection bid (limit order) across an entire collection

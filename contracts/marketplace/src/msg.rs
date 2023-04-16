@@ -87,6 +87,12 @@ pub enum ExecuteMsg {
         bidder: String,
         finder: Option<String>,
     },
+    /// Reject a bid on an existing ask
+    RejectBid {
+        collection: String,
+        token_id: TokenId,
+        bidder: String,
+    },
     /// Place a bid (limit order) across an entire collection
     SetCollectionBid {
         collection: String,

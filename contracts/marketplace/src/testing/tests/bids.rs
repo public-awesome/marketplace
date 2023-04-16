@@ -344,6 +344,83 @@ fn auto_accept_bid() {
 }
 
 #[test]
+fn reject_bid() {
+    let vt = standard_minter_template(1);
+    let (mut router, owner, bidder, seller) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+    let token_id = 1;
+
+    mint(&mut router, &seller, &minter_addr);
+
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+
+    approve(&mut router, &seller, &collection, &marketplace, token_id);
+
+    let res = router.execute_contract(
+        seller.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+
+    let bidder_bal = router.wrap().query_all_balances(bidder.clone()).unwrap();
+    assert_eq!(bidder_bal, vec![coin(INITIAL_BALANCE, NATIVE_DENOM),]);
+
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id,
+        finders_fee_bps: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let bid_amount = 100;
+    router
+        .execute_contract(
+            bidder.clone(),
+            marketplace.clone(),
+            &set_bid_msg,
+            &coins(bid_amount, NATIVE_DENOM),
+        )
+        .unwrap();
+
+    let bidder_bal = router.wrap().query_all_balances(bidder.clone()).unwrap();
+    assert_eq!(
+        bidder_bal,
+        vec![coin(INITIAL_BALANCE - bid_amount, NATIVE_DENOM),]
+    );
+
+    // seller rejects bid
+    let reject_bid_msg = ExecuteMsg::RejectBid {
+        collection: collection.to_string(),
+        token_id,
+        bidder: bidder.to_string(),
+    };
+    let res = router
+        .execute_contract(seller.clone(), marketplace, &reject_bid_msg, &[])
+        .unwrap();
+    assert_eq!(res.events[1].ty, "wasm-reject-bid");
+
+    let bidder_bal = router.wrap().query_all_balances(bidder).unwrap();
+    assert_eq!(bidder_bal, vec![coin(INITIAL_BALANCE, NATIVE_DENOM),]);
+}
+
+#[test]
 fn try_query_bids() {
     let vt = standard_minter_template(3);
     let (mut router, owner, bidder, creator) =
