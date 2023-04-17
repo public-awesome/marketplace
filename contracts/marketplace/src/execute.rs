@@ -103,6 +103,13 @@ pub struct BidInfo {
     finders_fee_bps: Option<u64>,
 }
 
+pub struct BidsInfo {
+    collection: Addr,
+    expires: Timestamp,
+    finder: Option<Addr>,
+    finders_fee_bps: Option<u64>,
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
     deps: DepsMut,
@@ -161,6 +168,24 @@ pub fn execute(
                 finders_fee_bps,
             },
             false,
+        ),
+        ExecuteMsg::SetBids {
+            collection,
+            token_ids,
+            expires,
+            finder,
+            finders_fee_bps,
+        } => execute_set_bids(
+            deps,
+            env,
+            info,
+            token_ids,
+            BidsInfo {
+                collection: api.addr_validate(&collection)?,
+                expires,
+                finder: maybe_addr(api, finder)?,
+                finders_fee_bps,
+            },
         ),
         ExecuteMsg::BuyNow {
             collection,
@@ -591,6 +616,38 @@ pub fn execute_set_bid(
         .add_attribute("expires", expires.to_string());
 
     Ok(res.add_submessages(hook).add_event(event))
+}
+
+/// Places a bid on a listed or unlisted NFT. The bid is escrowed in the contract.
+pub fn execute_set_bids(
+    mut deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    token_ids: Vec<TokenId>,
+    bids_info: BidsInfo,
+) -> Result<Response, ContractError> {
+    for token_id in token_ids {
+        let deps = deps.branch();
+        execute_set_bid(
+            deps,
+            env.clone(),
+            info.clone(),
+            SaleType::Auction,
+            BidInfo {
+                collection: bids_info.collection.clone(),
+                token_id,
+                expires: bids_info.expires,
+                finder: bids_info.finder.clone(),
+                finders_fee_bps: bids_info.finders_fee_bps,
+            },
+            false,
+        )?;
+    }
+
+    // TODO: write test
+    // does calling execute_set_bid multiple times in a single transaction work?
+
+    Ok(Response::default())
 }
 
 /// Removes a bid made by the bidder. Bidders can only remove their own bids

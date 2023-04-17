@@ -68,6 +68,14 @@ pub enum ExecuteMsg {
         finder: Option<String>,
         finders_fee_bps: Option<u64>,
     },
+    /// Place multiple bids
+    SetBids {
+        collection: String,
+        token_ids: Vec<TokenId>,
+        expires: Timestamp,
+        finder: Option<String>,
+        finders_fee_bps: Option<u64>,
+    },
     BuyNow {
         collection: String,
         token_id: TokenId,
