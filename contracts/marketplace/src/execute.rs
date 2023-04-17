@@ -728,13 +728,18 @@ pub fn execute_reject_bid(
         amount: vec![coin(bid.price.u128(), NATIVE_DENOM.to_string())],
     };
 
+    let hook = prepare_bid_hook(deps.as_ref(), &bid, HookAction::Delete)?;
+
     let event = Event::new("reject-bid")
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
         .add_attribute("price", bid.price.to_string());
 
-    Ok(Response::new().add_event(event).add_message(refund_msg))
+    Ok(Response::new()
+        .add_event(event)
+        .add_message(refund_msg)
+        .add_submessages(hook))
 }
 
 /// Place a collection bid (limit order) across an entire collection
