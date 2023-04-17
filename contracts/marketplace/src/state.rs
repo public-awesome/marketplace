@@ -241,7 +241,7 @@ impl Order for CollectionBid {
     }
 }
 
-/// Primary key for bids: (collection, token_id, bidder)
+/// Primary key for bids: (collection, bidder)
 pub type CollectionBidKey = (Addr, Addr);
 /// Convenience collection bid key constructor
 pub fn collection_bid_key(collection: &Addr, bidder: &Addr) -> CollectionBidKey {
