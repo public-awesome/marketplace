@@ -82,7 +82,7 @@ pub fn query_auctions_by_end_time(
     query_options: QueryOptions<(u64, (String, String))>,
 ) -> StdResult<AuctionsResponse> {
     let mut query_options = query_options;
-    if None == query_options.start_after {
+    if query_options.start_after.is_none() {
         query_options.start_after =
             Some((end_time.seconds(), (String::from(""), String::from(""))));
     }

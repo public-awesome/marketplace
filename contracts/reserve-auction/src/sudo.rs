@@ -68,6 +68,7 @@ pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractE
     Ok(response)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,

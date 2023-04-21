@@ -26,13 +26,13 @@ fn try_sudo_begin_block() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let reserve_auction = setup_reserve_auction(&mut router, creator, marketplace).unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     // Test begin block no-op
     let begin_block_msg = SudoMsg::BeginBlock {};
-    let response = router.wasm_sudo(reserve_auction.clone(), &begin_block_msg);
+    let response = router.wasm_sudo(reserve_auction, &begin_block_msg);
     assert!(response.is_ok());
 
     response
@@ -252,7 +252,7 @@ fn try_sudo_end_block() {
         Uint128::from(INITIAL_BALANCE - high_bid_amount)
     );
     assert_eq!(
-        query_owner_of(&router, &collection, &last_auction.token_id.to_string()),
+        query_owner_of(&router, &collection, &last_auction.token_id),
         bidder.to_string()
     );
 }
@@ -262,7 +262,7 @@ fn try_sudo_update_params() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let reserve_auction = setup_reserve_auction(&mut router, creator, marketplace).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
 
     let delta: u64 = 1;

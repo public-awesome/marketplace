@@ -39,10 +39,10 @@ fn try_query_auctions_by_seller() {
             &creator
         };
 
-        let token_id = mint(&mut router, &minter, &creator, &current_creator);
+        let token_id = mint(&mut router, &minter, &creator, current_creator);
         approve(
             &mut router,
-            &current_creator,
+            current_creator,
             &collection,
             &reserve_auction,
             token_id,
@@ -51,7 +51,7 @@ fn try_query_auctions_by_seller() {
 
         create_standard_auction(
             &mut router,
-            &current_creator,
+            current_creator,
             &reserve_auction,
             collection.as_ref(),
             &token_id.to_string(),

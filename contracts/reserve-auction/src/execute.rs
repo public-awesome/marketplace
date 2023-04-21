@@ -300,7 +300,7 @@ pub fn execute_place_bid(
     let high_bid = &auction.high_bid.unwrap();
     let event = Event::new("place-bid")
         .add_attribute("collection", auction.collection.to_string())
-        .add_attribute("token_id", auction.token_id.to_string())
+        .add_attribute("token_id", auction.token_id)
         .add_attribute("bidder", high_bid.bidder.to_string())
         .add_attribute("bid_amount", high_bid.coin.to_string());
     response = response.add_event(event);
@@ -317,7 +317,7 @@ pub fn execute_settle_auction(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     let config = CONFIG.load(deps.storage)?;
-    let auction = auctions().load(deps.storage, (collection.clone(), token_id.to_string()))?;
+    let auction = auctions().load(deps.storage, (collection, token_id.to_string()))?;
 
     let response = Response::new();
 

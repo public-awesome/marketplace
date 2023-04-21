@@ -32,7 +32,7 @@ fn try_instantiate() {
     let auction_id = app.store_code(auction_contract());
     let vt = standard_minter_template(1);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
+    let marketplace = setup_marketplace(&mut router, creator).unwrap();
 
     let msg = InstantiateMsg {
         marketplace: marketplace.to_string(),

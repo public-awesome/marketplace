@@ -1,8 +1,11 @@
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 use crate::error::ContractError;
 use crate::helpers::ExpiryRange;
 use crate::msg::SudoMsg;
 use crate::state::{ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS};
-use cosmwasm_std::{entry_point, Addr, Decimal, DepsMut, Env, Uint128};
+use cosmwasm_std::{Addr, Decimal, DepsMut, Env, Uint128};
 use cw_utils::Duration;
 use sg_std::Response;
 
