@@ -26,3 +26,6 @@ tarpaulin-report.*
 
 node_modules/
 build/
+
+# Schema files
+*/schema/raw/*
