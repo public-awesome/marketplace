@@ -1,13 +1,16 @@
 mod tests;
 
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Empty, MessageInfo, QuerierWrapper, StdError,
-    StdResult, Uint128, WasmMsg,
+    coin, to_binary, Addr, Api, BankMsg, Coin, Decimal, Empty, MessageInfo, QuerierWrapper,
+    StdError, StdResult, Uint128, WasmMsg,
 };
 use cw721::{ApprovalResponse, Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
 use sg1::fair_burn;
 use sg721::RoyaltyInfo;
+use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
+use sg_marketplace::msg::{ParamsResponse, QueryMsg as MarketplaceQueryMsg};
+use sg_marketplace::state::SudoParams;
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::marker::PhantomData;
 
@@ -65,6 +68,35 @@ pub fn has_approval(
         spender.as_str(),
         include_expired,
     )
+}
+
+pub fn load_marketplace_params(
+    querier: &QuerierWrapper,
+    marketplace: &Addr,
+) -> StdResult<SudoParams> {
+    let marketplace_params: ParamsResponse =
+        querier.query_wasm_smart(marketplace, &MarketplaceQueryMsg::Params {})?;
+    Ok(marketplace_params.params)
+}
+
+/// Load the collection royalties as defined on the NFT collection contract
+pub fn load_collection_royalties(
+    querier: &QuerierWrapper,
+    api: &dyn Api,
+    collection_addr: &Addr,
+) -> StdResult<Option<RoyaltyInfo>> {
+    let collection_info: CollectionInfoResponse =
+        querier.query_wasm_smart(collection_addr, &Sg721QueryMsg::CollectionInfo {})?;
+
+    let royalty_info: Option<RoyaltyInfo> = match collection_info.royalty_info {
+        Some(royalty_info_response) => Some(RoyaltyInfo {
+            share: royalty_info_response.share,
+            payment_address: api.addr_validate(&royalty_info_response.payment_address)?,
+        }),
+        None => None,
+    };
+
+    Ok(royalty_info)
 }
 
 #[derive(Debug, PartialEq, Clone)]
