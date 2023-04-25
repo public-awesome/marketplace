@@ -1388,6 +1388,7 @@ dependencies = [
  "mockall",
  "schemars",
  "serde",
+ "sg-marketplace",
  "sg-multi-test",
  "sg-std",
  "sg1",
