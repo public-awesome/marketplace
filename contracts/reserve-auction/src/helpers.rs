@@ -3,13 +3,14 @@ use crate::state::{auctions, Auction, Config};
 use crate::ContractError;
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    coin, to_binary, Addr, CosmosMsg, CustomQuery, Deps, DepsMut, Event, Querier, QuerierWrapper,
-    StdResult, Timestamp, Uint128, WasmMsg, WasmQuery,
+    to_binary, Addr, CosmosMsg, CustomQuery, Deps, DepsMut, Event, Querier, QuerierWrapper,
+    StdResult, Timestamp, WasmMsg, WasmQuery,
 };
-use sg1::fair_burn;
-use sg_marketplace::msg::{ParamsResponse, QueryMsg as MarketplaceQueryMsg};
-use sg_marketplace_common::{bank_send, royalty_payout, transfer_nft};
-use sg_std::{Response, SubMsg, NATIVE_DENOM};
+use sg_marketplace_common::{
+    calculate_nft_sale_fees, load_collection_royalties, load_marketplace_params,
+    payout_nft_sale_fees, transfer_nft,
+};
+use sg_std::Response;
 
 #[cw_serde]
 pub struct ReserveAuctionContract(pub Addr);
@@ -85,16 +86,6 @@ pub fn only_no_auction(deps: Deps, collection: &Addr, token_id: &str) -> Result<
     Ok(())
 }
 
-pub fn load_marketplace_params(
-    deps: Deps,
-    marketplace_addr: &Addr,
-) -> Result<ParamsResponse, ContractError> {
-    let marketplace_params: ParamsResponse = deps
-        .querier
-        .query_wasm_smart(marketplace_addr, &MarketplaceQueryMsg::Params {})?;
-    Ok(marketplace_params)
-}
-
 pub fn settle_auction(
     deps: DepsMut,
     block_time: Timestamp,
@@ -119,58 +110,51 @@ pub fn settle_auction(
         (auction.collection.clone(), auction.token_id.to_string()),
     )?;
 
-    let mut event = Event::new("settle-auction")
-        .add_attribute("collection", auction.collection.to_string())
-        .add_attribute("token_id", auction.token_id.to_string());
+    if let Some(_high_bid) = auction.high_bid {
+        let marketplace_params = load_marketplace_params(&deps.querier, &config.marketplace)?;
+        let royalty_info = load_collection_royalties(&deps.querier, deps.api, &auction.collection)?;
 
-    let sub_msgs: Vec<SubMsg> = if let Some(_high_bid) = auction.high_bid {
-        // handle protocol fee
-        let marketplace_params = load_marketplace_params(deps.as_ref(), &config.marketplace)?;
-        let protocol_fee = _high_bid.coin.amount * marketplace_params.params.trading_fee_percent
-            / Uint128::from(100u128);
-        fair_burn(protocol_fee.u128(), None, &mut response);
-
-        // handle royalties
-        let royalty_payment = royalty_payout(
-            deps.as_ref(),
-            &auction.collection,
+        let tx_fees = calculate_nft_sale_fees(
             _high_bid.coin.amount,
-            &mut response,
+            marketplace_params.trading_fee_percent,
+            auction.seller,
+            None,
+            None,
+            royalty_info,
         )?;
 
-        // send funds to seller
-        let remaining_funds = _high_bid.coin.amount - protocol_fee - royalty_payment;
-        let bank_msg = bank_send(
-            coin(remaining_funds.u128(), NATIVE_DENOM),
-            auction.seller_funds_recipient.unwrap_or(auction.seller),
-        )?;
+        response = payout_nft_sale_fees(response, tx_fees, None)?;
 
         // transfer token to highest bidder
         let transfer_msg = transfer_nft(
-            auction.collection.clone(),
+            &auction.collection.clone(),
             &auction.token_id,
-            _high_bid.bidder.clone(),
-        )?;
+            &_high_bid.bidder.clone(),
+        );
+        response = response.add_submessage(transfer_msg);
 
-        event = event
-            .add_attribute("bidder", _high_bid.bidder.to_string())
-            .add_attribute("bid_amount", _high_bid.coin.amount.to_string());
-
-        vec![bank_msg, transfer_msg]
+        response = response.add_event(
+            Event::new("settle-auction")
+                .add_attribute("collection", auction.collection.to_string())
+                .add_attribute("token_id", auction.token_id.to_string())
+                .add_attribute("bidder", _high_bid.bidder.to_string())
+                .add_attribute("bid_amount", _high_bid.coin.amount.to_string()),
+        );
     } else {
         // no bids, return NFT to seller
         let transfer_msg = transfer_nft(
-            auction.collection.clone(),
+            &auction.collection.clone(),
             &auction.token_id,
-            auction.seller,
-        )?;
+            &&auction.seller.clone(),
+        );
+        response = response.add_submessage(transfer_msg);
 
-        event = event
-            .add_attribute("bidder", "None".to_string())
-            .add_attribute("bid_amount", "None".to_string());
-
-        vec![transfer_msg]
+        response = response.add_event(
+            Event::new("settle-auction")
+                .add_attribute("collection", auction.collection.to_string())
+                .add_attribute("token_id", auction.token_id.to_string()),
+        );
     };
 
-    Ok(response.add_event(event).add_submessages(sub_msgs))
+    Ok(response)
 }
