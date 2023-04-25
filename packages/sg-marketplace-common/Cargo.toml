@@ -36,10 +36,16 @@ cw2              = { workspace = true }
 cw721            = { workspace = true }
 cw721-base       = { workspace = true }
 sg721-base       = { workspace = true }
+sg721            = { workspace = true }
 schemars         = { workspace = true }
 serde            = { workspace = true }
 sg-std           = { workspace = true }
+sg1              = { workspace = true }
 thiserror        = { workspace = true }
 
 [dev-dependencies]
-cw-multi-test = { workspace = true }
+cw-multi-test    = { workspace = true }
+sg-multi-test    = { workspace = true }
+test-suite       = { workspace = true }
+base-minter      = { workspace = true}
+mockall          = { workspace = true}

@@ -4,13 +4,14 @@ resolver = "2"
 
 [workspace.package]
 version    = "2.0.0"
+rust-version = "1.68.2"
 edition    = "2021"
 homepage   = "https://stargaze.zone"
 repository = "https://github.com/public-awesome/marketplace"
 license    = "BUSL-1.1"
 
 [workspace.dependencies]
-sg-marketplace-common = { path = "packages/common" }
+sg-marketplace-common = { path = "packages/sg-marketplace-common" }
 sg-marketplace        = { path = "contracts/marketplace", features = ["library"] }
 sg721-base            = { version = "2.1.0", features = ["library"] }
 sg721                 = { version = "2.1.0", features = ["library"] }
@@ -43,6 +44,7 @@ anyhow                = "1.0.41"
 cw-multi-test         = "0.16.0"
 sg-multi-test         = "2.1.0"
 test-suite            = "2.1.0"
+mockall               = "0.11.4"
 
 [profile.release.package.sg-marketplace]
 codegen-units = 1
