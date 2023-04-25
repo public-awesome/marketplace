@@ -86,8 +86,14 @@ pub fn execute_create_auction(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    only_owner(deps.as_ref(), &info, &collection, token_id)?;
-    has_approval(deps.as_ref(), &env.contract.address, &collection, token_id)?;
+    only_owner(&deps.querier, &info, &collection, token_id)?;
+    has_approval(
+        &deps.querier,
+        &env.contract.address,
+        &collection,
+        token_id,
+        Some(false),
+    )?;
     only_no_auction(deps.as_ref(), &collection, token_id)?;
 
     let mut response = Response::new();
@@ -147,10 +153,10 @@ pub fn execute_create_auction(
         );
 
     response = response.add_event(event).add_submessage(transfer_nft(
-        collection,
+        &collection,
         token_id,
-        env.contract.address,
-    )?);
+        &env.contract.address,
+    ));
 
     Ok(response)
 }
@@ -223,7 +229,7 @@ pub fn execute_cancel_auction(
 
     let response = Response::new()
         .add_event(event)
-        .add_submessage(transfer_nft(collection, token_id, auction.seller)?);
+        .add_submessage(transfer_nft(&collection, token_id, &auction.seller));
 
     Ok(response)
 }
@@ -281,7 +287,7 @@ pub fn execute_place_bid(
 
             // refund previous bidder
             let high_bid = auction.high_bid.unwrap();
-            response = response.add_submessage(bank_send(high_bid.coin, high_bid.bidder)?);
+            response = response.add_submessage(bank_send(high_bid.coin, &high_bid.bidder));
         }
     };
 
