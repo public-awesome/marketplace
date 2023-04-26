@@ -2,7 +2,7 @@
 name        = "sg-marketplace-common"
 authors     = ["Shane Vitarana <s@noreply.publicawesome.com>"]
 description = "Common controllers for use in Marketplace contracts"
-version     = { workspace = true }
+version     = "1.0.0"
 edition     = { workspace = true }
 homepage    = { workspace = true }
 repository  = { workspace = true }
@@ -26,7 +26,6 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-sg-marketplace   = { workspace = true }
 cosmwasm-schema  = { workspace = true }
 cosmwasm-std     = { workspace = true }
 cosmwasm-storage = { workspace = true }
