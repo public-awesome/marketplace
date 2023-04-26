@@ -6,9 +6,10 @@ use cosmwasm_std::{
     to_binary, Addr, CosmosMsg, CustomQuery, Deps, DepsMut, Event, Querier, QuerierWrapper,
     StdResult, Timestamp, WasmMsg, WasmQuery,
 };
+use sg_marketplace::msg::{ParamsResponse, QueryMsg as MarketplaceQueryMsg};
+use sg_marketplace::state::SudoParams;
 use sg_marketplace_common::{
-    calculate_nft_sale_fees, load_collection_royalties, load_marketplace_params,
-    payout_nft_sale_fees, transfer_nft,
+    calculate_nft_sale_fees, load_collection_royalties, payout_nft_sale_fees, transfer_nft,
 };
 use sg_std::Response;
 
@@ -84,6 +85,15 @@ pub fn only_no_auction(deps: Deps, collection: &Addr, token_id: &str) -> Result<
         });
     }
     Ok(())
+}
+
+pub fn load_marketplace_params(
+    querier: &QuerierWrapper,
+    marketplace: &Addr,
+) -> StdResult<SudoParams> {
+    let marketplace_params: ParamsResponse =
+        querier.query_wasm_smart(marketplace, &MarketplaceQueryMsg::Params {})?;
+    Ok(marketplace_params.params)
 }
 
 pub fn settle_auction(
