@@ -47,7 +47,7 @@ pub fn only_owner(
     token_id: &str,
 ) -> StdResult<()> {
     let owner_of_response = owner_of(querier, collection, token_id)?;
-    if owner_of_response.owner != info.sender.to_string() {
+    if owner_of_response.owner != info.sender {
         return Err(StdError::generic_err("Unauthorized"));
     }
     Ok(())
