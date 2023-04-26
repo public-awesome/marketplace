@@ -2,7 +2,7 @@
 name        = "reserve-auction"
 authors     = ["Shane Vitarana <s+git@publicawesome.com>"]
 description = "Stargaze Reserve Auction Contract"
-version     = { workspace = true }
+version     = "1.0.0"
 edition     = { workspace = true }
 homepage    = { workspace = true }
 repository  = { workspace = true }

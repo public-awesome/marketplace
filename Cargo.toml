@@ -3,7 +3,6 @@ members  = ["contracts/*", "packages/*"]
 resolver = "2"
 
 [workspace.package]
-version    = "2.0.0"
 rust-version = "1.68.2"
 edition    = "2021"
 homepage   = "https://stargaze.zone"
@@ -32,7 +31,7 @@ cw-controllers        = "0.16.0"
 cw2                   = "0.16.0"
 cw20                  = "0.16.0"
 cw721                 = "0.16.0"
-cw721-base            = "0.16.0"
+cw721-base            = { version = "0.16.0", features = ["library"] }
 cw-utils              = "0.16.0"
 schemars              = "0.8.11"
 semver                = "1.0.16"
@@ -45,6 +44,7 @@ cw-multi-test         = "0.16.0"
 sg-multi-test         = "2.1.0"
 test-suite            = "2.1.0"
 mockall               = "0.11.4"
+cute                  = "0.3.0"
 
 [profile.release.package.sg-marketplace]
 codegen-units = 1

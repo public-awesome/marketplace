@@ -9,8 +9,6 @@ use cw721_base::helpers::Cw721Contract;
 use sg1::fair_burn;
 use sg721::RoyaltyInfo;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_marketplace::msg::{ParamsResponse, QueryMsg as MarketplaceQueryMsg};
-use sg_marketplace::state::SudoParams;
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::marker::PhantomData;
 
@@ -70,15 +68,6 @@ pub fn has_approval(
     )
 }
 
-pub fn load_marketplace_params(
-    querier: &QuerierWrapper,
-    marketplace: &Addr,
-) -> StdResult<SudoParams> {
-    let marketplace_params: ParamsResponse =
-        querier.query_wasm_smart(marketplace, &MarketplaceQueryMsg::Params {})?;
-    Ok(marketplace_params.params)
-}
-
 /// Load the collection royalties as defined on the NFT collection contract
 pub fn load_collection_royalties(
     querier: &QuerierWrapper,
@@ -107,7 +96,7 @@ pub struct TokenPayment {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TransactionFees {
-    pub fair_burn: Uint128,
+    pub fair_burn_fee: Uint128,
     pub seller_payment: TokenPayment,
     pub finders_fee: Option<TokenPayment>,
     pub royalty_fee: Option<TokenPayment>,
@@ -123,8 +112,9 @@ pub fn calculate_nft_sale_fees(
     royalty_info: Option<RoyaltyInfo>,
 ) -> StdResult<TransactionFees> {
     // Calculate Fair Burn
-    let fair_burn = sale_price * trading_fee_percent / Uint128::from(100u128);
-    let mut seller_payment = sale_price - fair_burn;
+    let fair_burn_fee = sale_price * trading_fee_percent / Uint128::from(100u128);
+
+    let mut seller_payment = sale_price.checked_sub(fair_burn_fee)?;
 
     // Calculate finders fee
     let mut finders_fee: Option<TokenPayment> = None;
@@ -138,7 +128,7 @@ pub fn calculate_nft_sale_fees(
                 coin: coin(finders_fee_amount, NATIVE_DENOM),
                 recipient: _finder,
             });
-            seller_payment -= Uint128::from(finders_fee_amount);
+            seller_payment = seller_payment.checked_sub(Uint128::from(finders_fee_amount))?;
         }
     };
 
@@ -151,7 +141,7 @@ pub fn calculate_nft_sale_fees(
                 coin: coin(royalty_fee_amount, NATIVE_DENOM),
                 recipient: _royalty_info.payment_address,
             });
-            seller_payment -= Uint128::from(royalty_fee_amount);
+            seller_payment = seller_payment.checked_sub(Uint128::from(royalty_fee_amount))?;
         }
     };
 
@@ -162,7 +152,7 @@ pub fn calculate_nft_sale_fees(
     };
 
     Ok(TransactionFees {
-        fair_burn,
+        fair_burn_fee,
         seller_payment,
         finders_fee,
         royalty_fee,
@@ -176,7 +166,7 @@ pub fn payout_nft_sale_fees(
 ) -> StdResult<Response> {
     let mut response = response;
 
-    fair_burn(tx_fees.fair_burn.u128(), developer, &mut response);
+    fair_burn(tx_fees.fair_burn_fee.u128(), developer, &mut response);
 
     if let Some(_finders_fee) = &tx_fees.finders_fee {
         response = response.add_submessage(bank_send(
