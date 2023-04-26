@@ -45,7 +45,7 @@ fn try_owner_of() {
 
     let return_value = SystemResult::Ok(ContractResult::Ok(
         to_binary(&OwnerOfResponse {
-            owner: creator.clone().to_string(),
+            owner: creator.to_string(),
             approvals: vec![],
         })
         .unwrap(),
@@ -87,7 +87,7 @@ fn try_only_owner() {
 
     let return_value = SystemResult::Ok(ContractResult::Ok(
         to_binary(&OwnerOfResponse {
-            owner: creator.clone().to_string(),
+            owner: creator.to_string(),
             approvals: vec![],
         })
         .unwrap(),
@@ -101,13 +101,13 @@ fn try_only_owner() {
 
     let querier_wrapper = QuerierWrapper::new(&mock);
 
-    let info = mock_info(&buyer.to_string(), &[]);
+    let info = mock_info(buyer.as_ref(), &[]);
     assert_eq!(
         Err(StdError::generic_err("Unauthorized")),
         only_owner(&querier_wrapper, &info, &collection, &token_id.to_string())
     );
 
-    let info = mock_info(&creator.to_string(), &[]);
+    let info = mock_info(creator.as_ref(), &[]);
     assert_eq!(
         Ok(()),
         only_owner(&querier_wrapper, &info, &collection, &token_id.to_string())
@@ -301,10 +301,10 @@ fn try_payout_nft_sale_fees() {
     }
 
     match response.messages[2].msg.clone() {
-        CosmosMsg::Custom(StargazeMsgWrapper { msg_data, .. }) => match msg_data {
-            StargazeMsg::FundFairburnPool { .. } => {}
-            _ => panic!("Unexpected message type"),
-        },
+        CosmosMsg::Custom(StargazeMsgWrapper {
+            msg_data: StargazeMsg::FundFairburnPool { .. },
+            ..
+        }) => {}
         _ => panic!("Unexpected message type"),
     }
 

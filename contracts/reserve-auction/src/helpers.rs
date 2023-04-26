@@ -136,11 +136,7 @@ pub fn settle_auction(
         response = payout_nft_sale_fees(response, tx_fees, None)?;
 
         // transfer token to highest bidder
-        let transfer_msg = transfer_nft(
-            &auction.collection.clone(),
-            &auction.token_id,
-            &_high_bid.bidder.clone(),
-        );
+        let transfer_msg = transfer_nft(&auction.collection, &auction.token_id, &_high_bid.bidder);
         response = response.add_submessage(transfer_msg);
 
         response = response.add_event(
@@ -152,11 +148,7 @@ pub fn settle_auction(
         );
     } else {
         // no bids, return NFT to seller
-        let transfer_msg = transfer_nft(
-            &auction.collection.clone(),
-            &auction.token_id,
-            &&auction.seller.clone(),
-        );
+        let transfer_msg = transfer_nft(&auction.collection, &auction.token_id, &auction.seller);
         response = response.add_submessage(transfer_msg);
 
         response = response.add_event(
