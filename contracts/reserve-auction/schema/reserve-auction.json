@@ -1,6 +1,6 @@
 {
   "contract_name": "reserve-auction",
-  "contract_version": "2.0.0",
+  "contract_version": "1.0.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -10,7 +10,8 @@
       "create_auction_fee",
       "extend_duration",
       "marketplace",
-      "min_bid_increment",
+      "max_auctions_to_settle_per_block",
+      "min_bid_increment_bps",
       "min_duration",
       "min_reserve_price"
     ],
@@ -26,7 +27,12 @@
       "marketplace": {
         "type": "string"
       },
-      "min_bid_increment": {
+      "max_auctions_to_settle_per_block": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
+      "min_bid_increment_bps": {
         "type": "integer",
         "format": "uint64",
         "minimum": 0.0
@@ -894,7 +900,8 @@
             "create_auction_fee",
             "extend_duration",
             "marketplace",
-            "min_bid_increment",
+            "max_auctions_to_settle_per_block",
+            "min_bid_increment_pct",
             "min_duration",
             "min_reserve_price"
           ],
@@ -910,10 +917,13 @@
             "marketplace": {
               "$ref": "#/definitions/Addr"
             },
-            "min_bid_increment": {
+            "max_auctions_to_settle_per_block": {
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
+            },
+            "min_bid_increment_pct": {
+              "$ref": "#/definitions/Decimal"
             },
             "min_duration": {
               "type": "integer",
@@ -925,6 +935,10 @@
             }
           },
           "additionalProperties": false
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
         },
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
