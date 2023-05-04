@@ -68,6 +68,13 @@ pub enum ExecuteMsg {
         finder: Option<String>,
         finders_fee_bps: Option<u64>,
     },
+    BuyNow {
+        collection: String,
+        token_id: TokenId,
+        expires: Timestamp,
+        finder: Option<String>,
+        finders_fee_bps: Option<u64>,
+    },
     /// Remove an existing bid from an ask
     RemoveBid {
         collection: String,
@@ -79,6 +86,12 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         bidder: String,
         finder: Option<String>,
+    },
+    /// Reject a bid on an existing ask
+    RejectBid {
+        collection: String,
+        token_id: TokenId,
+        bidder: String,
     },
     /// Place a bid (limit order) across an entire collection
     SetCollectionBid {

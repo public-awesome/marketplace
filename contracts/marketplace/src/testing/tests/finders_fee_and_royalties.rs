@@ -12,10 +12,15 @@ use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw_multi_test::Executor;
 use sg_std::GENESIS_MINT_START_TIME;
 
+use cosmwasm_std::Decimal;
+use sg721::RoyaltyInfoResponse;
+
 use cosmwasm_std::{coin, coins};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
-use crate::testing::setup::templates::{minter_with_curator, standard_minter_template};
+use crate::testing::setup::templates::{
+    minter_with_curator, minter_with_royalties, standard_minter_template,
+};
 use sg_std::NATIVE_DENOM;
 
 #[test]
@@ -201,6 +206,301 @@ fn try_royalties() {
             creator_balance_after_fee.u128() + 100 - 10 - 2,
             NATIVE_DENOM
         )
+    );
+    let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
+    assert_eq!(
+        bidder_native_balances,
+        coins(INITIAL_BALANCE - 100, NATIVE_DENOM)
+    );
+
+    // Check NFT is transferred
+    let query_owner_msg = Cw721QueryMsg::OwnerOf {
+        token_id: token_id.to_string(),
+        include_expired: None,
+    };
+    let res: OwnerOfResponse = router
+        .wrap()
+        .query_wasm_smart(collection, &query_owner_msg)
+        .unwrap();
+    assert_eq!(res.owner, bidder.to_string());
+}
+
+#[test]
+fn try_empty_royalties() {
+    let vt = minter_with_royalties(1, None);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+    let token_id = 1;
+    add_funds_for_incremental_fee(
+        &mut router,
+        &Addr::unchecked("curator"),
+        INITIAL_BALANCE,
+        1u128,
+    )
+    .unwrap();
+    // Mint NFT for creator
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
+
+    // An ask is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        finders_fee_bps: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace,
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    // Check money is transferred correctly and not royalties
+    let curator_native_balances = router
+        .wrap()
+        .query_all_balances("curator".to_string())
+        .unwrap();
+    assert_eq!(
+        curator_native_balances,
+        coins(INITIAL_BALANCE, NATIVE_DENOM)
+    );
+
+    let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
+    // only network fee and no royalties
+    // 100 - 2 (fee)
+    let creator_balance_after_fee = calculated_creator_balance_after_fairburn();
+    assert_eq!(
+        creator_native_balances,
+        coins(creator_balance_after_fee.u128() + 100 - 2, NATIVE_DENOM)
+    );
+    let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
+    assert_eq!(
+        bidder_native_balances,
+        coins(INITIAL_BALANCE - 100, NATIVE_DENOM)
+    );
+
+    // Check NFT is transferred
+    let query_owner_msg = Cw721QueryMsg::OwnerOf {
+        token_id: token_id.to_string(),
+        include_expired: None,
+    };
+    let res: OwnerOfResponse = router
+        .wrap()
+        .query_wasm_smart(collection, &query_owner_msg)
+        .unwrap();
+    assert_eq!(res.owner, bidder.to_string());
+}
+
+#[test]
+fn try_zero_royalties() {
+    let royalty_info = RoyaltyInfoResponse {
+        payment_address: "royalty_receiver".to_string(),
+        share: Decimal::percent(0),
+    };
+    let vt = minter_with_royalties(1, Some(royalty_info));
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+    let token_id = 1;
+    add_funds_for_incremental_fee(
+        &mut router,
+        &Addr::unchecked("buyer"),
+        INITIAL_BALANCE,
+        1u128,
+    )
+    .unwrap();
+
+    let minter = Addr::unchecked("minter");
+    add_funds_for_incremental_fee(&mut router, &minter, INITIAL_BALANCE, 1u128).unwrap();
+    // Mint NFT for creator
+    mint(&mut router, &minter, &minter_addr);
+    approve(&mut router, &minter, &collection, &marketplace, token_id);
+
+    // List on marketplace by the minter
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        minter.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        finders_fee_bps: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace,
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    // royalty payment address should have no funds
+    let royalty_receiver_balance = router
+        .wrap()
+        .query_all_balances("royalty_receiver".to_string())
+        .unwrap();
+    assert_eq!(royalty_receiver_balance, vec![]);
+
+    let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
+
+    // creator should only have mint fees
+    assert_eq!(
+        creator_native_balances,
+        coins(INITIAL_BALANCE + 100_000_000 - 10_000_000, NATIVE_DENOM)
+    );
+
+    // buyer should have been deducted
+    let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
+    assert_eq!(
+        bidder_native_balances,
+        coins(INITIAL_BALANCE - 100, NATIVE_DENOM)
+    );
+    // seller should recive full amount minus fairburn (2%)
+    let minter_balance = router.wrap().query_all_balances(minter.clone()).unwrap();
+    assert_eq!(
+        minter_balance,
+        coins(INITIAL_BALANCE - 100_000_000 + 100 - 2, NATIVE_DENOM)
+    );
+    // Check NFT is transferred
+    let query_owner_msg = Cw721QueryMsg::OwnerOf {
+        token_id: token_id.to_string(),
+        include_expired: None,
+    };
+    let res: OwnerOfResponse = router
+        .wrap()
+        .query_wasm_smart(collection, &query_owner_msg)
+        .unwrap();
+    assert_eq!(res.owner, bidder.to_string());
+}
+
+#[test]
+fn test_custom_royalties() {
+    let royalty_info = RoyaltyInfoResponse {
+        payment_address: "royalty_receiver".to_string(),
+        share: Decimal::percent(5),
+    };
+    let vt = minter_with_royalties(1, Some(royalty_info));
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+    let token_id = 1;
+    add_funds_for_incremental_fee(
+        &mut router,
+        &Addr::unchecked("buyer"),
+        INITIAL_BALANCE,
+        1u128,
+    )
+    .unwrap();
+
+    let minter = Addr::unchecked("minter");
+    add_funds_for_incremental_fee(&mut router, &minter, INITIAL_BALANCE, 1u128).unwrap();
+    // Mint NFT for creator
+    mint(&mut router, &minter, &minter_addr);
+    approve(&mut router, &minter, &collection, &marketplace, token_id);
+
+    // List on marketplace by the minter
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(0),
+    };
+    let res = router.execute_contract(
+        minter.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id,
+        finders_fee_bps: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace,
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    // royalty receiver should have 5%
+    let royalty_receiver_balance = router
+        .wrap()
+        .query_all_balances("royalty_receiver".to_string())
+        .unwrap();
+    assert_eq!(royalty_receiver_balance, coins(5, NATIVE_DENOM));
+
+    let creator_native_balances = router.wrap().query_all_balances(creator).unwrap();
+
+    // creator should only have mint fees
+    assert_eq!(
+        creator_native_balances,
+        coins(INITIAL_BALANCE + 100_000_000 - 10_000_000, NATIVE_DENOM)
     );
     let bidder_native_balances = router.wrap().query_all_balances(bidder.clone()).unwrap();
     assert_eq!(

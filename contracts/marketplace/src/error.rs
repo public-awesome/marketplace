@@ -90,4 +90,7 @@ pub enum ContractError {
 
     #[error("Collection not tradable yet")]
     CollectionNotTradable {},
+
+    #[error("Item not for sale")]
+    ItemNotForSale {},
 }

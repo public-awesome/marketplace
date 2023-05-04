@@ -21,6 +21,7 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use semver::Version;
 use sg1::fair_burn;
+use sg721::RoyaltyInfoResponse;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::cmp::Ordering;
@@ -159,6 +160,27 @@ pub fn execute(
                 finder: maybe_addr(api, finder)?,
                 finders_fee_bps,
             },
+            false,
+        ),
+        ExecuteMsg::BuyNow {
+            collection,
+            token_id,
+            expires,
+            finder,
+            finders_fee_bps,
+        } => execute_set_bid(
+            deps,
+            env,
+            info,
+            SaleType::FixedPrice,
+            BidInfo {
+                collection: api.addr_validate(&collection)?,
+                token_id,
+                expires,
+                finder: maybe_addr(api, finder)?,
+                finders_fee_bps,
+            },
+            true,
         ),
         ExecuteMsg::RemoveBid {
             collection,
@@ -177,6 +199,18 @@ pub fn execute(
             token_id,
             api.addr_validate(&bidder)?,
             maybe_addr(api, finder)?,
+        ),
+        ExecuteMsg::RejectBid {
+            collection,
+            token_id,
+            bidder,
+        } => execute_reject_bid(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            api.addr_validate(&bidder)?,
         ),
         ExecuteMsg::UpdateAskPrice {
             collection,
@@ -417,6 +451,7 @@ pub fn execute_set_bid(
     info: MessageInfo,
     sale_type: SaleType,
     bid_info: BidInfo,
+    buy_now: bool,
 ) -> Result<Response, ContractError> {
     let BidInfo {
         collection,
@@ -480,6 +515,8 @@ pub fn execute_set_bid(
                 return Err(ContractError::TokenReserved {});
             }
         }
+    } else if buy_now {
+        return Err(ContractError::ItemNotForSale {});
     }
 
     let save_bid = |store| -> StdResult<_> {
@@ -664,6 +701,45 @@ pub fn execute_accept_bid(
         .add_attribute("price", bid.price.to_string());
 
     Ok(res.add_event(event))
+}
+
+pub fn execute_reject_bid(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+    bidder: Addr,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_owner(deps.as_ref(), &info, &collection, token_id)?;
+
+    let bid_key = bid_key(&collection, token_id, &bidder);
+
+    let bid = bids().load(deps.storage, bid_key.clone())?;
+    if bid.is_expired(&env.block) {
+        return Err(ContractError::BidExpired {});
+    }
+
+    bids().remove(deps.storage, bid_key)?;
+
+    let refund_msg = BankMsg::Send {
+        to_address: bidder.to_string(),
+        amount: vec![coin(bid.price.u128(), NATIVE_DENOM.to_string())],
+    };
+
+    let hook = prepare_bid_hook(deps.as_ref(), &bid, HookAction::Delete)?;
+
+    let event = Event::new("reject-bid")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("bidder", bidder)
+        .add_attribute("price", bid.price.to_string());
+
+    Ok(Response::new()
+        .add_event(event)
+        .add_message(refund_msg)
+        .add_submessages(hook))
 }
 
 /// Place a collection bid (limit order) across an entire collection
@@ -1066,6 +1142,18 @@ fn finalize_sale(
     Ok(())
 }
 
+/// Check royalties are non-zero
+fn parse_royalties(royalty_info: Option<RoyaltyInfoResponse>) -> Option<RoyaltyInfoResponse> {
+    match royalty_info {
+        Some(royalty) => {
+            if royalty.share.is_zero() {
+                return None;
+            }
+            Some(royalty)
+        }
+        None => None,
+    }
+}
 /// Payout a bid
 fn payout(
     deps: Deps,
@@ -1102,7 +1190,7 @@ fn payout(
         None => 0,
     };
 
-    match collection_info.royalty_info {
+    match parse_royalties(collection_info.royalty_info) {
         // If token supports royalties, payout shares to royalty recipient
         Some(royalty) => {
             let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
@@ -1113,13 +1201,11 @@ fn payout(
                 to_address: royalty.payment_address.to_string(),
                 amount: vec![amount.clone()],
             }));
-
             let event = Event::new("royalty-payout")
                 .add_attribute("collection", collection.to_string())
                 .add_attribute("amount", amount.to_string())
                 .add_attribute("recipient", royalty.payment_address.to_string());
             res.events.push(event);
-
             let seller_share_msg = BankMsg::Send {
                 to_address: payment_recipient.to_string(),
                 amount: vec![coin(

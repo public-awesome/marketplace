@@ -1,6 +1,6 @@
 {
   "contract_name": "sg-marketplace",
-  "contract_version": "1.2.1",
+  "contract_version": "1.3.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -328,6 +328,51 @@
         "additionalProperties": false
       },
       {
+        "type": "object",
+        "required": [
+          "buy_now"
+        ],
+        "properties": {
+          "buy_now": {
+            "type": "object",
+            "required": [
+              "collection",
+              "expires",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "expires": {
+                "$ref": "#/definitions/Timestamp"
+              },
+              "finder": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "finders_fee_bps": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "token_id": {
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Remove an existing bid from an ask",
         "type": "object",
         "required": [
@@ -381,6 +426,38 @@
                   "string",
                   "null"
                 ]
+              },
+              "token_id": {
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Reject a bid on an existing ask",
+        "type": "object",
+        "required": [
+          "reject_bid"
+        ],
+        "properties": {
+          "reject_bid": {
+            "type": "object",
+            "required": [
+              "bidder",
+              "collection",
+              "token_id"
+            ],
+            "properties": {
+              "bidder": {
+                "type": "string"
+              },
+              "collection": {
+                "type": "string"
               },
               "token_id": {
                 "type": "integer",

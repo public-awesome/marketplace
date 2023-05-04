@@ -2,6 +2,17 @@
 
 [![CircleCI](https://circleci.com/gh/public-awesome/marketplace/tree/main.svg?style=svg)](https://circleci.com/gh/public-awesome/marketplace/tree/main)
 
+## Running tests
+
+To run the e2e tests for the contracts in this repository, run the following commands
+```bash
+make optimize
+make e2etest
+```
+
+This will start a new Stargaze chain and upload the configured contracts and run the Go tests.
+
+
 ## WARNING: NOT FOR COMMERCIAL USE
 
 This repo is under a business source license simliar to Uniswap V3. This means it is **not available** under an open source license for a period of time. Please see [LICENSE](LICENSE) for full details.
