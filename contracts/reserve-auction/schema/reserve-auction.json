@@ -11,6 +11,7 @@
       "extend_duration",
       "marketplace",
       "max_auctions_to_settle_per_block",
+      "max_duration",
       "min_bid_increment_bps",
       "min_duration",
       "min_reserve_price"
@@ -32,6 +33,11 @@
         "format": "uint64",
         "minimum": 0.0
       },
+      "max_duration": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
+      },
       "min_bid_increment_bps": {
         "type": "integer",
         "format": "uint64",
@@ -43,26 +49,11 @@
         "minimum": 0.0
       },
       "min_reserve_price": {
-        "$ref": "#/definitions/Coin"
+        "$ref": "#/definitions/Uint128"
       }
     },
     "additionalProperties": false,
     "definitions": {
-      "Coin": {
-        "type": "object",
-        "required": [
-          "amount",
-          "denom"
-        ],
-        "properties": {
-          "amount": {
-            "$ref": "#/definitions/Uint128"
-          },
-          "denom": {
-            "type": "string"
-          }
-        }
-      },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
         "type": "string"
@@ -83,17 +74,18 @@
             "type": "object",
             "required": [
               "collection",
-              "end_time",
+              "duration",
               "reserve_price",
-              "start_time",
               "token_id"
             ],
             "properties": {
               "collection": {
                 "type": "string"
               },
-              "end_time": {
-                "$ref": "#/definitions/Timestamp"
+              "duration": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
               },
               "reserve_price": {
                 "$ref": "#/definitions/Coin"
@@ -103,9 +95,6 @@
                   "string",
                   "null"
                 ]
-              },
-              "start_time": {
-                "$ref": "#/definitions/Timestamp"
               },
               "token_id": {
                 "type": "string"
@@ -237,20 +226,8 @@
           }
         }
       },
-      "Timestamp": {
-        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
-        "allOf": [
-          {
-            "$ref": "#/definitions/Uint64"
-          }
-        ]
-      },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
-        "type": "string"
-      },
-      "Uint64": {
-        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
         "type": "string"
       }
     }
@@ -336,17 +313,11 @@
         "properties": {
           "auctions_by_end_time": {
             "type": "object",
-            "required": [
-              "end_time"
-            ],
             "properties": {
-              "end_time": {
-                "$ref": "#/definitions/Timestamp"
-              },
               "query_options": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/QueryOptions_for_Tuple_of_uint64_and_Tuple_of_String_and_String"
+                    "$ref": "#/definitions/QueryOptions_for_uint64"
                   },
                   {
                     "type": "null"
@@ -400,7 +371,7 @@
         },
         "additionalProperties": false
       },
-      "QueryOptions_for_Tuple_of_uint64_and_Tuple_of_String_and_String": {
+      "QueryOptions_for_uint64": {
         "description": "QueryOptions are used to paginate contract queries",
         "type": "object",
         "properties": {
@@ -422,46 +393,14 @@
           "start_after": {
             "description": "The key to start the query after",
             "type": [
-              "array",
+              "integer",
               "null"
             ],
-            "items": [
-              {
-                "type": "integer",
-                "format": "uint64",
-                "minimum": 0.0
-              },
-              {
-                "type": "array",
-                "items": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "maxItems": 2,
-                "minItems": 2
-              }
-            ],
-            "maxItems": 2,
-            "minItems": 2
+            "format": "uint64",
+            "minimum": 0.0
           }
         },
         "additionalProperties": false
-      },
-      "Timestamp": {
-        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
-        "allOf": [
-          {
-            "$ref": "#/definitions/Uint64"
-          }
-        ]
-      },
-      "Uint64": {
-        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
-        "type": "string"
       }
     }
   },
@@ -490,18 +429,29 @@
           "type": "object",
           "required": [
             "collection",
-            "end_time",
+            "duration",
             "reserve_price",
             "seller",
-            "start_time",
             "token_id"
           ],
           "properties": {
             "collection": {
               "$ref": "#/definitions/Addr"
             },
+            "duration": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "end_time": {
-              "$ref": "#/definitions/Timestamp"
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "first_bid_time": {
               "anyOf": [
@@ -538,9 +488,6 @@
                   "type": "null"
                 }
               ]
-            },
-            "start_time": {
-              "$ref": "#/definitions/Timestamp"
             },
             "token_id": {
               "type": "string"
@@ -622,18 +569,29 @@
           "type": "object",
           "required": [
             "collection",
-            "end_time",
+            "duration",
             "reserve_price",
             "seller",
-            "start_time",
             "token_id"
           ],
           "properties": {
             "collection": {
               "$ref": "#/definitions/Addr"
             },
+            "duration": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "end_time": {
-              "$ref": "#/definitions/Timestamp"
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "first_bid_time": {
               "anyOf": [
@@ -670,9 +628,6 @@
                   "type": "null"
                 }
               ]
-            },
-            "start_time": {
-              "$ref": "#/definitions/Timestamp"
             },
             "token_id": {
               "type": "string"
@@ -754,18 +709,29 @@
           "type": "object",
           "required": [
             "collection",
-            "end_time",
+            "duration",
             "reserve_price",
             "seller",
-            "start_time",
             "token_id"
           ],
           "properties": {
             "collection": {
               "$ref": "#/definitions/Addr"
             },
+            "duration": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "end_time": {
-              "$ref": "#/definitions/Timestamp"
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Timestamp"
+                },
+                {
+                  "type": "null"
+                }
+              ]
             },
             "first_bid_time": {
               "anyOf": [
@@ -802,9 +768,6 @@
                   "type": "null"
                 }
               ]
-            },
-            "start_time": {
-              "$ref": "#/definitions/Timestamp"
             },
             "token_id": {
               "type": "string"
@@ -879,21 +842,6 @@
           "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         },
-        "Coin": {
-          "type": "object",
-          "required": [
-            "amount",
-            "denom"
-          ],
-          "properties": {
-            "amount": {
-              "$ref": "#/definitions/Uint128"
-            },
-            "denom": {
-              "type": "string"
-            }
-          }
-        },
         "Config": {
           "type": "object",
           "required": [
@@ -901,6 +849,7 @@
             "extend_duration",
             "marketplace",
             "max_auctions_to_settle_per_block",
+            "max_duration",
             "min_bid_increment_pct",
             "min_duration",
             "min_reserve_price"
@@ -922,6 +871,11 @@
               "format": "uint64",
               "minimum": 0.0
             },
+            "max_duration": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
             "min_bid_increment_pct": {
               "$ref": "#/definitions/Decimal"
             },
@@ -931,7 +885,7 @@
               "minimum": 0.0
             },
             "min_reserve_price": {
-              "$ref": "#/definitions/Coin"
+              "$ref": "#/definitions/Uint128"
             }
           },
           "additionalProperties": false
