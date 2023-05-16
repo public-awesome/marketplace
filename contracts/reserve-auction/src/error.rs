@@ -1,5 +1,6 @@
 use cosmwasm_std::{Coin, StdError, Uint128};
 use cw_utils::PaymentError;
+use sg_marketplace_common::MarketplaceCommonError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -9,6 +10,9 @@ pub enum ContractError {
 
     #[error("{0}")]
     PaymentError(#[from] PaymentError),
+
+    #[error("{0}")]
+    MarketplaceCommonError(#[from] MarketplaceCommonError),
 
     #[error("Unauthorized")]
     Unauthorized {},
