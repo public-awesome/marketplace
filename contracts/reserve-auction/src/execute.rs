@@ -9,7 +9,7 @@ use crate::state::CONFIG;
 use crate::state::{auctions, Auction, HighBid};
 use cosmwasm_std::{coin, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Timestamp};
 use cw_utils::{maybe_addr, must_pay, nonpayable};
-use sg_marketplace_common::{bank_send, has_approval, only_owner, transfer_nft};
+use sg_marketplace_common::{has_approval, only_owner, transfer_nft, transfer_token};
 use sg_std::{Response, NATIVE_DENOM};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -287,7 +287,7 @@ pub fn execute_place_bid(
 
             // refund previous bidder
             let high_bid = auction.high_bid.unwrap();
-            response = response.add_submessage(bank_send(high_bid.coin, &high_bid.bidder));
+            response = response.add_submessage(transfer_token(high_bid.coin, &high_bid.bidder));
         }
     };
 

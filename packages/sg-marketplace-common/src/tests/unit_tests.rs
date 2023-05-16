@@ -1,6 +1,6 @@
 use crate::{
-    bank_send, calculate_nft_sale_fees, has_approval, load_collection_royalties, only_owner,
-    owner_of, payout_nft_sale_fees, transfer_nft, TokenPayment, TransactionFees,
+    calculate_nft_sale_fees, has_approval, load_collection_royalties, only_owner, owner_of,
+    payout_nft_sale_fees, transfer_nft, transfer_token, TokenPayment, TransactionFees,
 };
 
 use cosmwasm_std::{
@@ -24,9 +24,9 @@ fn try_transfer_nft() {
 }
 
 #[test]
-fn try_bank_send() {
+fn try_transfer_token() {
     let recipient = Addr::unchecked("recipient");
-    bank_send(coin(100u128, NATIVE_DENOM), &recipient);
+    transfer_token(coin(100u128, NATIVE_DENOM), &recipient);
 }
 
 #[test]
