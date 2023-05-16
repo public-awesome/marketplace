@@ -36,7 +36,7 @@ fn try_instantiate() {
 
     let msg = InstantiateMsg {
         marketplace: marketplace.to_string(),
-        min_reserve_price: coin(1u128, NATIVE_DENOM),
+        min_reserve_price: Uint128::from(MIN_RESERVE_PRICE),
         min_duration: 120,
         min_bid_increment_bps: 10,
         extend_duration: 60,

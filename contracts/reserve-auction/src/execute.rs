@@ -107,9 +107,10 @@ pub fn execute_create_auction(
     }
     fair_burn(fee.u128(), None, &mut response);
 
-    if !has_coins(&[reserve_price.clone()], &config.min_reserve_price) {
+    let min_reserve_price = config.coin_min_reserve_price();
+    if !has_coins(&[reserve_price.clone()], &min_reserve_price) {
         return Err(ContractError::InvalidReservePrice {
-            min: config.min_reserve_price,
+            min: min_reserve_price,
         });
     }
 
@@ -183,9 +184,10 @@ pub fn execute_update_reserve_price(
     }
 
     // make sure min reserve price is met
-    if !has_coins(&[reserve_price.clone()], &config.min_reserve_price) {
+    let min_reserve_price = config.coin_min_reserve_price();
+    if !has_coins(&[reserve_price.clone()], &min_reserve_price) {
         return Err(ContractError::InvalidReservePrice {
-            min: config.min_reserve_price,
+            min: min_reserve_price,
         });
     }
 
@@ -245,8 +247,7 @@ pub fn execute_place_bid(
 
     let mut auction = auctions().load(deps.storage, (collection.clone(), token_id.to_string()))?;
 
-    let denom = config.min_reserve_price.denom.clone();
-    let bid = must_pay(&info, &denom)?;
+    let bid = must_pay(&info, &NATIVE_DENOM)?;
 
     let mut response = Response::new();
     let block_time = env.block.time;
@@ -293,7 +294,7 @@ pub fn execute_place_bid(
 
     auction.high_bid = Some(HighBid {
         bidder: info.sender,
-        coin: coin(bid.u128(), denom),
+        coin: coin(bid.u128(), NATIVE_DENOM),
     });
 
     let time_remaining = auction.end_time.seconds() - block_time.seconds();
