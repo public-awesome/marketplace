@@ -478,11 +478,6 @@ pub fn execute_set_bid(
     }
 
     // check bid finders_fee_bps is not over max
-    if let Some(fee) = finders_fee_bps {
-        if Decimal::percent(fee) > params.max_finders_fee_percent {
-            return Err(ContractError::InvalidFindersFeeBps(fee));
-        }
-    }
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
         return Err(ContractError::PriceTooSmall(bid_price));
