@@ -421,7 +421,12 @@ pub fn execute_update_ask_price(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
+
+    // validate only for asks
     price_validate(deps.storage, &price)?;
+    if price.amount.u128() > MAX_FIXED_PRICE_ASK_AMOUNT {
+        return Err(ContractError::PriceTooHigh(price.amount));
+    }
 
     let key = ask_key(&collection, token_id);
 
