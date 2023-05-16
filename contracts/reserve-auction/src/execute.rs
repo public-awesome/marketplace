@@ -7,7 +7,9 @@ use crate::helpers::{only_no_auction, settle_auction};
 use crate::msg::ExecuteMsg;
 use crate::state::CONFIG;
 use crate::state::{auctions, Auction, HighBid};
-use cosmwasm_std::{coin, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Timestamp};
+use cosmwasm_std::{
+    coin, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Timestamp, Uint128,
+};
 use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg_marketplace_common::{has_approval, only_owner, transfer_nft, transfer_token};
 use sg_std::{Response, NATIVE_DENOM};
@@ -98,14 +100,16 @@ pub fn execute_create_auction(
 
     let mut response = Response::new();
 
-    let fee = must_pay(&info, NATIVE_DENOM)?;
-    if fee != config.create_auction_fee {
-        return Err(ContractError::WrongFee {
-            required: config.create_auction_fee,
-            given: fee,
-        });
+    if config.create_auction_fee > Uint128::zero() {
+        let fee = must_pay(&info, NATIVE_DENOM)?;
+        if fee != config.create_auction_fee {
+            return Err(ContractError::WrongFee {
+                required: config.create_auction_fee,
+                given: fee,
+            });
+        }
+        fair_burn(fee.u128(), None, &mut response);
     }
-    fair_burn(fee.u128(), None, &mut response);
 
     let min_reserve_price = config.coin_min_reserve_price();
     if !has_coins(&[reserve_price.clone()], &min_reserve_price) {
