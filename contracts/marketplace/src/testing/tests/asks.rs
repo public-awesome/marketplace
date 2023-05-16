@@ -272,6 +272,23 @@ fn max_set_ask_amount() {
         &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
+
+    // Ask cannot be updated above the limit
+    let update_ask_price = ExecuteMsg::UpdateAskPrice {
+        collection: collection.to_string(),
+        token_id,
+        price: coin(100_000_000_000_001u128, NATIVE_DENOM),
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &update_ask_price,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        "PriceTooHigh: 100000000000001".to_string()
+    );
 }
 
 #[test]
