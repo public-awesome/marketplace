@@ -1,6 +1,7 @@
 use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
 use crate::tests::helpers::constants::{
-    CREATE_AUCTION_FEE, EXTEND_DURATION, MIN_BID_INCREMENT_BPS, MIN_DURATION, MIN_RESERVE_PRICE,
+    CREATE_AUCTION_FEE, DEFAULT_DURATION, EXTEND_DURATION, MAX_DURATION, MIN_BID_INCREMENT_BPS,
+    MIN_DURATION, MIN_RESERVE_PRICE,
 };
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
 use crate::tests::{
@@ -38,6 +39,7 @@ fn try_instantiate() {
         marketplace: marketplace.to_string(),
         min_reserve_price: Uint128::from(MIN_RESERVE_PRICE),
         min_duration: 120,
+        max_duration: 180,
         min_bid_increment_bps: 10,
         extend_duration: 60,
         create_auction_fee: Uint128::new(1),
@@ -71,7 +73,7 @@ fn try_create_auction() {
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
-    let block_time = router.block_info().time;
+    let _block_time = router.block_info().time;
 
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
@@ -86,9 +88,8 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
@@ -101,9 +102,8 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
@@ -127,9 +127,8 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE - 1,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
@@ -141,35 +140,49 @@ fn try_create_auction() {
         .to_string(),
     );
 
-    // create auction with invalid start time fails
+    // create auction with duration below minimum fails
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time.minus_seconds(1),
-        block_time.plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        MIN_DURATION - 1,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
-    assert_error(res, ContractError::InvalidStartTime {}.to_string());
+    assert_error(
+        res,
+        ContractError::InvalidDuration {
+            min: MIN_DURATION,
+            max: MAX_DURATION,
+            found: MIN_DURATION - 1,
+        }
+        .to_string(),
+    );
 
-    // create auction with invalid end time fails
+    // create auction with duration above max fails
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION - 1),
         MIN_RESERVE_PRICE,
+        MAX_DURATION + 1,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
-    assert_error(res, ContractError::InvalidEndTime {}.to_string());
+    assert_error(
+        res,
+        ContractError::InvalidDuration {
+            min: MIN_DURATION,
+            max: MAX_DURATION,
+            found: MAX_DURATION + 1,
+        }
+        .to_string(),
+    );
 
     // create auction with invalid create auction fee fails
     let res = create_standard_auction(
@@ -178,9 +191,8 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION - 1),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128() - 1u128,
     );
@@ -200,9 +212,8 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
@@ -258,8 +269,9 @@ fn try_create_auction() {
         coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
         auction_info.reserve_price
     );
-    assert_eq!(block_time, auction_info.start_time);
-    assert_eq!(block_time.plus_seconds(MIN_DURATION), auction_info.end_time);
+
+    assert_eq!(DEFAULT_DURATION, auction_info.duration);
+    assert_eq!(None, auction_info.end_time);
     assert_eq!(None, auction_info.seller_funds_recipient);
     assert_eq!(None, auction_info.high_bid);
     assert_eq!(None, auction_info.first_bid_time);
@@ -271,9 +283,8 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
@@ -291,7 +302,7 @@ fn try_update_reserve_price() {
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
-    let block_time = router.block_info().time;
+    let _block_time = router.block_info().time;
 
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
@@ -313,9 +324,8 @@ fn try_update_reserve_price() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
@@ -395,7 +405,7 @@ fn try_cancel_auction() {
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
-    let block_time = router.block_info().time;
+    let _block_time = router.block_info().time;
 
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
@@ -417,9 +427,8 @@ fn try_cancel_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
@@ -463,9 +472,8 @@ fn try_cancel_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
@@ -483,7 +491,7 @@ fn try_cancel_auction() {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
     };
-    let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
+    let res = router.execute_contract(auction_creator.clone(), auction.clone(), &msg, &[]);
     assert_error(res, ContractError::AuctionStarted {}.to_string());
 }
 
@@ -515,40 +523,21 @@ fn try_place_bid() {
     );
 
     // creating valid auction succeeds
-    let duration_buffer = 100u64;
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time.plus_seconds(duration_buffer),
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
     assert!(res.is_ok());
 
-    // place bid before auction start fails
-    let res = place_bid(
-        &mut router,
-        &auction,
-        &bidder,
-        collection.as_ref(),
-        &token_id.to_string(),
-        MIN_RESERVE_PRICE,
-    );
-    assert_error(res, ContractError::AuctionNotStarted {}.to_string());
-
     // place bid with owner fails
-    setup_block_time(
-        &mut router,
-        block_time.plus_seconds(duration_buffer).nanos(),
-        None,
-    );
+    setup_block_time(&mut router, block_time.plus_seconds(10).nanos(), None);
     let res = place_bid(
         &mut router,
         &auction,
@@ -581,10 +570,7 @@ fn try_place_bid() {
     );
     assert_error(
         res,
-        ContractError::ReserveNotMet {
-            min: coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
-        }
-        .to_string(),
+        ContractError::BidTooLow(Uint128::from(MIN_RESERVE_PRICE)).to_string(),
     );
 
     // place bid above reserve succeeds
@@ -635,13 +621,7 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
     );
-    assert_eq!(
-        auction_info.end_time,
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION)
-    );
-    let bid_time = auction_info.end_time.minus_seconds(1u64);
+    let bid_time = auction_info.end_time.unwrap().minus_seconds(1u64);
     setup_block_time(&mut router, bid_time.nanos(), None);
     let res = place_bid(
         &mut router,
@@ -659,12 +639,12 @@ fn try_place_bid() {
         &token_id.to_string(),
     );
     assert_eq!(
-        auction_info.end_time,
+        auction_info.end_time.unwrap(),
         bid_time.plus_seconds(EXTEND_DURATION)
     );
 
     // place bid after auction ends fails
-    setup_block_time(&mut router, auction_info.end_time.nanos(), None);
+    setup_block_time(&mut router, auction_info.end_time.unwrap().nanos(), None);
     let res = place_bid(
         &mut router,
         &auction,
@@ -704,36 +684,18 @@ fn try_settle_auction_with_bids() {
     );
 
     // creating valid auction succeeds
-    let duration_buffer = 100u64;
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time.plus_seconds(duration_buffer),
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
     assert!(res.is_ok());
-
-    // settle auction before auction start fails
-    let msg = ExecuteMsg::SettleAuction {
-        collection: collection.to_string(),
-        token_id: token_id.to_string(),
-    };
-    let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
-    assert_error(res, ContractError::AuctionNotStarted {}.to_string());
-
-    setup_block_time(
-        &mut router,
-        block_time.plus_seconds(duration_buffer).nanos(),
-        None,
-    );
 
     // settle auction before auction end fails
     let msg = ExecuteMsg::SettleAuction {
@@ -756,6 +718,7 @@ fn try_settle_auction_with_bids() {
 
     let high_bid_amount =
         calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128();
+
     // place bid above next valid bid succeeds
     let res = place_bid(
         &mut router,
@@ -765,15 +728,11 @@ fn try_settle_auction_with_bids() {
         &token_id.to_string(),
         high_bid_amount,
     );
-    println!("{:?}", res);
     assert!(res.is_ok());
 
     setup_block_time(
         &mut router,
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION)
-            .nanos(),
+        block_time.plus_seconds(DEFAULT_DURATION).nanos(),
         None,
     );
 
@@ -899,18 +858,14 @@ fn try_settle_auction_with_no_bids() {
     );
 
     // creating valid auction succeeds
-    let duration_buffer = 100u64;
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time.plus_seconds(duration_buffer),
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION),
         MIN_RESERVE_PRICE,
+        DEFAULT_DURATION,
         None,
         CREATE_AUCTION_FEE.u128(),
     );
@@ -918,40 +873,15 @@ fn try_settle_auction_with_no_bids() {
 
     setup_block_time(
         &mut router,
-        block_time.plus_seconds(duration_buffer).nanos(),
+        block_time.plus_seconds(DEFAULT_DURATION).nanos(),
         None,
     );
 
-    setup_block_time(
-        &mut router,
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION)
-            .nanos(),
-        None,
-    );
-
+    // Cannot settle an auction that has no bid
     let msg = ExecuteMsg::SettleAuction {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
     };
     let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
-    assert!(res.is_ok());
-
-    // check that seller was given NFT
-    assert_eq!(
-        query_owner_of(&router, &collection, &token_id.to_string()),
-        auction_creator.to_string()
-    );
-
-    // check that seller has correct final balance
-    let new_auction_creator_balance = router
-        .wrap()
-        .query_balance(&auction_creator, NATIVE_DENOM)
-        .unwrap()
-        .amount;
-    assert_eq!(
-        new_auction_creator_balance,
-        Uint128::from(INITIAL_BALANCE) - CREATE_AUCTION_FEE
-    );
+    assert_error(res, ContractError::AuctionNotEnded {}.to_string());
 }

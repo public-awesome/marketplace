@@ -1,6 +1,6 @@
 use crate::tests::helpers::constants::{
-    CREATE_AUCTION_FEE, EXTEND_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MIN_BID_INCREMENT_BPS,
-    MIN_DURATION, MIN_RESERVE_PRICE,
+    CREATE_AUCTION_FEE, EXTEND_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MAX_DURATION,
+    MIN_BID_INCREMENT_BPS, MIN_DURATION, MIN_RESERVE_PRICE,
 };
 use crate::{msg::InstantiateMsg, ContractError};
 use cosmwasm_std::{Addr, Uint128};
@@ -19,6 +19,7 @@ pub fn setup_reserve_auction(
         marketplace: marketplace.to_string(),
         min_reserve_price: Uint128::from(MIN_RESERVE_PRICE),
         min_duration: MIN_DURATION,
+        max_duration: MAX_DURATION,
         min_bid_increment_bps: MIN_BID_INCREMENT_BPS,
         extend_duration: EXTEND_DURATION,
         create_auction_fee: CREATE_AUCTION_FEE,
