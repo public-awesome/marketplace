@@ -6,7 +6,7 @@ use crate::state::{Auction, Config};
 #[cw_serde]
 pub struct InstantiateMsg {
     pub marketplace: String,
-    pub min_reserve_price: Coin,
+    pub min_reserve_price: Uint128,
     pub min_duration: u64,
     pub min_bid_increment_bps: u64,
     pub extend_duration: u64,
@@ -98,7 +98,7 @@ pub enum SudoMsg {
     EndBlock {},   // Is called by x/cron module EndBlocker
     UpdateParams {
         marketplace: Option<String>,
-        min_reserve_price: Option<Coin>,
+        min_reserve_price: Option<Uint128>,
         min_duration: Option<u64>,
         min_bid_increment_bps: Option<u64>,
         extend_duration: Option<u64>,

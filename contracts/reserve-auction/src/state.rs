@@ -2,17 +2,27 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, Uint128};
 use cw_storage_macro::index_list;
 use cw_storage_plus::{IndexedMap, Item, MultiIndex};
+use sg_std::NATIVE_DENOM;
 use std::cmp::max;
 
 #[cw_serde]
 pub struct Config {
     pub marketplace: Addr,
-    pub min_reserve_price: Coin,
+    pub min_reserve_price: Uint128,
     pub min_bid_increment_pct: Decimal,
     pub min_duration: u64,
     pub extend_duration: u64,
     pub create_auction_fee: Uint128,
     pub max_auctions_to_settle_per_block: u64,
+}
+
+impl Config {
+    pub fn coin_min_reserve_price(&self) -> Coin {
+        Coin {
+            denom: NATIVE_DENOM.to_string(),
+            amount: self.min_reserve_price,
+        }
+    }
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
