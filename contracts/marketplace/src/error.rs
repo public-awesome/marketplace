@@ -1,6 +1,7 @@
 use cosmwasm_std::{StdError, Uint128};
 use cw_utils::PaymentError;
 use sg_controllers::HookError;
+use sg_marketplace_common::MarketplaceCommonError;
 use thiserror::Error;
 
 use crate::helpers::ExpiryRangeError;
@@ -9,6 +10,9 @@ use crate::helpers::ExpiryRangeError;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
+
+    #[error("{0}")]
+    MarketplaceCommonError(#[from] MarketplaceCommonError),
 
     #[error("UnauthorizedOwner")]
     UnauthorizedOwner {},

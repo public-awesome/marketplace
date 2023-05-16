@@ -1,3 +1,4 @@
+mod errors;
 mod tests;
 
 use cosmwasm_std::{
@@ -12,6 +13,8 @@ use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::marker::PhantomData;
 
+pub use crate::errors::MarketplaceCommonError;
+
 pub fn transfer_nft(collection: &Addr, token_id: &str, recipient: &Addr) -> SubMsg {
     SubMsg::new(WasmMsg::Execute {
         contract_addr: collection.to_string(),
@@ -24,7 +27,7 @@ pub fn transfer_nft(collection: &Addr, token_id: &str, recipient: &Addr) -> SubM
     })
 }
 
-pub fn bank_send(amount: Coin, to: &Addr) -> SubMsg {
+pub fn transfer_token(amount: Coin, to: &Addr) -> SubMsg {
     SubMsg::new(BankMsg::Send {
         to_address: to.to_string(),
         amount: vec![amount],
@@ -163,24 +166,40 @@ pub fn payout_nft_sale_fees(
     response: Response,
     tx_fees: TransactionFees,
     developer: Option<Addr>,
-) -> StdResult<Response> {
+) -> Result<Response, MarketplaceCommonError> {
     let mut response = response;
 
+    if tx_fees.fair_burn_fee == Uint128::zero() {
+        return Err(MarketplaceCommonError::InvalidFairBurn(
+            "fair burn fee cannot be 0".to_string(),
+        ));
+    }
     fair_burn(tx_fees.fair_burn_fee.u128(), developer, &mut response);
 
-    if let Some(_finders_fee) = &tx_fees.finders_fee {
-        response = response.add_submessage(bank_send(
-            _finders_fee.coin.clone(),
-            &_finders_fee.recipient,
-        ));
+    if let Some(finders_fee) = &tx_fees.finders_fee {
+        if finders_fee.coin.amount > Uint128::zero() {
+            response = response.add_submessage(transfer_token(
+                finders_fee.coin.clone(),
+                &finders_fee.recipient,
+            ));
+        }
     }
 
     if let Some(royalty_fee) = &tx_fees.royalty_fee {
-        response =
-            response.add_submessage(bank_send(royalty_fee.coin.clone(), &royalty_fee.recipient));
+        if royalty_fee.coin.amount > Uint128::zero() {
+            response = response.add_submessage(transfer_token(
+                royalty_fee.coin.clone(),
+                &royalty_fee.recipient,
+            ));
+        }
     }
 
-    response = response.add_submessage(bank_send(
+    if tx_fees.seller_payment.coin.amount == Uint128::zero() {
+        return Err(MarketplaceCommonError::InvalidBankTransfer(
+            "seller payment cannot be 0".to_string(),
+        ));
+    }
+    response = response.add_submessage(transfer_token(
         tx_fees.seller_payment.coin,
         &tx_fees.seller_payment.recipient,
     ));
