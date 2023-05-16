@@ -14,6 +14,9 @@ pub enum ContractError {
     #[error("{0}")]
     MarketplaceCommonError(#[from] MarketplaceCommonError),
 
+    #[error("InvalidConfig: {0}")]
+    InvalidConfig(String),
+
     #[error("Unauthorized")]
     Unauthorized {},
 

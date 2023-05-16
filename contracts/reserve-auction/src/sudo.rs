@@ -119,7 +119,7 @@ pub fn sudo_update_params(
         );
     }
 
-    CONFIG.save(deps.storage, &config)?;
+    config.save(deps.storage)?;
 
     Ok(Response::new().add_event(event))
 }

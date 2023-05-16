@@ -1,9 +1,11 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, Uint128};
+use cosmwasm_std::{Addr, Coin, Decimal, Storage, Timestamp, Uint128};
 use cw_storage_macro::index_list;
 use cw_storage_plus::{IndexedMap, Item, MultiIndex};
 use sg_std::NATIVE_DENOM;
 use std::cmp::max;
+
+use crate::ContractError;
 
 #[cw_serde]
 pub struct Config {
@@ -22,6 +24,41 @@ impl Config {
             denom: NATIVE_DENOM.to_string(),
             amount: self.min_reserve_price,
         }
+    }
+
+    pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
+        self.validate()?;
+        CONFIG.save(storage, self)?;
+        Ok(())
+    }
+
+    fn validate(&self) -> Result<(), ContractError> {
+        if self.min_reserve_price.is_zero() {
+            return Err(ContractError::InvalidConfig(
+                "min_reserve_price must be greater than zero".to_string(),
+            ));
+        }
+        if self.min_bid_increment_pct.is_zero() {
+            return Err(ContractError::InvalidConfig(
+                "min_bid_increment_pct must be greater than zero".to_string(),
+            ));
+        }
+        if self.min_bid_increment_pct >= Decimal::percent(10000) {
+            return Err(ContractError::InvalidConfig(
+                "min_bid_increment_pct must be less than 100%".to_string(),
+            ));
+        }
+        if self.min_duration == 0 {
+            return Err(ContractError::InvalidConfig(
+                "min_duration must be greater than zero".to_string(),
+            ));
+        }
+        if self.extend_duration == 0 {
+            return Err(ContractError::InvalidConfig(
+                "extend_duration must be greater than zero".to_string(),
+            ));
+        }
+        Ok(())
     }
 }
 
