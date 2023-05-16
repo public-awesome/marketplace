@@ -266,7 +266,7 @@ fn try_sudo_update_params() {
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
 
     let delta: u64 = 1;
-    let end_block_msg = SudoMsg::UpdateParams {
+    let update_params_msg = SudoMsg::UpdateParams {
         marketplace: Some(minter.to_string()),
         min_reserve_price: Some(Uint128::from(MIN_RESERVE_PRICE + delta as u128)),
         min_duration: Some(MIN_DURATION + delta),
@@ -275,7 +275,7 @@ fn try_sudo_update_params() {
         create_auction_fee: Some(CREATE_AUCTION_FEE + Uint128::from(delta)),
         max_auctions_to_settle_per_block: Some(MAX_AUCTIONS_TO_SETTLE_PER_BLOCK + delta),
     };
-    let response = router.wasm_sudo(reserve_auction.clone(), &end_block_msg);
+    let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
 
     response
         .unwrap()
@@ -286,7 +286,7 @@ fn try_sudo_update_params() {
 
     let response: ConfigResponse = router
         .wrap()
-        .query_wasm_smart(reserve_auction, &QueryMsg::Config {})
+        .query_wasm_smart(reserve_auction.clone(), &QueryMsg::Config {})
         .unwrap();
     let config = response.config;
 
@@ -308,5 +308,80 @@ fn try_sudo_update_params() {
     assert_eq!(
         config.max_auctions_to_settle_per_block,
         MAX_AUCTIONS_TO_SETTLE_PER_BLOCK + delta
+    );
+
+    let update_params_msg = SudoMsg::UpdateParams {
+        marketplace: None,
+        min_reserve_price: Some(Uint128::from(0u128)),
+        min_duration: None,
+        min_bid_increment_bps: None,
+        extend_duration: None,
+        create_auction_fee: None,
+        max_auctions_to_settle_per_block: None,
+    };
+    let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
+    assert_eq!(
+        response.unwrap_err().to_string(),
+        "InvalidConfig: min_reserve_price must be greater than zero"
+    );
+
+    let update_params_msg = SudoMsg::UpdateParams {
+        marketplace: None,
+        min_reserve_price: None,
+        min_duration: Some(0u64),
+        min_bid_increment_bps: None,
+        extend_duration: None,
+        create_auction_fee: None,
+        max_auctions_to_settle_per_block: None,
+    };
+    let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
+    assert_eq!(
+        response.unwrap_err().to_string(),
+        "InvalidConfig: min_duration must be greater than zero"
+    );
+
+    let update_params_msg = SudoMsg::UpdateParams {
+        marketplace: None,
+        min_reserve_price: None,
+        min_duration: None,
+        min_bid_increment_bps: Some(0u64),
+        extend_duration: None,
+        create_auction_fee: None,
+        max_auctions_to_settle_per_block: None,
+    };
+    let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
+    assert_eq!(
+        response.unwrap_err().to_string(),
+        "InvalidConfig: min_bid_increment_pct must be greater than zero"
+    );
+
+    let update_params_msg = SudoMsg::UpdateParams {
+        marketplace: None,
+        min_reserve_price: None,
+        min_duration: None,
+        min_bid_increment_bps: Some(10000u64),
+        extend_duration: None,
+        create_auction_fee: None,
+        max_auctions_to_settle_per_block: None,
+    };
+    let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
+    assert_eq!(
+        response.unwrap_err().to_string(),
+        "InvalidConfig: min_bid_increment_pct must be less than 100%"
+    );
+
+    let update_params_msg = SudoMsg::UpdateParams {
+        marketplace: None,
+        min_reserve_price: None,
+        min_duration: None,
+        min_bid_increment_bps: None,
+        extend_duration: Some(0u64),
+        create_auction_fee: None,
+        max_auctions_to_settle_per_block: None,
+    };
+    let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
+    assert_eq!(
+        response.unwrap_err().to_string(),
+        "InvalidConfig: extend_duration must be greater than zero"
     );
 }

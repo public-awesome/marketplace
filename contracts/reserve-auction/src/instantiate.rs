@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 
 use crate::error::ContractError;
 use crate::msg::InstantiateMsg;
-use crate::state::{Config, CONFIG};
+use crate::state::Config;
 use cosmwasm_std::{Decimal, DepsMut, Env, MessageInfo};
 use cw2::set_contract_version;
 use sg_std::Response;
@@ -29,7 +29,8 @@ pub fn instantiate(
         create_auction_fee: msg.create_auction_fee,
         max_auctions_to_settle_per_block: msg.max_auctions_to_settle_per_block,
     };
-    CONFIG.save(deps.storage, &config)?;
+
+    config.save(deps.storage)?;
 
     Ok(Response::new())
 }
