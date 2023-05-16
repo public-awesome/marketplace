@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coin, ensure, Addr, Coin, Decimal, Storage, Timestamp, Uint128};
 use cw_storage_macro::index_list;
-use cw_storage_plus::{IndexedMap, Item, Map, MultiIndex};
+use cw_storage_plus::{IndexedMap, Item, MultiIndex};
 use sg_std::NATIVE_DENOM;
 use std::cmp::max;
 
@@ -96,46 +96,24 @@ impl Auction {
         };
         coin(amount.u128(), NATIVE_DENOM)
     }
-
-    pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
-        let auction_key: AuctionKey = (self.collection.clone(), self.token_id.clone());
-
-        if self.end_time.is_some() {
-            EXPIRING_AUCTIONS.save(storage, self.end_time.unwrap().seconds(), &auction_key)?;
-        }
-
-        auctions().save(storage, auction_key, self)?;
-
-        Ok(())
-    }
-
-    pub fn remove(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
-        let auction_key: AuctionKey = (self.collection.clone(), self.token_id.clone());
-
-        if self.end_time.is_some() {
-            EXPIRING_AUCTIONS.remove(storage, self.end_time.unwrap().seconds());
-        }
-
-        auctions().remove(storage, auction_key)?;
-
-        Ok(())
-    }
 }
 
-pub type TokenId = String;
-pub type Collection = Addr;
-pub type AuctionKey = (Collection, TokenId);
+pub type AuctionKey = (Addr, String);
 
 #[index_list(Auction)]
 pub struct AuctionIndexes<'a> {
     pub seller: MultiIndex<'a, String, Auction, AuctionKey>,
+    pub end_time: MultiIndex<'a, u64, Auction, AuctionKey>,
 }
 
 pub fn auctions<'a>() -> IndexedMap<'a, AuctionKey, Auction, AuctionIndexes<'a>> {
     let indexes = AuctionIndexes {
-        seller: MultiIndex::new(|_pk: &[u8], d: &Auction| d.seller.to_string(), "a", "a__s"),
+        seller: MultiIndex::new(|_pk: &[u8], a: &Auction| a.seller.to_string(), "a", "a__s"),
+        end_time: MultiIndex::new(
+            |_pk: &[u8], a: &Auction| a.end_time.map_or(u64::MAX, |et| et.seconds()),
+            "a",
+            "a__et",
+        ),
     };
     IndexedMap::new("a", indexes)
 }
-
-pub const EXPIRING_AUCTIONS: Map<u64, AuctionKey> = Map::new("ea");

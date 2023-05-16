@@ -2,8 +2,8 @@
 use cosmwasm_std::entry_point;
 
 use crate::msg::{AuctionResponse, AuctionsResponse, ConfigResponse, QueryMsg, QueryOptions};
-use crate::state::{auctions, Auction, AuctionKey};
-use crate::state::{CONFIG, EXPIRING_AUCTIONS};
+use crate::state::CONFIG;
+use crate::state::{auctions, Auction};
 use cosmwasm_std::{to_binary, Addr, Binary, Deps, Env, Order, StdResult};
 use cw_storage_plus::{Bound, PrimaryKey};
 
@@ -74,24 +74,23 @@ pub fn query_auctions_by_seller(
 
 pub fn query_auctions_by_end_time(
     deps: Deps,
-    query_options: QueryOptions<u64>,
+    query_options: QueryOptions<(u64, String, String)>,
 ) -> StdResult<AuctionsResponse> {
-    let mut query_options = query_options;
-    if query_options.start_after.is_none() {
-        query_options.start_after = Some(0u64);
-    }
+    let (limit, order, min, max) = unpack_query_options(query_options, |sa| {
+        Bound::exclusive((sa.0, (Addr::unchecked(sa.1), sa.2)))
+    });
 
-    let (limit, order, min, max) = unpack_query_options(query_options, Bound::exclusive);
+    let max = max.unwrap_or(Bound::exclusive((
+        u64::MAX,
+        (Addr::unchecked(""), "".to_string()),
+    )));
 
-    let auction_keys: Vec<AuctionKey> = EXPIRING_AUCTIONS
-        .range(deps.storage, min, max, order)
+    let auctions: Vec<Auction> = auctions()
+        .idx
+        .end_time
+        .range(deps.storage, min, Some(max), order)
         .take(limit)
         .map(|item| item.map(|(_, v)| v))
-        .collect::<StdResult<_>>()?;
-
-    let auctions = auction_keys
-        .iter()
-        .map(|k| auctions().load(deps.storage, k.clone()))
         .collect::<StdResult<_>>()?;
 
     Ok(AuctionsResponse { auctions })
