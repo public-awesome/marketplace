@@ -49,6 +49,7 @@ pub fn execute(
         } => execute_update_reserve_price(
             deps,
             info,
+            env,
             api.addr_validate(&collection)?,
             token_id,
             reserve_price,
@@ -169,6 +170,7 @@ pub fn execute_create_auction(
 pub fn execute_update_reserve_price(
     deps: DepsMut,
     info: MessageInfo,
+    env: Env,
     collection: Addr,
     token_id: String,
     reserve_price: Coin,
@@ -185,6 +187,11 @@ pub fn execute_update_reserve_price(
     // make sure auction hasn't started
     if auction.first_bid_time.is_some() {
         return Err(ContractError::AuctionStarted {});
+    }
+
+    // make sure auction has not ended
+    if env.block.time >= auction.end_time {
+        return Err(ContractError::AuctionEnded {});
     }
 
     // make sure min reserve price is met
