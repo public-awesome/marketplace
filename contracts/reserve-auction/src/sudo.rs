@@ -5,7 +5,7 @@ use crate::error::ContractError;
 use crate::helpers::settle_auction;
 use crate::msg::SudoMsg;
 use crate::state::{auctions, Auction, CONFIG};
-use cosmwasm_std::{Addr, Coin, Decimal, DepsMut, Env, Event, Order, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, DepsMut, Env, Event, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use sg_std::Response;
 
@@ -73,7 +73,7 @@ pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
     marketplace: Option<String>,
-    min_reserve_price: Option<Coin>,
+    min_reserve_price: Option<Uint128>,
     min_duration: Option<u64>,
     min_bid_increment_bps: Option<u64>,
     extend_duration: Option<u64>,

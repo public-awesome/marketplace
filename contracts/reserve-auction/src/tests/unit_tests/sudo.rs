@@ -16,7 +16,7 @@ use crate::tests::{
         setup_minters::standard_minter_template,
     },
 };
-use cosmwasm_std::{coin, Decimal, Uint128};
+use cosmwasm_std::{Decimal, Uint128};
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
@@ -268,7 +268,7 @@ fn try_sudo_update_params() {
     let delta: u64 = 1;
     let end_block_msg = SudoMsg::UpdateParams {
         marketplace: Some(minter.to_string()),
-        min_reserve_price: Some(coin(MIN_RESERVE_PRICE + delta as u128, NATIVE_DENOM)),
+        min_reserve_price: Some(Uint128::from(MIN_RESERVE_PRICE + delta as u128)),
         min_duration: Some(MIN_DURATION + delta),
         min_bid_increment_bps: Some(MIN_BID_INCREMENT_BPS + delta),
         extend_duration: Some(MIN_DURATION + delta),
@@ -293,7 +293,7 @@ fn try_sudo_update_params() {
     assert_eq!(config.marketplace, minter);
     assert_eq!(
         config.min_reserve_price,
-        coin(MIN_RESERVE_PRICE + delta as u128, NATIVE_DENOM)
+        Uint128::from(MIN_RESERVE_PRICE + delta as u128)
     );
     assert_eq!(config.min_duration, MIN_DURATION + delta);
     assert_eq!(
