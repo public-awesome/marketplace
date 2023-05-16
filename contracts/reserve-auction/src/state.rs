@@ -98,33 +98,42 @@ impl Auction {
     }
 
     pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
-        let auction_key: AuctionKey = (self.collection.clone(), self.token_id.clone());
-
         if self.end_time.is_some() {
-            EXPIRING_AUCTIONS.save(storage, self.end_time.unwrap().seconds(), &auction_key)?;
+            EXPIRING_AUCTIONS.save(
+                storage,
+                (
+                    self.end_time.unwrap().seconds(),
+                    self.collection.clone(),
+                    self.token_id.clone(),
+                ),
+                &true,
+            )?;
         }
-
-        auctions().save(storage, auction_key, self)?;
-
+        auctions().save(
+            storage,
+            (self.collection.clone(), self.token_id.clone()),
+            self,
+        )?;
         Ok(())
     }
 
     pub fn remove(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
-        let auction_key: AuctionKey = (self.collection.clone(), self.token_id.clone());
-
         if self.end_time.is_some() {
-            EXPIRING_AUCTIONS.remove(storage, self.end_time.unwrap().seconds());
+            EXPIRING_AUCTIONS.remove(
+                storage,
+                (
+                    self.end_time.unwrap().seconds(),
+                    self.collection.clone(),
+                    self.token_id.clone(),
+                ),
+            );
         }
-
-        auctions().remove(storage, auction_key)?;
-
+        auctions().remove(storage, (self.collection.clone(), self.token_id.clone()))?;
         Ok(())
     }
 }
 
-pub type TokenId = String;
-pub type Collection = Addr;
-pub type AuctionKey = (Collection, TokenId);
+pub type AuctionKey = (Addr, String);
 
 #[index_list(Auction)]
 pub struct AuctionIndexes<'a> {
@@ -138,4 +147,7 @@ pub fn auctions<'a>() -> IndexedMap<'a, AuctionKey, Auction, AuctionIndexes<'a>>
     IndexedMap::new("a", indexes)
 }
 
-pub const EXPIRING_AUCTIONS: Map<u64, AuctionKey> = Map::new("ea");
+// ExpiringAuctionKey is built from (end_time.seconds(), collection, token_id)
+pub type ExpiringAuctionKey = (u64, Addr, String);
+
+pub const EXPIRING_AUCTIONS: Map<ExpiringAuctionKey, bool> = Map::new("ea");

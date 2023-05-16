@@ -60,7 +60,7 @@ pub enum QueryMsg {
     },
     #[returns(AuctionsResponse)]
     AuctionsByEndTime {
-        query_options: Option<QueryOptions<u64>>,
+        query_options: Option<QueryOptions<(u64, String, String)>>,
     },
 }
 

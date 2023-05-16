@@ -181,12 +181,14 @@ fn try_query_auctions_by_end_time() {
                 query_options: Some(QueryOptions {
                     descending: None,
                     limit: None,
-                    start_after: Some(
+                    start_after: Some((
                         block_time
-                            .plus_seconds(skip_num - 1)
+                            .plus_seconds(skip_num)
                             .plus_seconds(DEFAULT_DURATION)
                             .seconds(),
-                    ),
+                        "".to_string(),
+                        "".to_string(),
+                    )),
                 }),
             },
         )
@@ -208,7 +210,7 @@ fn try_query_auctions_by_end_time() {
                 query_options: Some(QueryOptions {
                     descending: Some(true),
                     limit: Some(limit),
-                    start_after: Some(start_after),
+                    start_after: Some((start_after, "".to_string(), "".to_string())),
                 }),
             },
         )
