@@ -1,5 +1,6 @@
 use crate::msg::{AuctionsResponse, QueryMsg, QueryOptions};
-use crate::tests::helpers::constants::{CREATE_AUCTION_FEE, MIN_DURATION, MIN_RESERVE_PRICE};
+use crate::tests::helpers::auction_functions::place_bid;
+use crate::tests::helpers::constants::{CREATE_AUCTION_FEE, DEFAULT_DURATION, MIN_RESERVE_PRICE};
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
 use crate::tests::{
     helpers::{
@@ -24,7 +25,7 @@ fn try_query_auctions_by_seller() {
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
-    let block_time = router.block_info().time;
+    let _block_time = router.block_info().time;
 
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
@@ -55,9 +56,8 @@ fn try_query_auctions_by_seller() {
             &reserve_auction,
             collection.as_ref(),
             &token_id.to_string(),
-            block_time,
-            block_time.plus_seconds(MIN_DURATION),
             MIN_RESERVE_PRICE,
+            DEFAULT_DURATION,
             None,
             CREATE_AUCTION_FEE.u128(),
         )
@@ -110,7 +110,7 @@ fn try_query_auctions_by_seller() {
 #[test]
 fn try_query_auctions_by_end_time() {
     let vt = standard_minter_template(1000);
-    let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
     let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
@@ -136,18 +136,26 @@ fn try_query_auctions_by_end_time() {
         );
         token_ids.push(token_id);
 
-        let start_time = block_time.plus_seconds(idx);
+        setup_block_time(&mut router, block_time.plus_seconds(idx).nanos(), None);
         create_standard_auction(
             &mut router,
             &auction_creator,
             &reserve_auction,
             collection.as_ref(),
             &token_id.to_string(),
-            start_time,
-            start_time.plus_seconds(MIN_DURATION),
             MIN_RESERVE_PRICE,
+            DEFAULT_DURATION,
             None,
             CREATE_AUCTION_FEE.u128(),
+        )
+        .unwrap();
+        place_bid(
+            &mut router,
+            &reserve_auction,
+            &bidder,
+            collection.as_ref(),
+            &token_id.to_string(),
+            MIN_RESERVE_PRICE,
         )
         .unwrap();
     }
@@ -157,7 +165,6 @@ fn try_query_auctions_by_end_time() {
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
-                end_time: block_time.plus_seconds(MIN_DURATION),
                 query_options: None,
             },
         )
@@ -171,11 +178,15 @@ fn try_query_auctions_by_end_time() {
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
-                end_time: block_time.plus_seconds(skip_num).plus_seconds(MIN_DURATION),
                 query_options: Some(QueryOptions {
                     descending: None,
                     limit: None,
-                    start_after: None,
+                    start_after: Some(
+                        block_time
+                            .plus_seconds(skip_num - 1)
+                            .plus_seconds(DEFAULT_DURATION)
+                            .seconds(),
+                    ),
                 }),
             },
         )
@@ -188,19 +199,12 @@ fn try_query_auctions_by_end_time() {
 
     let limit: u32 = 3;
     let start_after_auction = &response_1.auctions[3].clone();
-    let start_after = (
-        start_after_auction.end_time.seconds(),
-        (
-            start_after_auction.collection.to_string(),
-            start_after_auction.token_id.clone(),
-        ),
-    );
+    let start_after = start_after_auction.end_time.unwrap().seconds();
     let response_3: AuctionsResponse = router
         .wrap()
         .query_wasm_smart(
             reserve_auction,
             &QueryMsg::AuctionsByEndTime {
-                end_time: block_time.plus_seconds(MIN_DURATION),
                 query_options: Some(QueryOptions {
                     descending: Some(true),
                     limit: Some(limit),

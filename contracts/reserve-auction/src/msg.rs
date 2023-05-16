@@ -1,5 +1,5 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Coin, Timestamp, Uint128};
+use cosmwasm_std::{Coin, Uint128};
 
 use crate::state::{Auction, Config};
 
@@ -7,8 +7,9 @@ use crate::state::{Auction, Config};
 pub struct InstantiateMsg {
     pub marketplace: String,
     pub min_reserve_price: Uint128,
-    pub min_duration: u64,
     pub min_bid_increment_bps: u64,
+    pub min_duration: u64,
+    pub max_duration: u64,
     pub extend_duration: u64,
     pub create_auction_fee: Uint128,
     pub max_auctions_to_settle_per_block: u64,
@@ -20,8 +21,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: String,
         reserve_price: Coin,
-        start_time: Timestamp,
-        end_time: Timestamp,
+        duration: u64,
         seller_funds_recipient: Option<String>,
     },
     UpdateReservePrice {
@@ -60,8 +60,7 @@ pub enum QueryMsg {
     },
     #[returns(AuctionsResponse)]
     AuctionsByEndTime {
-        end_time: Timestamp,
-        query_options: Option<QueryOptions<(u64, (String, String))>>,
+        query_options: Option<QueryOptions<u64>>,
     },
 }
 

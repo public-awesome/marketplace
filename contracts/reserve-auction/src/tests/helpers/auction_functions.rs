@@ -3,7 +3,7 @@ use crate::{
     state::Auction,
 };
 use anyhow::Error;
-use cosmwasm_std::{coin, Addr, Timestamp};
+use cosmwasm_std::{coin, Addr};
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 use sg_multi_test::StargazeApp;
 use sg_std::{StargazeMsgWrapper, NATIVE_DENOM};
@@ -32,9 +32,8 @@ pub fn create_standard_auction(
     auction: &Addr,
     collection: &str,
     token_id: &str,
-    start_time: Timestamp,
-    end_time: Timestamp,
     reserve_price: u128,
+    duration: u64,
     seller_funds_recipient: Option<String>,
     creation_fee: u128,
 ) -> Result<AppResponse, Error> {
@@ -42,8 +41,7 @@ pub fn create_standard_auction(
         collection: collection.to_string(),
         token_id: token_id.to_string(),
         reserve_price: coin(reserve_price, NATIVE_DENOM),
-        start_time,
-        end_time,
+        duration,
         seller_funds_recipient,
     };
     router.execute_contract(

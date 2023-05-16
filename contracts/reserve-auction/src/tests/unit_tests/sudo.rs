@@ -1,8 +1,8 @@
-use crate::msg::{AuctionResponse, AuctionsResponse, ConfigResponse, QueryMsg, SudoMsg};
+use crate::msg::{AuctionsResponse, ConfigResponse, QueryMsg, QueryOptions, SudoMsg};
 use crate::tests::helpers::auction_functions::place_bid;
 use crate::tests::helpers::constants::{
-    CREATE_AUCTION_FEE, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MIN_BID_INCREMENT_BPS, MIN_DURATION,
-    MIN_RESERVE_PRICE,
+    CREATE_AUCTION_FEE, DEFAULT_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MIN_BID_INCREMENT_BPS,
+    MIN_DURATION, MIN_RESERVE_PRICE,
 };
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
 use crate::tests::{
@@ -72,18 +72,26 @@ fn try_sudo_end_block() {
         );
         token_ids.push(token_id);
 
-        let start_time = block_time.plus_seconds(idx);
+        setup_block_time(&mut router, block_time.plus_seconds(idx).nanos(), None);
         create_standard_auction(
             &mut router,
             &auction_creator,
             &reserve_auction,
             collection.as_ref(),
             &token_id.to_string(),
-            start_time,
-            start_time.plus_seconds(MIN_DURATION),
             MIN_RESERVE_PRICE,
+            DEFAULT_DURATION,
             None,
             CREATE_AUCTION_FEE.u128(),
+        )
+        .unwrap();
+        place_bid(
+            &mut router,
+            &reserve_auction,
+            &bidder,
+            collection.as_ref(),
+            &token_id.to_string(),
+            MIN_RESERVE_PRICE,
         )
         .unwrap();
     }
@@ -103,18 +111,17 @@ fn try_sudo_end_block() {
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
-                end_time: block_time,
                 query_options: None,
             },
         )
         .unwrap();
     assert_eq!(response_1.auctions.len(), num_auctions as usize);
 
-    // Test end block removes auctions with no bids that have ended
+    // Test end block removes auctions with bids that have ended
     let num_remove_auctions: u64 = 9;
     let new_block_time = block_time
         .plus_seconds(num_remove_auctions - 1)
-        .plus_seconds(MIN_DURATION);
+        .plus_seconds(DEFAULT_DURATION);
 
     setup_block_time(&mut router, new_block_time.nanos(), None);
     let response = router.wasm_sudo(reserve_auction.clone(), &end_block_msg);
@@ -125,8 +132,11 @@ fn try_sudo_end_block() {
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
-                end_time: block_time,
-                query_options: None,
+                query_options: Some(QueryOptions {
+                    limit: None,
+                    start_after: Some(block_time.seconds()),
+                    descending: None,
+                }),
             },
         )
         .unwrap();
@@ -136,41 +146,24 @@ fn try_sudo_end_block() {
     );
 
     // Test end block removes last auction with bid that has ended
-    let last_auction = &response_2.auctions[0];
-    let high_bid_amount = MIN_RESERVE_PRICE;
-    let response = place_bid(
-        &mut router,
-        &reserve_auction,
-        &bidder,
-        collection.as_ref(),
-        &last_auction.token_id.clone(),
-        high_bid_amount,
-    );
-    assert!(response.is_ok());
+    let new_block_time = block_time
+        .plus_seconds(num_auctions - 1)
+        .plus_seconds(DEFAULT_DURATION);
 
-    let last_auction = router
-        .wrap()
-        .query_wasm_smart::<AuctionResponse>(
-            reserve_auction.clone(),
-            &QueryMsg::Auction {
-                collection: last_auction.collection.to_string(),
-                token_id: last_auction.token_id.clone(),
-            },
-        )
-        .unwrap()
-        .auction;
-
-    setup_block_time(&mut router, last_auction.end_time.nanos(), None);
+    setup_block_time(&mut router, new_block_time.nanos(), None);
     let sudo_response = router.wasm_sudo(reserve_auction.clone(), &end_block_msg);
-    assert!(response.is_ok());
+    assert!(sudo_response.is_ok());
 
     let response_3: AuctionsResponse = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
-                end_time: block_time,
-                query_options: None,
+                query_options: Some(QueryOptions {
+                    limit: None,
+                    start_after: Some(block_time.seconds()),
+                    descending: None,
+                }),
             },
         )
         .unwrap();
@@ -206,7 +199,7 @@ fn try_sudo_end_block() {
     let trading_fee_percent = Decimal::percent(TRADING_FEE_BPS) / Uint128::from(100u128);
     let protocol_fee = Uint128::from(burn_amount + dist_amount);
     assert_eq!(
-        Uint128::from(high_bid_amount) * trading_fee_percent,
+        Uint128::from(MIN_RESERVE_PRICE) * trading_fee_percent,
         protocol_fee
     );
 
@@ -216,7 +209,8 @@ fn try_sudo_end_block() {
         .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})
         .unwrap();
     let royalty_share = collection_info.royalty_info.unwrap().share;
-    let royalty_fee = Uint128::from(high_bid_amount) * royalty_share;
+    let royalty_fee =
+        Uint128::from(MIN_RESERVE_PRICE) * royalty_share * Uint128::from(num_auctions);
 
     let new_creator_balance = router
         .wrap()
@@ -229,7 +223,9 @@ fn try_sudo_end_block() {
     );
 
     // check that seller was paid
-    let seller_payment = Uint128::from(high_bid_amount) - protocol_fee - royalty_fee;
+    let seller_payment = (Uint128::from(MIN_RESERVE_PRICE) - protocol_fee)
+        * Uint128::from(num_auctions)
+        - royalty_fee;
     let new_auction_creator_balance = router
         .wrap()
         .query_balance(&auction_creator, NATIVE_DENOM)
@@ -241,7 +237,7 @@ fn try_sudo_end_block() {
             + seller_payment
     );
 
-    // check that bidder debited and was given NFT
+    // check that bidder was debited tokens and was given NFT
     let bidder_balance = router
         .wrap()
         .query_balance(&bidder, NATIVE_DENOM)
@@ -249,10 +245,10 @@ fn try_sudo_end_block() {
         .amount;
     assert_eq!(
         bidder_balance,
-        Uint128::from(INITIAL_BALANCE - high_bid_amount)
+        Uint128::from(INITIAL_BALANCE - (MIN_RESERVE_PRICE * num_auctions as u128))
     );
     assert_eq!(
-        query_owner_of(&router, &collection, &last_auction.token_id),
+        query_owner_of(&router, &collection, &token_ids.last().unwrap().to_string()),
         bidder.to_string()
     );
 }
@@ -379,7 +375,7 @@ fn try_sudo_update_params() {
         create_auction_fee: None,
         max_auctions_to_settle_per_block: None,
     };
-    let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
+    let response = router.wasm_sudo(reserve_auction, &update_params_msg);
     assert_eq!(
         response.unwrap_err().to_string(),
         "InvalidConfig: extend_duration must be greater than zero"

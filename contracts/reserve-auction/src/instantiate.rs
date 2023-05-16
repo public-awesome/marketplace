@@ -25,6 +25,7 @@ pub fn instantiate(
         min_reserve_price: msg.min_reserve_price,
         min_bid_increment_pct: Decimal::percent(msg.min_bid_increment_bps),
         min_duration: msg.min_duration,
+        max_duration: msg.max_duration,
         extend_duration: msg.extend_duration,
         create_auction_fee: msg.create_auction_fee,
         max_auctions_to_settle_per_block: msg.max_auctions_to_settle_per_block,
