@@ -151,7 +151,11 @@ pub fn execute_create_auction(
         first_bid_time: None,
     };
 
-    auction.save(deps.storage)?;
+    auctions().save(
+        deps.storage,
+        (auction.collection.clone(), auction.token_id.clone()),
+        &auction,
+    )?;
 
     let mut event = Event::new("create-auction")
         .add_attribute("collection", auction.collection.to_string())
@@ -206,7 +210,11 @@ pub fn execute_update_reserve_price(
 
     // Update reserve price
     auction.reserve_price = reserve_price;
-    auction.save(deps.storage)?;
+    auctions().save(
+        deps.storage,
+        (auction.collection.clone(), auction.token_id.clone()),
+        &auction,
+    )?;
 
     let event = Event::new("update-reserve-price")
         .add_attribute("token_id", auction.token_id.to_string())
@@ -235,7 +243,10 @@ pub fn execute_cancel_auction(
     );
 
     // Remove auction from storage
-    auction.remove(deps.storage)?;
+    auctions().remove(
+        deps.storage,
+        (auction.collection.clone(), auction.token_id.clone()),
+    )?;
 
     let event = Event::new("cancel-auction")
         .add_attribute("collection", auction.collection.to_string())
@@ -307,7 +318,11 @@ pub fn execute_place_bid(
         coin: coin(bid_amount.u128(), NATIVE_DENOM),
     });
 
-    auction.save(deps.storage)?;
+    auctions().save(
+        deps.storage,
+        (auction.collection.clone(), auction.token_id.clone()),
+        &auction,
+    )?;
 
     let high_bid = &auction.high_bid.unwrap();
     let event = Event::new("place-bid")

@@ -46,7 +46,10 @@ pub fn settle_auction(
     );
 
     // Remove auction from storage
-    auction.remove(deps.storage)?;
+    auctions().remove(
+        deps.storage,
+        (auction.collection.clone(), auction.token_id.clone()),
+    )?;
 
     // High bid must exist if end time exists
     let high_bid = auction.high_bid.unwrap();

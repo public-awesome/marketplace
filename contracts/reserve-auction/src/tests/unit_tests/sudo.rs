@@ -134,7 +134,7 @@ fn try_sudo_end_block() {
             &QueryMsg::AuctionsByEndTime {
                 query_options: Some(QueryOptions {
                     limit: None,
-                    start_after: Some(block_time.seconds()),
+                    start_after: Some((block_time.seconds(), "".to_string(), "".to_string())),
                     descending: None,
                 }),
             },
@@ -161,7 +161,7 @@ fn try_sudo_end_block() {
             &QueryMsg::AuctionsByEndTime {
                 query_options: Some(QueryOptions {
                     limit: None,
-                    start_after: Some(block_time.seconds()),
+                    start_after: Some((block_time.seconds(), "".to_string(), "".to_string())),
                     descending: None,
                 }),
             },

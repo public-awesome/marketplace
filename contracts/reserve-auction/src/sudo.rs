@@ -4,8 +4,8 @@ use cosmwasm_std::entry_point;
 use crate::error::ContractError;
 use crate::helpers::settle_auction;
 use crate::msg::SudoMsg;
-use crate::state::{auctions, AuctionKey, CONFIG, EXPIRING_AUCTIONS};
-use cosmwasm_std::{Decimal, DepsMut, Env, Event, Order, StdResult, Uint128};
+use crate::state::{auctions, Auction, CONFIG};
+use cosmwasm_std::{Addr, Decimal, DepsMut, Env, Event, Order, StdResult, Uint128};
 use cw_storage_plus::Bound;
 use sg_std::Response;
 
@@ -46,9 +46,14 @@ pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractE
 
     let limit = config.max_auctions_to_settle_per_block as usize;
     let order = Order::Ascending;
-    let max = Some(Bound::inclusive(env.block.time.seconds()));
+    let max = Some(Bound::exclusive((
+        env.block.time.seconds() + 1,
+        (Addr::unchecked(""), "".to_string()),
+    )));
 
-    let auction_keys: Vec<AuctionKey> = EXPIRING_AUCTIONS
+    let auctions: Vec<Auction> = auctions()
+        .idx
+        .end_time
         .range(deps.storage, None, max, order)
         .take(limit)
         .map(|item| item.map(|(_, v)| v))
@@ -56,8 +61,8 @@ pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractE
 
     let event = Event::new("sudo-end-block");
     let mut response = Response::new().add_event(event);
-    for auction_key in auction_keys {
-        let auction = auctions().load(deps.storage, auction_key)?;
+
+    for auction in auctions {
         response = settle_auction(deps.branch(), env.block.time, &config, auction, response)?;
     }
 
