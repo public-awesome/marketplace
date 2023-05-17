@@ -36,7 +36,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // bps fee can not exceed 100%
 const MAX_FEE_BPS: u64 = 10000;
 // max 100M STARS
-const MAX_FIXED_PRICE_ASK_AMOUNT: u128 = 100_000_000_000_000u128;
+pub const MAX_FIXED_PRICE_ASK_AMOUNT: u128 = 100_000_000_000_000u128;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(

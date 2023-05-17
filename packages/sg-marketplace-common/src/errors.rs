@@ -5,6 +5,6 @@ pub enum MarketplaceCommonError {
     #[error("Invalid fair burn : {0}")]
     InvalidFairBurn(String),
 
-    #[error("Invalid bank transfer: {0}")]
-    InvalidBankTransfer(String),
+    #[error("Zero amount bank send")]
+    ZeroAmountBankSend,
 }

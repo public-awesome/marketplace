@@ -12,7 +12,7 @@ use cosmwasm_std::{
     Uint128,
 };
 use cw_utils::{maybe_addr, must_pay, nonpayable};
-use sg_marketplace_common::{has_approval, only_owner, transfer_nft, transfer_token};
+use sg_marketplace_common::{checked_transfer_coin, has_approval, only_owner, transfer_nft};
 use sg_std::{Response, NATIVE_DENOM};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -111,8 +111,8 @@ pub fn execute_create_auction(
             fee,
             config.create_auction_fee,
             ContractError::WrongFee {
-                required: config.create_auction_fee,
-                given: fee,
+                expected: config.create_auction_fee,
+                got: fee,
             }
         );
         fair_burn(fee.u128(), None, &mut response);
@@ -135,7 +135,7 @@ pub fn execute_create_auction(
         ContractError::InvalidDuration {
             min: config.min_duration,
             max: config.max_duration,
-            found: duration
+            got: duration
         }
     );
 
@@ -304,7 +304,8 @@ pub fn execute_place_bid(
         Some(_) => {
             // Refund previous bidder
             let high_bid = auction.high_bid.unwrap();
-            response = response.add_submessage(transfer_token(high_bid.coin, &high_bid.bidder));
+            response =
+                response.add_submessage(checked_transfer_coin(high_bid.coin, &high_bid.bidder)?);
 
             let time_remaining = auction.end_time.unwrap().seconds() - block_time.seconds();
             if time_remaining <= config.extend_duration {
