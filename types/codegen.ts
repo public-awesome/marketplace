@@ -1,19 +1,23 @@
-import codegen from "@cosmwasm/ts-codegen";
+import codegen from '@cosmwasm/ts-codegen';
 
 codegen({
   contracts: [
     {
-      name: "Marketplace",
-      dir: "../contracts/marketplace",
+      name: 'Marketplace',
+      dir: '../contracts/marketplace',
+    },
+    {
+      name: 'LiveAuction',
+      dir: '../contracts/live-auction',
     },
   ],
-  outPath: "./src/",
+  outPath: './src/',
 
   // options are completely optional ;)
   options: {
     bundle: {
-      bundleFile: "index.ts",
-      scope: "contracts",
+      bundleFile: 'index.ts',
+      scope: 'contracts',
     },
     types: {
       enabled: true,
@@ -24,7 +28,7 @@ codegen({
     reactQuery: {
       enabled: false,
       optionalClient: true,
-      version: "v4",
+      version: 'v4',
       mutations: true,
       queryKeys: true,
     },
@@ -36,5 +40,5 @@ codegen({
     },
   },
 }).then(() => {
-  console.log("✨ all done!");
+  console.log('✨ all done!');
 });

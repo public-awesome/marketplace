@@ -6,7 +6,7 @@
   "scripts": {
     "prepare": "tsc",
     "build": "tsc",
-    "codegen": "ts-node src/codegen.ts",
+    "codegen": "ts-node codegen.ts",
     "publish": "npm run build && npm run codegen && npm publish --access public"
   },
   "keywords": [],
