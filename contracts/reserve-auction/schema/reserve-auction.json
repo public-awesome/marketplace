@@ -313,11 +313,19 @@
         "properties": {
           "auctions_by_end_time": {
             "type": "object",
+            "required": [
+              "end_time"
+            ],
             "properties": {
+              "end_time": {
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              },
               "query_options": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/QueryOptions_for_uint64"
+                    "$ref": "#/definitions/QueryOptions_for_Tuple_of_String_and_String"
                   },
                   {
                     "type": "null"
@@ -367,37 +375,6 @@
             ],
             "maxItems": 2,
             "minItems": 2
-          }
-        },
-        "additionalProperties": false
-      },
-      "QueryOptions_for_uint64": {
-        "description": "QueryOptions are used to paginate contract queries",
-        "type": "object",
-        "properties": {
-          "descending": {
-            "description": "Whether to sort items in ascending or descending order",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "limit": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint32",
-            "minimum": 0.0
-          },
-          "start_after": {
-            "description": "The key to start the query after",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint64",
-            "minimum": 0.0
           }
         },
         "additionalProperties": false

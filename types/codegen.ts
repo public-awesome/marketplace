@@ -1,40 +1,43 @@
-import codegen from "@cosmwasm/ts-codegen";
+import codegen from "@cosmwasm/ts-codegen"
 
 codegen({
   contracts: [
     {
       name: "Marketplace",
-      dir: "../contracts/marketplace",
+      dir: "../contracts/marketplace/schema"
     },
+    {
+      name: "ReserveAuction",
+      dir: "../contracts/reserve-auction/schema"
+    }
   ],
   outPath: "./src/",
 
-  // options are completely optional ;)
   options: {
     bundle: {
       bundleFile: "index.ts",
-      scope: "contracts",
+      scope: "contracts"
     },
     types: {
-      enabled: true,
+      enabled: true
     },
     client: {
-      enabled: true,
+      enabled: true
     },
     reactQuery: {
       enabled: false,
       optionalClient: true,
       version: "v4",
       mutations: true,
-      queryKeys: true,
+      queryKeys: true
     },
     recoil: {
-      enabled: false,
+      enabled: false
     },
     messageComposer: {
-      enabled: true,
-    },
-  },
+      enabled: true
+    }
+  }
 }).then(() => {
-  console.log("✨ all done!");
-});
+  console.log("✨ all done!")
+})

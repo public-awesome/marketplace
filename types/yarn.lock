@@ -1362,10 +1362,10 @@
   resolved "https://registry.yarnpkg.com/@cosmjs/utils/-/utils-0.30.1.tgz#6d92582341be3c2ec8d82090253cfa4b7f959edb"
   integrity sha512-KvvX58MGMWh7xA+N+deCfunkA/ZNDvFLw4YbOmX3f/XBIkqrVY7qlotfy2aNb1kgp6h4B6Yc8YawJPDTfvWX7g==
 
-"@cosmwasm/ts-codegen@^0.26.0":
-  version "0.26.0"
-  resolved "https://registry.yarnpkg.com/@cosmwasm/ts-codegen/-/ts-codegen-0.26.0.tgz#f1aef0c2194be5d775a9300940adefc461ceccd9"
-  integrity sha512-bALTObAlsPBNZHvCGBdYH7RUu+v563fvbbVgwN/WTok5tFnvB9klEQa3DtEZUOuczD20rqfsDxAC8Q17v2hhlw==
+"@cosmwasm/ts-codegen@^0.28.0":
+  version "0.28.0"
+  resolved "https://registry.yarnpkg.com/@cosmwasm/ts-codegen/-/ts-codegen-0.28.0.tgz#1151d4f570eee201270e380f3a93e9dc279edb5a"
+  integrity sha512-PrNzAfHYnFKvv8J/8gpWyQlkLxtjCev7GL3TbeKcdcN7LusKNBxVP+OKNUAzeK/NCW7orwKg5/2mavYszt/G2w==
   dependencies:
     "@babel/core" "7.18.10"
     "@babel/generator" "7.18.12"
@@ -1393,7 +1393,7 @@
     parse-package-name "1.0.0"
     rimraf "3.0.2"
     shelljs "0.8.5"
-    wasm-ast-types "^0.19.0"
+    wasm-ast-types "^0.21.0"
 
 "@cspotcode/source-map-support@^0.8.0":
   version "0.8.1"
@@ -3495,10 +3495,10 @@ walker@^1.0.8:
   dependencies:
     makeerror "1.0.12"
 
-wasm-ast-types@^0.19.0:
-  version "0.19.0"
-  resolved "https://registry.yarnpkg.com/wasm-ast-types/-/wasm-ast-types-0.19.0.tgz#d3e71ae91d48ddbdc23560bad5e10660f3c0d0da"
-  integrity sha512-SELRqjXMi7U3pB0jslvP0IrafJS9iN/VvySriiBITptBstwuzglhDTj3KFRpb/8LI4mG2ewC4a0/HxSQewQ/3g==
+wasm-ast-types@^0.21.0:
+  version "0.21.0"
+  resolved "https://registry.yarnpkg.com/wasm-ast-types/-/wasm-ast-types-0.21.0.tgz#342ce71ef3f7567361023cdca092fefa7b223260"
+  integrity sha512-Zkw4RSlbL0vijqEckAWbZsZF5nWTZH/vrZmq9TW1wjNzhQqMM5u+EV/A4oVPSgnflpQLV95w28OAIGHiT0qU0A==
   dependencies:
     "@babel/runtime" "^7.18.9"
     "@babel/types" "7.18.10"
