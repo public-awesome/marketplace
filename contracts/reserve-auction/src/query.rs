@@ -88,7 +88,7 @@ pub fn query_auctions_by_end_time(
             query_options
                 .start_after
                 .map_or((end_time, (Addr::unchecked(""), "".to_string())), |sa| {
-                    (end_time, (Addr::unchecked(sa.0), sa.1.to_string()))
+                    (end_time, (Addr::unchecked(sa.0), sa.1))
                 }),
         ),
     };
