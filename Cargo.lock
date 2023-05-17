@@ -1095,7 +1095,7 @@ dependencies = [
 
 [[package]]
 name = "reserve-auction"
-version = "1.0.0"
+version = "1.5.0"
 dependencies = [
  "anyhow",
  "cosmwasm-schema",
@@ -1327,7 +1327,7 @@ dependencies = [
 
 [[package]]
 name = "sg-marketplace"
-version = "1.4.0"
+version = "1.5.0"
 dependencies = [
  "base-minter",
  "cosmwasm-schema",
