@@ -111,6 +111,7 @@ fn try_sudo_end_block() {
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
+                end_time: 0u64,
                 query_options: None,
             },
         )
@@ -132,9 +133,10 @@ fn try_sudo_end_block() {
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
+                end_time: block_time.seconds(),
                 query_options: Some(QueryOptions {
                     limit: None,
-                    start_after: Some((block_time.seconds(), "".to_string(), "".to_string())),
+                    start_after: Some(("".to_string(), "".to_string())),
                     descending: None,
                 }),
             },
@@ -159,9 +161,10 @@ fn try_sudo_end_block() {
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
+                end_time: block_time.seconds(),
                 query_options: Some(QueryOptions {
                     limit: None,
-                    start_after: Some((block_time.seconds(), "".to_string(), "".to_string())),
+                    start_after: Some(("".to_string(), "".to_string())),
                     descending: None,
                 }),
             },

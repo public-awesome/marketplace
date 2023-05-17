@@ -27,8 +27,12 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             seller,
             query_options.unwrap_or(QueryOptions::default()),
         )?),
-        QueryMsg::AuctionsByEndTime { query_options } => to_binary(&query_auctions_by_end_time(
+        QueryMsg::AuctionsByEndTime {
+            end_time,
+            query_options,
+        } => to_binary(&query_auctions_by_end_time(
             deps,
+            end_time,
             query_options.unwrap_or(QueryOptions::default()),
         )?),
     }
@@ -74,11 +78,22 @@ pub fn query_auctions_by_seller(
 
 pub fn query_auctions_by_end_time(
     deps: Deps,
-    query_options: QueryOptions<(u64, String, String)>,
+    end_time: u64,
+    query_options: QueryOptions<(String, String)>,
 ) -> StdResult<AuctionsResponse> {
-    let (limit, order, min, max) = unpack_query_options(query_options, |sa| {
-        Bound::exclusive((sa.0, (Addr::unchecked(sa.1), sa.2)))
-    });
+    let query_options = QueryOptions {
+        descending: query_options.descending,
+        limit: query_options.limit,
+        start_after: Some(
+            query_options
+                .start_after
+                .map_or((end_time, (Addr::unchecked(""), "".to_string())), |sa| {
+                    (end_time, (Addr::unchecked(sa.0), sa.1.to_string()))
+                }),
+        ),
+    };
+
+    let (limit, order, min, max) = unpack_query_options(query_options, Bound::exclusive);
 
     let max = max.unwrap_or(Bound::exclusive((
         u64::MAX,
