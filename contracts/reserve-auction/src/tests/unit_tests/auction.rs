@@ -157,7 +157,7 @@ fn try_create_auction() {
         ContractError::InvalidDuration {
             min: MIN_DURATION,
             max: MAX_DURATION,
-            found: MIN_DURATION - 1,
+            got: MIN_DURATION - 1,
         }
         .to_string(),
     );
@@ -179,7 +179,7 @@ fn try_create_auction() {
         ContractError::InvalidDuration {
             min: MIN_DURATION,
             max: MAX_DURATION,
-            found: MAX_DURATION + 1,
+            got: MAX_DURATION + 1,
         }
         .to_string(),
     );
@@ -199,8 +199,8 @@ fn try_create_auction() {
     assert_error(
         res,
         ContractError::WrongFee {
-            given: Uint128::from(CREATE_AUCTION_FEE.u128() - 1u128),
-            required: CREATE_AUCTION_FEE,
+            expected: CREATE_AUCTION_FEE,
+            got: Uint128::from(CREATE_AUCTION_FEE.u128() - 1u128),
         }
         .to_string(),
     );

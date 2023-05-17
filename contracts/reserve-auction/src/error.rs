@@ -20,8 +20,8 @@ pub enum ContractError {
     #[error("Unauthorized")]
     Unauthorized {},
 
-    #[error("InvalidDuration: min {min}, max {max}, found {found}")]
-    InvalidDuration { min: u64, max: u64, found: u64 },
+    #[error("InvalidDuration: min {min}, max {max}, got {got}")]
+    InvalidDuration { min: u64, max: u64, got: u64 },
 
     #[error("InvalidEndTime")]
     InvalidEndTime {},
@@ -35,8 +35,8 @@ pub enum ContractError {
     #[error("AuctionEnded")]
     AuctionEnded {},
 
-    #[error("WrongFee: {given} != {required}")]
-    WrongFee { given: Uint128, required: Uint128 },
+    #[error("WrongFee: {expected} != {got}")]
+    WrongFee { expected: Uint128, got: Uint128 },
 
     #[error("InvalidReservePrice: {min}")]
     InvalidReservePrice { min: Coin },

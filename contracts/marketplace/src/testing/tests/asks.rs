@@ -1,4 +1,5 @@
 use crate::error::ContractError;
+use crate::execute::MAX_FIXED_PRICE_ASK_AMOUNT;
 use crate::msg::{
     AskCountResponse, AskOffset, AskResponse, AsksResponse, CollectionOffset, CollectionsResponse,
 };
@@ -215,7 +216,7 @@ fn max_set_ask_amount() {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id,
-        price: coin(100_000_000_000_001u128, NATIVE_DENOM),
+        price: coin(MAX_FIXED_PRICE_ASK_AMOUNT + 1u128, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
@@ -259,7 +260,7 @@ fn max_set_ask_amount() {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id,
-        price: coin(100_000_000_000_000u128, NATIVE_DENOM),
+        price: coin(MAX_FIXED_PRICE_ASK_AMOUNT, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
@@ -277,7 +278,7 @@ fn max_set_ask_amount() {
     let update_ask_price = ExecuteMsg::UpdateAskPrice {
         collection: collection.to_string(),
         token_id,
-        price: coin(100_000_000_000_001u128, NATIVE_DENOM),
+        price: coin(MAX_FIXED_PRICE_ASK_AMOUNT + 1u128, NATIVE_DENOM),
     };
     let res = router.execute_contract(
         creator.clone(),
