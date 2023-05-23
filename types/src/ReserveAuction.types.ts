@@ -6,14 +6,19 @@
 
 export type Uint128 = string;
 export interface InstantiateMsg {
-  create_auction_fee: Uint128;
+  create_auction_fee: Coin;
   extend_duration: number;
   marketplace: string;
   max_auctions_to_settle_per_block: number;
   max_duration: number;
   min_bid_increment_bps: number;
   min_duration: number;
-  min_reserve_price: Uint128;
+  min_reserve_prices: Coin[];
+}
+export interface Coin {
+  amount: Uint128;
+  denom: string;
+  [k: string]: unknown;
 }
 export type ExecuteMsg = {
   create_auction: {
@@ -45,13 +50,12 @@ export type ExecuteMsg = {
     token_id: string;
   };
 };
-export interface Coin {
-  amount: Uint128;
-  denom: string;
-  [k: string]: unknown;
-}
 export type QueryMsg = {
   config: {};
+} | {
+  min_reserve_prices: {
+    query_options?: QueryOptionsForString | null;
+  };
 } | {
   auction: {
     collection: string;
@@ -68,6 +72,11 @@ export type QueryMsg = {
     query_options?: QueryOptionsForTupleOfStringAndString | null;
   };
 };
+export interface QueryOptionsForString {
+  descending?: boolean | null;
+  limit?: number | null;
+  start_after?: string | null;
+}
 export interface QueryOptionsForTupleOfStringAndString {
   descending?: boolean | null;
   limit?: number | null;
@@ -102,12 +111,14 @@ export interface ConfigResponse {
   config: Config;
 }
 export interface Config {
-  create_auction_fee: Uint128;
+  create_auction_fee: Coin;
   extend_duration: number;
   marketplace: Addr;
   max_auctions_to_settle_per_block: number;
   max_duration: number;
   min_bid_increment_pct: Decimal;
   min_duration: number;
-  min_reserve_price: Uint128;
+}
+export interface CoinsResponse {
+  coins: Coin[];
 }

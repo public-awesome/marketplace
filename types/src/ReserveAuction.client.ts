@@ -6,10 +6,15 @@
 
 import { CosmWasmClient, SigningCosmWasmClient, ExecuteResult } from "@cosmjs/cosmwasm-stargate";
 import { StdFee } from "@cosmjs/amino";
-import { Uint128, InstantiateMsg, ExecuteMsg, Coin, QueryMsg, QueryOptionsForTupleOfStringAndString, Addr, Timestamp, Uint64, AuctionResponse, Auction, HighBid, AuctionsResponse, Decimal, ConfigResponse, Config } from "./ReserveAuction.types";
+import { Uint128, InstantiateMsg, Coin, ExecuteMsg, QueryMsg, QueryOptionsForString, QueryOptionsForTupleOfStringAndString, Addr, Timestamp, Uint64, AuctionResponse, Auction, HighBid, AuctionsResponse, Decimal, ConfigResponse, Config, CoinsResponse } from "./ReserveAuction.types";
 export interface ReserveAuctionReadOnlyInterface {
   contractAddress: string;
   config: () => Promise<ConfigResponse>;
+  minReservePrices: ({
+    queryOptions
+  }: {
+    queryOptions?: QueryOptionsForString;
+  }) => Promise<CoinsResponse>;
   auction: ({
     collection,
     tokenId
@@ -40,6 +45,7 @@ export class ReserveAuctionQueryClient implements ReserveAuctionReadOnlyInterfac
     this.client = client;
     this.contractAddress = contractAddress;
     this.config = this.config.bind(this);
+    this.minReservePrices = this.minReservePrices.bind(this);
     this.auction = this.auction.bind(this);
     this.auctionsBySeller = this.auctionsBySeller.bind(this);
     this.auctionsByEndTime = this.auctionsByEndTime.bind(this);
@@ -48,6 +54,17 @@ export class ReserveAuctionQueryClient implements ReserveAuctionReadOnlyInterfac
   config = async (): Promise<ConfigResponse> => {
     return this.client.queryContractSmart(this.contractAddress, {
       config: {}
+    });
+  };
+  minReservePrices = async ({
+    queryOptions
+  }: {
+    queryOptions?: QueryOptionsForString;
+  }): Promise<CoinsResponse> => {
+    return this.client.queryContractSmart(this.contractAddress, {
+      min_reserve_prices: {
+        query_options: queryOptions
+      }
     });
   };
   auction = async ({
