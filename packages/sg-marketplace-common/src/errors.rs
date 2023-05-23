@@ -7,4 +7,7 @@ pub enum MarketplaceCommonError {
 
     #[error("Zero amount bank send")]
     ZeroAmountBankSend,
+
+    #[error("Collection not tradable yet")]
+    CollectionNotTradable {},
 }
