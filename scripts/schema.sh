@@ -11,4 +11,4 @@ for d in contracts/*; do
   fi
 done
 
-cd types && yarn install && yarn codegen
+cd types && yarn install && yarn codegen && yarn publish

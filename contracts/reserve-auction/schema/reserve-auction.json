@@ -1,6 +1,6 @@
 {
   "contract_name": "reserve-auction",
-  "contract_version": "1.0.0",
+  "contract_version": "1.5.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -14,11 +14,11 @@
       "max_duration",
       "min_bid_increment_bps",
       "min_duration",
-      "min_reserve_price"
+      "min_reserve_prices"
     ],
     "properties": {
       "create_auction_fee": {
-        "$ref": "#/definitions/Uint128"
+        "$ref": "#/definitions/Coin"
       },
       "extend_duration": {
         "type": "integer",
@@ -48,12 +48,30 @@
         "format": "uint64",
         "minimum": 0.0
       },
-      "min_reserve_price": {
-        "$ref": "#/definitions/Uint128"
+      "min_reserve_prices": {
+        "type": "array",
+        "items": {
+          "$ref": "#/definitions/Coin"
+        }
       }
     },
     "additionalProperties": false,
     "definitions": {
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "type": "string"
+          }
+        }
+      },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
         "type": "string"
@@ -252,6 +270,31 @@
       {
         "type": "object",
         "required": [
+          "min_reserve_prices"
+        ],
+        "properties": {
+          "min_reserve_prices": {
+            "type": "object",
+            "properties": {
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
           "auction"
         ],
         "properties": {
@@ -340,6 +383,35 @@
       }
     ],
     "definitions": {
+      "QueryOptions_for_String": {
+        "description": "QueryOptions are used to paginate contract queries",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "start_after": {
+            "description": "The key to start the query after",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
       "QueryOptions_for_Tuple_of_String_and_String": {
         "description": "QueryOptions are used to paginate contract queries",
         "type": "object",
@@ -819,6 +891,21 @@
           "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
           "type": "string"
         },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
         "Config": {
           "type": "object",
           "required": [
@@ -828,12 +915,11 @@
             "max_auctions_to_settle_per_block",
             "max_duration",
             "min_bid_increment_pct",
-            "min_duration",
-            "min_reserve_price"
+            "min_duration"
           ],
           "properties": {
             "create_auction_fee": {
-              "$ref": "#/definitions/Uint128"
+              "$ref": "#/definitions/Coin"
             },
             "extend_duration": {
               "type": "integer",
@@ -860,9 +946,6 @@
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
-            },
-            "min_reserve_price": {
-              "$ref": "#/definitions/Uint128"
             }
           },
           "additionalProperties": false
@@ -870,6 +953,44 @@
         "Decimal": {
           "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
           "type": "string"
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "min_reserve_prices": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "CoinsResponse",
+      "type": "object",
+      "required": [
+        "coins"
+      ],
+      "properties": {
+        "coins": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Coin"
+          }
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
         },
         "Uint128": {
           "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
