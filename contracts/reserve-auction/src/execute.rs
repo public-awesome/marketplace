@@ -3,7 +3,7 @@ use cosmwasm_std::entry_point;
 use sg1::fair_burn;
 
 use crate::error::ContractError;
-use crate::helpers::{only_no_auction, settle_auction};
+use crate::helpers::{only_no_auction, settle_auction, validate_reserve_price};
 use crate::msg::ExecuteMsg;
 use crate::state::CONFIG;
 use crate::state::{auctions, Auction, HighBid};
@@ -105,13 +105,13 @@ pub fn execute_create_auction(
     let mut response = Response::new();
 
     // If create auction fee is greater than zero, then pay the fee
-    if config.create_auction_fee > Uint128::zero() {
-        let fee = must_pay(&info, NATIVE_DENOM)?;
+    if config.create_auction_fee.amount > Uint128::zero() {
+        let fee = must_pay(&info, &config.create_auction_fee.denom)?;
         ensure_eq!(
             fee,
-            config.create_auction_fee,
+            config.create_auction_fee.amount,
             ContractError::WrongFee {
-                expected: config.create_auction_fee,
+                expected: config.create_auction_fee.amount,
                 got: fee,
             }
         );
@@ -120,14 +120,7 @@ pub fn execute_create_auction(
         nonpayable(&info)?;
     }
 
-    // Ensure that the reserve price is greater than the minimum reserve price
-    let min_reserve_price = config.min_reserve_price_coin();
-    ensure!(
-        has_coins(&[reserve_price.clone()], &min_reserve_price),
-        ContractError::InvalidReservePrice {
-            min: min_reserve_price,
-        }
-    );
+    validate_reserve_price(deps.as_ref().storage, &reserve_price)?;
 
     // Ensure that the duration is within the min and max duration
     ensure!(
@@ -187,7 +180,6 @@ pub fn execute_update_reserve_price(
     reserve_price: Coin,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    let config = CONFIG.load(deps.storage)?;
     let mut auction = auctions().load(deps.storage, (collection, token_id))?;
 
     // Ensure caller is the seller
@@ -199,14 +191,7 @@ pub fn execute_update_reserve_price(
         ContractError::AuctionStarted {}
     );
 
-    // Ensure that the reserve price is greater than the minimum reserve price
-    let min_reserve_price = config.min_reserve_price_coin();
-    ensure!(
-        has_coins(&[reserve_price.clone()], &min_reserve_price),
-        ContractError::InvalidReservePrice {
-            min: min_reserve_price,
-        }
-    );
+    validate_reserve_price(deps.as_ref().storage, &reserve_price)?;
 
     // Update reserve price
     auction.reserve_price = reserve_price;

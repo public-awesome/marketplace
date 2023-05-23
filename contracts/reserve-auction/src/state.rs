@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coin, ensure, Addr, Coin, Decimal, Storage, Timestamp, Uint128};
 use cw_storage_macro::index_list;
-use cw_storage_plus::{IndexedMap, Item, MultiIndex};
+use cw_storage_plus::{IndexedMap, Item, Map, MultiIndex};
 use sg_std::NATIVE_DENOM;
 use std::cmp::max;
 
@@ -10,23 +10,15 @@ use crate::ContractError;
 #[cw_serde]
 pub struct Config {
     pub marketplace: Addr,
-    pub min_reserve_price: Uint128,
     pub min_bid_increment_pct: Decimal,
     pub min_duration: u64,
     pub max_duration: u64,
     pub extend_duration: u64,
-    pub create_auction_fee: Uint128,
+    pub create_auction_fee: Coin,
     pub max_auctions_to_settle_per_block: u64,
 }
 
 impl Config {
-    pub fn min_reserve_price_coin(&self) -> Coin {
-        Coin {
-            denom: NATIVE_DENOM.to_string(),
-            amount: self.min_reserve_price,
-        }
-    }
-
     pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
         self.validate()?;
         CONFIG.save(storage, self)?;
@@ -34,10 +26,6 @@ impl Config {
     }
 
     fn validate(&self) -> Result<(), ContractError> {
-        ensure!(
-            !self.min_reserve_price.is_zero(),
-            ContractError::InvalidConfig("min_reserve_price must be greater than zero".to_string(),)
-        );
         ensure!(
             !self.min_bid_increment_pct.is_zero(),
             ContractError::InvalidConfig(
@@ -63,6 +51,10 @@ impl Config {
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
+
+// A map of acceptable denoms to their minimum reserve price.
+// Denoms not found in the Map are not accepted.
+pub const MIN_RESERVE_PRICES: Map<String, Uint128> = Map::new("mrp");
 
 #[cw_serde]
 pub struct HighBid {

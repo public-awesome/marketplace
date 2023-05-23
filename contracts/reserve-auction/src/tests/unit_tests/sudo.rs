@@ -16,7 +16,7 @@ use crate::tests::{
         setup_minters::standard_minter_template,
     },
 };
-use cosmwasm_std::{Decimal, Uint128};
+use cosmwasm_std::{coin, Decimal, Uint128};
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
@@ -267,11 +267,13 @@ fn try_sudo_update_params() {
     let delta: u64 = 1;
     let update_params_msg = SudoMsg::UpdateParams {
         marketplace: Some(minter.to_string()),
-        min_reserve_price: Some(Uint128::from(MIN_RESERVE_PRICE + delta as u128)),
         min_duration: Some(MIN_DURATION + delta),
         min_bid_increment_bps: Some(MIN_BID_INCREMENT_BPS + delta),
         extend_duration: Some(MIN_DURATION + delta),
-        create_auction_fee: Some(CREATE_AUCTION_FEE + Uint128::from(delta)),
+        create_auction_fee: Some(coin(
+            CREATE_AUCTION_FEE.u128() + Uint128::from(delta).u128(),
+            NATIVE_DENOM,
+        )),
         max_auctions_to_settle_per_block: Some(MAX_AUCTIONS_TO_SETTLE_PER_BLOCK + delta),
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
@@ -290,10 +292,6 @@ fn try_sudo_update_params() {
     let config = response.config;
 
     assert_eq!(config.marketplace, minter);
-    assert_eq!(
-        config.min_reserve_price,
-        Uint128::from(MIN_RESERVE_PRICE + delta as u128)
-    );
     assert_eq!(config.min_duration, MIN_DURATION + delta);
     assert_eq!(
         config.min_bid_increment_pct,
@@ -302,7 +300,10 @@ fn try_sudo_update_params() {
     assert_eq!(config.extend_duration, MIN_DURATION + delta);
     assert_eq!(
         config.create_auction_fee,
-        CREATE_AUCTION_FEE + Uint128::from(delta)
+        coin(
+            CREATE_AUCTION_FEE.u128() + Uint128::from(delta).u128(),
+            NATIVE_DENOM
+        )
     );
     assert_eq!(
         config.max_auctions_to_settle_per_block,
@@ -311,22 +312,6 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         marketplace: None,
-        min_reserve_price: Some(Uint128::from(0u128)),
-        min_duration: None,
-        min_bid_increment_bps: None,
-        extend_duration: None,
-        create_auction_fee: None,
-        max_auctions_to_settle_per_block: None,
-    };
-    let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
-    assert_eq!(
-        response.unwrap_err().to_string(),
-        "InvalidConfig: min_reserve_price must be greater than zero"
-    );
-
-    let update_params_msg = SudoMsg::UpdateParams {
-        marketplace: None,
-        min_reserve_price: None,
         min_duration: Some(0u64),
         min_bid_increment_bps: None,
         extend_duration: None,
@@ -341,7 +326,6 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         marketplace: None,
-        min_reserve_price: None,
         min_duration: None,
         min_bid_increment_bps: Some(0u64),
         extend_duration: None,
@@ -356,7 +340,6 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         marketplace: None,
-        min_reserve_price: None,
         min_duration: None,
         min_bid_increment_bps: Some(10000u64),
         extend_duration: None,
@@ -371,7 +354,6 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         marketplace: None,
-        min_reserve_price: None,
         min_duration: None,
         min_bid_increment_bps: None,
         extend_duration: Some(0u64),
