@@ -12,7 +12,9 @@ use cosmwasm_std::{
     Uint128,
 };
 use cw_utils::{maybe_addr, must_pay, nonpayable};
-use sg_marketplace_common::{checked_transfer_coin, has_approval, only_owner, transfer_nft};
+use sg_marketplace_common::{
+    checked_transfer_coin, has_approval, only_owner, only_tradable, transfer_nft,
+};
 use sg_std::{Response, NATIVE_DENOM};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -101,6 +103,8 @@ pub fn execute_create_auction(
 
     // Cannot create a duplicate auction for an NFT
     only_no_auction(deps.as_ref(), &collection, token_id)?;
+
+    only_tradable(deps.as_ref(), &env.block, &collection)?;
 
     let mut response = Response::new();
 

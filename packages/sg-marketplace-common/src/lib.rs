@@ -4,8 +4,8 @@ mod tests;
 pub use crate::errors::MarketplaceCommonError;
 
 use cosmwasm_std::{
-    coin, to_binary, Addr, Api, BankMsg, Coin, Decimal, Empty, MessageInfo, QuerierWrapper,
-    StdError, StdResult, Uint128, WasmMsg,
+    coin, to_binary, Addr, Api, BankMsg, BlockInfo, Coin, Decimal, Deps, Empty, MessageInfo,
+    QuerierWrapper, StdError, StdResult, Uint128, WasmMsg,
 };
 use cw721::{ApprovalResponse, Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
@@ -76,6 +76,33 @@ pub fn has_approval(
         spender.as_str(),
         include_expired,
     )
+}
+
+/// Checks that the collection is tradable
+pub fn only_tradable(
+    deps: Deps,
+    block: &BlockInfo,
+    collection: &Addr,
+) -> Result<bool, MarketplaceCommonError> {
+    let res: Result<CollectionInfoResponse, StdError> = deps
+        .querier
+        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {});
+
+    match res {
+        Ok(collection_info) => match collection_info.start_trading_time {
+            Some(start_trading_time) => {
+                if start_trading_time > block.time {
+                    Err(MarketplaceCommonError::CollectionNotTradable {})
+                } else {
+                    Ok(true)
+                }
+            }
+            // not set by collection, so tradable
+            None => Ok(true),
+        },
+        // not supported by collection
+        Err(_) => Ok(true),
+    }
 }
 
 /// Load the collection royalties as defined on the NFT collection contract

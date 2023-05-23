@@ -9,11 +9,10 @@ use crate::state::{
     Order, SaleType, SudoParams, TokenId, ASK_HOOKS, BID_HOOKS, COLLECTION_BID_HOOKS, SALE_HOOKS,
     SUDO_PARAMS,
 };
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
+
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, BlockInfo, Coin, Decimal, Deps, DepsMut, Empty, Env, Event,
-    MessageInfo, Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Empty, Env, Event, MessageInfo,
+    Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
@@ -21,9 +20,8 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use semver::Version;
 use sg1::fair_burn;
-use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_marketplace_common::{
-    calculate_nft_sale_fees, load_collection_royalties, payout_nft_sale_fees,
+    calculate_nft_sale_fees, load_collection_royalties, only_tradable, payout_nft_sale_fees,
 };
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::cmp::Ordering;
@@ -37,6 +35,9 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 const MAX_FEE_BPS: u64 = 10000;
 // max 100M STARS
 pub const MAX_FIXED_PRICE_ASK_AMOUNT: u128 = 100_000_000_000_000u128;
+
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -1200,29 +1201,6 @@ fn only_owner(
     }
 
     Ok(res)
-}
-
-/// Checks that the collection is tradable
-fn only_tradable(deps: Deps, block: &BlockInfo, collection: &Addr) -> Result<bool, ContractError> {
-    let res: Result<CollectionInfoResponse, StdError> = deps
-        .querier
-        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {});
-
-    match res {
-        Ok(collection_info) => match collection_info.start_trading_time {
-            Some(start_trading_time) => {
-                if start_trading_time > block.time {
-                    Err(ContractError::CollectionNotTradable {})
-                } else {
-                    Ok(true)
-                }
-            }
-            // not set by collection, so tradable
-            None => Ok(true),
-        },
-        // not supported by collection
-        Err(_) => Ok(true),
-    }
 }
 
 /// Checks to enforce only privileged operators
