@@ -330,7 +330,8 @@ pub fn execute_place_bid(
         .add_attribute("collection", auction.collection.to_string())
         .add_attribute("token_id", auction.token_id)
         .add_attribute("bidder", high_bid.bidder.to_string())
-        .add_attribute("bid_amount", high_bid.coin.to_string());
+        .add_attribute("bid_amount", high_bid.coin.to_string())
+        .add_attribute("auction_end_time", auction.end_time.unwrap().to_string());
     response = response.add_event(event);
 
     Ok(response)
