@@ -23,8 +23,8 @@ pub enum ContractError {
     #[error("InvalidDuration: min {min}, max {max}, got {got}")]
     InvalidDuration { min: u64, max: u64, got: u64 },
 
-    #[error("InvalidEndTime")]
-    InvalidEndTime {},
+    #[error("InvalidInput: {0}")]
+    InvalidInput(String),
 
     #[error("AuctionStarted")]
     AuctionStarted {},

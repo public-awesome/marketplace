@@ -20,6 +20,7 @@ use crate::tests::{
     },
 };
 use crate::ContractError;
+
 use cosmwasm_std::{coin, Decimal, StdError, Uint128};
 use cw_multi_test::Executor;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
@@ -37,13 +38,13 @@ fn try_instantiate() {
 
     let msg = InstantiateMsg {
         marketplace: marketplace.to_string(),
-        min_reserve_price: Uint128::from(MIN_RESERVE_PRICE),
         min_duration: 120,
         max_duration: 180,
         min_bid_increment_bps: 10,
         extend_duration: 60,
-        create_auction_fee: Uint128::new(1),
+        create_auction_fee: coin(1u128, NATIVE_DENOM),
         max_auctions_to_settle_per_block: 200,
+        min_reserve_prices: vec![coin(MIN_RESERVE_PRICE, NATIVE_DENOM)],
     };
     let auction_addr = instantiate_auction(&mut app, auction_id, msg.clone());
 
@@ -53,7 +54,6 @@ fn try_instantiate() {
         .unwrap();
 
     assert_eq!(&res.config.create_auction_fee, &msg.create_auction_fee);
-    assert_eq!(&res.config.min_reserve_price, &msg.min_reserve_price);
     assert_eq!(&res.config.min_duration, &msg.min_duration);
     assert_eq!(
         &res.config.min_bid_increment_pct,

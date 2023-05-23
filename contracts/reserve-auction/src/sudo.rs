@@ -4,8 +4,8 @@ use cosmwasm_std::entry_point;
 use crate::error::ContractError;
 use crate::helpers::settle_auction;
 use crate::msg::SudoMsg;
-use crate::state::{auctions, Auction, CONFIG};
-use cosmwasm_std::{Addr, Decimal, DepsMut, Env, Event, Order, StdResult, Uint128};
+use crate::state::{auctions, Auction, CONFIG, MIN_RESERVE_PRICES};
+use cosmwasm_std::{Addr, Coin, Decimal, DepsMut, Env, Event, Order, StdResult};
 use cw_storage_plus::Bound;
 use sg_std::Response;
 
@@ -16,7 +16,6 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
         SudoMsg::EndBlock {} => sudo_end_block(deps, env),
         SudoMsg::UpdateParams {
             marketplace,
-            min_reserve_price,
             min_duration,
             min_bid_increment_bps,
             extend_duration,
@@ -26,13 +25,16 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             deps,
             env,
             marketplace,
-            min_reserve_price,
             min_duration,
             min_bid_increment_bps,
             extend_duration,
             create_auction_fee,
             max_auctions_to_settle_per_block,
         ),
+        SudoMsg::SetMinReservePrices { min_reserve_prices } => {
+            sudo_set_min_reserve_prices(deps, min_reserve_prices)
+        }
+        SudoMsg::UnsetMinReservePrices { denoms } => sudo_unset_min_reserve_prices(deps, denoms),
     }
 }
 
@@ -74,11 +76,10 @@ pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
     marketplace: Option<String>,
-    min_reserve_price: Option<Uint128>,
     min_duration: Option<u64>,
     min_bid_increment_bps: Option<u64>,
     extend_duration: Option<u64>,
-    create_auction_fee: Option<Uint128>,
+    create_auction_fee: Option<Coin>,
     max_auctions_to_settle_per_block: Option<u64>,
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
@@ -88,10 +89,6 @@ pub fn sudo_update_params(
     if let Some(_marketplace) = marketplace {
         config.marketplace = deps.api.addr_validate(&_marketplace)?;
         event = event.add_attribute("marketplace", &config.marketplace);
-    }
-    if let Some(_min_reserve_price) = min_reserve_price {
-        config.min_reserve_price = _min_reserve_price;
-        event = event.add_attribute("min_reserve_price", config.min_reserve_price.to_string());
     }
     if let Some(_min_duration) = min_duration {
         config.min_duration = _min_duration;
@@ -123,4 +120,47 @@ pub fn sudo_update_params(
     config.save(deps.storage)?;
 
     Ok(Response::new().add_event(event))
+}
+
+pub fn sudo_set_min_reserve_prices(
+    deps: DepsMut,
+    min_reserve_prices: Vec<Coin>,
+) -> Result<Response, ContractError> {
+    let mut response = Response::new();
+
+    for min_reserve_price in min_reserve_prices {
+        if MIN_RESERVE_PRICES.has(deps.storage, min_reserve_price.denom.clone()) {
+            return Err(ContractError::InvalidInput(
+                "found duplicate denom".to_string(),
+            ));
+        }
+        MIN_RESERVE_PRICES.save(
+            deps.storage,
+            min_reserve_price.denom.clone(),
+            &min_reserve_price.amount,
+        )?;
+        response = response.add_event(
+            Event::new("set-min-reserve-price")
+                .add_attribute("denom", min_reserve_price.denom)
+                .add_attribute("amount", min_reserve_price.amount),
+        );
+    }
+    Ok(response)
+}
+
+pub fn sudo_unset_min_reserve_prices(
+    deps: DepsMut,
+    denoms: Vec<String>,
+) -> Result<Response, ContractError> {
+    let mut response = Response::new();
+
+    for denom in denoms {
+        if !MIN_RESERVE_PRICES.has(deps.storage, denom.clone()) {
+            return Err(ContractError::InvalidInput("denom not found".to_string()));
+        }
+        MIN_RESERVE_PRICES.remove(deps.storage, denom.clone());
+        response =
+            response.add_event(Event::new("unset-min-reserve-price").add_attribute("denom", denom));
+    }
+    Ok(response)
 }

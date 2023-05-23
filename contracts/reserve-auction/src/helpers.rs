@@ -1,6 +1,10 @@
-use crate::state::{auctions, Auction, Config};
+use crate::state::{auctions, Auction, Config, MIN_RESERVE_PRICES};
 use crate::ContractError;
-use cosmwasm_std::{ensure, Addr, Deps, DepsMut, Event, QuerierWrapper, StdResult, Timestamp};
+
+use cosmwasm_std::{
+    coin, ensure, has_coins, Addr, Coin, Deps, DepsMut, Event, QuerierWrapper, StdResult, Storage,
+    Timestamp,
+};
 use sg_marketplace::msg::{ParamsResponse, QueryMsg as MarketplaceQueryMsg};
 use sg_marketplace::state::SudoParams;
 use sg_marketplace_common::{
@@ -28,6 +32,36 @@ pub fn load_marketplace_params(
     let marketplace_params: ParamsResponse =
         querier.query_wasm_smart(marketplace, &MarketplaceQueryMsg::Params {})?;
     Ok(marketplace_params.params)
+}
+
+pub fn validate_reserve_price(
+    storage: &dyn Storage,
+    check_reserve_price: &Coin,
+) -> Result<(), ContractError> {
+    let minimum_amount = MIN_RESERVE_PRICES.may_load(storage, check_reserve_price.denom.clone())?;
+    if minimum_amount.is_none() {
+        return Err(ContractError::InvalidInput(
+            "invalid reserve price denom".to_string(),
+        ));
+    }
+
+    let min_reserve_price = coin(
+        minimum_amount.unwrap().u128(),
+        check_reserve_price.denom.clone(),
+    );
+    ensure!(
+        has_coins(&[check_reserve_price.clone()], &min_reserve_price),
+        ContractError::InvalidReservePrice {
+            min: min_reserve_price,
+        }
+    );
+
+    if check_reserve_price.amount < minimum_amount.unwrap() {
+        return Err(ContractError::InvalidReservePrice {
+            min: min_reserve_price,
+        });
+    }
+    Ok(())
 }
 
 pub fn settle_auction(

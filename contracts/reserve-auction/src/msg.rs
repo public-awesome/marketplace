@@ -1,18 +1,18 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Coin, Uint128};
+use cosmwasm_std::Coin;
 
 use crate::state::{Auction, Config};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     pub marketplace: String,
-    pub min_reserve_price: Uint128,
     pub min_bid_increment_bps: u64,
     pub min_duration: u64,
     pub max_duration: u64,
     pub extend_duration: u64,
-    pub create_auction_fee: Uint128,
+    pub create_auction_fee: Coin,
     pub max_auctions_to_settle_per_block: u64,
+    pub min_reserve_prices: Vec<Coin>,
 }
 
 #[cw_serde]
@@ -48,6 +48,10 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
     Config {},
+    #[returns(CoinsResponse)]
+    MinReservePrices {
+        query_options: Option<QueryOptions<String>>,
+    },
     #[returns(AuctionResponse)]
     Auction {
         collection: String,
@@ -83,6 +87,11 @@ pub struct ConfigResponse {
 }
 
 #[cw_serde]
+pub struct CoinsResponse {
+    pub coins: Vec<Coin>,
+}
+
+#[cw_serde]
 pub struct AuctionResponse {
     pub auction: Auction,
 }
@@ -98,11 +107,16 @@ pub enum SudoMsg {
     EndBlock {},   // Is called by x/cron module EndBlocker
     UpdateParams {
         marketplace: Option<String>,
-        min_reserve_price: Option<Uint128>,
         min_duration: Option<u64>,
         min_bid_increment_bps: Option<u64>,
         extend_duration: Option<u64>,
-        create_auction_fee: Option<Uint128>,
+        create_auction_fee: Option<Coin>,
         max_auctions_to_settle_per_block: Option<u64>,
+    },
+    SetMinReservePrices {
+        min_reserve_prices: Vec<Coin>,
+    },
+    UnsetMinReservePrices {
+        denoms: Vec<String>,
     },
 }

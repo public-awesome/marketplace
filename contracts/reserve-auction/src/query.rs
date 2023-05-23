@@ -1,20 +1,27 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-
-use crate::msg::{AuctionResponse, AuctionsResponse, ConfigResponse, QueryMsg, QueryOptions};
-use crate::state::CONFIG;
+use crate::msg::{
+    AuctionResponse, AuctionsResponse, CoinsResponse, ConfigResponse, QueryMsg, QueryOptions,
+};
 use crate::state::{auctions, Auction};
-use cosmwasm_std::{to_binary, Addr, Binary, Deps, Env, Order, StdResult};
+use crate::state::{CONFIG, MIN_RESERVE_PRICES};
+
+use cosmwasm_std::{coin, to_binary, Addr, Binary, Coin, Deps, Env, Order, StdResult};
 use cw_storage_plus::{Bound, PrimaryKey};
 
 // Query limits
 const DEFAULT_QUERY_LIMIT: u32 = 10;
 const MAX_QUERY_LIMIT: u32 = 100;
 
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::MinReservePrices { query_options } => to_binary(&query_min_reserve_prices(
+            deps,
+            query_options.unwrap_or(QueryOptions::default()),
+        )?),
         QueryMsg::Auction {
             collection,
             token_id,
@@ -41,6 +48,21 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse { config })
+}
+
+pub fn query_min_reserve_prices(
+    deps: Deps,
+    query_options: QueryOptions<String>,
+) -> StdResult<CoinsResponse> {
+    let (limit, order, min, max) = unpack_query_options(query_options, Bound::exclusive);
+
+    let coins: Vec<Coin> = MIN_RESERVE_PRICES
+        .range(deps.storage, min, max, order)
+        .take(limit)
+        .map(|item| item.map(|(denom, amount)| coin(amount.u128(), denom)))
+        .collect::<StdResult<_>>()?;
+
+    Ok(CoinsResponse { coins })
 }
 
 pub fn query_auction(
