@@ -14,6 +14,9 @@ pub enum ContractError {
     #[error("{0}")]
     MarketplaceCommonError(#[from] MarketplaceCommonError),
 
+    #[error("Invalid fair burn : {0}")]
+    InvalidFairBurn(String),
+
     #[error("UnauthorizedOwner")]
     UnauthorizedOwner {},
 

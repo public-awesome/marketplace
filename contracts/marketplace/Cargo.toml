@@ -1,12 +1,12 @@
 [package]
 name = "sg-marketplace"
+version = "1.3.0"
 authors = [
   "Shane Vitarana <s@noreply.publicawesome.com>",
   "Jake Hartnell <jake@publicawesome.com>",
   "Jorge Hernandez <jorge@publicawesome.com>",
 ]
 description = "Stargaze Marketplace Smart Contract"
-version = { workspace = true }
 edition = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
@@ -37,37 +37,37 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 """
 
 [dependencies]
-cosmwasm-schema = { workspace = true }
-cosmwasm-std = { workspace = true }
-cw-storage-plus = { workspace = true }
-cw721 = { workspace = true }
-cw721-base = { workspace = true }
-cw-utils = { workspace = true }
-cw2 = { workspace = true }
-sg721-base = { workspace = true }
-sg721 = { workspace = true }
-sg-std = { workspace = true }
-sg1 = { workspace = true }
-sg2 = { workspace = true }
-sg-controllers = { workspace = true }
+cosmwasm-schema       = { workspace = true }
+cosmwasm-std          = { workspace = true }
+cw-storage-plus       = { workspace = true }
+cw721                 = { workspace = true }
+cw721-base            = { workspace = true }
+cw-utils              = { workspace = true }
+cw2                   = { workspace = true }
+sg721-base            = { workspace = true }
+sg721                 = { workspace = true }
+sg-std                = { workspace = true }
+sg1                   = { workspace = true }
+sg2                   = { workspace = true }
+sg-controllers        = { workspace = true }
 sg-marketplace-common = { workspace = true }
-serde = { workspace = true }
-semver = { workspace = true }
-thiserror = { workspace = true }
+serde                 = { workspace = true }
+semver                = { workspace = true }
+thiserror             = { workspace = true }
 
 [dev-dependencies]
-cw-multi-test = { workspace = true }
-sg-multi-test = { workspace = true }
+cw-multi-test   = { workspace = true }
+sg-multi-test   = { workspace = true }
 vending-factory = { workspace = true }
-vending-minter = { workspace = true }
-base-minter = { workspace = true }
-test-suite = { workspace = true }
-cute = { workspace = true }
+vending-minter  = { workspace = true }
+base-minter     = { workspace = true }
+test-suite      = { workspace = true }
+cute            = { workspace = true }
 
 [profile.release]
-rpath = false
-lto = true
-overflow-checks = true
-opt-level = 3
-debug = false
+rpath            = false
+lto              = true
+overflow-checks  = true
+opt-level        = 3
+debug            = false
 debug-assertions = false
