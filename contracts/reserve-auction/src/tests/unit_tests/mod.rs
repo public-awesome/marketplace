@@ -1,4 +1,7 @@
 #[cfg(test)]
+mod alt_denom;
+
+#[cfg(test)]
 mod auction;
 
 #[cfg(test)]

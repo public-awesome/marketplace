@@ -2,6 +2,7 @@ use crate::msg::{AuctionsResponse, QueryMsg, QueryOptions};
 use crate::tests::helpers::auction_functions::place_bid;
 use crate::tests::helpers::constants::{CREATE_AUCTION_FEE, DEFAULT_DURATION, MIN_RESERVE_PRICE};
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
+use crate::tests::setup::setup_fair_burn::setup_fair_burn;
 use crate::tests::{
     helpers::{
         auction_functions::create_standard_auction,
@@ -12,15 +13,19 @@ use crate::tests::{
         setup_minters::standard_minter_template,
     },
 };
-use sg_std::GENESIS_MINT_START_TIME;
+
+use cosmwasm_std::coin;
+use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
 #[test]
 fn try_query_auctions_by_seller() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
     let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
@@ -56,10 +61,10 @@ fn try_query_auctions_by_seller() {
             &reserve_auction,
             collection.as_ref(),
             &token_id.to_string(),
-            MIN_RESERVE_PRICE,
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
             DEFAULT_DURATION,
             None,
-            CREATE_AUCTION_FEE.u128(),
+            coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
         )
         .unwrap();
     }
@@ -111,8 +116,10 @@ fn try_query_auctions_by_seller() {
 fn try_query_auctions_by_end_time() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
     let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
@@ -143,10 +150,10 @@ fn try_query_auctions_by_end_time() {
             &reserve_auction,
             collection.as_ref(),
             &token_id.to_string(),
-            MIN_RESERVE_PRICE,
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
             DEFAULT_DURATION,
             None,
-            CREATE_AUCTION_FEE.u128(),
+            coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
         )
         .unwrap();
         place_bid(
@@ -155,7 +162,7 @@ fn try_query_auctions_by_end_time() {
             &bidder,
             collection.as_ref(),
             &token_id.to_string(),
-            MIN_RESERVE_PRICE,
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
         )
         .unwrap();
     }
