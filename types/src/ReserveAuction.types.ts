@@ -8,6 +8,7 @@ export type Uint128 = string;
 export interface InstantiateMsg {
   create_auction_fee: Coin;
   extend_duration: number;
+  fair_burn: string;
   marketplace: string;
   max_auctions_to_settle_per_block: number;
   max_duration: number;
@@ -113,6 +114,7 @@ export interface ConfigResponse {
 export interface Config {
   create_auction_fee: Coin;
   extend_duration: number;
+  fair_burn: Addr;
   marketplace: Addr;
   max_auctions_to_settle_per_block: number;
   max_duration: number;

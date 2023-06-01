@@ -1,6 +1,6 @@
 {
-  "contract_name": "reserve-auction",
-  "contract_version": "1.5.0",
+  "contract_name": "sg-reserve-auction",
+  "contract_version": "1.0.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -9,6 +9,7 @@
     "required": [
       "create_auction_fee",
       "extend_duration",
+      "fair_burn",
       "marketplace",
       "max_auctions_to_settle_per_block",
       "max_duration",
@@ -24,6 +25,9 @@
         "type": "integer",
         "format": "uint64",
         "minimum": 0.0
+      },
+      "fair_burn": {
+        "type": "string"
       },
       "marketplace": {
         "type": "string"
@@ -911,6 +915,7 @@
           "required": [
             "create_auction_fee",
             "extend_duration",
+            "fair_burn",
             "marketplace",
             "max_auctions_to_settle_per_block",
             "max_duration",
@@ -925,6 +930,9 @@
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
+            },
+            "fair_burn": {
+              "$ref": "#/definitions/Addr"
             },
             "marketplace": {
               "$ref": "#/definitions/Addr"
