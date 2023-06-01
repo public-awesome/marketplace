@@ -1069,9 +1069,9 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.8.1"
+version = "1.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "af83e617f331cc6ae2da5443c602dfa5af81e517212d9d611a5b3ba1777b5370"
+checksum = "81ca098a9821bd52d6b24fd8b10bd081f47d39c22778cafaa75a2857a62c6390"
 dependencies = [
  "aho-corasick",
  "memchr",
@@ -1080,9 +1080,9 @@ dependencies = [
 
 [[package]]
 name = "regex-syntax"
-version = "0.7.1"
+version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5996294f19bd3aae0453a862ad728f60e6600695733dd5df01da90c54363a3c"
+checksum = "436b050e76ed2903236f032a59761c1eb99e1b0aead2c257922771dab1fc8c78"
 
 [[package]]
 name = "rend"
@@ -1091,35 +1091,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "79af64b4b6362ffba04eef3a4e10829718a4896dac19daa741851c86781edf95"
 dependencies = [
  "bytecheck",
-]
-
-[[package]]
-name = "reserve-auction"
-version = "1.5.0"
-dependencies = [
- "anyhow",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-macro",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "cw721-base",
- "schemars",
- "serde",
- "sg-marketplace",
- "sg-marketplace-common",
- "sg-multi-test",
- "sg-std",
- "sg1",
- "sg2",
- "sg721",
- "sg721-base",
- "test-suite",
- "thiserror",
- "vending-minter",
 ]
 
 [[package]]
@@ -1326,8 +1297,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "sg-fair-burn"
+version = "0.1.0"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "schemars",
+ "serde",
+ "sg-std",
+ "thiserror",
+]
+
+[[package]]
 name = "sg-marketplace"
-version = "1.5.0"
+version = "1.3.0"
 dependencies = [
  "base-minter",
  "cosmwasm-schema",
@@ -1373,6 +1360,7 @@ dependencies = [
  "mockall",
  "schemars",
  "serde",
+ "sg-fair-burn",
  "sg-multi-test",
  "sg-std",
  "sg1",
@@ -1394,6 +1382,37 @@ dependencies = [
  "schemars",
  "serde",
  "sg-std",
+]
+
+[[package]]
+name = "sg-reserve-auction"
+version = "1.0.0"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-macro",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw721",
+ "cw721-base",
+ "regex",
+ "schemars",
+ "serde",
+ "sg-fair-burn",
+ "sg-marketplace",
+ "sg-marketplace-common",
+ "sg-multi-test",
+ "sg-std",
+ "sg1",
+ "sg2",
+ "sg721",
+ "sg721-base",
+ "test-suite",
+ "thiserror",
+ "vending-minter",
 ]
 
 [[package]]
