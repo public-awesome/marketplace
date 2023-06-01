@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 
-use reserve_auction::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use sg_reserve_auction::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

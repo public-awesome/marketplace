@@ -2,8 +2,7 @@ use crate::state::{auctions, Auction, Config, MIN_RESERVE_PRICES};
 use crate::ContractError;
 
 use cosmwasm_std::{
-    coin, ensure, has_coins, Addr, Coin, Deps, DepsMut, Event, QuerierWrapper, StdResult, Storage,
-    Timestamp,
+    coin, ensure, Addr, Coin, Deps, DepsMut, Event, QuerierWrapper, StdResult, Storage, Timestamp,
 };
 use sg_marketplace::msg::{ParamsResponse, QueryMsg as MarketplaceQueryMsg};
 use sg_marketplace::state::SudoParams;
@@ -39,28 +38,22 @@ pub fn validate_reserve_price(
     check_reserve_price: &Coin,
 ) -> Result<(), ContractError> {
     let minimum_amount = MIN_RESERVE_PRICES.may_load(storage, check_reserve_price.denom.clone())?;
-    if minimum_amount.is_none() {
-        return Err(ContractError::InvalidInput(
-            "invalid reserve price denom".to_string(),
-        ));
-    }
 
-    let min_reserve_price = coin(
-        minimum_amount.unwrap().u128(),
-        check_reserve_price.denom.clone(),
-    );
     ensure!(
-        has_coins(&[check_reserve_price.clone()], &min_reserve_price),
+        minimum_amount.is_some(),
+        ContractError::InvalidInput("invalid reserve price denom".to_string(),)
+    );
+
+    ensure!(
+        check_reserve_price.amount >= minimum_amount.unwrap(),
         ContractError::InvalidReservePrice {
-            min: min_reserve_price,
+            min: coin(
+                minimum_amount.unwrap().u128(),
+                check_reserve_price.denom.clone(),
+            ),
         }
     );
 
-    if check_reserve_price.amount < minimum_amount.unwrap() {
-        return Err(ContractError::InvalidReservePrice {
-            min: min_reserve_price,
-        });
-    }
     Ok(())
 }
 
@@ -92,7 +85,7 @@ pub fn settle_auction(
     let royalty_info = load_collection_royalties(&deps.querier, deps.api, &auction.collection)?;
 
     let tx_fees = calculate_nft_sale_fees(
-        high_bid.coin.amount,
+        &high_bid.coin,
         marketplace_params.trading_fee_percent,
         auction.seller,
         None,
@@ -100,7 +93,7 @@ pub fn settle_auction(
         royalty_info,
     )?;
 
-    response = payout_nft_sale_fees(response, tx_fees, None)?;
+    response = payout_nft_sale_fees(&config.fair_burn, tx_fees, None, response)?;
 
     // Transfer NFT to highest bidder
     let transfer_msg = transfer_nft(&auction.collection, &auction.token_id, &high_bid.bidder);

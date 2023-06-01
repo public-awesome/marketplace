@@ -5,6 +5,7 @@ use crate::state::{Auction, Config};
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    pub fair_burn: String,
     pub marketplace: String,
     pub min_bid_increment_bps: u64,
     pub min_duration: u64,
@@ -106,6 +107,7 @@ pub enum SudoMsg {
     BeginBlock {}, // Is called by x/cron module BeginBlocker
     EndBlock {},   // Is called by x/cron module EndBlocker
     UpdateParams {
+        fair_burn: Option<String>,
         marketplace: Option<String>,
         min_duration: Option<u64>,
         min_bid_increment_bps: Option<u64>,

@@ -2,13 +2,13 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coin, ensure, Addr, Coin, Decimal, Storage, Timestamp, Uint128};
 use cw_storage_macro::index_list;
 use cw_storage_plus::{IndexedMap, Item, Map, MultiIndex};
-use sg_std::NATIVE_DENOM;
 use std::cmp::max;
 
 use crate::ContractError;
 
 #[cw_serde]
 pub struct Config {
+    pub fair_burn: Addr,
     pub marketplace: Addr,
     pub min_bid_increment_pct: Decimal,
     pub min_duration: u64,
@@ -50,7 +50,7 @@ impl Config {
     }
 }
 
-pub const CONFIG: Item<Config> = Item::new("config");
+pub const CONFIG: Item<Config> = Item::new("cfg");
 
 // A map of acceptable denoms to their minimum reserve price.
 // Denoms not found in the Map are not accepted.
@@ -76,6 +76,10 @@ pub struct Auction {
 }
 
 impl Auction {
+    pub fn denom(&self) -> String {
+        self.reserve_price.denom.clone()
+    }
+
     pub fn min_bid_coin(&self, min_bid_increment_pct: Decimal) -> Coin {
         let amount = match &self.high_bid {
             Some(high_bid) => {
@@ -86,7 +90,7 @@ impl Auction {
             }
             None => self.reserve_price.amount,
         };
-        coin(amount.u128(), NATIVE_DENOM)
+        coin(amount.u128(), self.denom())
     }
 }
 
