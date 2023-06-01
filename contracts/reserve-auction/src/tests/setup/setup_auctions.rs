@@ -11,13 +11,18 @@ use sg_std::NATIVE_DENOM;
 
 use super::setup_contracts::*;
 
+pub const DUMMY_DENOM: &str =
+    "ibc/773B5B5E24EC48005205A2EB35E6C0743EE47C9147E94BD5A4E0CBB63082314D";
+
 pub fn setup_reserve_auction(
     router: &mut StargazeApp,
     auction_admin: Addr,
+    fair_burn: Addr,
     marketplace: Addr,
 ) -> Result<Addr, ContractError> {
-    let reserve_auction_id = router.store_code(reserve_auction_contract());
+    let reserve_auction_id = router.store_code(contract_reserve_auction());
     let msg = InstantiateMsg {
+        fair_burn: fair_burn.to_string(),
         marketplace: marketplace.to_string(),
         min_duration: MIN_DURATION,
         max_duration: MAX_DURATION,
@@ -25,7 +30,10 @@ pub fn setup_reserve_auction(
         extend_duration: EXTEND_DURATION,
         create_auction_fee: coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
         max_auctions_to_settle_per_block: MAX_AUCTIONS_TO_SETTLE_PER_BLOCK,
-        min_reserve_prices: vec![coin(MIN_RESERVE_PRICE, NATIVE_DENOM)],
+        min_reserve_prices: vec![
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+            coin(MIN_RESERVE_PRICE, DUMMY_DENOM),
+        ],
     };
     let auction = router
         .instantiate_contract(

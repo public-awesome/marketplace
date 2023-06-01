@@ -5,6 +5,7 @@ use crate::tests::helpers::constants::{
     MIN_DURATION, MIN_RESERVE_PRICE,
 };
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
+use crate::tests::setup::setup_fair_burn::setup_fair_burn;
 use crate::tests::{
     helpers::{
         auction_functions::create_standard_auction,
@@ -25,8 +26,10 @@ use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 fn try_sudo_begin_block() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
     let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction = setup_reserve_auction(&mut router, creator, marketplace).unwrap();
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator, fair_burn, marketplace).unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
@@ -47,8 +50,10 @@ fn try_sudo_begin_block() {
 fn try_sudo_end_block() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
     let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
@@ -79,10 +84,10 @@ fn try_sudo_end_block() {
             &reserve_auction,
             collection.as_ref(),
             &token_id.to_string(),
-            MIN_RESERVE_PRICE,
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
             DEFAULT_DURATION,
             None,
-            CREATE_AUCTION_FEE.u128(),
+            coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
         )
         .unwrap();
         place_bid(
@@ -91,7 +96,7 @@ fn try_sudo_end_block() {
             &bidder,
             collection.as_ref(),
             &token_id.to_string(),
-            MIN_RESERVE_PRICE,
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
         )
         .unwrap();
     }
@@ -260,12 +265,15 @@ fn try_sudo_end_block() {
 fn try_sudo_update_params() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
     let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction = setup_reserve_auction(&mut router, creator, marketplace).unwrap();
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator, fair_burn, marketplace).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
 
     let delta: u64 = 1;
     let update_params_msg = SudoMsg::UpdateParams {
+        fair_burn: Some(minter.to_string()),
         marketplace: Some(minter.to_string()),
         min_duration: Some(MIN_DURATION + delta),
         min_bid_increment_bps: Some(MIN_BID_INCREMENT_BPS + delta),
@@ -291,6 +299,7 @@ fn try_sudo_update_params() {
         .unwrap();
     let config = response.config;
 
+    assert_eq!(config.fair_burn, minter);
     assert_eq!(config.marketplace, minter);
     assert_eq!(config.min_duration, MIN_DURATION + delta);
     assert_eq!(
@@ -311,6 +320,7 @@ fn try_sudo_update_params() {
     );
 
     let update_params_msg = SudoMsg::UpdateParams {
+        fair_burn: None,
         marketplace: None,
         min_duration: Some(0u64),
         min_bid_increment_bps: None,
@@ -325,6 +335,7 @@ fn try_sudo_update_params() {
     );
 
     let update_params_msg = SudoMsg::UpdateParams {
+        fair_burn: None,
         marketplace: None,
         min_duration: None,
         min_bid_increment_bps: Some(0u64),
@@ -339,6 +350,7 @@ fn try_sudo_update_params() {
     );
 
     let update_params_msg = SudoMsg::UpdateParams {
+        fair_burn: None,
         marketplace: None,
         min_duration: None,
         min_bid_increment_bps: Some(10000u64),
@@ -353,6 +365,7 @@ fn try_sudo_update_params() {
     );
 
     let update_params_msg = SudoMsg::UpdateParams {
+        fair_burn: None,
         marketplace: None,
         min_duration: None,
         min_bid_increment_bps: None,
