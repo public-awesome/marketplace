@@ -8,13 +8,13 @@ use cosmwasm_std::{
     coin,
     testing::{mock_dependencies, mock_info},
     to_binary, Addr, BankMsg, ContractResult, Decimal, Querier, QuerierResult, QuerierWrapper,
-    StdError, SystemResult, Uint128,
+    StdError, SystemResult, Uint128, WasmMsg,
 };
 use cw721::OwnerOfResponse;
 use mockall::*;
 use sg721::{RoyaltyInfo, RoyaltyInfoResponse};
 use sg721_base::msg::CollectionInfoResponse;
-use sg_std::{CosmosMsg, Response, StargazeMsg, StargazeMsgWrapper, NATIVE_DENOM};
+use sg_std::{CosmosMsg, Response, NATIVE_DENOM};
 use test_suite::common_setup::templates::base_minter_with_sg721;
 
 #[test]
@@ -215,6 +215,7 @@ fn try_load_collection_royalties() {
 #[test]
 fn try_calculate_nft_sale_fees() {
     let sale_price = Uint128::from(10_000u64);
+    let sale_coin = coin(sale_price.u128(), NATIVE_DENOM);
     let trading_fee_percent = Decimal::percent(200u64);
     let seller = Addr::unchecked("seller");
     let finder = Addr::unchecked("finder");
@@ -227,7 +228,7 @@ fn try_calculate_nft_sale_fees() {
 
     // Calculate correct fees with finders fee and royalties
     let fees = calculate_nft_sale_fees(
-        sale_price,
+        &sale_coin,
         trading_fee_percent,
         seller.clone(),
         Some(finder.clone()),
@@ -239,7 +240,7 @@ fn try_calculate_nft_sale_fees() {
     assert_eq!(
         fees,
         TransactionFees {
-            fair_burn_fee: Uint128::from(200u128),
+            fair_burn_fee: coin(200u128, NATIVE_DENOM),
             finders_fee: Some(TokenPayment {
                 coin: coin(300u128, NATIVE_DENOM),
                 recipient: Addr::unchecked("finder"),
@@ -257,7 +258,7 @@ fn try_calculate_nft_sale_fees() {
 
     // Calculate correct fees with no finders fee and no royalties
     let fees = calculate_nft_sale_fees(
-        sale_price,
+        &sale_coin,
         trading_fee_percent,
         seller,
         Some(finder),
@@ -269,7 +270,7 @@ fn try_calculate_nft_sale_fees() {
     assert_eq!(
         fees,
         TransactionFees {
-            fair_burn_fee: Uint128::from(200u128),
+            fair_burn_fee: coin(200u128, NATIVE_DENOM),
             finders_fee: None,
             royalty_fee: None,
             seller_payment: TokenPayment {
@@ -283,7 +284,7 @@ fn try_calculate_nft_sale_fees() {
 #[test]
 fn try_payout_nft_sale_fees() {
     let tx_fees = TransactionFees {
-        fair_burn_fee: Uint128::from(200u128),
+        fair_burn_fee: coin(200u128, NATIVE_DENOM),
         finders_fee: Some(TokenPayment {
             coin: coin(300u128, NATIVE_DENOM),
             recipient: Addr::unchecked("finder"),
@@ -298,31 +299,24 @@ fn try_payout_nft_sale_fees() {
         },
     };
 
+    let fair_burn = Addr::unchecked("fair_burn");
     let developer = Addr::unchecked("developer");
     let response = Response::new();
-    let response = payout_nft_sale_fees(response, tx_fees.clone(), Some(developer)).unwrap();
+    let response =
+        payout_nft_sale_fees(&fair_burn, tx_fees.clone(), Some(developer), response).unwrap();
+
+    for msg in response.messages.iter() {
+        println!("{:?}", msg);
+    }
 
     match response.messages[0].msg.clone() {
-        CosmosMsg::Bank(BankMsg::Send { to_address, .. }) => {
-            assert_eq!(to_address, "developer");
+        CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, .. }) => {
+            assert_eq!(contract_addr, fair_burn.to_string());
         }
         _ => panic!("Unexpected message type"),
     }
 
     match response.messages[1].msg.clone() {
-        CosmosMsg::Bank(BankMsg::Burn { .. }) => {}
-        _ => panic!("Unexpected message type"),
-    }
-
-    match response.messages[2].msg.clone() {
-        CosmosMsg::Custom(StargazeMsgWrapper {
-            msg_data: StargazeMsg::FundFairburnPool { .. },
-            ..
-        }) => {}
-        _ => panic!("Unexpected message type"),
-    }
-
-    match response.messages[3].msg.clone() {
         CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
             assert_eq!(to_address, "finder");
             assert_eq!(amount[0], tx_fees.finders_fee.unwrap().coin);
@@ -330,7 +324,7 @@ fn try_payout_nft_sale_fees() {
         _ => panic!("Unexpected message type"),
     }
 
-    match response.messages[4].msg.clone() {
+    match response.messages[2].msg.clone() {
         CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
             assert_eq!(to_address, "royalty");
             assert_eq!(amount[0], tx_fees.royalty_fee.unwrap().coin);
@@ -338,7 +332,7 @@ fn try_payout_nft_sale_fees() {
         _ => panic!("Unexpected message type"),
     }
 
-    match response.messages[5].msg.clone() {
+    match response.messages[3].msg.clone() {
         CosmosMsg::Bank(BankMsg::Send { to_address, amount }) => {
             assert_eq!(to_address, "seller");
             assert_eq!(amount[0], tx_fees.seller_payment.coin);

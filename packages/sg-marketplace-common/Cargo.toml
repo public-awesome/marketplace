@@ -1,8 +1,8 @@
 [package]
 name        = "sg-marketplace-common"
-authors     = ["Shane Vitarana <s@noreply.publicawesome.com>"]
-description = "Common controllers for use in Marketplace contracts"
 version     = "1.0.0"
+authors     = ["Shane Vitarana <s@noreply.publicawesome.com>"]
+description = "Common functionality used in Marketplace contracts"
 edition     = { workspace = true }
 homepage    = { workspace = true }
 repository  = { workspace = true }
@@ -41,11 +41,12 @@ schemars         = { workspace = true }
 serde            = { workspace = true }
 sg-std           = { workspace = true }
 sg1              = { workspace = true }
+sg-fair-burn     = { workspace = true }
 thiserror        = { workspace = true }
 
 [dev-dependencies]
-cw-multi-test    = { workspace = true }
-sg-multi-test    = { workspace = true }
-test-suite       = { workspace = true }
-base-minter      = { workspace = true}
-mockall          = { workspace = true}
+cw-multi-test = { workspace = true }
+sg-multi-test = { workspace = true }
+test-suite    = { workspace = true }
+base-minter   = { workspace = true }
+mockall       = { workspace = true }
