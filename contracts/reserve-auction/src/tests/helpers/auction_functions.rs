@@ -40,7 +40,7 @@ pub fn create_standard_auction(
     let msg = ExecuteMsg::CreateAuction {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
-        reserve_price: reserve_price,
+        reserve_price,
         duration,
         seller_funds_recipient,
     };
