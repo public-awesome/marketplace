@@ -86,7 +86,7 @@ pub fn fund_account(router: &mut StargazeApp, addr: &Addr, initial_balance: Coin
         .sudo(CwSudoMsg::Bank({
             BankSudo::Mint {
                 to_address: addr.to_string(),
-                amount: funds.clone(),
+                amount: funds,
             }
         }))
         .unwrap()

@@ -783,14 +783,14 @@ fn try_settle_auction_with_bids() {
 
     fn parse_coin(input: &str) -> Option<Coin> {
         let re = Regex::new(r"(?P<amount>\d+)(?P<denom>.+)").unwrap();
-        re.captures(input).and_then(|cap| {
+        re.captures(input).map(|cap| {
             let amount = Uint128::from(cap["amount"].parse::<u128>().unwrap());
             let denom = cap["denom"].to_string();
-            Some(Coin { denom, amount })
+            Coin { denom, amount }
         })
     }
 
-    let burn_coin = parse_coin(&burn_amount).unwrap();
+    let burn_coin = parse_coin(burn_amount).unwrap();
 
     let trading_fee_percent = Decimal::percent(TRADING_FEE_BPS) / Uint128::from(100u128);
     assert_eq!(

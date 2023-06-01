@@ -12,7 +12,7 @@ license      = "BUSL-1.1"
 [workspace.dependencies]
 sg-marketplace-common = { path = "packages/sg-marketplace-common" }
 sg-marketplace        = { path = "contracts/marketplace", features = ["library"] }
-sg-fair-burn          = { path = "../core/contracts/fair-burn" }
+sg-fair-burn          = { path = "../core/contracts/fair-burn", features = ["library"] }
 sg721-base            = { version = "2.1.0", features = ["library"] }
 sg721                 = { version = "2.1.0", features = ["library"] }
 vending-factory       = { version = "2.1.0", features = ["library"] }
@@ -52,7 +52,7 @@ cute          = "0.3.0"
 codegen-units = 1
 incremental   = false
 
-[profile.release.package.reserve-auction]
+[profile.release.package.sg-reserve-auction]
 codegen-units = 1
 incremental   = false
 
