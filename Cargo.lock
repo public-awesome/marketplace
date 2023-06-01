@@ -1299,6 +1299,7 @@ dependencies = [
 [[package]]
 name = "sg-fair-burn"
 version = "0.1.0"
+source = "git+https://github.com/public-awesome/core?branch=fair-burn-contract#d20510a56416b84ca280915a645626742ee8be0f"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",
