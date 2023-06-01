@@ -15,6 +15,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
         SudoMsg::BeginBlock {} => sudo_begin_block(deps, env),
         SudoMsg::EndBlock {} => sudo_end_block(deps, env),
         SudoMsg::UpdateParams {
+            fair_burn,
             marketplace,
             min_duration,
             min_bid_increment_bps,
@@ -24,6 +25,7 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
         } => sudo_update_params(
             deps,
             env,
+            fair_burn,
             marketplace,
             min_duration,
             min_bid_increment_bps,
@@ -75,6 +77,7 @@ pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractE
 pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
+    fair_burn: Option<String>,
     marketplace: Option<String>,
     min_duration: Option<u64>,
     min_bid_increment_bps: Option<u64>,
@@ -86,31 +89,35 @@ pub fn sudo_update_params(
 
     let mut event = Event::new("sudo-update-params");
 
-    if let Some(_marketplace) = marketplace {
-        config.marketplace = deps.api.addr_validate(&_marketplace)?;
+    if let Some(fair_burn) = fair_burn {
+        config.fair_burn = deps.api.addr_validate(&fair_burn)?;
+        event = event.add_attribute("fair_burn", &config.fair_burn);
+    }
+    if let Some(marketplace) = marketplace {
+        config.marketplace = deps.api.addr_validate(&marketplace)?;
         event = event.add_attribute("marketplace", &config.marketplace);
     }
-    if let Some(_min_duration) = min_duration {
-        config.min_duration = _min_duration;
+    if let Some(min_duration) = min_duration {
+        config.min_duration = min_duration;
         event = event.add_attribute("min_duration", config.min_duration.to_string());
     }
-    if let Some(_min_bid_increment_bps) = min_bid_increment_bps {
-        config.min_bid_increment_pct = Decimal::percent(_min_bid_increment_bps);
+    if let Some(min_bid_increment_bps) = min_bid_increment_bps {
+        config.min_bid_increment_pct = Decimal::percent(min_bid_increment_bps);
         event = event.add_attribute(
             "min_bid_increment_pct",
             config.min_bid_increment_pct.to_string(),
         );
     }
-    if let Some(_extend_duration) = extend_duration {
-        config.extend_duration = _extend_duration;
+    if let Some(extend_duration) = extend_duration {
+        config.extend_duration = extend_duration;
         event = event.add_attribute("extend_duration", config.extend_duration.to_string());
     }
-    if let Some(_create_auction_fee) = create_auction_fee {
-        config.create_auction_fee = _create_auction_fee;
+    if let Some(create_auction_fee) = create_auction_fee {
+        config.create_auction_fee = create_auction_fee;
         event = event.add_attribute("create_auction_fee", config.create_auction_fee.to_string());
     }
-    if let Some(_max_auctions_to_settle_per_block) = max_auctions_to_settle_per_block {
-        config.max_auctions_to_settle_per_block = _max_auctions_to_settle_per_block;
+    if let Some(max_auctions_to_settle_per_block) = max_auctions_to_settle_per_block {
+        config.max_auctions_to_settle_per_block = max_auctions_to_settle_per_block;
         event = event.add_attribute(
             "max_auctions_to_settle_per_block",
             config.max_auctions_to_settle_per_block.to_string(),

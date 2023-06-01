@@ -1,6 +1,4 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use sg1::fair_burn;
+use std::vec;
 
 use crate::error::ContractError;
 use crate::helpers::{only_no_auction, settle_auction, validate_reserve_price};
@@ -9,13 +7,16 @@ use crate::state::CONFIG;
 use crate::state::{auctions, Auction, HighBid};
 use cosmwasm_std::{
     coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Timestamp,
-    Uint128,
 };
 use cw_utils::{maybe_addr, must_pay, nonpayable};
+use sg_fair_burn::append_fair_burn_msg;
 use sg_marketplace_common::{
     checked_transfer_coin, has_approval, only_owner, only_tradable, transfer_nft,
 };
-use sg_std::{Response, NATIVE_DENOM};
+use sg_std::Response;
+
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
@@ -108,22 +109,6 @@ pub fn execute_create_auction(
 
     let mut response = Response::new();
 
-    // If create auction fee is greater than zero, then pay the fee
-    if config.create_auction_fee.amount > Uint128::zero() {
-        let fee = must_pay(&info, &config.create_auction_fee.denom)?;
-        ensure_eq!(
-            fee,
-            config.create_auction_fee.amount,
-            ContractError::WrongFee {
-                expected: config.create_auction_fee.amount,
-                got: fee,
-            }
-        );
-        fair_burn(fee.u128(), None, &mut response);
-    } else {
-        nonpayable(&info)?;
-    }
-
     validate_reserve_price(deps.as_ref().storage, &reserve_price)?;
 
     // Ensure that the duration is within the min and max duration
@@ -135,6 +120,30 @@ pub fn execute_create_auction(
             got: duration
         }
     );
+
+    // Handle create auction fee payment
+    if config.create_auction_fee.amount.is_zero() {
+        // If create auction fee is zero, ensure no payment is sent
+        nonpayable(&info)?;
+    } else {
+        // If create auction fee is non zero, ensure user has sent the correct amount,
+        // and send it to the fair-burn contract
+        let fee = must_pay(&info, &config.create_auction_fee.denom)?;
+        ensure_eq!(
+            fee,
+            config.create_auction_fee.amount,
+            ContractError::WrongFee {
+                expected: config.create_auction_fee.amount,
+                got: fee,
+            }
+        );
+        response = append_fair_burn_msg(
+            &config.fair_burn,
+            vec![config.create_auction_fee],
+            None,
+            response,
+        );
+    }
 
     let auction = Auction {
         token_id: token_id.to_string(),
@@ -259,7 +268,8 @@ pub fn execute_place_bid(
 
     let mut auction = auctions().load(deps.storage, (collection, token_id.to_string()))?;
 
-    let bid_amount = must_pay(&info, NATIVE_DENOM)?;
+    let auction_denom = auction.denom();
+    let bid_amount = must_pay(&info, &auction_denom)?;
 
     let mut response = Response::new();
     let block_time = env.block.time;
@@ -297,7 +307,7 @@ pub fn execute_place_bid(
                 response.add_submessage(checked_transfer_coin(high_bid.coin, &high_bid.bidder)?);
 
             let time_remaining = auction.end_time.unwrap().seconds() - block_time.seconds();
-            if time_remaining <= config.extend_duration {
+            if time_remaining < config.extend_duration {
                 auction.end_time = Some(block_time.plus_seconds(config.extend_duration));
             }
         }
@@ -305,7 +315,7 @@ pub fn execute_place_bid(
 
     auction.high_bid = Some(HighBid {
         bidder: info.sender,
-        coin: coin(bid_amount.u128(), NATIVE_DENOM),
+        coin: coin(bid_amount.u128(), auction_denom),
     });
 
     auctions().save(

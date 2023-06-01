@@ -9,8 +9,8 @@ use cw2::set_contract_version;
 use sg_std::Response;
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:reserve-auction";
-const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const CONTRACT_NAME: &str = "crates.io:sg-reserve-auction";
+pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -21,6 +21,7 @@ pub fn instantiate(
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config {
+        fair_burn: deps.api.addr_validate(&msg.fair_burn)?,
         marketplace: deps.api.addr_validate(&msg.marketplace)?,
         min_bid_increment_pct: Decimal::percent(msg.min_bid_increment_bps),
         min_duration: msg.min_duration,
