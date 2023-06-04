@@ -5,7 +5,7 @@ use cosmwasm_std::{
     coin, ensure, Addr, Coin, Deps, DepsMut, Event, QuerierWrapper, StdResult, Storage, Timestamp,
 };
 use sg_marketplace::msg::{ParamsResponse, QueryMsg as MarketplaceQueryMsg};
-use sg_marketplace::state::SudoParams;
+use sg_marketplace::state_deprecated::SudoParams;
 use sg_marketplace_common::{
     calculate_nft_sale_fees, load_collection_royalties, payout_nft_sale_fees, transfer_nft,
 };

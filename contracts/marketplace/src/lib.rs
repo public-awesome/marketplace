@@ -3,7 +3,7 @@ pub mod execute;
 mod helpers;
 pub mod msg;
 pub mod query;
-pub mod state;
+pub mod state_deprecated;
 pub mod sudo;
 pub use error::ContractError;
 pub use helpers::{ExpiryRange, ExpiryRangeError, MarketplaceContract};

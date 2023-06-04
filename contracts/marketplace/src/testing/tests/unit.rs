@@ -5,7 +5,7 @@ use crate::execute::{execute, instantiate};
 use crate::helpers::ExpiryRange;
 use crate::msg::{ExecuteMsg, InstantiateMsg};
 use crate::query::{query_ask_count, query_asks_by_seller, query_bids_by_bidder};
-use crate::state::{ask_key, asks, bid_key, bids, Ask, Bid, SaleType};
+use crate::state_deprecated::{ask_key, asks, bid_key, bids, Ask, Bid, SaleType};
 use crate::testing::setup::setup_marketplace::{
     BID_REMOVAL_REWARD_BPS, MAX_EXPIRY, MAX_FINDERS_FEE_BPS, MIN_EXPIRY, TRADING_FEE_BPS,
 };

@@ -1,6 +1,6 @@
 use crate::msg::CollectionsResponse;
 use crate::msg::{ExecuteMsg, QueryMsg};
-use crate::state::SaleType;
+use crate::state_deprecated::SaleType;
 use crate::testing::helpers::funds::{add_funds_for_incremental_fee, listing_funds};
 use crate::testing::helpers::nft_functions::{approve, mint};
 use crate::testing::setup::setup_accounts::CREATION_FEE;

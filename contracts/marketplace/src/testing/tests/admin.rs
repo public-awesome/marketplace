@@ -3,7 +3,7 @@ use crate::execute::migrate;
 use crate::helpers::ExpiryRange;
 use crate::msg::{ExecuteMsg, QueryMsg};
 use crate::msg::{ParamsResponse, SudoMsg};
-use crate::state::{SaleType, SudoParams, SUDO_PARAMS};
+use crate::state_deprecated::{SaleType, SudoParams, SUDO_PARAMS};
 use crate::testing::helpers::funds::{
     add_funds_for_incremental_fee, listing_funds, MINT_FEE_FAIR_BURN,
 };

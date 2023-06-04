@@ -1,7 +1,7 @@
 use crate::helpers::ExpiryRange;
 use crate::msg::SudoMsg;
 use crate::msg::{ExecuteMsg, QueryMsg};
-use crate::state::SaleType;
+use crate::state_deprecated::SaleType;
 use crate::testing::helpers::funds::listing_funds;
 use crate::testing::helpers::nft_functions::mint;
 use crate::testing::setup::setup_marketplace::{

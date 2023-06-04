@@ -4,7 +4,7 @@ use crate::msg::{
     AskCountResponse, AskOffset, AskResponse, AsksResponse, CollectionOffset, CollectionsResponse,
 };
 use crate::msg::{ExecuteMsg, QueryMsg};
-use crate::state::SaleType;
+use crate::state_deprecated::SaleType;
 use crate::testing::helpers::funds::{
     add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn, listing_funds,
 };

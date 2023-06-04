@@ -6,7 +6,7 @@ use crate::msg::{
     BidsResponse, Collection, CollectionBidOffset, CollectionBidResponse, CollectionBidsResponse,
     CollectionOffset, CollectionsResponse, ParamsResponse, QueryMsg,
 };
-use crate::state::{
+use crate::state_deprecated::{
     ask_key, asks, bid_key, bids, collection_bid_key, collection_bids, BidKey, CollectionBidKey,
     TokenId, ASK_HOOKS, BID_HOOKS, SALE_HOOKS, SUDO_PARAMS,
 };

@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use crate::msg::ExecuteMsg;
-use crate::state::SaleType;
+use crate::state_deprecated::SaleType;
 use crate::testing::helpers::funds::{
     add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn, listing_funds,
 };

@@ -1,6 +1,6 @@
 use crate::{
     helpers::ExpiryRange,
-    state::{Ask, Bid, CollectionBid, SaleType, SudoParams, TokenId},
+    state_deprecated::{Ask, Bid, CollectionBid, SaleType, SudoParams, TokenId},
 };
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128};

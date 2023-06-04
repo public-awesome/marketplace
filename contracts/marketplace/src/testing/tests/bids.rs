@@ -2,7 +2,7 @@ use crate::msg::{AskResponse, BidOffset, BidResponse, CollectionBidOffset, Colle
 use crate::msg::{
     BidsResponse, CollectionBidResponse, CollectionBidsResponse, ExecuteMsg, QueryMsg,
 };
-use crate::state::{Bid, SaleType};
+use crate::state_deprecated::{Bid, SaleType};
 use crate::testing::helpers::funds::{
     add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn, listing_funds,
 };
