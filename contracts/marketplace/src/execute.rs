@@ -1075,15 +1075,22 @@ pub fn execute_remove_stale_collection_bid(
     collection_bids().remove(deps.storage, key)?;
 
     let reward = collection_bid.price * params.bid_removal_reward_percent / Uint128::from(100u128);
+    let bidder_refund = collection_bid.price - reward;
 
-    let bidder_msg = BankMsg::Send {
-        to_address: collection_bid.bidder.to_string(),
-        amount: vec![coin((collection_bid.price - reward).u128(), NATIVE_DENOM)],
-    };
-    let operator_msg = BankMsg::Send {
-        to_address: operator.to_string(),
-        amount: vec![coin(reward.u128(), NATIVE_DENOM)],
-    };
+    let mut response = Response::new();
+    if bidder_refund > Uint128::zero() {
+        response = response.add_message(BankMsg::Send {
+            to_address: collection_bid.bidder.to_string(),
+            amount: vec![coin(bidder_refund.u128(), NATIVE_DENOM)],
+        });
+    }
+
+    if reward > Uint128::zero() {
+        response = response.add_message(BankMsg::Send {
+            to_address: operator.to_string(),
+            amount: vec![coin(reward.u128(), NATIVE_DENOM)],
+        });
+    }
 
     let hook = prepare_collection_bid_hook(deps.as_ref(), &collection_bid, HookAction::Delete)?;
 
@@ -1093,11 +1100,7 @@ pub fn execute_remove_stale_collection_bid(
         .add_attribute("operator", operator.to_string())
         .add_attribute("reward", reward.to_string());
 
-    Ok(Response::new()
-        .add_event(event)
-        .add_message(bidder_msg)
-        .add_message(operator_msg)
-        .add_submessages(hook))
+    Ok(response.add_event(event).add_submessages(hook))
 }
 
 /// Transfers funds and NFT, updates bid
