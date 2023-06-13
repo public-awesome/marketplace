@@ -5,14 +5,36 @@ use crate::state::{Auction, Config};
 
 #[cw_serde]
 pub struct InstantiateMsg {
+    // The address of the fair burn contract
     pub fair_burn: String,
+    // The address of the marketplace contract
     pub marketplace: String,
+    // Each bid must be some number of basis points greater than the previous bid
     pub min_bid_increment_bps: u64,
+    // The minimum duration of an auction
     pub min_duration: u64,
+    // The maximum duration of an auction
     pub max_duration: u64,
+    // When a bid is placed near the end of an auction,
+    // extend the auction by this duration
     pub extend_duration: u64,
+    // The fee that must be paid when creating an auction
     pub create_auction_fee: Coin,
+    // The maximum number of auctions that can be processed in each block
     pub max_auctions_to_settle_per_block: u64,
+    // If the time between blocks exceeds the halt_duration_threshold,
+    // then it is determined that a halt has occurred.
+    pub halt_duration_threshold: u64,
+    // The amount of time, in seconds, added to the end of a halt period
+    // and used to determine a halt window. If an auction ends
+    // within a halt window it cannot be settled, it must be
+    // postponed.
+    pub halt_buffer_duration: u64,
+    // The amount of time, in seconds, that should be added to an auction
+    // that needs to be postponed.
+    pub halt_postpone_duration: u64,
+    // The minimum reserve prices for the various denoms. Denoms
+    // no defined are not supported.
     pub min_reserve_prices: Vec<Coin>,
 }
 

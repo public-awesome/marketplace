@@ -37,13 +37,6 @@ fn try_sudo_begin_block() {
     let begin_block_msg = SudoMsg::BeginBlock {};
     let response = router.wasm_sudo(reserve_auction, &begin_block_msg);
     assert!(response.is_ok());
-
-    response
-        .unwrap()
-        .events
-        .iter()
-        .find(|&e| e.ty == "wasm-sudo-begin-block")
-        .unwrap();
 }
 
 #[test]

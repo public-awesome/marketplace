@@ -4,7 +4,7 @@ use cosmwasm_std::entry_point;
 use crate::error::ContractError;
 use crate::helpers::settle_auction;
 use crate::msg::SudoMsg;
-use crate::state::{auctions, Auction, CONFIG, MIN_RESERVE_PRICES};
+use crate::state::{auctions, Auction, HaltInfo, CONFIG, HALT_MANAGER, MIN_RESERVE_PRICES};
 use cosmwasm_std::{Addr, Coin, Decimal, DepsMut, Env, Event, Order, StdResult};
 use cw_storage_plus::Bound;
 use sg_std::Response;
@@ -40,14 +40,33 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
     }
 }
 
-pub fn sudo_begin_block(_deps: DepsMut, _env: Env) -> Result<Response, ContractError> {
-    let event = Event::new("sudo-begin-block");
-    Ok(Response::new().add_event(event))
+pub fn sudo_begin_block(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+    let config = CONFIG.load(deps.storage)?;
+    let mut halt_manager = HALT_MANAGER.load(deps.storage)?;
+    let current_block_time = env.block.time.seconds();
+
+    let seconds_since_last_block = current_block_time - halt_manager.prev_block_time;
+    if seconds_since_last_block >= config.halt_duration_threshold {
+        halt_manager.halt_infos.push(HaltInfo::new(
+            halt_manager.prev_block_time,
+            seconds_since_last_block,
+            config.halt_buffer_duration,
+        ));
+    }
+
+    halt_manager.prev_block_time = current_block_time;
+    HALT_MANAGER.save(deps.storage, &halt_manager)?;
+
+    Ok(Response::new())
 }
 
 pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
+    let mut halt_manager = HALT_MANAGER.load(deps.storage)?;
 
+    let mut response = Response::new();
+
+    // Settle auctions normally
     let limit = config.max_auctions_to_settle_per_block as usize;
     let order = Order::Ascending;
     let max = Some(Bound::exclusive((
@@ -63,11 +82,25 @@ pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractE
         .map(|item| item.map(|(_, v)| v))
         .collect::<StdResult<_>>()?;
 
-    let event = Event::new("sudo-end-block");
-    let mut response = Response::new().add_event(event);
+    let earliest_auction_end_time = auctions.first().map(|a| a.end_time.unwrap());
+
+    response =
+        response.add_event(Event::new("sudo-end-block").add_attribute("action", "settle-auctions"));
 
     for auction in auctions {
-        response = settle_auction(deps.branch(), env.block.time, &config, auction, response)?;
+        response = settle_auction(
+            deps.branch(),
+            env.block.time,
+            auction,
+            &config,
+            &halt_manager,
+            response,
+        )?;
+    }
+
+    // Try and clear a halt info if necessary
+    if let Some(earliest_auction_end_time) = earliest_auction_end_time {
+        halt_manager.clear_stale_halt_info(earliest_auction_end_time.seconds());
     }
 
     Ok(response)

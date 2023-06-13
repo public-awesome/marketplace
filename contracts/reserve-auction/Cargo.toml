@@ -1,6 +1,6 @@
 [package]
 name = "sg-reserve-auction"
-version = "1.0.0"
+version = "1.1.0"
 authors = [
   "Shane Vitarana <s+git@publicawesome.com>",
   "Tasio Victoria <tasiovictoria@ujulabs.com>",

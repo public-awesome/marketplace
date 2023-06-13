@@ -16,6 +16,9 @@ pub struct Config {
     pub extend_duration: u64,
     pub create_auction_fee: Coin,
     pub max_auctions_to_settle_per_block: u64,
+    pub halt_duration_threshold: u64, // in seconds
+    pub halt_buffer_duration: u64,    // in seconds
+    pub halt_postpone_duration: u64,  // in seconds
 }
 
 impl Config {
@@ -50,7 +53,7 @@ impl Config {
     }
 }
 
-pub const CONFIG: Item<Config> = Item::new("cfg");
+pub const CONFIG: Item<Config> = Item::new("c");
 
 // A map of acceptable denoms to their minimum reserve price.
 // Denoms not found in the Map are not accepted.
@@ -112,4 +115,48 @@ pub fn auctions<'a>() -> IndexedMap<'a, AuctionKey, Auction, AuctionIndexes<'a>>
         ),
     };
     IndexedMap::new("a", indexes)
+}
+
+#[cw_serde]
+pub struct HaltInfo {
+    pub start_time: u64,  // in seconds
+    pub halt_period: u64, // in seconds
+    pub end_time: u64,
+}
+
+impl HaltInfo {
+    pub fn new(start_time: u64, halt_period: u64, halt_buffer_duration: u64) -> Self {
+        Self {
+            start_time,
+            halt_period,
+            end_time: start_time + halt_period + halt_buffer_duration,
+        }
+    }
+}
+
+#[cw_serde]
+pub struct HaltManager {
+    pub prev_block_time: u64, // in seconds
+    pub halt_infos: Vec<HaltInfo>,
+}
+
+pub const HALT_MANAGER: Item<HaltManager> = Item::new("hm");
+
+impl HaltManager {
+    pub fn is_within_halt_window(&self, block_time: u64) -> bool {
+        for halt_info in &self.halt_infos {
+            if block_time > halt_info.start_time && block_time < halt_info.end_time {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    pub fn clear_stale_halt_info(&mut self, block_time: u64) {
+        if let Some(halt_info) = self.halt_infos.first() {
+            if halt_info.end_time < block_time {
+                self.halt_infos.remove(0);
+            }
+        }
+    }
 }

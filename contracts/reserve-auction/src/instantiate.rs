@@ -2,20 +2,20 @@
 use cosmwasm_std::entry_point;
 
 use crate::msg::InstantiateMsg;
-use crate::state::Config;
+use crate::state::{Config, HaltManager, HALT_MANAGER};
 use crate::{error::ContractError, state::MIN_RESERVE_PRICES};
 use cosmwasm_std::{Decimal, DepsMut, Env, Event, MessageInfo};
 use cw2::set_contract_version;
 use sg_std::Response;
 
 // version info for migration info
-pub const CONTRACT_NAME: &str = "crates.io:sg-reserve-auction";
+pub const CONTRACT_NAME: &str = "crates.io:stargaze-reserve-auction";
 pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -29,6 +29,9 @@ pub fn instantiate(
         extend_duration: msg.extend_duration,
         create_auction_fee: msg.create_auction_fee,
         max_auctions_to_settle_per_block: msg.max_auctions_to_settle_per_block,
+        halt_duration_threshold: msg.halt_duration_threshold,
+        halt_buffer_duration: msg.halt_buffer_duration,
+        halt_postpone_duration: msg.halt_postpone_duration,
     };
 
     config.save(deps.storage)?;
@@ -48,6 +51,18 @@ pub fn instantiate(
         .add_attribute(
             "max_auctions_to_settle_per_block",
             &config.max_auctions_to_settle_per_block.to_string(),
+        )
+        .add_attribute(
+            "halt_duration_threshold",
+            &config.halt_duration_threshold.to_string(),
+        )
+        .add_attribute(
+            "halt_buffer_duration",
+            &config.halt_buffer_duration.to_string(),
+        )
+        .add_attribute(
+            "halt_postpone_duration",
+            &config.halt_postpone_duration.to_string(),
         );
 
     for min_reserve_price in msg.min_reserve_prices {
@@ -67,6 +82,14 @@ pub fn instantiate(
                 .add_attribute("amount", min_reserve_price.amount),
         );
     }
+
+    HALT_MANAGER.save(
+        deps.storage,
+        &HaltManager {
+            prev_block_time: env.block.time.seconds(),
+            halt_infos: vec![],
+        },
+    )?;
 
     Ok(response)
 }

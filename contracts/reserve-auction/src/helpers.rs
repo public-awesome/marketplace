@@ -1,4 +1,4 @@
-use crate::state::{auctions, Auction, Config, MIN_RESERVE_PRICES};
+use crate::state::{auctions, Auction, Config, HaltManager, MIN_RESERVE_PRICES};
 use crate::ContractError;
 
 use cosmwasm_std::{
@@ -60,17 +60,28 @@ pub fn validate_reserve_price(
 pub fn settle_auction(
     deps: DepsMut,
     block_time: Timestamp,
+    mut auction: Auction,
     config: &Config,
-    auction: Auction,
-    response: Response,
+    halt_manager: &HaltManager,
+    mut response: Response,
 ) -> Result<Response, ContractError> {
-    let mut response = response;
-
     // Ensure auction has ended
     ensure!(
         auction.end_time.is_some() && auction.end_time.unwrap() <= block_time,
         ContractError::AuctionNotEnded {}
     );
+
+    // If auction is set to end within a halt window, then postpone it instead
+    let auction_end_time = auction.end_time.unwrap();
+    if halt_manager.is_within_halt_window(auction_end_time.seconds()) {
+        let new_auction_end_time = block_time.plus_seconds(config.halt_postpone_duration);
+        auction.end_time = Some(new_auction_end_time);
+        response = response.add_event(
+            Event::new("postpone-auction")
+                .add_attribute("auction_end_time", new_auction_end_time.to_string()),
+        );
+        return Ok(response);
+    }
 
     // Remove auction from storage
     auctions().remove(

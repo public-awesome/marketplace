@@ -52,4 +52,7 @@ pub enum ContractError {
         collection: String,
         token_id: String,
     },
+
+    #[error("Auction within halt window: a halt has occurred and the auction cannot be settled")]
+    AuctionWithinHaltWindow,
 }

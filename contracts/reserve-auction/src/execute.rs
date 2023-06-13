@@ -3,8 +3,8 @@ use std::vec;
 use crate::error::ContractError;
 use crate::helpers::{only_no_auction, settle_auction, validate_reserve_price};
 use crate::msg::ExecuteMsg;
-use crate::state::CONFIG;
 use crate::state::{auctions, Auction, HighBid};
+use crate::state::{CONFIG, HALT_MANAGER};
 use cosmwasm_std::{
     coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Timestamp,
 };
@@ -345,9 +345,10 @@ pub fn execute_settle_auction(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     let config = CONFIG.load(deps.storage)?;
+    let halt_manager = HALT_MANAGER.load(deps.storage)?;
     let auction = auctions().load(deps.storage, (collection, token_id.to_string()))?;
 
     let response = Response::new();
 
-    settle_auction(deps, block_time, &config, auction, response)
+    settle_auction(deps, block_time, auction, &config, &halt_manager, response)
 }
