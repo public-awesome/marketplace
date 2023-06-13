@@ -102,7 +102,7 @@ fn try_halt_detection() {
         .unwrap();
     let response: HaltManagerResponse = router
         .wrap()
-        .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
+        .query_wasm_smart(reserve_auction, &QueryMsg::HaltManager {})
         .unwrap();
     assert_eq!(
         response.halt_manager.prev_block_time,

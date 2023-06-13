@@ -118,26 +118,15 @@ pub fn auctions<'a>() -> IndexedMap<'a, AuctionKey, Auction, AuctionIndexes<'a>>
 }
 
 #[cw_serde]
-pub struct HaltInfo {
-    pub start_time: u64,  // in seconds
-    pub halt_period: u64, // in seconds
-    pub end_time: u64,
-}
-
-impl HaltInfo {
-    pub fn new(start_time: u64, halt_period: u64, halt_buffer_duration: u64) -> Self {
-        Self {
-            start_time,
-            halt_period,
-            end_time: start_time + halt_period + halt_buffer_duration,
-        }
-    }
+pub struct HaltWindow {
+    pub start_time: u64, // in seconds
+    pub end_time: u64,   // in seconds
 }
 
 #[cw_serde]
 pub struct HaltManager {
     pub prev_block_time: u64, // in seconds
-    pub halt_infos: Vec<HaltInfo>,
+    pub halt_infos: Vec<HaltWindow>,
 }
 
 pub const HALT_MANAGER: Item<HaltManager> = Item::new("hm");
@@ -149,13 +138,13 @@ impl HaltManager {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     pub fn find_stale_halt_info(
         &mut self,
         earliest_auction_end_time: Option<Timestamp>,
-    ) -> Option<HaltInfo> {
+    ) -> Option<HaltWindow> {
         if self.halt_infos.is_empty() {
             return None;
         }
@@ -165,6 +154,6 @@ impl HaltManager {
         {
             return Some(self.halt_infos.remove(0));
         }
-        return None;
+        None
     }
 }

@@ -143,6 +143,9 @@ pub enum SudoMsg {
         extend_duration: Option<u64>,
         create_auction_fee: Option<Coin>,
         max_auctions_to_settle_per_block: Option<u64>,
+        halt_duration_threshold: Option<u64>,
+        halt_buffer_duration: Option<u64>,
+        halt_postpone_duration: Option<u64>,
     },
     SetMinReservePrices {
         min_reserve_prices: Vec<Coin>,

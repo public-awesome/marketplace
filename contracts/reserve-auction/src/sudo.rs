@@ -4,7 +4,7 @@ use cosmwasm_std::entry_point;
 use crate::error::ContractError;
 use crate::helpers::settle_auction;
 use crate::msg::SudoMsg;
-use crate::state::{auctions, Auction, HaltInfo, CONFIG, HALT_MANAGER, MIN_RESERVE_PRICES};
+use crate::state::{auctions, Auction, HaltWindow, CONFIG, HALT_MANAGER, MIN_RESERVE_PRICES};
 use cosmwasm_std::{Addr, Coin, Decimal, DepsMut, Env, Event, Order, StdResult};
 use cw_storage_plus::Bound;
 use sg_std::Response;
@@ -22,6 +22,9 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             extend_duration,
             create_auction_fee,
             max_auctions_to_settle_per_block,
+            halt_duration_threshold,
+            halt_buffer_duration,
+            halt_postpone_duration,
         } => sudo_update_params(
             deps,
             env,
@@ -32,6 +35,9 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             extend_duration,
             create_auction_fee,
             max_auctions_to_settle_per_block,
+            halt_duration_threshold,
+            halt_buffer_duration,
+            halt_postpone_duration,
         ),
         SudoMsg::SetMinReservePrices { min_reserve_prices } => {
             sudo_set_min_reserve_prices(deps, min_reserve_prices)
@@ -50,11 +56,10 @@ pub fn sudo_begin_block(deps: DepsMut, env: Env) -> Result<Response, ContractErr
     let seconds_since_last_block = current_block_time - halt_manager.prev_block_time;
 
     if seconds_since_last_block >= config.halt_duration_threshold {
-        halt_manager.halt_infos.push(HaltInfo::new(
-            halt_manager.prev_block_time,
-            seconds_since_last_block,
-            config.halt_buffer_duration,
-        ));
+        halt_manager.halt_infos.push(HaltWindow {
+            start_time: halt_manager.prev_block_time,
+            end_time: current_block_time + config.halt_buffer_duration,
+        });
         response = response.add_event(Event::new("halt-detected"));
     }
 
@@ -122,6 +127,9 @@ pub fn sudo_update_params(
     extend_duration: Option<u64>,
     create_auction_fee: Option<Coin>,
     max_auctions_to_settle_per_block: Option<u64>,
+    halt_duration_threshold: Option<u64>,
+    halt_buffer_duration: Option<u64>,
+    halt_postpone_duration: Option<u64>,
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
 
@@ -159,6 +167,27 @@ pub fn sudo_update_params(
         event = event.add_attribute(
             "max_auctions_to_settle_per_block",
             config.max_auctions_to_settle_per_block.to_string(),
+        );
+    }
+    if let Some(halt_duration_threshold) = halt_duration_threshold {
+        config.halt_duration_threshold = halt_duration_threshold;
+        event = event.add_attribute(
+            "halt_duration_threshold",
+            config.halt_duration_threshold.to_string(),
+        );
+    }
+    if let Some(halt_buffer_duration) = halt_buffer_duration {
+        config.halt_buffer_duration = halt_buffer_duration;
+        event = event.add_attribute(
+            "halt_buffer_duration",
+            config.halt_buffer_duration.to_string(),
+        );
+    }
+    if let Some(halt_postpone_duration) = halt_postpone_duration {
+        config.halt_postpone_duration = halt_postpone_duration;
+        event = event.add_attribute(
+            "halt_postpone_duration",
+            config.halt_postpone_duration.to_string(),
         );
     }
 

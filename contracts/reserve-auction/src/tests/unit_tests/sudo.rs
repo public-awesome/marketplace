@@ -1,8 +1,9 @@
 use crate::msg::{AuctionsResponse, ConfigResponse, QueryMsg, QueryOptions, SudoMsg};
 use crate::tests::helpers::auction_functions::place_bid;
 use crate::tests::helpers::constants::{
-    CREATE_AUCTION_FEE, DEFAULT_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MIN_BID_INCREMENT_BPS,
-    MIN_DURATION, MIN_RESERVE_PRICE,
+    CREATE_AUCTION_FEE, DEFAULT_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
+    HALT_POSTPONE_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MIN_BID_INCREMENT_BPS, MIN_DURATION,
+    MIN_RESERVE_PRICE,
 };
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
 use crate::tests::setup::setup_fair_burn::setup_fair_burn;
@@ -275,6 +276,9 @@ fn try_sudo_update_params() {
             NATIVE_DENOM,
         )),
         max_auctions_to_settle_per_block: Some(MAX_AUCTIONS_TO_SETTLE_PER_BLOCK + delta),
+        halt_duration_threshold: Some(HALT_DURATION_THRESHOLD + delta),
+        halt_buffer_duration: Some(HALT_BUFFER_DURATION + delta),
+        halt_postpone_duration: Some(HALT_POSTPONE_DURATION + delta),
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
 
@@ -310,6 +314,15 @@ fn try_sudo_update_params() {
         config.max_auctions_to_settle_per_block,
         MAX_AUCTIONS_TO_SETTLE_PER_BLOCK + delta
     );
+    assert_eq!(
+        config.halt_duration_threshold,
+        HALT_DURATION_THRESHOLD + delta
+    );
+    assert_eq!(config.halt_buffer_duration, HALT_BUFFER_DURATION + delta);
+    assert_eq!(
+        config.halt_postpone_duration,
+        HALT_POSTPONE_DURATION + delta
+    );
 
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: None,
@@ -319,6 +332,9 @@ fn try_sudo_update_params() {
         extend_duration: None,
         create_auction_fee: None,
         max_auctions_to_settle_per_block: None,
+        halt_duration_threshold: None,
+        halt_buffer_duration: None,
+        halt_postpone_duration: None,
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
     assert_eq!(
@@ -334,6 +350,9 @@ fn try_sudo_update_params() {
         extend_duration: None,
         create_auction_fee: None,
         max_auctions_to_settle_per_block: None,
+        halt_duration_threshold: None,
+        halt_buffer_duration: None,
+        halt_postpone_duration: None,
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
     assert_eq!(
@@ -349,6 +368,9 @@ fn try_sudo_update_params() {
         extend_duration: None,
         create_auction_fee: None,
         max_auctions_to_settle_per_block: None,
+        halt_duration_threshold: None,
+        halt_buffer_duration: None,
+        halt_postpone_duration: None,
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
     assert_eq!(
@@ -364,6 +386,9 @@ fn try_sudo_update_params() {
         extend_duration: Some(0u64),
         create_auction_fee: None,
         max_auctions_to_settle_per_block: None,
+        halt_duration_threshold: None,
+        halt_buffer_duration: None,
+        halt_postpone_duration: None,
     };
     let response = router.wasm_sudo(reserve_auction, &update_params_msg);
     assert_eq!(
