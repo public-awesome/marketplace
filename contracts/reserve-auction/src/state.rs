@@ -152,11 +152,19 @@ impl HaltManager {
         return false;
     }
 
-    pub fn clear_stale_halt_info(&mut self, block_time: u64) {
-        if let Some(halt_info) = self.halt_infos.first() {
-            if halt_info.end_time < block_time {
-                self.halt_infos.remove(0);
-            }
+    pub fn find_stale_halt_info(
+        &mut self,
+        earliest_auction_end_time: Option<Timestamp>,
+    ) -> Option<HaltInfo> {
+        if self.halt_infos.is_empty() {
+            return None;
         }
+        let halt_info = self.halt_infos.first().unwrap();
+        if earliest_auction_end_time.is_none()
+            || earliest_auction_end_time.unwrap().seconds() > halt_info.end_time
+        {
+            return Some(self.halt_infos.remove(0));
+        }
+        return None;
     }
 }

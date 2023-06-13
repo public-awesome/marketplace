@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Coin;
 
-use crate::state::{Auction, Config};
+use crate::state::{Auction, Config, HaltManager};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -71,6 +71,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
     Config {},
+    #[returns(HaltManagerResponse)]
+    HaltManager {},
     #[returns(CoinsResponse)]
     MinReservePrices {
         query_options: Option<QueryOptions<String>>,
@@ -107,6 +109,11 @@ pub struct QueryOptions<T> {
 #[cw_serde]
 pub struct ConfigResponse {
     pub config: Config,
+}
+
+#[cw_serde]
+pub struct HaltManagerResponse {
+    pub halt_manager: HaltManager,
 }
 
 #[cw_serde]

@@ -33,7 +33,6 @@ fn try_sudo_begin_block() {
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
-    // Test begin block no-op
     let begin_block_msg = SudoMsg::BeginBlock {};
     let response = router.wasm_sudo(reserve_auction, &begin_block_msg);
     assert!(response.is_ok());

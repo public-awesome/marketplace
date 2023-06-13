@@ -41,23 +41,27 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
 }
 
 pub fn sudo_begin_block(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+    let mut response = Response::new();
+
     let config = CONFIG.load(deps.storage)?;
     let mut halt_manager = HALT_MANAGER.load(deps.storage)?;
-    let current_block_time = env.block.time.seconds();
 
+    let current_block_time = env.block.time.seconds();
     let seconds_since_last_block = current_block_time - halt_manager.prev_block_time;
+
     if seconds_since_last_block >= config.halt_duration_threshold {
         halt_manager.halt_infos.push(HaltInfo::new(
             halt_manager.prev_block_time,
             seconds_since_last_block,
             config.halt_buffer_duration,
         ));
+        response = response.add_event(Event::new("halt-detected"));
     }
 
     halt_manager.prev_block_time = current_block_time;
     HALT_MANAGER.save(deps.storage, &halt_manager)?;
 
-    Ok(Response::new())
+    Ok(response)
 }
 
 pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractError> {
@@ -99,8 +103,9 @@ pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractE
     }
 
     // Try and clear a halt info if necessary
-    if let Some(earliest_auction_end_time) = earliest_auction_end_time {
-        halt_manager.clear_stale_halt_info(earliest_auction_end_time.seconds());
+    let halt_info = halt_manager.find_stale_halt_info(earliest_auction_end_time);
+    if halt_info.is_some() {
+        HALT_MANAGER.save(deps.storage, &halt_manager)?;
     }
 
     Ok(response)

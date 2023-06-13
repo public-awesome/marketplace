@@ -76,6 +76,11 @@ pub fn settle_auction(
     if halt_manager.is_within_halt_window(auction_end_time.seconds()) {
         let new_auction_end_time = block_time.plus_seconds(config.halt_postpone_duration);
         auction.end_time = Some(new_auction_end_time);
+        auctions().save(
+            deps.storage,
+            (auction.collection.clone(), auction.token_id.clone()),
+            &auction,
+        )?;
         response = response.add_event(
             Event::new("postpone-auction")
                 .add_attribute("auction_end_time", new_auction_end_time.to_string()),

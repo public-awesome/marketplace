@@ -9,3 +9,6 @@ mod query;
 
 #[cfg(test)]
 mod sudo;
+
+#[cfg(test)]
+mod halt_manager;

@@ -9,6 +9,6 @@ pub const DEFAULT_DURATION: u64 = 60 * 60;
 pub const MIN_BID_INCREMENT_BPS: u64 = 2500;
 pub const EXTEND_DURATION: u64 = 500;
 pub const MAX_AUCTIONS_TO_SETTLE_PER_BLOCK: u64 = 200;
-pub const HALT_DURATION_THRESHOLD: u64 = 60 * 60 * 2; // 2 hours
+pub const HALT_DURATION_THRESHOLD: u64 = 60 * 20; // 20 mins
 pub const HALT_BUFFER_DURATION: u64 = 60 * 30; // 30 mins
 pub const HALT_POSTPONE_DURATION: u64 = 60 * 60; // 1 hour;

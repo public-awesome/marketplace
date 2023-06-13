@@ -1,7 +1,8 @@
 use crate::msg::{
-    AuctionResponse, AuctionsResponse, CoinsResponse, ConfigResponse, QueryMsg, QueryOptions,
+    AuctionResponse, AuctionsResponse, CoinsResponse, ConfigResponse, HaltManagerResponse,
+    QueryMsg, QueryOptions,
 };
-use crate::state::{auctions, Auction};
+use crate::state::{auctions, Auction, HALT_MANAGER};
 use crate::state::{CONFIG, MIN_RESERVE_PRICES};
 
 use cosmwasm_std::{coin, to_binary, Addr, Binary, Coin, Deps, Env, Order, StdResult};
@@ -18,6 +19,7 @@ use cosmwasm_std::entry_point;
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::HaltManager {} => to_binary(&query_halt_manager(deps)?),
         QueryMsg::MinReservePrices { query_options } => to_binary(&query_min_reserve_prices(
             deps,
             query_options.unwrap_or(QueryOptions::default()),
@@ -48,6 +50,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let config = CONFIG.load(deps.storage)?;
     Ok(ConfigResponse { config })
+}
+
+pub fn query_halt_manager(deps: Deps) -> StdResult<HaltManagerResponse> {
+    let halt_manager = HALT_MANAGER.load(deps.storage)?;
+    Ok(HaltManagerResponse { halt_manager })
 }
 
 pub fn query_min_reserve_prices(
