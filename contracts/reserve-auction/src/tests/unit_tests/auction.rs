@@ -470,7 +470,7 @@ fn try_cancel_auction() {
     let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
     assert_error(
         res,
-        "sg_reserve_auction::state::Auction not found".to_string(),
+        "stargaze_reserve_auction::state::Auction not found".to_string(),
     );
 
     // cancel auction fails after bid has been placed
@@ -576,7 +576,7 @@ fn try_place_bid() {
     );
     assert_error(
         res,
-        "sg_reserve_auction::state::Auction not found".to_string(),
+        "stargaze_reserve_auction::state::Auction not found".to_string(),
     );
 
     // place bid below reserve fails

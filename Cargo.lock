@@ -1387,37 +1387,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sg-reserve-auction"
-version = "1.1.0"
-dependencies = [
- "anyhow",
- "cosmwasm-schema",
- "cosmwasm-std",
- "cw-multi-test",
- "cw-storage-macro",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "cw721",
- "cw721-base",
- "regex",
- "schemars",
- "serde",
- "sg-fair-burn",
- "sg-marketplace",
- "sg-marketplace-common",
- "sg-multi-test",
- "sg-std",
- "sg1",
- "sg2",
- "sg721",
- "sg721-base",
- "test-suite",
- "thiserror",
- "vending-minter",
-]
-
-[[package]]
 name = "sg-splits"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1628,6 +1597,37 @@ checksum = "67cf02bbac7a337dc36e4f5a693db6c21e7863f45070f7064577eb4367a3212b"
 dependencies = [
  "base64ct",
  "der",
+]
+
+[[package]]
+name = "stargaze-reserve-auction"
+version = "1.1.1"
+dependencies = [
+ "anyhow",
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-multi-test",
+ "cw-storage-macro",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw721",
+ "cw721-base",
+ "regex",
+ "schemars",
+ "serde",
+ "sg-fair-burn",
+ "sg-marketplace",
+ "sg-marketplace-common",
+ "sg-multi-test",
+ "sg-std",
+ "sg1",
+ "sg2",
+ "sg721",
+ "sg721-base",
+ "test-suite",
+ "thiserror",
+ "vending-minter",
 ]
 
 [[package]]
