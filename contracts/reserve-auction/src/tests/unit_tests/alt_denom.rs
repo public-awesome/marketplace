@@ -165,8 +165,7 @@ fn try_create_auction() {
     assert_error(
         res,
         ContractError::WrongFee {
-            expected: CREATE_AUCTION_FEE,
-            got: Uint128::from(CREATE_AUCTION_FEE.u128() - 1u128),
+            expected: coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
         }
         .to_string(),
     );

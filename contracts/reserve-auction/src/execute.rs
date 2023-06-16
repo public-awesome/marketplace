@@ -128,13 +128,10 @@ pub fn execute_create_auction(
     } else {
         // If create auction fee is non zero, ensure user has sent the correct amount,
         // and send it to the fair-burn contract
-        let fee = must_pay(&info, &config.create_auction_fee.denom)?;
-        ensure_eq!(
-            fee,
-            config.create_auction_fee.amount,
+        ensure!(
+            has_coins(&info.funds, &config.create_auction_fee),
             ContractError::WrongFee {
-                expected: config.create_auction_fee.amount,
-                got: fee,
+                expected: config.create_auction_fee,
             }
         );
         response = append_fair_burn_msg(

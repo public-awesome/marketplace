@@ -35,8 +35,8 @@ pub enum ContractError {
     #[error("AuctionEnded")]
     AuctionEnded {},
 
-    #[error("WrongFee: {expected} != {got}")]
-    WrongFee { expected: Uint128, got: Uint128 },
+    #[error("WrongFee: expected: {expected}")]
+    WrongFee { expected: Coin },
 
     #[error("InvalidReservePrice: {min}")]
     InvalidReservePrice { min: Coin },
