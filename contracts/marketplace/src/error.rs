@@ -1,4 +1,4 @@
-use cosmwasm_std::{StdError, Uint128};
+use cosmwasm_std::{Coin, Decimal, StdError, Uint128};
 use cw_utils::PaymentError;
 use sg_controllers::HookError;
 use sg_marketplace_common::MarketplaceCommonError;
@@ -14,7 +14,10 @@ pub enum ContractError {
     #[error("{0}")]
     MarketplaceCommonError(#[from] MarketplaceCommonError),
 
-    #[error("Invalid fair burn : {0}")]
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+
+    #[error("Invalid fair burn: {0}")]
     InvalidFairBurn(String),
 
     #[error("UnauthorizedOwner")]
@@ -56,6 +59,9 @@ pub enum ContractError {
     #[error("PriceTooSmall: {0}")]
     PriceTooSmall(Uint128),
 
+    #[error("InvalidFunds: expected {expected}")]
+    InvalidFunds { expected: Coin },
+
     #[error("PriceTooHigh: {0}")]
     PriceTooHigh(Uint128),
 
@@ -66,7 +72,7 @@ pub enum ContractError {
     TokenReserved {},
 
     #[error("Invalid finders fee bps: {0}")]
-    InvalidFindersFeeBps(u64),
+    InvalidFindersFeePercent(Decimal),
 
     #[error("Invalid trading fee bps: {0}")]
     InvalidTradingFeeBps(u64),

@@ -30,7 +30,7 @@ library = []
 
 [dependencies]
 sg-marketplace        = { workspace = true }
-sg-fair-burn          = { workspace = true }
+stargaze-fair-burn    = { workspace = true }
 cosmwasm-schema       = { workspace = true }
 cosmwasm-std          = { workspace = true }
 cw-storage-macro      = { workspace = true }

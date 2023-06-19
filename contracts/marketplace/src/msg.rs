@@ -1,57 +1,57 @@
+use cosmwasm_schema::{cw_serde, QueryResponses};
+use cosmwasm_std::{to_binary, Binary, Coin, StdResult, Timestamp};
+use sg_marketplace_common::query::QueryOptions;
+
 use crate::{
     helpers::ExpiryRange,
-    state_deprecated::{Ask, Bid, CollectionBid, SaleType, SudoParams, TokenId},
+    state::{Ask, CollectionOffer, Denom, Offer, PriceRange, SudoParams, TokenId},
 };
-use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{to_binary, Addr, Binary, Coin, StdResult, Timestamp, Uint128};
-use cw_utils::Duration;
-use sg_controllers::HooksResponse;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// Fair Burn fee for winning bids
-    /// 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
-    pub trading_fee_bps: u64,
+    /// The address of the fair burn contract
+    pub fair_burn: String,
+    /// Listing fee to reduce spam
+    pub listing_fee: Coin,
     /// Valid time range for Asks
     /// (min, max) in seconds
     pub ask_expiry: ExpiryRange,
-    /// Valid time range for Bids
+    /// Valid time range for offers
     /// (min, max) in seconds
-    pub bid_expiry: ExpiryRange,
+    pub offer_expiry: ExpiryRange,
     /// Operators are entites that are responsible for maintaining the active state of Asks.
     /// They listen to NFT transfer events, and update the active state of Asks.
     pub operators: Vec<String>,
-    /// The address of the airdrop claim contract to detect sales
-    pub sale_hook: Option<String>,
+    /// The maximum number of asks that can be removed per block
+    pub max_asks_removed_per_block: u32,
+    /// The maximum number of offers that can be removed per block
+    pub max_offers_removed_per_block: u32,
+    /// The maximum number of collection offers that can be removed per block
+    pub max_collection_offers_removed_per_block: u32,
+    /// Fair Burn fee
+    /// 0.25% = 25, 0.5% = 50, 1% = 100, 2.5% = 250
+    pub trading_fee_bps: u64,
     /// Max basis points for the finders fee
     pub max_finders_fee_bps: u64,
-    /// Min value for bids and asks
-    pub min_price: Uint128,
-    /// Duration after expiry when a bid becomes stale (in seconds)
-    pub stale_bid_duration: Duration,
-    /// Stale bid removal reward
-    pub bid_removal_reward_bps: u64,
-    /// Listing fee to reduce spam
-    pub listing_fee: Uint128,
+    /// Expired offer / ask removal reward
+    pub removal_reward_bps: u64,
+    /// Min values for offers and asks
+    pub price_ranges: Vec<(Denom, PriceRange)>,
+    /// The address of the airdrop claim contract to detect sales
+    pub sale_hook: Option<String>,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
     /// List an NFT on the marketplace by creating a new ask
     SetAsk {
-        sale_type: SaleType,
         collection: String,
         token_id: TokenId,
         price: Coin,
-        funds_recipient: Option<String>,
+        asset_recipient: Option<String>,
         reserve_for: Option<String>,
         finders_fee_bps: Option<u64>,
-        expires: Timestamp,
-    },
-    /// Remove an existing ask from the marketplace
-    RemoveAsk {
-        collection: String,
-        token_id: TokenId,
+        expires: Option<Timestamp>,
     },
     /// Update the price of an existing ask
     UpdateAskPrice {
@@ -59,57 +59,8 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         price: Coin,
     },
-    /// Place a bid on an existing ask
-    SetBid {
-        collection: String,
-        token_id: TokenId,
-        expires: Timestamp,
-        sale_type: SaleType,
-        finder: Option<String>,
-        finders_fee_bps: Option<u64>,
-    },
-    BuyNow {
-        collection: String,
-        token_id: TokenId,
-        expires: Timestamp,
-        finder: Option<String>,
-        finders_fee_bps: Option<u64>,
-    },
-    /// Remove an existing bid from an ask
-    RemoveBid {
-        collection: String,
-        token_id: TokenId,
-    },
-    /// Accept a bid on an existing ask
-    AcceptBid {
-        collection: String,
-        token_id: TokenId,
-        bidder: String,
-        finder: Option<String>,
-    },
-    /// Reject a bid on an existing ask
-    RejectBid {
-        collection: String,
-        token_id: TokenId,
-        bidder: String,
-    },
-    /// Place a bid (limit order) across an entire collection
-    SetCollectionBid {
-        collection: String,
-        expires: Timestamp,
-        finders_fee_bps: Option<u64>,
-    },
-    /// Remove a bid (limit order) across an entire collection
-    RemoveCollectionBid { collection: String },
-    /// Accept a collection bid
-    AcceptCollectionBid {
-        collection: String,
-        token_id: TokenId,
-        bidder: String,
-        finder: Option<String>,
-    },
-    /// Privileged operation to change the active state of an ask when an NFT is transferred
-    SyncAsk {
+    /// Remove an existing ask from the marketplace
+    RemoveAsk {
         collection: String,
         token_id: TokenId,
     },
@@ -118,315 +69,230 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
     },
-    /// Privileged operation to remove stale bids
-    RemoveStaleBid {
+    /// Migrate ask to v3 Ask
+    MigrateAsks { limit: u64 },
+    /// Create an offer for an NFT
+    SetOffer {
+        collection: String,
+        token_id: TokenId,
+        asset_recipient: Option<String>,
+        finder: Option<String>,
+        finders_fee_bps: Option<u64>,
+        expires: Option<Timestamp>,
+    },
+    /// Buy an NFT from the marketplace
+    BuyNow {
+        collection: String,
+        token_id: TokenId,
+        asset_recipient: Option<String>,
+        finder: Option<String>,
+    },
+    /// Accept a offer on an existing ask
+    AcceptOffer {
+        collection: String,
+        token_id: TokenId,
+        bidder: String,
+        asset_recipient: Option<String>,
+        finder: Option<String>,
+    },
+    /// Remove an existing offer from an ask
+    RemoveOffer {
+        collection: String,
+        token_id: TokenId,
+    },
+    /// Reject a offer on an existing ask
+    RejectOffer {
         collection: String,
         token_id: TokenId,
         bidder: String,
     },
-    /// Privileged operation to remove stale collection bids
-    RemoveStaleCollectionBid { collection: String, bidder: String },
+    /// Remove an existing offer from an ask
+    RemoveStaleOffer {
+        collection: String,
+        token_id: TokenId,
+    },
+    /// Migrate Bids to V3 Offers
+    MigrateOffers { limit: u64 },
+    /// Place an offer (limit order) across an entire collection
+    SetCollectionOffer {
+        collection: String,
+        asset_recipient: Option<String>,
+        finders_fee_bps: Option<u64>,
+        expires: Option<Timestamp>,
+    },
+    /// Accept a collection offer
+    AcceptCollectionOffer {
+        collection: String,
+        token_id: TokenId,
+        bidder: String,
+        asset_recipient: Option<String>,
+        finder: Option<String>,
+    },
+    /// Remove a offer (limit order) across an entire collection
+    RemoveCollectionOffer { collection: String },
+    /// Remove a offer (limit order) across an entire collection
+    RemoveStaleCollectionOffer { collection: String, bidder: String },
+    /// Migrate CollectionBids to V3 CollectionOffers
+    MigrateCollectionOffers { limit: u64 },
 }
 
 #[cw_serde]
 pub enum SudoMsg {
+    /// BeginBlock Is called by x/cron module BeginBlocker
+    BeginBlock {},
+    /// EndBlock Is called by x/cron module EndBlocker
+    EndBlock {},
     /// Update the contract parameters
     /// Can only be called by governance
     UpdateParams {
-        trading_fee_bps: Option<u64>,
+        fair_burn: Option<String>,
+        listing_fee: Option<Coin>,
         ask_expiry: Option<ExpiryRange>,
-        bid_expiry: Option<ExpiryRange>,
+        offer_expiry: Option<ExpiryRange>,
         operators: Option<Vec<String>>,
+        max_asks_removed_per_block: Option<u32>,
+        max_offers_removed_per_block: Option<u32>,
+        max_collection_offers_removed_per_block: Option<u32>,
+        trading_fee_bps: Option<u64>,
         max_finders_fee_bps: Option<u64>,
-        min_price: Option<Uint128>,
-        stale_bid_duration: Option<u64>,
-        bid_removal_reward_bps: Option<u64>,
-        listing_fee: Option<Uint128>,
+        removal_reward_bps: Option<u64>,
     },
-    /// Add a new operator
-    AddOperator { operator: String },
-    /// Remove operator
-    RemoveOperator { operator: String },
+    AddDenoms {
+        price_ranges: Vec<(Denom, PriceRange)>,
+    },
+    RemoveDenoms {
+        denoms: Vec<Denom>,
+    },
     /// Add a new hook to be informed of all asks
-    AddAskHook { hook: String },
+    AddAskHook {
+        hook: String,
+    },
     /// Add a new hook to be informed of all bids
-    AddBidHook { hook: String },
+    AddOfferHook {
+        hook: String,
+    },
     /// Remove a ask hook
-    RemoveAskHook { hook: String },
+    RemoveAskHook {
+        hook: String,
+    },
     /// Remove a bid hook
-    RemoveBidHook { hook: String },
+    RemoveOfferHook {
+        hook: String,
+    },
     /// Add a new hook to be informed of all trades
-    AddSaleHook { hook: String },
+    AddSaleHook {
+        hook: String,
+    },
     /// Remove a trade hook
-    RemoveSaleHook { hook: String },
-}
-
-pub type Collection = String;
-pub type Bidder = String;
-pub type Seller = String;
-
-/// Offset for ask pagination
-#[cw_serde]
-pub struct AskOffset {
-    pub price: Uint128,
-    pub token_id: TokenId,
-}
-
-impl AskOffset {
-    pub fn new(price: Uint128, token_id: TokenId) -> Self {
-        AskOffset { price, token_id }
-    }
-}
-
-/// Offset for bid pagination
-#[cw_serde]
-pub struct BidOffset {
-    pub price: Uint128,
-    pub token_id: TokenId,
-    pub bidder: Addr,
-}
-
-impl BidOffset {
-    pub fn new(price: Uint128, token_id: TokenId, bidder: Addr) -> Self {
-        BidOffset {
-            price,
-            token_id,
-            bidder,
-        }
-    }
-}
-/// Offset for collection pagination
-#[cw_serde]
-pub struct CollectionOffset {
-    pub collection: String,
-    pub token_id: TokenId,
-}
-
-impl CollectionOffset {
-    pub fn new(collection: String, token_id: TokenId) -> Self {
-        CollectionOffset {
-            collection,
-            token_id,
-        }
-    }
-}
-
-/// Offset for collection bid pagination
-#[cw_serde]
-pub struct CollectionBidOffset {
-    pub price: Uint128,
-    pub collection: Collection,
-    pub bidder: Bidder,
-}
-
-impl CollectionBidOffset {
-    pub fn new(price: Uint128, collection: String, bidder: Bidder) -> Self {
-        CollectionBidOffset {
-            price,
-            collection,
-            bidder,
-        }
-    }
+    RemoveSaleHook {
+        hook: String,
+    },
 }
 
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    /// List of collections that have asks on them
-    #[returns(CollectionsResponse)]
-    Collections {
-        start_after: Option<Collection>,
-        limit: Option<u32>,
-    },
+    /// Get the config for the contract
+    #[returns(SudoParams)]
+    SudoParams {},
     /// Get the current ask for specific NFT
-    #[returns(AsksResponse)]
+    #[returns(Option<Ask>)]
     Ask {
-        collection: Collection,
+        collection: String,
         token_id: TokenId,
     },
     /// Get all asks for a collection
-    #[returns(AsksResponse)]
+    #[returns(Vec<Ask>)]
     Asks {
-        collection: Collection,
-        include_inactive: Option<bool>,
-        start_after: Option<TokenId>,
-        limit: Option<u32>,
-    },
-    /// Get all asks for a collection in reverse
-    #[returns(AsksResponse)]
-    ReverseAsks {
-        collection: Collection,
-        include_inactive: Option<bool>,
-        start_before: Option<TokenId>,
-        limit: Option<u32>,
+        collection: String,
+        query_options: Option<QueryOptions<TokenId>>,
     },
     /// Get all asks for a collection, sorted by price
-    #[returns(AsksResponse)]
-    AsksSortedByPrice {
-        collection: Collection,
-        include_inactive: Option<bool>,
-        start_after: Option<AskOffset>,
-        limit: Option<u32>,
+    #[returns(Vec<Ask>)]
+    AsksByPrice {
+        collection: String,
+        denom: Denom,
+        query_options: Option<QueryOptions<u128>>,
     },
-    /// Get all asks for a collection, sorted by price in reverse
-    #[returns(AsksResponse)]
-    ReverseAsksSortedByPrice {
-        collection: Collection,
-        include_inactive: Option<bool>,
-        start_before: Option<AskOffset>,
-        limit: Option<u32>,
-    },
-    /// Count of all asks
-    #[returns(AskCountResponse)]
-    AskCount { collection: Collection },
     /// Get all asks by seller
-    #[returns(AsksResponse)]
+    #[returns(Vec<Ask>)]
     AsksBySeller {
-        seller: Seller,
-        include_inactive: Option<bool>,
-        start_after: Option<CollectionOffset>,
-        limit: Option<u32>,
+        seller: String,
+        query_options: Option<QueryOptions<(String, TokenId)>>,
     },
-    /// Get data for a specific bid
-    #[returns(BidResponse)]
-    Bid {
-        collection: Collection,
+    /// Get all asks sorted by the expiration time
+    #[returns(Vec<Ask>)]
+    AsksByExpiration {
+        query_options: Option<QueryOptions<(u64, String, TokenId)>>,
+    },
+    /// Get data for a specific offer
+    #[returns(Offer)]
+    Offer {
+        collection: String,
         token_id: TokenId,
-        bidder: Bidder,
+        bidder: String,
     },
-    /// Get all bids by a bidder
-    #[returns(BidsResponse)]
-    BidsByBidder {
-        bidder: Bidder,
-        start_after: Option<CollectionOffset>,
-        limit: Option<u32>,
+    /// Get all offers on a collection
+    #[returns(Vec<Offer>)]
+    OffersByCollection {
+        collection: String,
+        query_options: Option<QueryOptions<(TokenId, String)>>,
     },
-    /// Get all bids by a bidder, sorted by expiration
-    #[returns(BidsResponse)]
-    BidsByBidderSortedByExpiration {
-        bidder: Bidder,
-        start_after: Option<CollectionOffset>,
-        limit: Option<u32>,
-    },
-    /// Get all bids for a specific NFT
-    #[returns(BidsResponse)]
-    Bids {
-        collection: Collection,
+    /// Get all offers on a collection token, sorted by price
+    #[returns(Vec<Offer>)]
+    OffersByTokenPrice {
+        collection: String,
         token_id: TokenId,
-        start_after: Option<Bidder>,
-        limit: Option<u32>,
+        denom: Denom,
+        query_options: Option<QueryOptions<(u128, String)>>,
     },
-    /// Get all bids for a collection, sorted by price
-    #[returns(BidsResponse)]
-    BidsSortedByPrice {
-        collection: Collection,
-        start_after: Option<BidOffset>,
-        limit: Option<u32>,
+    /// Get all offers made by a bidder
+    #[returns(Vec<Offer>)]
+    OffersByBidder {
+        bidder: String,
+        query_options: Option<QueryOptions<(String, TokenId)>>,
     },
-    /// Get all bids for a collection, sorted by price in reverse
-    #[returns(BidsResponse)]
-    ReverseBidsSortedByPrice {
-        collection: Collection,
-        start_before: Option<BidOffset>,
-        limit: Option<u32>,
+    /// Get all offers sorted by the expiration time
+    #[returns(Vec<Offer>)]
+    OffersByExpiration {
+        query_options: Option<QueryOptions<(u64, String, TokenId, String)>>,
     },
-    /// Get data for a specific collection bid
-    #[returns(CollectionBidResponse)]
-    CollectionBid {
-        collection: Collection,
-        bidder: Bidder,
+    /// Get data for a specific collection offer
+    #[returns(Option<CollectionOffer>)]
+    CollectionOffer { collection: String, bidder: String },
+    /// Get all collection offers for a collection, sorted by price
+    #[returns(Vec<CollectionOffer>)]
+    CollectionOffersByPrice {
+        collection: String,
+        denom: Denom,
+        query_options: Option<QueryOptions<(u128, String)>>,
     },
-    /// Get all collection bids by a bidder
-    #[returns(CollectionBidResponse)]
-    CollectionBidsByBidder {
-        bidder: Bidder,
-        start_after: Option<CollectionOffset>,
-        limit: Option<u32>,
+    /// Get all collection offers made by a bidder
+    #[returns(Vec<CollectionOffer>)]
+    CollectionOffersByBidder {
+        bidder: String,
+        query_options: Option<QueryOptions<String>>,
     },
-    /// Get all collection bids by a bidder, sorted by expiration
-    #[returns(CollectionBidResponse)]
-    CollectionBidsByBidderSortedByExpiration {
-        bidder: Collection,
-        start_after: Option<CollectionBidOffset>,
-        limit: Option<u32>,
-    },
-    /// Get all collection bids for a collection sorted by price
-    #[returns(CollectionBidResponse)]
-    CollectionBidsSortedByPrice {
-        collection: Collection,
-        start_after: Option<CollectionBidOffset>,
-        limit: Option<u32>,
-    },
-    /// Get all collection bids for a collection sorted by price in reverse
-    #[returns(CollectionBidResponse)]
-    ReverseCollectionBidsSortedByPrice {
-        collection: Collection,
-        start_before: Option<CollectionBidOffset>,
-        limit: Option<u32>,
+    /// Get all collection offers sorted by the expiration time
+    #[returns(Vec<CollectionOffer>)]
+    CollectionOffersByExpiration {
+        query_options: Option<QueryOptions<(u64, String, String)>>,
     },
     /// Show all registered ask hooks
-    #[returns(HooksResponse)]
+    #[returns(Vec<String>)]
     AskHooks {},
     /// Show all registered bid hooks
-    #[returns(HooksResponse)]
+    #[returns(Vec<String>)]
     BidHooks {},
     /// Show all registered sale hooks
-    #[returns(HooksResponse)]
+    #[returns(Vec<String>)]
     SaleHooks {},
-    /// Get the config for the contract
-    #[returns(ParamsResponse)]
-    Params {},
-}
-
-#[cw_serde]
-pub struct AskResponse {
-    pub ask: Option<Ask>,
-}
-
-#[cw_serde]
-pub struct AsksResponse {
-    pub asks: Vec<Ask>,
-}
-
-#[cw_serde]
-pub struct AskCountResponse {
-    pub count: u32,
-}
-
-#[cw_serde]
-pub struct CollectionsResponse {
-    pub collections: Vec<Addr>,
-}
-
-#[cw_serde]
-pub struct BidResponse {
-    pub bid: Option<Bid>,
-}
-
-#[cw_serde]
-pub struct BidsResponse {
-    pub bids: Vec<Bid>,
-}
-
-#[cw_serde]
-pub struct ParamsResponse {
-    pub params: SudoParams,
-}
-
-#[cw_serde]
-pub struct CollectionBidResponse {
-    pub bid: Option<CollectionBid>,
-}
-
-#[cw_serde]
-pub struct CollectionBidsResponse {
-    pub bids: Vec<CollectionBid>,
 }
 
 #[cw_serde]
 pub struct SaleHookMsg {
     pub collection: String,
-    pub token_id: u32,
+    pub token_id: String,
     pub price: Coin,
     pub seller: String,
     pub buyer: String,
@@ -435,7 +301,7 @@ pub struct SaleHookMsg {
 impl SaleHookMsg {
     pub fn new(
         collection: String,
-        token_id: u32,
+        token_id: String,
         price: Coin,
         seller: String,
         buyer: String,
@@ -499,21 +365,21 @@ pub enum AskHookExecuteMsg {
 }
 
 #[cw_serde]
-pub struct BidHookMsg {
-    pub bid: Bid,
+pub struct OfferHookMsg {
+    pub offer: Offer,
 }
 
-impl BidHookMsg {
-    pub fn new(bid: Bid) -> Self {
-        BidHookMsg { bid }
+impl OfferHookMsg {
+    pub fn new(offer: Offer) -> Self {
+        OfferHookMsg { offer }
     }
 
     /// serializes the message
     pub fn into_binary(self, action: HookAction) -> StdResult<Binary> {
         let msg = match action {
-            HookAction::Create => BidExecuteMsg::BidCreatedHook(self),
-            HookAction::Update => BidExecuteMsg::BidUpdatedHook(self),
-            HookAction::Delete => BidExecuteMsg::BidDeletedHook(self),
+            HookAction::Create => OfferExecuteMsg::OfferCreatedHook(self),
+            HookAction::Update => OfferExecuteMsg::OfferUpdatedHook(self),
+            HookAction::Delete => OfferExecuteMsg::OfferDeletedHook(self),
         };
         to_binary(&msg)
     }
@@ -521,28 +387,28 @@ impl BidHookMsg {
 
 // This is just a helper to properly serialize the above message
 #[cw_serde]
-pub enum BidExecuteMsg {
-    BidCreatedHook(BidHookMsg),
-    BidUpdatedHook(BidHookMsg),
-    BidDeletedHook(BidHookMsg),
+pub enum OfferExecuteMsg {
+    OfferCreatedHook(OfferHookMsg),
+    OfferUpdatedHook(OfferHookMsg),
+    OfferDeletedHook(OfferHookMsg),
 }
 
 #[cw_serde]
-pub struct CollectionBidHookMsg {
-    pub collection_bid: CollectionBid,
+pub struct CollectionOfferHookMsg {
+    pub collection_offer: CollectionOffer,
 }
 
-impl CollectionBidHookMsg {
-    pub fn new(collection_bid: CollectionBid) -> Self {
-        CollectionBidHookMsg { collection_bid }
+impl CollectionOfferHookMsg {
+    pub fn new(collection_offer: CollectionOffer) -> Self {
+        CollectionOfferHookMsg { collection_offer }
     }
 
     /// serializes the message
     pub fn into_binary(self, action: HookAction) -> StdResult<Binary> {
         let msg = match action {
-            HookAction::Create => CollectionBidExecuteMsg::CollectionBidCreatedHook(self),
-            HookAction::Update => CollectionBidExecuteMsg::CollectionBidUpdatedHook(self),
-            HookAction::Delete => CollectionBidExecuteMsg::CollectionBidDeletedHook(self),
+            HookAction::Create => CollectionOfferExecuteMsg::CollectionOfferCreatedHook(self),
+            HookAction::Update => CollectionOfferExecuteMsg::CollectionOfferUpdatedHook(self),
+            HookAction::Delete => CollectionOfferExecuteMsg::CollectionOfferDeletedHook(self),
         };
         to_binary(&msg)
     }
@@ -550,8 +416,8 @@ impl CollectionBidHookMsg {
 
 // This is just a helper to properly serialize the above message
 #[cw_serde]
-pub enum CollectionBidExecuteMsg {
-    CollectionBidCreatedHook(CollectionBidHookMsg),
-    CollectionBidUpdatedHook(CollectionBidHookMsg),
-    CollectionBidDeletedHook(CollectionBidHookMsg),
+pub enum CollectionOfferExecuteMsg {
+    CollectionOfferCreatedHook(CollectionOfferHookMsg),
+    CollectionOfferUpdatedHook(CollectionOfferHookMsg),
+    CollectionOfferDeletedHook(CollectionOfferHookMsg),
 }

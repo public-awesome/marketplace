@@ -1,44 +1,20 @@
-use crate::{msg::ExecuteMsg, ContractError};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    coin, to_binary, Addr, Api, BlockInfo, Coin, Decimal, StdError, StdResult, Timestamp, Uint128,
-    WasmMsg,
+    ensure, has_coins, Addr, BlockInfo, Coin, Decimal, Deps, Event, StdError, Storage, Timestamp,
 };
-use sg1::fair_burn;
-use sg721::RoyaltyInfo;
-use sg_marketplace_common::{checked_transfer_coin, transfer_coin};
-use sg_std::{CosmosMsg, Response, NATIVE_DENOM};
+use sg_marketplace_common::{
+    nft::{load_collection_royalties, transfer_nft},
+    sale::payout_nft_sale_fees,
+};
+use sg_std::Response;
+use std::fmt;
 use thiserror::Error;
 
-/// MarketplaceContract is a wrapper around Addr that provides a lot of helpers
-#[cw_serde]
-pub struct MarketplaceContract(pub Addr);
-
-impl MarketplaceContract {
-    pub fn addr(&self) -> Addr {
-        self.0.clone()
-    }
-
-    pub fn call<T: Into<ExecuteMsg>>(&self, msg: T) -> StdResult<CosmosMsg> {
-        let msg = to_binary(&msg.into())?;
-        Ok(WasmMsg::Execute {
-            contract_addr: self.addr().into(),
-            msg,
-            funds: vec![],
-        }
-        .into())
-    }
-}
-
-pub fn map_validate(api: &dyn Api, addresses: &[String]) -> StdResult<Vec<Addr>> {
-    let mut validated_addresses = addresses
-        .iter()
-        .map(|addr| api.addr_validate(addr))
-        .collect::<StdResult<Vec<_>>>()?;
-    validated_addresses.sort();
-    validated_addresses.dedup();
-    Ok(validated_addresses)
-}
+use crate::{
+    hooks::prepare_sale_hook,
+    state::{asks, Ask, ExpiringOrder, Offer, SudoParams, TokenId, PRICE_RANGES},
+    ContractError,
+};
 
 #[derive(Error, Debug, PartialEq)]
 pub enum ExpiryRangeError {
@@ -56,6 +32,12 @@ pub enum ExpiryRangeError {
 pub struct ExpiryRange {
     pub min: u64,
     pub max: u64,
+}
+
+impl fmt::Display for ExpiryRange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{{\"min\":{},\"max\":{}}}", self.min, self.max)
+    }
 }
 
 impl ExpiryRange {
@@ -82,154 +64,133 @@ impl ExpiryRange {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct TokenPayment {
-    pub coin: Coin,
-    pub recipient: Addr,
+pub enum MatchResult {
+    Match(Ask),
+    NotMatch(String),
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub struct TransactionFees {
-    pub fair_burn_fee: Uint128,
-    pub seller_payment: TokenPayment,
-    pub finders_fee: Option<TokenPayment>,
-    pub royalty_fee: Option<TokenPayment>,
-}
-
-pub fn calculate_nft_sale_fees(
-    sale_price: Uint128,
-    trading_fee_percent: Decimal,
-    seller: Addr,
-    finder: Option<Addr>,
-    finders_fee_bps: Option<u64>,
-    royalty_info: Option<RoyaltyInfo>,
-) -> StdResult<TransactionFees> {
-    // Calculate Fair Burn
-    let fair_burn_fee = sale_price * trading_fee_percent / Uint128::from(100u128);
-
-    let mut seller_payment = sale_price.checked_sub(fair_burn_fee)?;
-
-    // Calculate finders fee
-    let mut finders_fee: Option<TokenPayment> = None;
-    if let Some(_finder) = finder {
-        let finders_fee_bps = finders_fee_bps.unwrap_or(0);
-        let finders_fee_amount =
-            (sale_price * Decimal::percent(finders_fee_bps) / Uint128::from(100u128)).u128();
-
-        if finders_fee_amount > 0 {
-            finders_fee = Some(TokenPayment {
-                coin: coin(finders_fee_amount, NATIVE_DENOM),
-                recipient: _finder,
-            });
-            seller_payment = seller_payment.checked_sub(Uint128::from(finders_fee_amount))?;
+impl fmt::Display for MatchResult {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            MatchResult::Match(_ask) => write!(f, "match"),
+            MatchResult::NotMatch(reason) => write!(f, "{}", reason),
         }
-    };
-
-    // Calculate royalty
-    let mut royalty_fee: Option<TokenPayment> = None;
-    if let Some(_royalty_info) = royalty_info {
-        let royalty_fee_amount = (sale_price * _royalty_info.share).u128();
-        if royalty_fee_amount > 0 {
-            royalty_fee = Some(TokenPayment {
-                coin: coin(royalty_fee_amount, NATIVE_DENOM),
-                recipient: _royalty_info.payment_address,
-            });
-            seller_payment = seller_payment.checked_sub(Uint128::from(royalty_fee_amount))?;
-        }
-    };
-
-    // Pay seller
-    let seller_payment = TokenPayment {
-        coin: coin(seller_payment.u128(), NATIVE_DENOM),
-        recipient: seller,
-    };
-
-    Ok(TransactionFees {
-        fair_burn_fee,
-        seller_payment,
-        finders_fee,
-        royalty_fee,
-    })
+    }
 }
 
-pub fn payout_nft_sale_fees(
+pub fn price_validate(
+    store: &dyn Storage,
+    price: &Coin,
+    is_ask: bool,
+) -> Result<(), ContractError> {
+    let price_range = PRICE_RANGES.may_load(store, price.denom.clone())?;
+    ensure!(
+        price_range.is_some(),
+        ContractError::InvalidInput("invalid denom".to_string())
+    );
+    let price_range = price_range.unwrap();
+    ensure!(
+        price.amount >= price_range.min,
+        ContractError::InvalidInput("price too low".to_string())
+    );
+    if is_ask {
+        ensure!(
+            price.amount <= price_range.max,
+            ContractError::InvalidInput("price too high".to_string())
+        );
+    }
+    Ok(())
+}
+
+pub fn match_offer(
+    deps: Deps,
+    block: &BlockInfo,
+    offer: &Offer,
+) -> Result<MatchResult, ContractError> {
+    let ask_key = Ask::build_key(&offer.collection, &offer.token_id);
+    let ask_option = asks().may_load(deps.storage, ask_key.clone())?;
+
+    if ask_option.is_none() {
+        return Ok(MatchResult::NotMatch("ask_not_found".to_string()));
+    }
+
+    let ask = ask_option.unwrap();
+    if ask.is_expired(block) {
+        return Ok(MatchResult::NotMatch("ask_expired".to_string()));
+    }
+    if let Some(reserve_for) = &ask.reserve_for {
+        if reserve_for != &offer.bidder {
+            return Ok(MatchResult::NotMatch("ask_reserved".to_string()));
+        }
+    }
+    if !has_coins(&[offer.price.clone()], &ask.price) {
+        return Ok(MatchResult::NotMatch("offer_insufficient".to_string()));
+    }
+
+    Ok(MatchResult::Match(ask))
+}
+
+/// Transfers funds and NFT, updates bid
+pub fn finalize_sale(
+    deps: Deps,
+    collection: &Addr,
+    token_id: &String,
+    seller: &Addr,
+    seller_recipient: &Addr,
+    buyer: &Addr,
+    buyer_recipient: &Addr,
+    price: &Coin,
+    sudo_params: &SudoParams,
+    finder: Option<&Addr>,
+    finders_fee_percent: Option<Decimal>,
     response: Response,
-    tx_fees: TransactionFees,
-    developer: Option<Addr>,
 ) -> Result<Response, ContractError> {
-    let mut response = response;
+    let royalty_info = load_collection_royalties(&deps.querier, deps.api, collection)?;
 
-    if tx_fees.fair_burn_fee == Uint128::zero() {
-        return Err(ContractError::InvalidFairBurn(
-            "fair burn fee cannot be 0".to_string(),
-        ));
-    }
-    fair_burn(tx_fees.fair_burn_fee.u128(), developer, &mut response);
+    let (token_payments, mut response) = payout_nft_sale_fees(
+        price,
+        &seller_recipient,
+        &sudo_params.fair_burn,
+        None,
+        finder,
+        sudo_params.trading_fee_percent,
+        finders_fee_percent,
+        royalty_info,
+        response,
+    );
 
-    if let Some(finders_fee) = &tx_fees.finders_fee {
-        if finders_fee.coin.amount > Uint128::zero() {
-            response = response.add_submessage(transfer_coin(
-                finders_fee.coin.clone(),
-                &finders_fee.recipient,
-            ));
-        }
-    }
-
-    if let Some(royalty_fee) = &tx_fees.royalty_fee {
-        if royalty_fee.coin.amount > Uint128::zero() {
-            response = response.add_submessage(transfer_coin(
-                royalty_fee.coin.clone(),
-                &royalty_fee.recipient,
-            ));
-        }
+    // Add royalty event
+    let royalty_payment = token_payments.iter().find(|tp| tp.label == "royalty");
+    if let Some(royalty_payment) = royalty_payment {
+        let event = Event::new("royalty-payout")
+            .add_attribute("collection", collection.to_string())
+            .add_attribute("amount", royalty_payment.coin.amount.to_string())
+            .add_attribute("denom", royalty_payment.coin.denom.to_string())
+            .add_attribute("recipient", royalty_payment.recipient.to_string());
+        response = response.add_event(event);
     }
 
-    response = response.add_submessage(checked_transfer_coin(
-        tx_fees.seller_payment.coin,
-        &tx_fees.seller_payment.recipient,
+    // Transfer NFT to buyer
+    response = response.add_submessage(transfer_nft(collection, token_id, buyer_recipient));
+
+    // Prepare hook
+    response = response.add_submessages(prepare_sale_hook(
+        deps, collection, token_id, price, seller, buyer,
     )?);
+
+    let event = Event::new("finalize-sale")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id.to_string())
+        .add_attribute("seller", seller.to_string())
+        .add_attribute("buyer", buyer.to_string())
+        .add_attribute("price", price.to_string());
+    response = response.add_event(event);
 
     Ok(response)
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cosmwasm_std::testing::mock_dependencies;
-
-    #[test]
-    fn test_map_validate() {
-        let deps = mock_dependencies();
-        let adddreses = map_validate(
-            &deps.api,
-            &[
-                "operator1".to_string(),
-                "operator2".to_string(),
-                "operator3".to_string(),
-            ],
-        )
-        .unwrap();
-        assert_eq!(3, adddreses.len());
-
-        let adddreses = map_validate(
-            &deps.api,
-            &[
-                "operator1".to_string(),
-                "operator2".to_string(),
-                "operator3".to_string(),
-                "operator3".to_string(),
-                "operator1".to_string(),
-            ],
-        )
-        .unwrap();
-
-        assert_eq!(
-            adddreses,
-            vec![
-                Addr::unchecked("operator1".to_string()),
-                Addr::unchecked("operator2".to_string()),
-                Addr::unchecked("operator3".to_string()),
-            ]
-        )
-    }
+pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) -> String {
+    let string_list = vec![collection.to_string(), token_id.clone()];
+    let collection_token = string_list.join("/");
+    collection_token
 }

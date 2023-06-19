@@ -26,23 +26,23 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-schema  = { workspace = true }
-cosmwasm-std     = { workspace = true }
-cosmwasm-storage = { workspace = true }
-cw-storage-macro = { workspace = true }
-cw-storage-plus  = { workspace = true }
-cw-utils         = { workspace = true }
-cw2              = { workspace = true }
-cw721            = { workspace = true }
-cw721-base       = { workspace = true }
-sg721-base       = { workspace = true }
-sg721            = { workspace = true }
-schemars         = { workspace = true }
-serde            = { workspace = true }
-sg-std           = { workspace = true }
-sg1              = { workspace = true }
-sg-fair-burn     = { workspace = true }
-thiserror        = { workspace = true }
+cosmwasm-schema    = { workspace = true }
+cosmwasm-std       = { workspace = true }
+cosmwasm-storage   = { workspace = true }
+cw-storage-macro   = { workspace = true }
+cw-storage-plus    = { workspace = true }
+cw-utils           = { workspace = true }
+cw2                = { workspace = true }
+cw721              = { workspace = true }
+cw721-base         = { workspace = true }
+sg721-base         = { workspace = true }
+sg721              = { workspace = true }
+schemars           = { workspace = true }
+serde              = { workspace = true }
+sg-std             = { workspace = true }
+sg1                = { workspace = true }
+stargaze-fair-burn = { workspace = true }
+thiserror          = { workspace = true }
 
 [dev-dependencies]
 cw-multi-test = { workspace = true }
