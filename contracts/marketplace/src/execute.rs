@@ -317,7 +317,7 @@ pub fn execute_set_ask(
         &deps.querier,
         token_id.to_string(),
         env.contract.address.to_string(),
-        None,
+        Some(false),
     )?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
@@ -919,7 +919,7 @@ pub fn execute_sync_ask(
         &deps.querier,
         token_id.to_string(),
         env.contract.address.to_string(),
-        None,
+        Some(false),
     );
     if res.is_ok() == ask.is_active {
         return Err(ContractError::AskUnchanged {});
@@ -964,10 +964,11 @@ pub fn execute_remove_stale_ask(
     // A CW721 approval will be removed when
     // 1 - There is a transfer or burn
     // 2 - The approval expired (CW721 approvals can have different expiration times)
-    let res = Cw721Contract::<Empty, Empty>(collection.clone(), PhantomData, PhantomData).owner_of(
+    let res = Cw721Contract::<Empty, Empty>(collection.clone(), PhantomData, PhantomData).approval(
         &deps.querier,
         token_id.to_string(),
-        false,
+        env.contract.address.to_string(),
+        Some(false),
     );
 
     if res.is_ok() {
