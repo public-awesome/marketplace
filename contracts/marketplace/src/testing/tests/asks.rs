@@ -8,7 +8,7 @@ use crate::testing::helpers::funds::{
     add_funds_for_incremental_fee, calculated_creator_balance_after_fairburn, listing_funds,
 };
 use crate::testing::helpers::nft_functions::{
-    approve, burn, get_next_token_id_and_map, mint, mint_for, transfer,
+    approve, burn, get_next_token_id_and_map, mint, mint_for, revoke_approval, transfer,
 };
 use crate::testing::setup::setup_accounts::{
     setup_second_bidder_account, CREATION_FEE, INITIAL_BALANCE, MINT_PRICE,
@@ -1341,6 +1341,155 @@ fn try_sync_ask() {
     let res: AsksResponse = router
         .wrap()
         .query_wasm_smart(marketplace, &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+}
+
+#[test]
+fn try_remove_stale_ask_no_approval() {
+    let vt = standard_minter_template(2);
+    let (mut router, owner, creator) = (vt.router, vt.accts.owner, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, start_time.nanos(), None);
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &minter_addr);
+    let nft_hash = HashSet::from([]);
+    let (nft_hash, token_id_0) =
+        get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_0);
+
+    // An ask is made by the creator
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: token_id_0,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(500), // 5%
+    };
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+
+    // trying to remove a valid ask
+    let remove_ask = ExecuteMsg::RemoveStaleAsk {
+        collection: collection.to_string(),
+        token_id: token_id_0,
+    };
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_err());
+
+    let ask_msg = QueryMsg::Asks {
+        collection: collection.to_string(),
+        include_inactive: Some(false),
+        start_after: None,
+        limit: None,
+    };
+
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 1);
+
+    revoke_approval(&mut router, &creator, &collection, &marketplace, token_id_0);
+
+    // try again to remove the ask
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_ok());
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
+        .unwrap();
+    assert_eq!(res.asks.len(), 0);
+
+    // Mint NFT for creator
+    mint(&mut router, &creator, &minter_addr);
+    let (_, token_id_1) = get_next_token_id_and_map(&mut router, &nft_hash, collection.clone());
+    approve(&mut router, &creator, &collection, &marketplace, token_id_1);
+
+    add_funds_for_incremental_fee(&mut router, &creator, 100, 2u128).unwrap();
+    let set_ask = ExecuteMsg::SetAsk {
+        sale_type: SaleType::FixedPrice,
+        collection: collection.to_string(),
+        token_id: token_id_1,
+        price: coin(100, NATIVE_DENOM),
+        funds_recipient: None,
+        reserve_for: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finders_fee_bps: Some(500), // 5%
+    };
+
+    // set ask again
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert!(res.is_ok());
+
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_err());
+
+    // Transfer NFT from creator to owner. Creates a stale ask that needs to be updated
+    transfer(&mut router, &creator, &owner, &collection, token_id_1);
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_err());
+
+    // transfer nft back
+    transfer(&mut router, &owner, &creator, &collection, token_id_1);
+
+    // move time forward
+    let time = router.block_info().time;
+    setup_block_time(&mut router, time.plus_seconds(MIN_EXPIRY + 2).nanos(), None);
+
+    let remove_ask = ExecuteMsg::RemoveStaleAsk {
+        collection: collection.to_string(),
+        token_id: token_id_1,
+    };
+
+    // remove stale ask
+    let res = router.execute_contract(
+        Addr::unchecked("operator1"),
+        marketplace.clone(),
+        &remove_ask,
+        &[],
+    );
+    assert!(res.is_ok());
+    let res: AsksResponse = router
+        .wrap()
+        .query_wasm_smart(marketplace.clone(), &ask_msg)
         .unwrap();
     assert_eq!(res.asks.len(), 0);
 }
