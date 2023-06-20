@@ -919,7 +919,7 @@ pub fn execute_sync_ask(
         &deps.querier,
         token_id.to_string(),
         env.contract.address.to_string(),
-        None,
+        Some(false),
     );
     if res.is_ok() == ask.is_active {
         return Err(ContractError::AskUnchanged {});
