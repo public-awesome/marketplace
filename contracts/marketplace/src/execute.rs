@@ -317,7 +317,7 @@ pub fn execute_set_ask(
         &deps.querier,
         token_id.to_string(),
         env.contract.address.to_string(),
-        None,
+        Some(false),
     )?;
 
     let params = SUDO_PARAMS.load(deps.storage)?;
@@ -968,7 +968,7 @@ pub fn execute_remove_stale_ask(
         &deps.querier,
         token_id.to_string(),
         env.contract.address.to_string(),
-        None,
+        Some(false),
     );
 
     if res.is_ok() {
