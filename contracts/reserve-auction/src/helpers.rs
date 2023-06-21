@@ -4,10 +4,11 @@ use crate::ContractError;
 use cosmwasm_std::{
     coin, ensure, Addr, Coin, Deps, DepsMut, Event, QuerierWrapper, StdResult, Storage, Timestamp,
 };
-use sg_marketplace::msg::{ParamsResponse, QueryMsg as MarketplaceQueryMsg};
-use sg_marketplace::state_deprecated::SudoParams;
+use sg_marketplace::msg::QueryMsg as MarketplaceQueryMsg;
+use sg_marketplace::state::SudoParams;
 use sg_marketplace_common::{
-    calculate_nft_sale_fees, load_collection_royalties, payout_nft_sale_fees, transfer_nft,
+    nft::{load_collection_royalties, transfer_nft},
+    sale::payout_nft_sale_fees,
 };
 use sg_std::Response;
 
@@ -28,9 +29,9 @@ pub fn load_marketplace_params(
     querier: &QuerierWrapper,
     marketplace: &Addr,
 ) -> StdResult<SudoParams> {
-    let marketplace_params: ParamsResponse =
-        querier.query_wasm_smart(marketplace, &MarketplaceQueryMsg::Params {})?;
-    Ok(marketplace_params.params)
+    let sudo_params: SudoParams =
+        querier.query_wasm_smart(marketplace, &MarketplaceQueryMsg::SudoParams {})?;
+    Ok(sudo_params)
 }
 
 pub fn validate_reserve_price(
@@ -84,16 +85,17 @@ pub fn settle_auction(
     let marketplace_params = load_marketplace_params(&deps.querier, &config.marketplace)?;
     let royalty_info = load_collection_royalties(&deps.querier, deps.api, &auction.collection)?;
 
-    let tx_fees = calculate_nft_sale_fees(
+    (_, response) = payout_nft_sale_fees(
         &high_bid.coin,
-        marketplace_params.trading_fee_percent,
-        auction.seller,
+        &auction.seller,
+        &config.fair_burn,
         None,
+        None,
+        marketplace_params.trading_fee_percent,
         None,
         royalty_info,
+        response,
     )?;
-
-    response = payout_nft_sale_fees(&config.fair_burn, tx_fees, None, response)?;
 
     // Transfer NFT to highest bidder
     let transfer_msg = transfer_nft(&auction.collection, &auction.token_id, &high_bid.bidder);

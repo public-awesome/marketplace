@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{coin, Addr, Coin, Decimal};
+use cosmwasm_std::{coin, Addr, Coin, Decimal, StdError};
 use sg721::RoyaltyInfo;
 use sg_std::Response;
 use stargaze_fair_burn::append_fair_burn_msg;
@@ -23,7 +23,7 @@ pub fn payout_nft_sale_fees(
     finders_fee_percent: Option<Decimal>,
     royalty_info: Option<RoyaltyInfo>,
     mut response: Response,
-) -> (Vec<TokenPayment>, Response) {
+) -> Result<(Vec<TokenPayment>, Response), StdError> {
     let mut token_payments: Vec<TokenPayment> = Vec::new();
     let mut seller_amount = sale_coin.amount;
     let denom = sale_coin.denom.clone();
@@ -38,20 +38,20 @@ pub fn payout_nft_sale_fees(
         coin: fair_burn_fee.clone(),
         recipient: fair_burn.clone(),
     });
-    seller_amount -= fair_burn_fee.amount;
+    seller_amount = seller_amount.checked_sub(fair_burn_fee.amount)?;
 
     // Finders Fee
-    if finder.is_some() && finders_fee_percent.is_some() {
+    if let Some(finder) = finder {
         let finders_fee_percent = finders_fee_percent.unwrap();
         let finders_fee_amount = sale_coin.amount.mul_ceil(finders_fee_percent);
 
         if !finders_fee_amount.is_zero() {
             token_payments.push(TokenPayment {
                 label: "finder".to_string(),
-                coin: fair_burn_fee,
-                recipient: fair_burn.clone(),
+                coin: coin(finders_fee_amount.u128(), &denom),
+                recipient: finder.clone(),
             });
-            seller_amount -= finders_fee_amount;
+            seller_amount = seller_amount.checked_sub(finders_fee_amount)?;
         }
     }
 
@@ -64,7 +64,7 @@ pub fn payout_nft_sale_fees(
                 coin: coin(royalty_fee_amount.u128(), &denom),
                 recipient: royalty_info.payment_address.clone(),
             });
-            seller_amount -= royalty_fee_amount;
+            seller_amount = seller_amount.checked_sub(royalty_fee_amount)?;
         }
     }
 
@@ -93,5 +93,5 @@ pub fn payout_nft_sale_fees(
         }
     }
 
-    (token_payments, response)
+    Ok((token_payments, response))
 }

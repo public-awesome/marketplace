@@ -9,11 +9,12 @@ use cosmwasm_std::{
     coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Timestamp,
 };
 use cw_utils::{maybe_addr, must_pay, nonpayable};
-use sg_fair_burn::append_fair_burn_msg;
 use sg_marketplace_common::{
-    checked_transfer_coin, has_approval, only_owner, only_tradable, transfer_nft,
+    coin::checked_transfer_coin,
+    nft::{has_approval, only_owner, only_tradable, transfer_nft},
 };
 use sg_std::Response;
+use stargaze_fair_burn::append_fair_burn_msg;
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;

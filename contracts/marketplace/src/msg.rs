@@ -35,7 +35,7 @@ pub struct InstantiateMsg {
     pub max_finders_fee_bps: u64,
     /// Expired offer / ask removal reward
     pub removal_reward_bps: u64,
-    /// Min values for offers and asks
+    /// Min/max values for offers and asks
     pub price_ranges: Vec<(Denom, PriceRange)>,
     /// The address of the airdrop claim contract to detect sales
     pub sale_hook: Option<String>,
@@ -110,6 +110,7 @@ pub enum ExecuteMsg {
     RemoveStaleOffer {
         collection: String,
         token_id: TokenId,
+        bidder: String,
     },
     /// Migrate Bids to V3 Offers
     MigrateOffers { limit: u64 },
@@ -212,7 +213,7 @@ pub enum QueryMsg {
     AsksByPrice {
         collection: String,
         denom: Denom,
-        query_options: Option<QueryOptions<u128>>,
+        query_options: Option<QueryOptions<(u128, TokenId)>>,
     },
     /// Get all asks by seller
     #[returns(Vec<Ask>)]
@@ -283,7 +284,7 @@ pub enum QueryMsg {
     AskHooks {},
     /// Show all registered bid hooks
     #[returns(Vec<String>)]
-    BidHooks {},
+    OfferHooks {},
     /// Show all registered sale hooks
     #[returns(Vec<String>)]
     SaleHooks {},

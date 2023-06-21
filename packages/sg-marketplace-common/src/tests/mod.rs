@@ -1,2 +1,8 @@
 #[cfg(test)]
-mod unit_tests;
+mod coin;
+
+#[cfg(test)]
+mod nft;
+
+#[cfg(test)]
+mod sale;

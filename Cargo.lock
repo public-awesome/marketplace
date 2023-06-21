@@ -1300,6 +1300,7 @@ dependencies = [
 name = "sg-marketplace"
 version = "1.5.0"
 dependencies = [
+ "anyhow",
  "base-minter",
  "cosmwasm-schema",
  "cosmwasm-std",
@@ -1617,8 +1618,7 @@ dependencies = [
 [[package]]
 name = "stargaze-fair-burn"
 version = "1.0.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b92c9ce0012843d61c5ac384970dc0fac56840e694e700eb0bf09e6e6db4f38d"
+source = "git+https://github.com/public-awesome/core.git?branch=fair-burn-contract-docs#42b84070eeb9c5b36c97a68409a5294711af1db8"
 dependencies = [
  "cosmwasm-schema",
  "cosmwasm-std",

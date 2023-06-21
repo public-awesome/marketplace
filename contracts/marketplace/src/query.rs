@@ -127,7 +127,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             )?)
         }
         QueryMsg::AskHooks {} => to_binary(&ASK_HOOKS.query_hooks(deps)?),
-        QueryMsg::BidHooks {} => to_binary(&OFFER_HOOKS.query_hooks(deps)?),
+        QueryMsg::OfferHooks {} => to_binary(&OFFER_HOOKS.query_hooks(deps)?),
         QueryMsg::SaleHooks {} => to_binary(&SALE_HOOKS.query_hooks(deps)?),
     }
 }
@@ -167,27 +167,26 @@ pub fn query_asks_by_price(
     deps: Deps,
     collection: Addr,
     denom: Denom,
-    query_options: QueryOptions<u128>,
+    query_options: QueryOptions<(u128, TokenId)>,
 ) -> StdResult<Vec<Ask>> {
     let collection_clone = collection.clone();
-    let denom_clone = denom.clone();
     let (limit, order, min, max) = unpack_query_options(
         query_options,
-        Box::new(|price| Bound::exclusive((price, (collection_clone, denom_clone)))),
+        Box::new(|(price, token_id)| Bound::exclusive((price, (collection_clone, token_id)))),
         DEFAULT_QUERY_LIMIT,
         MAX_QUERY_LIMIT,
     );
 
-    let asks = asks()
+    let results = asks()
         .idx
         .collection_denom_price
         .sub_prefix((collection, denom))
-        .range(deps.storage, min, max, order)
+        .range_raw(deps.storage, min, max, order)
         .take(limit)
-        .map(|res| res.map(|item| item.1))
+        .map(|res| res.map(|(_, ask)| ask))
         .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(asks)
+    Ok(results)
 }
 
 pub fn query_asks_by_seller(
@@ -225,7 +224,10 @@ pub fn query_asks_by_expiration(
         MAX_QUERY_LIMIT,
     );
 
-    let max = max.map(|_| Bound::exclusive((u64::MAX, (Addr::unchecked(""), "".to_string()))));
+    let max = Some(max.unwrap_or(Bound::exclusive((
+        u64::MAX,
+        (Addr::unchecked(""), "".to_string()),
+    ))));
 
     let asks = asks()
         .idx
@@ -339,6 +341,11 @@ pub fn query_offers_by_expiration(
         DEFAULT_QUERY_LIMIT,
         MAX_QUERY_LIMIT,
     );
+
+    let max = Some(max.unwrap_or(Bound::exclusive((
+        u64::MAX,
+        (Addr::unchecked(""), "".to_string(), Addr::unchecked("")),
+    ))));
 
     let offers = offers()
         .idx

@@ -154,7 +154,15 @@ pub fn execute(
         ExecuteMsg::RemoveStaleOffer {
             collection,
             token_id,
-        } => execute_remove_offer(deps, env, info, api.addr_validate(&collection)?, token_id),
+            bidder,
+        } => execute_remove_stale_offer(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            api.addr_validate(&bidder)?,
+        ),
         ExecuteMsg::MigrateOffers { limit } => execute_migrate_offers(deps, env, info, limit),
         ExecuteMsg::SetCollectionOffer {
             collection,
@@ -443,16 +451,19 @@ pub fn execute_remove_stale_ask(
     let ask_key = Ask::build_key(&collection, &token_id);
     let ask = asks().load(deps.storage, ask_key)?;
 
-    let OwnerOfResponse { owner, approvals } = owner_of(&deps.querier, &collection, &token_id)?;
+    let is_stale = match owner_of(&deps.querier, &collection, &token_id) {
+        Ok(OwnerOfResponse { owner, approvals }) => {
+            let seller_is_owner = ask.seller.to_string() == owner;
+            let contract_is_approved = approvals
+                .iter()
+                .find(|approval| approval.spender == env.contract.address.as_str())
+                .is_some();
+            let ask_is_expired = ask.is_expired(&env.block);
 
-    let seller_is_owner = ask.seller.to_string() == owner;
-    let contract_is_approved = approvals
-        .iter()
-        .find(|approval| approval.spender == env.contract.address.as_str())
-        .is_some();
-    let ask_is_expired = ask.is_expired(&env.block);
-
-    let is_stale = !seller_is_owner || !contract_is_approved || ask_is_expired;
+            !seller_is_owner || !contract_is_approved || ask_is_expired
+        }
+        Err(_) => true,
+    };
 
     ensure!(is_stale, ContractError::AskUnchanged {});
 
@@ -480,6 +491,7 @@ pub fn execute_migrate_asks(
 
     for ask in prev_asks {
         asks_dep().remove(deps.storage, ask_key_dep(&ask.collection, ask.token_id))?;
+
         let new_ask = Ask {
             collection: ask.collection,
             token_id: ask.token_id.to_string(),
@@ -491,6 +503,12 @@ pub fn execute_migrate_asks(
             expires: Some(ask.expires_at),
             paid_removal_fee: None,
         };
+
+        // If new ask already exists, skip it
+        if asks().has(deps.storage, new_ask.key()) {
+            continue;
+        }
+
         asks().save(deps.storage, new_ask.key(), &new_ask)?;
         event = event.add_attribute("migrate-ask", new_ask.key_to_str());
     }
@@ -722,6 +740,7 @@ pub fn execute_remove_offer(
     Ok(response)
 }
 
+/// Removes a bid made by the bidder. Only NFT owners can remove a bid made by another bidder
 pub fn execute_reject_offer(
     deps: DepsMut,
     _env: Env,
@@ -778,7 +797,7 @@ pub fn execute_migrate_offers(
     _info: MessageInfo,
     limit: u64,
 ) -> Result<Response, ContractError> {
-    let response = Response::new();
+    let mut response = Response::new();
 
     let prev_bids = bids_dep()
         .range(deps.storage, None, None, Order::Ascending)
@@ -796,12 +815,22 @@ pub fn execute_migrate_offers(
         let new_offer = Offer {
             collection: bid.collection,
             token_id: bid.token_id.to_string(),
-            bidder: bid.bidder,
+            bidder: bid.bidder.clone(),
             price: coin(bid.price.u128(), NATIVE_DENOM),
             asset_recipient: None,
             finders_fee_percent: bid.finders_fee_bps.map(bps_to_decimal),
             expires: Some(bid.expires_at),
         };
+
+        // If new offer already exists, refund previous offer
+        if offers().has(deps.storage, new_offer.key()) {
+            response = response.add_submessage(transfer_coin(
+                coin(bid.price.u128(), NATIVE_DENOM),
+                &bid.bidder,
+            ));
+            continue;
+        }
+
         offers().save(deps.storage, new_offer.key(), &new_offer)?;
         event = event.add_attribute("migrate-offer", new_offer.key_to_str());
     }
@@ -843,6 +872,8 @@ pub fn execute_set_collection_offer(
             &existing_collection_offer.bidder,
         ));
     }
+
+    collection_offers().save(deps.storage, collection_offer.key(), &collection_offer)?;
 
     response = response.add_submessages(prepare_collection_offer_hook(
         deps.as_ref(),
@@ -1013,7 +1044,7 @@ pub fn execute_migrate_collection_offers(
     _info: MessageInfo,
     limit: u64,
 ) -> Result<Response, ContractError> {
-    let response = Response::new();
+    let mut response = Response::new();
 
     let prev_collection_bids = collection_bids_dep()
         .range(deps.storage, None, None, Order::Ascending)
@@ -1030,12 +1061,22 @@ pub fn execute_migrate_collection_offers(
         )?;
         let new_collection_offer = CollectionOffer {
             collection: collection_bid.collection,
-            bidder: collection_bid.bidder,
+            bidder: collection_bid.bidder.clone(),
             price: coin(collection_bid.price.u128(), NATIVE_DENOM),
             asset_recipient: None,
             finders_fee_percent: collection_bid.finders_fee_bps.map(bps_to_decimal),
             expires: Some(collection_bid.expires_at),
         };
+
+        // If new collection offer already exists, refund bidder
+        if collection_offers().has(deps.storage, new_collection_offer.key()) {
+            response = response.add_submessage(transfer_coin(
+                coin(collection_bid.price.u128(), NATIVE_DENOM),
+                &collection_bid.bidder,
+            ));
+            continue;
+        }
+
         collection_offers().save(
             deps.storage,
             new_collection_offer.key(),

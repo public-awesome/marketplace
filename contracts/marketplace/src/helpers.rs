@@ -21,11 +21,11 @@ pub enum ExpiryRangeError {
     #[error("{0}")]
     Std(#[from] StdError),
 
-    #[error("Invalid expiration range")]
-    InvalidExpirationRange {},
+    #[error("Invalid expiry: {0}")]
+    InvalidExpiry(String),
 
-    #[error("Expiry min > max")]
-    InvalidExpiry {},
+    #[error("Invalid expiration range: {0}")]
+    InvalidExpirationRange(String),
 }
 
 #[cw_serde]
@@ -49,7 +49,9 @@ impl ExpiryRange {
     pub fn is_valid(&self, block: &BlockInfo, expires: Timestamp) -> Result<(), ExpiryRangeError> {
         let now = block.time;
         if !(expires > now.plus_seconds(self.min) && expires <= now.plus_seconds(self.max)) {
-            return Err(ExpiryRangeError::InvalidExpirationRange {});
+            return Err(ExpiryRangeError::InvalidExpiry(
+                "expiration time outside of valid range".to_string(),
+            ));
         }
 
         Ok(())
@@ -57,7 +59,9 @@ impl ExpiryRange {
 
     pub fn validate(&self) -> Result<(), ExpiryRangeError> {
         if self.min > self.max {
-            return Err(ExpiryRangeError::InvalidExpiry {});
+            return Err(ExpiryRangeError::InvalidExpirationRange(
+                "range min > max".to_string(),
+            ));
         }
 
         Ok(())
@@ -157,7 +161,7 @@ pub fn finalize_sale(
         finders_fee_percent,
         royalty_info,
         response,
-    );
+    )?;
 
     // Add royalty event
     let royalty_payment = token_payments.iter().find(|tp| tp.label == "royalty");

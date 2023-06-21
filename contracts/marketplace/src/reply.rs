@@ -22,6 +22,9 @@ impl From<u64> for HookReply {
     }
 }
 
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn reply(_deps: DepsMut, _env: Env, msg: Reply) -> Result<Response, ContractError> {
     match HookReply::from(msg.id) {

@@ -1,21 +1,31 @@
-use crate::error::ContractError;
-use crate::msg::{AskResponse, BidResponse, ExecuteMsg, QueryMsg};
-use crate::state_deprecated::SaleType;
-use crate::testing::helpers::funds::{calculated_creator_balance_after_fairburn, listing_funds};
-use crate::testing::helpers::nft_functions::{approve, mint};
-use crate::testing::setup::setup_accounts::setup_second_bidder_account;
-use crate::testing::setup::setup_marketplace::{setup_marketplace, LISTING_FEE, MIN_EXPIRY};
-use crate::testing::setup::templates::standard_minter_template;
 use cosmwasm_std::{coin, coins, Timestamp, Uint128};
 use cw_multi_test::Executor;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
+use crate::{
+    msg::{ExecuteMsg, QueryMsg},
+    state::{Ask, Offer},
+    testing::{
+        helpers::{
+            funds::{calculated_creator_balance_after_fairburn, listing_funds},
+            nft_functions::{approve, mint},
+        },
+        setup::{
+            setup_accounts::setup_second_bidder_account,
+            setup_marketplace::{setup_fair_burn, setup_marketplace, LISTING_FEE, MIN_EXPIRY},
+            templates::standard_minter_template,
+        },
+    },
+    ContractError,
+};
+
 #[test]
 fn try_set_bid_fixed_price() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, &creator).unwrap();
+    let marketplace = setup_marketplace(&mut router, fair_burn, creator.clone()).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
@@ -27,126 +37,112 @@ fn try_set_bid_fixed_price() {
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
-        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id,
+        token_id: token_id.to_string(),
         price: coin(150, NATIVE_DENOM),
-        funds_recipient: None,
+        asset_recipient: None,
         reserve_for: None,
-        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
+        expires: None,
     };
 
-    let res = router.execute_contract(
+    let response = router.execute_contract(
         creator.clone(),
         marketplace.clone(),
         &set_ask,
         &listing_funds(LISTING_FEE).unwrap(),
     );
-    assert!(res.is_ok());
+    assert!(response.is_ok());
 
-    // Bidder makes bid
-    let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+    // Bidder makes offer
+    let set_offer_msg = ExecuteMsg::SetOffer {
         collection: collection.to_string(),
-        token_id,
+        token_id: token_id.to_string(),
+        asset_recipient: None,
         finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
+        expires: Some(router.block_info().time.plus_seconds(MIN_EXPIRY + 1)),
     };
 
-    // Bidder makes bid higher than the asking price
-    let res = router.execute_contract(
+    // Bidder makes offer lower than the asking price
+    let response = router.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &set_bid_msg,
-        &coins(200, NATIVE_DENOM),
-    );
-    assert!(res.is_err());
-
-    // Bidder makes bid lower than the asking price
-    let res = router.execute_contract(
-        bidder.clone(),
-        marketplace.clone(),
-        &set_bid_msg,
+        &set_offer_msg,
         &coins(50, NATIVE_DENOM),
     );
-    assert!(res.is_ok());
-    let ask_query = QueryMsg::Ask {
-        collection: collection.to_string(),
-        token_id,
-    };
+    assert!(response.is_ok());
 
     // ask should be returned
-    let res: AskResponse = router
+    let ask_query = QueryMsg::Ask {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+    };
+    let ask: Option<Ask> = router
         .wrap()
         .query_wasm_smart(marketplace.clone(), &ask_query)
         .unwrap();
-    assert_ne!(res.ask, None);
-
-    let bid_query = QueryMsg::Bid {
-        collection: collection.to_string(),
-        token_id,
-        bidder: bidder.to_string(),
-    };
+    assert_ne!(ask, None);
 
     // bid should be returned
-    let res: BidResponse = router
+    let offer_query = QueryMsg::Offer {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        bidder: bidder.to_string(),
+    };
+    let offer: Option<Offer> = router
         .wrap()
-        .query_wasm_smart(marketplace.clone(), &bid_query)
+        .query_wasm_smart(marketplace.clone(), &offer_query)
         .unwrap();
-    assert_ne!(res.bid, None);
-    let bid = res.bid.unwrap();
-    assert_eq!(bid.price, Uint128::from(50u128));
+    assert_ne!(offer, None);
+    assert_eq!(offer.unwrap().price.amount, Uint128::from(50u128));
 
     let bidder2 = setup_second_bidder_account(&mut router).unwrap();
 
-    // Bidder 2 makes a matching bid
-    let set_bid_msg = ExecuteMsg::SetBid {
-        sale_type: SaleType::FixedPrice,
+    // Bidder 2 makes a matching offer
+    let set_offer_msg = ExecuteMsg::SetOffer {
         collection: collection.to_string(),
-        token_id,
+        token_id: token_id.to_string(),
+        asset_recipient: None,
         finders_fee_bps: None,
-        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finder: None,
+        expires: Some(start_time.plus_seconds(MIN_EXPIRY + 1)),
     };
 
-    let res = router.execute_contract(
+    let response = router.execute_contract(
         bidder2.clone(),
         marketplace.clone(),
-        &set_bid_msg,
+        &set_offer_msg,
         &coins(150, NATIVE_DENOM),
     );
-    assert!(res.is_ok());
+    assert!(response.is_ok());
 
     // ask should have been removed
-    let res: AskResponse = router
+    let ask: Option<Ask> = router
         .wrap()
         .query_wasm_smart(marketplace.clone(), &ask_query)
         .unwrap();
-    assert_eq!(res.ask, None);
+    assert_eq!(ask, None);
 
-    // bid should be returned for bidder 1
-    let res: BidResponse = router
+    // offer should be returned for bidder 1
+    let offer: Option<Offer> = router
         .wrap()
-        .query_wasm_smart(marketplace.clone(), &bid_query)
+        .query_wasm_smart(marketplace.clone(), &offer_query)
         .unwrap();
-    assert_ne!(res.bid, None);
-    let bid = res.bid.unwrap();
-    assert_eq!(bid.price, Uint128::from(50u128));
+    assert_ne!(offer, None);
+    assert_eq!(offer.unwrap().price.amount, Uint128::from(50u128));
 
-    let bid_query = QueryMsg::Bid {
+    // offer should not be returned for bidder 2
+    let offer_query = QueryMsg::Offer {
         collection: collection.to_string(),
-        token_id,
+        token_id: token_id.to_string(),
         bidder: bidder2.to_string(),
     };
-
-    // bid should not be returned for bidder 2
-    let res: BidResponse = router
+    let offer: Option<Offer> = router
         .wrap()
-        .query_wasm_smart(marketplace.clone(), &bid_query)
+        .query_wasm_smart(marketplace.clone(), &offer_query)
         .unwrap();
-    assert_eq!(res.bid, None);
+    assert_eq!(offer, None);
 
     // Check creator has been paid
     let creator_native_balances = router.wrap().query_all_balances(creator.clone()).unwrap();
@@ -165,11 +161,12 @@ fn try_set_bid_fixed_price() {
 fn try_buy_now() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, &creator).unwrap();
+    let marketplace = setup_marketplace(&mut router, fair_burn, creator.clone()).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let token_id = 1;
-    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let _start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
     mint(&mut router, &creator, &minter);
@@ -177,69 +174,64 @@ fn try_buy_now() {
 
     // An asking price is made by the creator
     let set_ask = ExecuteMsg::SetAsk {
-        sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
-        token_id,
+        token_id: token_id.to_string(),
         price: coin(150, NATIVE_DENOM),
-        funds_recipient: None,
+        asset_recipient: None,
         reserve_for: None,
-        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
         finders_fee_bps: Some(0),
+        expires: None,
     };
 
-    let res = router.execute_contract(
+    let response = router.execute_contract(
         creator.clone(),
         marketplace.clone(),
         &set_ask,
         &listing_funds(LISTING_FEE).unwrap(),
     );
-    assert!(res.is_ok());
+    assert!(response.is_ok());
 
     // bidder buys now
-    let set_bid_msg = ExecuteMsg::BuyNow {
+    let buy_now_msg = ExecuteMsg::BuyNow {
         collection: collection.to_string(),
-        token_id,
-        finders_fee_bps: None,
-        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        token_id: token_id.to_string(),
+        asset_recipient: None,
         finder: None,
     };
 
     let res = router.execute_contract(
         bidder,
         marketplace.clone(),
-        &set_bid_msg,
+        &buy_now_msg,
         &coins(150, NATIVE_DENOM),
     );
     assert!(res.is_ok());
+    // ask should have been removed
     let ask_query = QueryMsg::Ask {
         collection: collection.to_string(),
-        token_id,
+        token_id: token_id.to_string(),
     };
-    // ask should have been removed
-    let res: AskResponse = router
+    let ask: Option<Ask> = router
         .wrap()
         .query_wasm_smart(marketplace.clone(), &ask_query)
         .unwrap();
-    assert_eq!(res.ask, None);
-
-    let bidder2 = setup_second_bidder_account(&mut router).unwrap();
+    assert_eq!(ask, None);
 
     // Bidder 2 also buys now
-    let set_bid_msg = ExecuteMsg::BuyNow {
+    let bidder2 = setup_second_bidder_account(&mut router).unwrap();
+    let buy_now_msg = ExecuteMsg::BuyNow {
         collection: collection.to_string(),
-        token_id,
-        finders_fee_bps: None,
-        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        token_id: token_id.to_string(),
+        asset_recipient: None,
         finder: None,
     };
-
-    let res = router.execute_contract(
+    let response = router.execute_contract(
         bidder2,
         marketplace.clone(),
-        &set_bid_msg,
+        &buy_now_msg,
         &coins(150, NATIVE_DENOM),
     );
-    let err = res.unwrap_err();
+    let err = response.unwrap_err();
     assert_eq!(
         err.source().unwrap().to_string(),
         ContractError::ItemNotForSale {}.to_string()

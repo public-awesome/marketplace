@@ -15,6 +15,9 @@ pub struct MigrateMsg {
     v3: v3::MigrateMsgV3,
 }
 
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(mut deps: DepsMut, env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     let current_version = cw2::get_contract_version(deps.storage)?;

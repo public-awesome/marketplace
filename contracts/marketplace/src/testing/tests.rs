@@ -3,8 +3,6 @@ mod admin;
 #[cfg(test)]
 mod asks;
 #[cfg(test)]
-mod auction;
-#[cfg(test)]
 mod bids;
 #[cfg(test)]
 mod finders_fee_and_royalties;

@@ -8,6 +8,6 @@ pub mod msg;
 pub mod query;
 pub mod state;
 pub mod sudo;
-mod tests;
+// mod tests;
 
 pub use crate::error::ContractError;

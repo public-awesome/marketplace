@@ -65,6 +65,7 @@ vending-minter  = { workspace = true }
 base-minter     = { workspace = true }
 test-suite      = { workspace = true }
 cute            = { workspace = true }
+anyhow          = { workspace = true }
 
 [profile.release]
 rpath            = false
