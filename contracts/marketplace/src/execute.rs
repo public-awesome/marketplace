@@ -358,7 +358,7 @@ pub fn execute_update_ask_price(
     let sudo_params = SUDO_PARAMS.load(deps.storage)?;
 
     let ask_key = Ask::build_key(&collection, &token_id);
-    let mut ask = asks().load(deps.storage, ask_key.clone())?;
+    let mut ask = asks().load(deps.storage, ask_key)?;
 
     ensure!(!ask.is_expired(&env.block), ContractError::AskExpired {});
 
@@ -453,11 +453,10 @@ pub fn execute_remove_stale_ask(
 
     let is_stale = match owner_of(&deps.querier, &collection, &token_id) {
         Ok(OwnerOfResponse { owner, approvals }) => {
-            let seller_is_owner = ask.seller.to_string() == owner;
+            let seller_is_owner = ask.seller == owner;
             let contract_is_approved = approvals
                 .iter()
-                .find(|approval| approval.spender == env.contract.address.as_str())
-                .is_some();
+                .any(|approval| approval.spender == env.contract.address.as_str());
             let ask_is_expired = ask.is_expired(&env.block);
 
             !seller_is_owner || !contract_is_approved || ask_is_expired
@@ -552,7 +551,7 @@ pub fn execute_set_offer(
     offer.validate(deps.storage, &env.block, &sudo_params)?;
 
     let mut response = Response::new();
-    if let Some(existing_offer) = offers().may_load(deps.storage, offer.key().clone())? {
+    if let Some(existing_offer) = offers().may_load(deps.storage, offer.key())? {
         offers().remove(deps.storage, offer.key())?;
         response =
             response.add_submessage(transfer_coin(existing_offer.price, &existing_offer.bidder));
@@ -570,10 +569,7 @@ pub fn execute_set_offer(
 
             // Ensure seller still owns NFT
             let owner = owner_of(&deps.querier, &ask.collection, &ask.token_id)?.owner;
-            ensure!(
-                owner == ask.seller.to_string(),
-                ContractError::InvalidListing {}
-            );
+            ensure!(owner == ask.seller, ContractError::InvalidListing {});
 
             response = finalize_sale(
                 deps.as_ref(),
@@ -731,7 +727,7 @@ pub fn execute_remove_offer(
     nonpayable(&info)?;
 
     let offer_key = Offer::build_key(&collection, &token_id, &info.sender);
-    let offer = offers().load(deps.storage, offer_key.clone())?;
+    let offer = offers().load(deps.storage, offer_key)?;
 
     let mut response = Response::new();
 
@@ -753,7 +749,7 @@ pub fn execute_reject_offer(
     only_owner(&deps.querier, &info, &collection, &token_id)?;
 
     let offer_key = Offer::build_key(&collection, &token_id, &bidder);
-    let offer = offers().load(deps.storage, offer_key.clone())?;
+    let offer = offers().load(deps.storage, offer_key)?;
 
     let mut response = Response::new();
 
@@ -779,7 +775,7 @@ pub fn execute_remove_stale_offer(
     );
 
     let offer_key = Offer::build_key(&collection, &token_id, &bidder);
-    let offer = offers().load(deps.storage, offer_key.clone())?;
+    let offer = offers().load(deps.storage, offer_key)?;
 
     // Ensure offer is expired
     ensure!(offer.is_expired(&env.block), ContractError::BidNotStale {});
@@ -997,7 +993,7 @@ pub fn execute_remove_collection_offer(
     nonpayable(&info)?;
 
     let collection_offer_key = CollectionOffer::build_key(&collection, &info.sender);
-    let collection_offer = collection_offers().load(deps.storage, collection_offer_key.clone())?;
+    let collection_offer = collection_offers().load(deps.storage, collection_offer_key)?;
 
     let mut response = Response::new();
 
@@ -1023,7 +1019,7 @@ pub fn execute_remove_stale_collection_offer(
     );
 
     let collection_offer_key = CollectionOffer::build_key(&collection, &bidder);
-    let collection_offer = collection_offers().load(deps.storage, collection_offer_key.clone())?;
+    let collection_offer = collection_offers().load(deps.storage, collection_offer_key)?;
 
     // Ensure collection offer is expired
     ensure!(

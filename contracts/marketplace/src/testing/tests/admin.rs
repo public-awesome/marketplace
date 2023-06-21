@@ -114,7 +114,7 @@ fn try_sudo_update_params() {
 
     let sudo_params: SudoParams = router
         .wrap()
-        .query_wasm_smart(marketplace.clone(), &query_params_msg)
+        .query_wasm_smart(marketplace, &query_params_msg)
         .unwrap();
     assert_eq!(sudo_params.fair_burn, Addr::unchecked("fair-burn"));
     assert_eq!(sudo_params.listing_fee, coin(LISTING_FEE + 1, NATIVE_DENOM));
@@ -136,7 +136,7 @@ fn try_start_trading_time() {
     let (mut router, owner, bidder, creator) =
         (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
     let fair_burn = setup_fair_burn(&mut router, &owner).unwrap();
-    let marketplace = setup_marketplace(&mut router, fair_burn.clone(), owner).unwrap();
+    let marketplace = setup_marketplace(&mut router, fair_burn, owner).unwrap();
     let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 

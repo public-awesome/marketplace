@@ -1,9 +1,9 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{coin, Decimal, DepsMut, Env, Uint128};
+use cosmwasm_std::{coin, ensure, Decimal, DepsMut, Env, Uint128};
 use sg_std::{Response, NATIVE_DENOM};
 
 use crate::{
-    state::{SudoParams, SUDO_PARAMS},
+    state::{Denom, PriceRange, SudoParams, PRICE_RANGES, SUDO_PARAMS},
     state_deprecated::SUDO_PARAMS as SUDO_PARAMS_DEP,
     ContractError,
 };
@@ -15,6 +15,7 @@ pub struct MigrateMsgV3 {
     pub max_asks_removed_per_block: u32,
     pub max_offers_removed_per_block: u32,
     pub max_collection_offers_removed_per_block: u32,
+    pub price_ranges: Vec<(Denom, PriceRange)>,
 }
 
 pub fn migrate(
@@ -46,6 +47,20 @@ pub fn migrate(
                 / Uint128::from(100u64),
         },
     )?;
+
+    for (denom, price_range) in msg.price_ranges {
+        PRICE_RANGES.update(
+            deps.storage,
+            denom,
+            |existing_price_range| -> Result<PriceRange, ContractError> {
+                ensure!(
+                    existing_price_range.is_none(),
+                    ContractError::InvalidInput("duplicate denom in price_ranges".to_string())
+                );
+                Ok(price_range)
+            },
+        )?;
+    }
 
     Ok(response)
 }

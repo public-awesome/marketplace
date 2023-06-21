@@ -68,6 +68,7 @@ impl ExpiryRange {
     }
 }
 
+#[allow(clippy::large_enum_variant)]
 pub enum MatchResult {
     Match(Ask),
     NotMatch(String),
@@ -112,7 +113,7 @@ pub fn match_offer(
     offer: &Offer,
 ) -> Result<MatchResult, ContractError> {
     let ask_key = Ask::build_key(&offer.collection, &offer.token_id);
-    let ask_option = asks().may_load(deps.storage, ask_key.clone())?;
+    let ask_option = asks().may_load(deps.storage, ask_key)?;
 
     if ask_option.is_none() {
         return Ok(MatchResult::NotMatch("ask_not_found".to_string()));
@@ -153,7 +154,7 @@ pub fn finalize_sale(
 
     let (token_payments, mut response) = payout_nft_sale_fees(
         price,
-        &seller_recipient,
+        seller_recipient,
         &sudo_params.fair_burn,
         None,
         finder,
@@ -195,6 +196,5 @@ pub fn finalize_sale(
 
 pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) -> String {
     let string_list = vec![collection.to_string(), token_id.clone()];
-    let collection_token = string_list.join("/");
-    collection_token
+    string_list.join("/")
 }

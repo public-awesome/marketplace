@@ -13,6 +13,7 @@ pub struct TokenPayment {
     pub recipient: Addr,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn payout_nft_sale_fees(
     sale_coin: &Coin,
     seller: &Addr,
@@ -62,7 +63,7 @@ pub fn payout_nft_sale_fees(
             token_payments.push(TokenPayment {
                 label: "royalty".to_string(),
                 coin: coin(royalty_fee_amount.u128(), &denom),
-                recipient: royalty_info.payment_address.clone(),
+                recipient: royalty_info.payment_address,
             });
             seller_amount = seller_amount.checked_sub(royalty_fee_amount)?;
         }
@@ -80,7 +81,7 @@ pub fn payout_nft_sale_fees(
     for token_payment in &token_payments {
         response = if token_payment.label == "fair-burn" {
             append_fair_burn_msg(
-                &fair_burn,
+                fair_burn,
                 vec![token_payment.coin.clone()],
                 fair_burn_recipient,
                 response,

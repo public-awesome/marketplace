@@ -133,7 +133,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 pub fn query_sudo_params(deps: Deps) -> StdResult<SudoParams> {
-    Ok(SUDO_PARAMS.load(deps.storage)?)
+    SUDO_PARAMS.load(deps.storage)
 }
 
 pub fn query_ask(deps: Deps, collection: Addr, token_id: TokenId) -> StdResult<Option<Ask>> {
@@ -283,7 +283,7 @@ pub fn query_offers_by_token_price(
     query_options: QueryOptions<(u128, String)>,
 ) -> StdResult<Vec<Offer>> {
     let collection_token_index_str =
-        build_collection_token_index_str(&collection.to_string(), &token_id);
+        build_collection_token_index_str(collection.as_ref(), &token_id);
 
     let (limit, order, min, max) = unpack_query_options(
         query_options,

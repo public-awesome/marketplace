@@ -558,7 +558,7 @@ fn try_remove_stale_offer() {
         start_time.plus_seconds(MIN_EXPIRY + 101).nanos(),
         None,
     );
-    let response = router.execute_contract(operator.clone(), marketplace.clone(), &remove_msg, &[]);
+    let response = router.execute_contract(operator, marketplace.clone(), &remove_msg, &[]);
     assert!(response.is_ok());
 }
 
@@ -612,8 +612,7 @@ fn try_remove_stale_collection_offer() {
         .nanos();
     setup_block_time(&mut router, new_time, None);
 
-    let response =
-        router.execute_contract(operator.clone(), marketplace.clone(), &remove_col_msg, &[]);
+    let response = router.execute_contract(operator, marketplace.clone(), &remove_col_msg, &[]);
     assert!(response.is_ok());
 }
 

@@ -108,7 +108,7 @@ pub trait ExpiringOrder {
         if let Some(expires) = self.expires() {
             return expires <= block.time;
         }
-        return false;
+        false
     }
 }
 
@@ -368,7 +368,7 @@ pub fn offers<'a>() -> IndexedMap<'a, OfferKey, Offer, OfferIndices<'a>> {
         token_denom_price: MultiIndex::new(
             |_pk: &[u8], o: &Offer| {
                 (
-                    build_collection_token_index_str(&o.collection.to_string(), &o.token_id),
+                    build_collection_token_index_str(o.collection.as_ref(), &o.token_id),
                     o.price.denom.clone(),
                     o.price.amount.u128(),
                 )
