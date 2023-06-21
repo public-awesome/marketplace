@@ -2,14 +2,18 @@ use cosmwasm_std::{coin, coins};
 use cosmwasm_std::{Addr, Timestamp};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw_multi_test::Executor;
+use sg_marketplace_common::coin::bps_to_decimal;
 use sg_marketplace_common::query::QueryOptions;
 use sg_std::GENESIS_MINT_START_TIME;
 use sg_std::NATIVE_DENOM;
 use std::collections::HashSet;
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
+use crate::helpers::ExpiryRangeError;
 use crate::state::Ask;
-use crate::testing::setup::setup_marketplace::{setup_fair_burn, MAX_FIXED_PRICE_ASK_AMOUNT};
+use crate::testing::setup::setup_marketplace::{
+    setup_fair_burn, MAX_EXPIRY, MAX_FIXED_PRICE_ASK_AMOUNT, REMOVAL_REWARD_BPS,
+};
 use crate::{
     msg::{ExecuteMsg, QueryMsg},
     testing::{
@@ -1030,4 +1034,183 @@ fn try_update_ask() {
         )
         .unwrap();
     assert_eq!(ask, None);
+}
+
+#[test]
+fn try_ask_with_expiration() {
+    let vt = standard_minter_template(1);
+    let (mut router, creator, _owner) = (vt.router, vt.accts.creator, vt.accts.owner);
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let fair_burn = setup_fair_burn(&mut router, &creator).unwrap();
+    let marketplace = setup_marketplace(&mut router, fair_burn, creator.clone()).unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    let token_id = 1;
+
+    // Mint NFT for creator
+    setup_block_time(&mut router, start_time.nanos(), None);
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
+
+    // Asks with expiration times, must have an expiration within range
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        price: coin(110, NATIVE_DENOM),
+        asset_recipient: None,
+        reserve_for: None,
+        finders_fee_bps: Some(0),
+        expires: Some(start_time.plus_seconds(1)),
+    };
+    let response = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert_eq!(
+        response.unwrap_err().source().unwrap().to_string(),
+        ExpiryRangeError::InvalidExpiry("expiration time outside of valid range".to_string())
+            .to_string()
+            .to_string()
+    );
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        price: coin(110, NATIVE_DENOM),
+        asset_recipient: None,
+        reserve_for: None,
+        finders_fee_bps: Some(0),
+        expires: Some(start_time.plus_seconds(MAX_EXPIRY + 1)),
+    };
+    let response = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert_eq!(
+        response.unwrap_err().source().unwrap().to_string(),
+        ExpiryRangeError::InvalidExpiry("expiration time outside of valid range".to_string())
+            .to_string()
+            .to_string()
+    );
+
+    // Asks with expiration times, and no fee payment, throw an error
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        price: coin(110, NATIVE_DENOM),
+        asset_recipient: None,
+        reserve_for: None,
+        finders_fee_bps: Some(0),
+        expires: Some(start_time.plus_seconds(MIN_EXPIRY)),
+    };
+    let response = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert_eq!(
+        response.unwrap_err().source().unwrap().to_string(),
+        ContractError::InvalidFunds {
+            expected: coin(6u128, NATIVE_DENOM)
+        }
+        .to_string()
+    );
+
+    // Asks with expiration times, and no fee payment, throw an error
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        price: coin(110, NATIVE_DENOM),
+        asset_recipient: None,
+        reserve_for: None,
+        finders_fee_bps: Some(0),
+        expires: Some(start_time.plus_seconds(MIN_EXPIRY)),
+    };
+    let response = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE).unwrap(),
+    );
+    assert_eq!(
+        response.unwrap_err().source().unwrap().to_string(),
+        ContractError::InvalidFunds {
+            expected: coin(6u128, NATIVE_DENOM)
+        }
+        .to_string()
+    );
+
+    // Asks with expiration times and fee payment are ok
+    let creator_balance_before = router.wrap().query_all_balances(creator.clone()).unwrap();
+    let price = coin(110, NATIVE_DENOM);
+    let removal_fee = price.amount.mul_ceil(bps_to_decimal(REMOVAL_REWARD_BPS));
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        price: coin(110, NATIVE_DENOM),
+        asset_recipient: None,
+        reserve_for: None,
+        finders_fee_bps: Some(0),
+        expires: Some(start_time.plus_seconds(MIN_EXPIRY)),
+    };
+    let response = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &listing_funds(LISTING_FEE + removal_fee.u128()).unwrap(),
+    );
+    assert!(response.is_ok());
+    let creator_balance_after = router.wrap().query_all_balances(creator.clone()).unwrap();
+    assert_eq!(
+        coins(
+            creator_balance_before[0].amount.u128() - LISTING_FEE - removal_fee.u128(),
+            NATIVE_DENOM
+        ),
+        creator_balance_after,
+    );
+
+    // Updating ask price on expiring asks also requires fee payment
+    let price = coin(200, NATIVE_DENOM);
+    let next_removal_fee = price.amount.mul_ceil(bps_to_decimal(REMOVAL_REWARD_BPS));
+    let update_ask_msg = ExecuteMsg::UpdateAskPrice {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        price: coin(200, NATIVE_DENOM),
+    };
+    let response = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &update_ask_msg,
+        &vec![coin(next_removal_fee.u128(), NATIVE_DENOM)],
+    );
+    assert!(response.is_ok());
+    let creator_balance_after = router.wrap().query_all_balances(creator.clone()).unwrap();
+    assert_eq!(
+        coins(
+            creator_balance_before[0].amount.u128() - LISTING_FEE - next_removal_fee.u128(),
+            NATIVE_DENOM
+        ),
+        creator_balance_after,
+    );
+
+    // Removing ask should refund the removal fee
+    let remove_ask_msg = ExecuteMsg::RemoveAsk {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+    };
+    let response =
+        router.execute_contract(creator.clone(), marketplace.clone(), &remove_ask_msg, &[]);
+    assert!(response.is_ok());
+    let creator_balance_after = router.wrap().query_all_balances(creator).unwrap();
+    assert_eq!(
+        coins(
+            creator_balance_before[0].amount.u128() - LISTING_FEE,
+            NATIVE_DENOM
+        ),
+        creator_balance_after,
+    );
 }
