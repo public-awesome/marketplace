@@ -1,6 +1,4 @@
 #[cfg(test)]
-mod admin;
-#[cfg(test)]
 mod asks;
 #[cfg(test)]
 mod bids;
@@ -12,5 +10,7 @@ mod fixed_price;
 mod hooks;
 #[cfg(test)]
 mod query;
+#[cfg(test)]
+mod sudo;
 #[cfg(test)]
 mod unit;
