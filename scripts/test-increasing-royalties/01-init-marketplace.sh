@@ -1,24 +1,25 @@
+ADMIN=stars10w5eulj60qp3cfqa0hkmke78qdy2feq6x9xdmd
 KEY=$(starsd keys show $ADMIN | jq -r .name)
 MARKETPLACE_CODE_ID=2607
 
 MSG=$(cat <<EOF
 {
 	"operators": [],
-	"trading_fee_bps": "200",
+	"trading_fee_bps": 200,
 	"ask_expiry": {
-		"min": "86400",
-		"max": "15552000"
+		"min": 86400,
+		"max": 15552000
 	},
 	"bid_expiry": {
-		"min": "86400",
-		"max": "15552000"
+		"min": 86400,
+		"max": 15552000
 	},
-	"max_finders_fee_bps": "1000",
+	"max_finders_fee_bps": 1000,
 	"min_price": "5",
-	"stale_bid_duration": {
-		"height": "100"
-	},
-	"bid_removal_reward_bps": "500",
+    "stale_bid_duration": {
+            "time": 1000
+    },
+	"bid_removal_reward_bps": 500,
 	"listing_fee": "0"
 }
 EOF
