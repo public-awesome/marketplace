@@ -21,7 +21,7 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use semver::Version;
 use sg1::fair_burn;
-use sg721::RoyaltyInfoResponse;
+use sg721::RoyaltyInfo;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::cmp::Ordering;
@@ -1144,7 +1144,7 @@ fn finalize_sale(
 }
 
 /// Check royalties are non-zero
-fn parse_royalties(royalty_info: Option<RoyaltyInfoResponse>) -> Option<RoyaltyInfoResponse> {
+fn parse_royalties(royalty_info: Option<RoyaltyInfo<String>>) -> Option<RoyaltyInfo<String>> {
     match royalty_info {
         Some(royalty) => {
             if royalty.share.is_zero() {

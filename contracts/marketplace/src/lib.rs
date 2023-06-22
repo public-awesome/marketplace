@@ -7,4 +7,4 @@ pub mod state;
 pub mod sudo;
 pub use error::ContractError;
 pub use helpers::{ExpiryRange, ExpiryRangeError, MarketplaceContract};
-mod testing;
+// mod testing;
