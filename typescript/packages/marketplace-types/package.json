@@ -1,0 +1,44 @@
+{
+  "name": "@stargazezone/marketplace-types",
+  "version": "3.0.0",
+  "description": "The official types package for the Stargaze Marketplace",
+  "author": "Shane Vitarana",
+  "homepage": "https://stargaze.zone/",
+  "license": "BUSL-1.1",
+  "main": "build/codegen.js",
+  "scripts": {
+    "prepare": "tsc",
+    "build": "tsc",
+    "codegen": "ts-node codegen.ts",
+    "publish": "npm run build && npm run codegen && npm publish --access public"
+  },
+  "directories": {
+    "lib": "lib"
+  },
+  "files": [
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/public-awesome/marketplace.git"
+  },
+  "bugs": {
+    "url": "https://github.com/public-awesome/marketplace/issues"
+  },
+  "dependencies": {
+    "@cosmjs/amino": "^0.30.1",
+    "@cosmjs/cosmwasm-stargate": "^0.30.1",
+    "@cosmjs/encoding": "^0.30.1",
+    "@cosmjs/proto-signing": "^0.30.1",
+    "@cosmjs/stargate": "^0.30.1",
+    "@cosmjs/tendermint-rpc": "^0.30.1",
+    "@cosmwasm/ts-codegen": "^0.28.0",
+    "cosmjs-types": "^0.7.2",
+    "cosmwasm": "^1.1.1",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.0.4"
+  }
+}

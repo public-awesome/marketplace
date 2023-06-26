@@ -4,29 +4,25 @@
 # Text file backups
 **/*.rs.bk
 
-# Build results
-target/
-
 # IDEs
 .vscode/
 .idea/
 *.iml
 
-# Auto-gen
-.cargo-ok
-
 # Build artifacts
+.cargo-ok
+target/
 *.wasm
 hash.txt
 contracts.txt
 artifacts/
 *gas_reports/*
+**/schema/raw/*
 
 # code coverage
 tarpaulin-report.*
 
+# Node
 node_modules/
 build/
-
-# Schema files
-*/schema/raw/*
+lerna-debug.log
