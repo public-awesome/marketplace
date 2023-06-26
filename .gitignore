@@ -25,4 +25,4 @@ tarpaulin-report.*
 # Node
 node_modules/
 build/
-lerna-debug.log
+yarn-error.log
