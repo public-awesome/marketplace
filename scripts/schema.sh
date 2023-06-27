@@ -10,5 +10,3 @@ for d in contracts/*; do
     cd "$START_DIR"
   fi
 done
-
-cd types && yarn install && yarn codegen && yarn publish

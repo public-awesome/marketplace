@@ -4,12 +4,19 @@ lint:
 schema:
 	sh scripts/schema.sh
 
+download-artifacts:
+	scripts/download-launchpad-artifacts.sh
+	scripts/download-marketplace-artifacts.sh
+
 optimize:
 	sh scripts/optimize.sh
 
+optimize-arm:
+	sh scripts/optimize-arm.sh
+
 deploy-local:
 	#!/usr/bin/env bash
-	TEST_ADDRS=`jq -r '.[].address' ./tests/e2e/configs/test_accounts.json | tr '\n' ' '`
+	TEST_ADDRS=`jq -r '.[].address' ./typescript/packages/e2e-tests/configs/test_accounts.json | tr '\n' ' '`
 	docker kill stargaze || true
 	docker volume rm -f stargaze_data
 	docker run --rm -d --name stargaze \
@@ -25,7 +32,7 @@ deploy-local:
 
 deploy-local-arm:
 	#!/usr/bin/env bash
-	TEST_ADDRS=`jq -r '.[].address' ./tests/e2e/configs/test_accounts.json | tr '\n' ' '`
+	TEST_ADDRS=`jq -r '.[].address' ./typescript/packages/e2e-tests/configs/test_accounts.json | tr '\n' ' '`
 	docker kill stargaze || true
 	docker volume rm -f stargaze_data
 	docker run --rm -d --name stargaze \
@@ -40,12 +47,20 @@ deploy-local-arm:
 		--platform linux/amd64 \
 		publicawesome/stargaze:10.0.1 /data/entry-point.sh $TEST_ADDRS
 
-e2e-test: deploy-local
-	RUST_LOG=info CONFIG=configs/cosm-orc.yaml RUST_BACKTRACE=1 cargo e2e-test
+e2e-test:
+	#!/usr/bin/env bash
+	START_DIR=$(pwd)
+	cd typescript/packages/e2e-tests
+	yarn test
+	cd "$START_DIR"
 
-e2e-test-arm: deploy-local-arm
-	RUST_LOG=info CONFIG=configs/cosm-orc.yaml RUST_BACKTRACE=1 cargo e2e-test
+e2e-test-arm:
+	#!/usr/bin/env bash
+	START_DIR=$(pwd)
+	cd typescript/packages/e2e-tests
+	yarn test
+	cd "$START_DIR"
 
-# e2e-test-full: dl-artifacts optimize e2e-test
+e2e-test-full: download-artifacts optimize deploy-local e2e-test
 
-# e2e-test-full-arm: dl-artifacts optimize-arm e2e-test-arm
+e2e-test-arm-full: download-artifacts optimize-arm deploy-local-arm e2e-test-arm

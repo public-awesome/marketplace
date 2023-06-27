@@ -15,16 +15,17 @@ sg-marketplace = { path = "contracts/marketplace", features = ["library"] }
 stargaze-fair-burn = { git = "https://github.com/public-awesome/core.git", branch = "fair-burn-contract-docs", features = [
     "library",
 ] }
-sg721-base = { version = "2.1.0", features = ["library"] }
-sg721 = { version = "2.1.0", features = ["library"] }
-vending-factory = { version = "2.1.0", features = ["library"] }
-vending-minter = { version = "2.1.0", features = ["library"] }
-base-minter = { version = "2.1.0", features = ["library"] }
-sg1 = "2.1.0"
-sg2 = "2.1.0"
-sg4 = "2.1.0"
-sg-controllers = "2.1.0"
-sg-std = "2.1.0"
+sg721-base = { version = "2.3.1", features = ["library"] }
+sg721 = { version = "2.3.1", features = ["library"] }
+vending-factory = { version = "2.3.1", features = ["library"] }
+vending-minter = { version = "2.3.1", features = ["library"] }
+base-minter = { version = "2.3.1", features = ["library"] }
+base-factory = { version = "2.3.1", features = ["library"] }
+sg1 = "2.3.1"
+sg2 = "2.3.1"
+sg4 = "2.3.1"
+sg-controllers = "2.3.1"
+sg-std = "2.3.1"
 cosmwasm-schema = "1.2.1"
 cosmwasm-std = "1.2.1"
 cosmwasm-storage = "1.2.1"
@@ -45,8 +46,8 @@ regex = "1.8.3"
 
 # dev-dependencies
 cw-multi-test = "0.16.0"
-sg-multi-test = "2.1.0"
-test-suite    = "2.1.0"
+sg-multi-test = "2.3.1"
+test-suite    = "2.3.1"
 mockall       = "0.11.4"
 cute          = "0.3.0"
 
