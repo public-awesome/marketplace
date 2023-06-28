@@ -1,9 +1,9 @@
 module.exports = {
   singleQuote: true,
-  trailingComma: "all",
+  trailingComma: 'all',
   semi: false,
   bracketSpacing: true,
-  printWidth: 80,
-  importOrder: ["^@oclif(.*)$", "^@cosmjs(.*)$", ".*"],
+  printWidth: 120,
+  importOrder: ['^@oclif(.*)$', '^@cosmjs(.*)$', '.*'],
   importOrderSortSpecifiers: true,
 }

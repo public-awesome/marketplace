@@ -4,9 +4,7 @@
 # and place them in the proper location for the integration tests.
 
 contracts=(
-    "base_factory"
-    "base_minter"
-    "sg721_base"
+    "stargaze_fair_burn"
 )
 
 # Check if Cargo.toml file exists
@@ -25,7 +23,7 @@ for contract in "${contracts[@]}"; do
     fi
 
     version=$(grep "^$contract_tmp" Cargo.toml | awk -F'"' '{print $2}')
-    url="https://github.com/public-awesome/launchpad/releases/download/v${version}/${contract}.wasm"
+    url=https://github.com/public-awesome/core/releases/download/${contract}-v${version}/${contract}.wasm
     
     if [ -z "$version" ]; then
         echo "Version not found for $contract"

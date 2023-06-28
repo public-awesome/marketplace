@@ -1,5 +1,5 @@
 import chainConfig from '../../configs/chain_config.json'
-import axios from 'axios'
+import axios, { AxiosResponse } from 'axios'
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, ms))
@@ -15,9 +15,7 @@ export const pollConnection = async () => {
       console.log('Connection established')
       break
     } catch (err) {
-      console.log(
-        'Failed to establish connection: status_code ${result.status}. Retrying...',
-      )
+      console.log(`Failed to establish connection: Retrying...`)
     }
   }
 }

@@ -1,8 +1,9 @@
 # macOS
 .DS_Store
 
-# Text file backups
+# Text files
 **/*.rs.bk
+**/tmp/*
 
 # IDEs
 .vscode/

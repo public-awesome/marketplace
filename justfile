@@ -5,6 +5,7 @@ schema:
 	sh scripts/schema.sh
 
 download-artifacts:
+	scripts/download-core-artifacts.sh
 	scripts/download-launchpad-artifacts.sh
 	scripts/download-marketplace-artifacts.sh
 
@@ -54,13 +55,6 @@ e2e-test:
 	yarn test
 	cd "$START_DIR"
 
-e2e-test-arm:
-	#!/usr/bin/env bash
-	START_DIR=$(pwd)
-	cd typescript/packages/e2e-tests
-	yarn test
-	cd "$START_DIR"
-
 e2e-test-full: download-artifacts optimize deploy-local e2e-test
 
-e2e-test-arm-full: download-artifacts optimize-arm deploy-local-arm e2e-test-arm
+e2e-test-arm-full: download-artifacts optimize-arm deploy-local-arm e2e-test

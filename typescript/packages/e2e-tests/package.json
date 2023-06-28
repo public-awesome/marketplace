@@ -2,7 +2,6 @@
   "name": "@stargazezone/marketplace-e2e-tests",
   "version": "0.1.0",
   "description": "A set of end-to-end tests written in Jest for the Stargaze Marketplace",
-  "main": "index.js",
   "repository": "https://github.com/public-awesome/marketplace",
   "license": "MIT",
   "private": true,
@@ -10,13 +9,16 @@
     "node": ">=v16.16.0"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "test:nosetup": "jest --globalSetup ''",
+    "test:watch": "jest --watch --verbose --globalSetup ''"
   },
   "dependencies": {
     "@cosmjs/cosmwasm-stargate": "^0.31.0",
     "@cosmjs/proto-signing": "^0.31.0",
     "@cosmjs/stargate": "^0.31.0",
     "@stargazezone/launchpad": "^2.3.3",
+    "@stargazezone/marketplace-v1-types": "npm:@stargazezone/marketplace-types@^1.5.2",
     "@stargazezone/marketplace-types": "^3.0.0",
     "@types/jest": "^29.5.2",
     "axios": "^1.4.0",
