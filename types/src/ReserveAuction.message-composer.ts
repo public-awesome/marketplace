@@ -7,7 +7,7 @@
 import { MsgExecuteContractEncodeObject } from "cosmwasm";
 import { MsgExecuteContract } from "cosmjs-types/cosmwasm/wasm/v1/tx";
 import { toUtf8 } from "@cosmjs/encoding";
-import { Uint128, InstantiateMsg, Coin, ExecuteMsg, QueryMsg, QueryOptionsForString, QueryOptionsForTupleOfStringAndString, Addr, Timestamp, Uint64, AuctionResponse, Auction, HighBid, AuctionsResponse, Decimal, ConfigResponse, Config, CoinsResponse } from "./ReserveAuction.types";
+import { Uint128, InstantiateMsg, Coin, ExecuteMsg, QueryMsg, QueryOptionsForString, QueryOptionsForTupleOfStringAndString, Addr, Timestamp, Uint64, AuctionResponse, Auction, HighBid, AuctionsResponse, Decimal, ConfigResponse, Config, HaltManagerResponse, HaltManager, HaltWindow, CoinsResponse } from "./ReserveAuction.types";
 export interface ReserveAuctionMessage {
   contractAddress: string;
   sender: string;

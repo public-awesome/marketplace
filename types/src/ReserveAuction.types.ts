@@ -9,6 +9,9 @@ export interface InstantiateMsg {
   create_auction_fee: Coin;
   extend_duration: number;
   fair_burn: string;
+  halt_buffer_duration: number;
+  halt_duration_threshold: number;
+  halt_postpone_duration: number;
   marketplace: string;
   max_auctions_to_settle_per_block: number;
   max_duration: number;
@@ -53,6 +56,8 @@ export type ExecuteMsg = {
 };
 export type QueryMsg = {
   config: {};
+} | {
+  halt_manager: {};
 } | {
   min_reserve_prices: {
     query_options?: QueryOptionsForString | null;
@@ -115,11 +120,25 @@ export interface Config {
   create_auction_fee: Coin;
   extend_duration: number;
   fair_burn: Addr;
+  halt_buffer_duration: number;
+  halt_duration_threshold: number;
+  halt_postpone_duration: number;
   marketplace: Addr;
   max_auctions_to_settle_per_block: number;
   max_duration: number;
   min_bid_increment_pct: Decimal;
   min_duration: number;
+}
+export interface HaltManagerResponse {
+  halt_manager: HaltManager;
+}
+export interface HaltManager {
+  halt_infos: HaltWindow[];
+  prev_block_time: number;
+}
+export interface HaltWindow {
+  end_time: number;
+  start_time: number;
 }
 export interface CoinsResponse {
   coins: Coin[];
