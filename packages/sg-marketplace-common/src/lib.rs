@@ -11,8 +11,8 @@ use cw721::{ApprovalResponse, Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
 use sg721::RoyaltyInfo;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_fair_burn::append_fair_burn_msg;
 use sg_std::{Response, SubMsg};
+use stargaze_fair_burn::append_fair_burn_msg;
 use std::marker::PhantomData;
 
 pub fn transfer_nft(collection: &Addr, token_id: &str, recipient: &Addr) -> SubMsg {

@@ -1310,23 +1310,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sg-fair-burn"
-version = "0.1.0"
-source = "git+https://github.com/public-awesome/core?branch=fair-burn-contract#d20510a56416b84ca280915a645626742ee8be0f"
-dependencies = [
- "cosmwasm-schema",
- "cosmwasm-std",
- "cosmwasm-storage",
- "cw-storage-plus 0.16.0",
- "cw-utils 0.16.0",
- "cw2 0.16.0",
- "schemars",
- "serde",
- "sg-std",
- "thiserror",
-]
-
-[[package]]
 name = "sg-marketplace"
 version = "1.3.0"
 dependencies = [
@@ -1376,12 +1359,12 @@ dependencies = [
  "mockall",
  "schemars",
  "serde",
- "sg-fair-burn",
  "sg-multi-test",
  "sg-std",
  "sg1",
  "sg721",
  "sg721-base",
+ "stargaze-fair-burn",
  "test-suite",
  "thiserror",
 ]
@@ -1614,6 +1597,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "stargaze-fair-burn"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f46c24f9363c6212d943495a7bd6f17cbdfc2a15e8f05c23a24616f8f8d7e198"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "schemars",
+ "serde",
+ "sg-std",
+ "thiserror",
+]
+
+[[package]]
 name = "stargaze-reserve-auction"
 version = "1.1.1"
 dependencies = [
@@ -1630,7 +1631,6 @@ dependencies = [
  "regex",
  "schemars",
  "serde",
- "sg-fair-burn",
  "sg-marketplace",
  "sg-marketplace-common",
  "sg-multi-test",
@@ -1639,6 +1639,7 @@ dependencies = [
  "sg2",
  "sg721",
  "sg721-base",
+ "stargaze-fair-burn",
  "test-suite",
  "thiserror",
  "vending-minter",

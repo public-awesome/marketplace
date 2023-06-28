@@ -3,11 +3,11 @@ use sg_std::StargazeMsgWrapper;
 
 pub fn contract_fair_burn() -> Box<dyn Contract<StargazeMsgWrapper>> {
     let contract = ContractWrapper::new(
-        sg_fair_burn::contract::execute,
-        sg_fair_burn::contract::instantiate,
-        sg_fair_burn::contract::query,
+        stargaze_fair_burn::contract::execute,
+        stargaze_fair_burn::contract::instantiate,
+        stargaze_fair_burn::contract::query,
     )
-    .with_sudo(sg_fair_burn::contract::sudo);
+    .with_sudo(stargaze_fair_burn::contract::sudo);
     Box::new(contract)
 }
 
