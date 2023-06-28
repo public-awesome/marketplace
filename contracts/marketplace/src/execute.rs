@@ -1,5 +1,5 @@
 use crate::error::ContractError;
-use crate::helpers::{calculate_nft_sale_fees, map_validate, payout_nft_sale_fees};
+use crate::helpers::map_validate;
 use crate::msg::{
     AskHookMsg, BidHookMsg, CollectionBidHookMsg, ExecuteMsg, HookAction, InstantiateMsg,
     SaleHookMsg,
@@ -9,10 +9,11 @@ use crate::state::{
     Order, SaleType, SudoParams, TokenId, ASK_HOOKS, BID_HOOKS, COLLECTION_BID_HOOKS, SALE_HOOKS,
     SUDO_PARAMS,
 };
-
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, Coin, Decimal, Deps, DepsMut, Empty, Env, Event, MessageInfo,
-    Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    coin, to_binary, Addr, BankMsg, BlockInfo, Coin, Decimal, Deps, DepsMut, Empty, Env, Event,
+    MessageInfo, Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
@@ -20,7 +21,8 @@ use cw721_base::helpers::Cw721Contract;
 use cw_utils::{may_pay, maybe_addr, must_pay, nonpayable, Duration, Expiration};
 use semver::Version;
 use sg1::fair_burn;
-use sg_marketplace_common::{load_collection_royalties, only_tradable};
+use sg721::RoyaltyInfoResponse;
+use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::{Response, SubMsg, NATIVE_DENOM};
 use std::cmp::Ordering;
 use std::marker::PhantomData;
@@ -32,10 +34,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 // bps fee can not exceed 100%
 const MAX_FEE_BPS: u64 = 10000;
 // max 100M STARS
-pub const MAX_FIXED_PRICE_ASK_AMOUNT: u128 = 100_000_000_000_000u128;
-
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
+const MAX_FIXED_PRICE_ASK_AMOUNT: u128 = 100_000_000_000_000u128;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -420,12 +419,7 @@ pub fn execute_update_ask_price(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(deps.as_ref(), &info, &collection, token_id)?;
-
-    // validate only for asks
     price_validate(deps.storage, &price)?;
-    if price.amount.u128() > MAX_FIXED_PRICE_ASK_AMOUNT {
-        return Err(ContractError::PriceTooHigh(price.amount));
-    }
 
     let key = ask_key(&collection, token_id);
 
@@ -477,6 +471,11 @@ pub fn execute_set_bid(
     }
 
     // check bid finders_fee_bps is not over max
+    if let Some(fee) = finders_fee_bps {
+        if Decimal::percent(fee) > params.max_finders_fee_percent {
+            return Err(ContractError::InvalidFindersFeeBps(fee));
+        }
+    }
     let bid_price = must_pay(&info, NATIVE_DENOM)?;
     if bid_price < params.min_price {
         return Err(ContractError::PriceTooSmall(bid_price));
@@ -489,7 +488,7 @@ pub fn execute_set_bid(
     }
 
     let bidder = info.sender;
-    let mut response = Response::new();
+    let mut res = Response::new();
     let bid_key = bid_key(&collection, token_id, &bidder);
     let ask_key = ask_key(&collection, token_id);
 
@@ -499,7 +498,7 @@ pub fn execute_set_bid(
             to_address: bidder.to_string(),
             amount: vec![coin(existing_bid.price.u128(), NATIVE_DENOM)],
         };
-        response = response.add_message(refund_bidder)
+        res = res.add_message(refund_bidder)
     }
 
     let existing_ask = asks().may_load(deps.storage, ask_key.clone())?;
@@ -562,13 +561,13 @@ pub fn execute_set_bid(
                         if ask.seller != owner {
                             return Err(ContractError::InvalidListing {});
                         }
-                        response = finalize_sale(
+                        finalize_sale(
                             deps.as_ref(),
                             ask,
                             bid_price,
                             bidder.clone(),
                             finder,
-                            response,
+                            &mut res,
                         )?;
                         None
                     }
@@ -603,7 +602,7 @@ pub fn execute_set_bid(
         .add_attribute("bid_price", bid_price.to_string())
         .add_attribute("expires", expires.to_string());
 
-    Ok(response.add_submessages(hook).add_event(event))
+    Ok(res.add_submessages(hook).add_event(event))
 }
 
 /// Removes a bid made by the bidder. Bidders can only remove their own bids
@@ -683,16 +682,16 @@ pub fn execute_accept_bid(
     // Remove accepted bid
     bids().remove(deps.storage, bid_key)?;
 
-    let mut response = Response::new();
+    let mut res = Response::new();
 
     // Transfer funds and NFT
-    response = finalize_sale(
+    finalize_sale(
         deps.as_ref(),
         ask,
         bid.price,
         bidder.clone(),
         finder,
-        response,
+        &mut res,
     )?;
 
     let event = Event::new("accept-bid")
@@ -701,7 +700,7 @@ pub fn execute_accept_bid(
         .add_attribute("bidder", bidder)
         .add_attribute("price", bid.price.to_string());
 
-    Ok(response.add_event(event))
+    Ok(res.add_event(event))
 }
 
 pub fn execute_reject_bid(
@@ -874,16 +873,16 @@ pub fn execute_accept_collection_bid(
         finders_fee_bps: bid.finders_fee_bps,
     };
 
-    let mut response = Response::new();
+    let mut res = Response::new();
 
     // Transfer funds and NFT
-    response = finalize_sale(
+    finalize_sale(
         deps.as_ref(),
         ask,
         bid.price,
         bidder.clone(),
         finder,
-        response,
+        &mut res,
     )?;
 
     let event = Event::new("accept-collection-bid")
@@ -893,7 +892,7 @@ pub fn execute_accept_collection_bid(
         .add_attribute("seller", info.sender.to_string())
         .add_attribute("price", bid.price.to_string());
 
-    Ok(response.add_event(event))
+    Ok(res.add_event(event))
 }
 
 /// Synchronizes the active state of an ask based on token ownership.
@@ -1021,22 +1020,15 @@ pub fn execute_remove_stale_bid(
     bids().remove(deps.storage, bid_key)?;
 
     let reward = bid.price * params.bid_removal_reward_percent / Uint128::from(100u128);
-    let bidder_refund = bid.price - reward;
 
-    let mut response = Response::new();
-    if bidder_refund > Uint128::zero() {
-        response = response.add_message(BankMsg::Send {
-            to_address: bidder.to_string(),
-            amount: vec![coin(bidder_refund.u128(), NATIVE_DENOM)],
-        });
-    }
-
-    if reward > Uint128::zero() {
-        response = response.add_message(BankMsg::Send {
-            to_address: operator.to_string(),
-            amount: vec![coin(reward.u128(), NATIVE_DENOM)],
-        });
-    }
+    let bidder_msg = BankMsg::Send {
+        to_address: bid.bidder.to_string(),
+        amount: vec![coin((bid.price - reward).u128(), NATIVE_DENOM)],
+    };
+    let operator_msg = BankMsg::Send {
+        to_address: operator.to_string(),
+        amount: vec![coin(reward.u128(), NATIVE_DENOM)],
+    };
 
     let hook = prepare_bid_hook(deps.as_ref(), &bid, HookAction::Delete)?;
 
@@ -1047,7 +1039,11 @@ pub fn execute_remove_stale_bid(
         .add_attribute("operator", operator.to_string())
         .add_attribute("reward", reward.to_string());
 
-    Ok(response.add_event(event).add_submessages(hook))
+    Ok(Response::new()
+        .add_event(event)
+        .add_message(bidder_msg)
+        .add_message(operator_msg)
+        .add_submessages(hook))
 }
 
 /// Privileged operation to remove a stale collection bid. Operators can call this to remove and refund bids that are still in the
@@ -1107,36 +1103,19 @@ fn finalize_sale(
     price: Uint128,
     buyer: Addr,
     finder: Option<Addr>,
-    response: Response,
-) -> Result<Response, ContractError> {
-    let mut response = response;
-    let params = SUDO_PARAMS.load(deps.storage)?;
-
-    let royalty_info = load_collection_royalties(&deps.querier, deps.api, &ask.collection)?;
-
-    let seller_recipient = ask
-        .funds_recipient
-        .clone()
-        .unwrap_or_else(|| ask.seller.clone());
-
-    let tx_fees = calculate_nft_sale_fees(
+    res: &mut Response,
+) -> StdResult<()> {
+    payout(
+        deps,
+        ask.collection.clone(),
         price,
-        params.trading_fee_percent,
-        seller_recipient,
+        ask.funds_recipient
+            .clone()
+            .unwrap_or_else(|| ask.seller.clone()),
         finder,
         ask.finders_fee_bps,
-        royalty_info,
+        res,
     )?;
-
-    if let Some(royalty_fee) = &tx_fees.royalty_fee {
-        let event = Event::new("royalty-payout")
-            .add_attribute("collection", ask.collection.to_string())
-            .add_attribute("amount", royalty_fee.coin.amount.to_string())
-            .add_attribute("recipient", royalty_fee.recipient.to_string());
-        response = response.add_event(event);
-    }
-
-    response = payout_nft_sale_fees(response, tx_fees, None)?;
 
     let cw721_transfer_msg = Cw721ExecuteMsg::TransferNft {
         token_id: ask.token_id.to_string(),
@@ -1148,8 +1127,10 @@ fn finalize_sale(
         msg: to_binary(&cw721_transfer_msg)?,
         funds: vec![],
     };
-    response = response.add_submessage(SubMsg::new(exec_cw721_transfer));
-    response = response.add_submessages(prepare_sale_hook(deps, &ask, buyer.clone())?);
+    res.messages.push(SubMsg::new(exec_cw721_transfer));
+
+    res.messages
+        .append(&mut prepare_sale_hook(deps, &ask, buyer.clone())?);
 
     let event = Event::new("finalize-sale")
         .add_attribute("collection", ask.collection.to_string())
@@ -1157,9 +1138,101 @@ fn finalize_sale(
         .add_attribute("seller", ask.seller.to_string())
         .add_attribute("buyer", buyer.to_string())
         .add_attribute("price", price.to_string());
-    response = response.add_event(event);
+    res.events.push(event);
 
-    Ok(response)
+    Ok(())
+}
+
+/// Check royalties are non-zero
+fn parse_royalties(royalty_info: Option<RoyaltyInfoResponse>) -> Option<RoyaltyInfoResponse> {
+    match royalty_info {
+        Some(royalty) => {
+            if royalty.share.is_zero() {
+                return None;
+            }
+            Some(royalty)
+        }
+        None => None,
+    }
+}
+/// Payout a bid
+fn payout(
+    deps: Deps,
+    collection: Addr,
+    payment: Uint128,
+    payment_recipient: Addr,
+    finder: Option<Addr>,
+    finders_fee_bps: Option<u64>,
+    res: &mut Response,
+) -> StdResult<()> {
+    let params = SUDO_PARAMS.load(deps.storage)?;
+
+    // Append Fair Burn message
+    let network_fee = payment * params.trading_fee_percent / Uint128::from(100u128);
+    fair_burn(network_fee.u128(), None, res);
+
+    let collection_info: CollectionInfoResponse = deps
+        .querier
+        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})?;
+
+    let finders_fee = match finder {
+        Some(finder) => {
+            let finders_fee = finders_fee_bps
+                .map(|fee| (payment * Decimal::percent(fee) / Uint128::from(100u128)).u128())
+                .unwrap_or(0);
+            if finders_fee > 0 {
+                res.messages.push(SubMsg::new(BankMsg::Send {
+                    to_address: finder.to_string(),
+                    amount: vec![coin(finders_fee, NATIVE_DENOM)],
+                }));
+            }
+            finders_fee
+        }
+        None => 0,
+    };
+
+    match parse_royalties(collection_info.royalty_info) {
+        // If token supports royalties, payout shares to royalty recipient
+        Some(royalty) => {
+            let amount = coin((payment * royalty.share).u128(), NATIVE_DENOM);
+            if payment < (network_fee + Uint128::from(finders_fee) + amount.amount) {
+                return Err(StdError::generic_err("Fees exceed payment"));
+            }
+            res.messages.push(SubMsg::new(BankMsg::Send {
+                to_address: royalty.payment_address.to_string(),
+                amount: vec![amount.clone()],
+            }));
+            let event = Event::new("royalty-payout")
+                .add_attribute("collection", collection.to_string())
+                .add_attribute("amount", amount.to_string())
+                .add_attribute("recipient", royalty.payment_address.to_string());
+            res.events.push(event);
+            let seller_share_msg = BankMsg::Send {
+                to_address: payment_recipient.to_string(),
+                amount: vec![coin(
+                    (payment * (Decimal::one() - royalty.share) - network_fee).u128() - finders_fee,
+                    NATIVE_DENOM.to_string(),
+                )],
+            };
+            res.messages.push(SubMsg::new(seller_share_msg));
+        }
+        None => {
+            if payment < (network_fee + Uint128::from(finders_fee)) {
+                return Err(StdError::generic_err("Fees exceed payment"));
+            }
+            // If token doesn't support royalties, pay seller in full
+            let seller_share_msg = BankMsg::Send {
+                to_address: payment_recipient.to_string(),
+                amount: vec![coin(
+                    (payment - network_fee).u128() - finders_fee,
+                    NATIVE_DENOM.to_string(),
+                )],
+            };
+            res.messages.push(SubMsg::new(seller_share_msg));
+        }
+    }
+
+    Ok(())
 }
 
 fn price_validate(store: &dyn Storage, price: &Coin) -> Result<(), ContractError> {
@@ -1200,6 +1273,29 @@ fn only_owner(
     }
 
     Ok(res)
+}
+
+/// Checks that the collection is tradable
+fn only_tradable(deps: Deps, block: &BlockInfo, collection: &Addr) -> Result<bool, ContractError> {
+    let res: Result<CollectionInfoResponse, StdError> = deps
+        .querier
+        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {});
+
+    match res {
+        Ok(collection_info) => match collection_info.start_trading_time {
+            Some(start_trading_time) => {
+                if start_trading_time > block.time {
+                    Err(ContractError::CollectionNotTradable {})
+                } else {
+                    Ok(true)
+                }
+            }
+            // not set by collection, so tradable
+            None => Ok(true),
+        },
+        // not supported by collection
+        Err(_) => Ok(true),
+    }
 }
 
 /// Checks to enforce only privileged operators

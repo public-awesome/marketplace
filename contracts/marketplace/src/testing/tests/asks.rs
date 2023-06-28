@@ -1,5 +1,4 @@
 use crate::error::ContractError;
-use crate::execute::MAX_FIXED_PRICE_ASK_AMOUNT;
 use crate::msg::{
     AskCountResponse, AskOffset, AskResponse, AsksResponse, CollectionOffset, CollectionsResponse,
 };
@@ -216,7 +215,7 @@ fn max_set_ask_amount() {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id,
-        price: coin(MAX_FIXED_PRICE_ASK_AMOUNT + 1u128, NATIVE_DENOM),
+        price: coin(100_000_000_000_001u128, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
@@ -260,7 +259,7 @@ fn max_set_ask_amount() {
         sale_type: SaleType::FixedPrice,
         collection: collection.to_string(),
         token_id,
-        price: coin(MAX_FIXED_PRICE_ASK_AMOUNT, NATIVE_DENOM),
+        price: coin(100_000_000_000_000u128, NATIVE_DENOM),
         funds_recipient: None,
         reserve_for: None,
         expires: start_time.plus_seconds(MIN_EXPIRY + 1),
@@ -273,23 +272,6 @@ fn max_set_ask_amount() {
         &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
-
-    // Ask cannot be updated above the limit
-    let update_ask_price = ExecuteMsg::UpdateAskPrice {
-        collection: collection.to_string(),
-        token_id,
-        price: coin(MAX_FIXED_PRICE_ASK_AMOUNT + 1u128, NATIVE_DENOM),
-    };
-    let res = router.execute_contract(
-        creator.clone(),
-        marketplace.clone(),
-        &update_ask_price,
-        &listing_funds(LISTING_FEE).unwrap(),
-    );
-    assert_eq!(
-        res.unwrap_err().source().unwrap().to_string(),
-        "PriceTooHigh: 100000000000001".to_string()
-    );
 }
 
 #[test]

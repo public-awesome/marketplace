@@ -1,7 +1,6 @@
 use cosmwasm_std::{StdError, Uint128};
 use cw_utils::PaymentError;
 use sg_controllers::HookError;
-use sg_marketplace_common::MarketplaceCommonError;
 use thiserror::Error;
 
 use crate::helpers::ExpiryRangeError;
@@ -10,12 +9,6 @@ use crate::helpers::ExpiryRangeError;
 pub enum ContractError {
     #[error("{0}")]
     Std(#[from] StdError),
-
-    #[error("{0}")]
-    MarketplaceCommonError(#[from] MarketplaceCommonError),
-
-    #[error("Invalid fair burn : {0}")]
-    InvalidFairBurn(String),
 
     #[error("UnauthorizedOwner")]
     UnauthorizedOwner {},
@@ -68,10 +61,10 @@ pub enum ContractError {
     #[error("Invalid finders fee bps: {0}")]
     InvalidFindersFeeBps(u64),
 
-    #[error("Invalid trading fee bps: {0}")]
+    #[error("Invalid finders fee bps: {0}")]
     InvalidTradingFeeBps(u64),
 
-    #[error("Invalid bid removal reward bps: {0}")]
+    #[error("Invalid finders fee bps: {0}")]
     InvalidBidRemovalRewardBps(u64),
 
     #[error("{0}")]
@@ -94,6 +87,9 @@ pub enum ContractError {
 
     #[error("InvalidContractVersion")]
     InvalidContractVersion {},
+
+    #[error("Collection not tradable yet")]
+    CollectionNotTradable {},
 
     #[error("Item not for sale")]
     ItemNotForSale {},

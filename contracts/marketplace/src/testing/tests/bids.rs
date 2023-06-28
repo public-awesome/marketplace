@@ -929,13 +929,10 @@ fn try_set_accept_bid_high_fees() {
         finder: Some(owner.to_string()),
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
-    assert!(res.is_err());
-    assert!(res
-        .unwrap_err()
-        .source()
-        .unwrap()
-        .to_string()
-        .contains("Overflow"));
+    assert_eq!(
+        res.unwrap_err().source().unwrap().to_string(),
+        "Generic error: Fees exceed payment".to_string()
+    );
 }
 
 #[test]
