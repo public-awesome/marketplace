@@ -61,6 +61,21 @@ pub fn approve(
     assert!(res.is_ok());
 }
 
+pub fn revoke_approval(
+    router: &mut StargazeApp,
+    creator: &Addr,
+    collection: &Addr,
+    marketplace: &Addr,
+    token_id: u32,
+) {
+    let revoke_approval: Sg721ExecuteMsg<CollectionInfoResponse, Empty> = Sg721ExecuteMsg::Revoke {
+        spender: marketplace.to_string(),
+        token_id: token_id.to_string(),
+    };
+    let res = router.execute_contract(creator.clone(), collection.clone(), &revoke_approval, &[]);
+    assert!(res.is_ok());
+}
+
 pub fn transfer(
     router: &mut StargazeApp,
     creator: &Addr,
