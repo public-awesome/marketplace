@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "build" /* Specify an output folder for all emitted files. */,
+    "declaration": true
+  }
+}

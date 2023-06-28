@@ -1,28 +1,10 @@
 import Context, { CONTRACT_MAP } from '../setup/context'
 import { getClient, getSigningClient } from '../utils/client'
-import { getExpirationString } from '../utils/datetime'
 import { approveNft, createMinter, mintNft } from '../utils/nft'
-import { ExecuteMsg as BaseFactoryExecuteMsg } from '@stargazezone/launchpad/src/BaseFactory.types'
-import { MarketplaceClient, MarketplaceQueryClient } from '@stargazezone/marketplace-types/src/Marketplace.client'
-import _, { add } from 'lodash'
+import { contracts } from '@stargazezone/marketplace-types'
+import type { MarketplaceQueryClient as MarketplaceQueryClientType } from '@stargazezone/marketplace-types/build/src/Marketplace.client'
 
-// SetAsk
-// UpdateAskPrice
-// RemoveAsk
-// RemoveStaleAsk
-// MigrateAsks
-// SetOffer
-// BuyNow
-// AcceptOffer
-// RemoveOffer
-// RejectOffer
-// RemoveStaleOffer
-// MigrateOffers
-// SetCollectionOffer
-// AcceptCollectionOffer
-// RemoveCollectionOffer
-// RemoveStaleCollectionOffer
-// MigrateCollectionOffers
+const { MarketplaceClient, MarketplaceQueryClient } = contracts.Marketplace
 
 describe('MarketplaceV3', () => {
   const creator = 0
@@ -35,7 +17,7 @@ describe('MarketplaceV3', () => {
   let collectionAddress: string
   let tokenId: string
   let marketplaceAddress: string
-  let marketplaceQueryClient: MarketplaceQueryClient
+  let marketplaceQueryClient: MarketplaceQueryClientType
 
   beforeAll(async () => {
     context = new Context()
