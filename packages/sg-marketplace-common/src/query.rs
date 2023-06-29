@@ -10,10 +10,11 @@ pub struct QueryOptions<T> {
     pub descending: Option<bool>,
     /// The key to start the query after
     pub start_after: Option<T>,
-    // The number of items that will be returned
+    /// The number of items that will be returned
     pub limit: Option<u32>,
 }
 
+/// Invoke `unpack_query_options` to build the query options used to paginate contract queries.
 pub fn unpack_query_options<'a, T: PrimaryKey<'a>, U>(
     query_options: QueryOptions<U>,
     start_after_fn: Box<dyn FnOnce(U) -> Bound<'a, T>>,

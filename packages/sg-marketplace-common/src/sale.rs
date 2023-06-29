@@ -6,6 +6,7 @@ use stargaze_fair_burn::append_fair_burn_msg;
 
 use crate::coin::transfer_coins;
 
+/// `TokenPayment` is a struct that represents a payment of a single token to a single address.
 #[cw_serde]
 pub struct TokenPayment {
     pub label: String,
@@ -13,6 +14,8 @@ pub struct TokenPayment {
     pub recipient: Addr,
 }
 
+/// Invoke `payout_nft_sale_fees` to build a vector of `TokenPayment` structs representing the fees
+/// paid out in an NFT sale.
 #[allow(clippy::too_many_arguments)]
 pub fn payout_nft_sale_fees(
     sale_coin: &Coin,

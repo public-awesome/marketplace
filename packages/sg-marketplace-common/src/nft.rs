@@ -11,6 +11,7 @@ use std::marker::PhantomData;
 
 pub use crate::errors::MarketplaceCommonError;
 
+/// Invoke `transfer_nft` to build a `SubMsg` to transfer an NFT to an address.
 pub fn transfer_nft(collection: &Addr, token_id: &str, recipient: &Addr) -> SubMsg {
     SubMsg::new(WasmMsg::Execute {
         contract_addr: collection.to_string(),
@@ -23,6 +24,7 @@ pub fn transfer_nft(collection: &Addr, token_id: &str, recipient: &Addr) -> SubM
     })
 }
 
+/// Invoke `owner_of` to get the owner of an NFT.
 pub fn owner_of(
     querier: &QuerierWrapper,
     collection: &Addr,
@@ -32,6 +34,7 @@ pub fn owner_of(
         .owner_of(querier, token_id, false)
 }
 
+/// Invoke `only_owner` to check that the sender is the owner of the NFT.
 pub fn only_owner(
     querier: &QuerierWrapper,
     info: &MessageInfo,
@@ -45,6 +48,7 @@ pub fn only_owner(
     Ok(())
 }
 
+/// Invoke `has_approval` to check that the spender has approval for the NFT.
 pub fn has_approval(
     querier: &QuerierWrapper,
     spender: &Addr,
@@ -60,7 +64,7 @@ pub fn has_approval(
     )
 }
 
-/// Checks that the collection is tradable
+/// Invoke `only_tradable` to check that the NFT collection start trade time threshold has elapsed.
 pub fn only_tradable(
     querier: &QuerierWrapper,
     block: &BlockInfo,
@@ -86,7 +90,7 @@ pub fn only_tradable(
     }
 }
 
-/// Load the collection royalties as defined on the NFT collection contract
+/// Invoke `load_collection_royalties` to load the collection royalties as defined on the NFT collection contract
 pub fn load_collection_royalties(
     querier: &QuerierWrapper,
     api: &dyn Api,
