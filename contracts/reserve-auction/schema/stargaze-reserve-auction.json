@@ -1,6 +1,6 @@
 {
   "contract_name": "stargaze-reserve-auction",
-  "contract_version": "1.1.1",
+  "contract_version": "1.1.2",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -13,12 +13,12 @@
       "halt_buffer_duration",
       "halt_duration_threshold",
       "halt_postpone_duration",
-      "marketplace",
       "max_auctions_to_settle_per_block",
       "max_duration",
       "min_bid_increment_bps",
       "min_duration",
-      "min_reserve_prices"
+      "min_reserve_prices",
+      "trading_fee_bps"
     ],
     "properties": {
       "create_auction_fee": {
@@ -47,9 +47,6 @@
         "format": "uint64",
         "minimum": 0.0
       },
-      "marketplace": {
-        "type": "string"
-      },
       "max_auctions_to_settle_per_block": {
         "type": "integer",
         "format": "uint64",
@@ -75,6 +72,11 @@
         "items": {
           "$ref": "#/definitions/Coin"
         }
+      },
+      "trading_fee_bps": {
+        "type": "integer",
+        "format": "uint64",
+        "minimum": 0.0
       }
     },
     "additionalProperties": false,
@@ -314,7 +316,7 @@
               "query_options": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/QueryOptions_for_String"
+                    "$ref": "#/definitions/QueryOptions_for_MinReservePriceOffset"
                   },
                   {
                     "type": "null"
@@ -367,7 +369,7 @@
               "query_options": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/QueryOptions_for_Tuple_of_String_and_String"
+                    "$ref": "#/definitions/QueryOptions_for_AuctionKeyOffset"
                   },
                   {
                     "type": "null"
@@ -403,7 +405,7 @@
               "query_options": {
                 "anyOf": [
                   {
-                    "$ref": "#/definitions/QueryOptions_for_Tuple_of_String_and_String"
+                    "$ref": "#/definitions/QueryOptions_for_AuctionKeyOffset"
                   },
                   {
                     "type": "null"
@@ -418,7 +420,35 @@
       }
     ],
     "definitions": {
-      "QueryOptions_for_String": {
+      "AuctionKeyOffset": {
+        "type": "object",
+        "required": [
+          "collection",
+          "token_id"
+        ],
+        "properties": {
+          "collection": {
+            "type": "string"
+          },
+          "token_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "MinReservePriceOffset": {
+        "type": "object",
+        "required": [
+          "denom"
+        ],
+        "properties": {
+          "denom": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_AuctionKeyOffset": {
         "description": "QueryOptions are used to paginate contract queries",
         "type": "object",
         "properties": {
@@ -439,15 +469,19 @@
           },
           "start_after": {
             "description": "The key to start the query after",
-            "type": [
-              "string",
-              "null"
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AuctionKeyOffset"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
         "additionalProperties": false
       },
-      "QueryOptions_for_Tuple_of_String_and_String": {
+      "QueryOptions_for_MinReservePriceOffset": {
         "description": "QueryOptions are used to paginate contract queries",
         "type": "object",
         "properties": {
@@ -468,20 +502,14 @@
           },
           "start_after": {
             "description": "The key to start the query after",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": [
+            "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/definitions/MinReservePriceOffset"
               },
               {
-                "type": "string"
+                "type": "null"
               }
-            ],
-            "maxItems": 2,
-            "minItems": 2
+            ]
           }
         },
         "additionalProperties": false
@@ -950,11 +978,11 @@
             "halt_buffer_duration",
             "halt_duration_threshold",
             "halt_postpone_duration",
-            "marketplace",
             "max_auctions_to_settle_per_block",
             "max_duration",
             "min_bid_increment_pct",
-            "min_duration"
+            "min_duration",
+            "trading_fee_pct"
           ],
           "properties": {
             "create_auction_fee": {
@@ -983,9 +1011,6 @@
               "format": "uint64",
               "minimum": 0.0
             },
-            "marketplace": {
-              "$ref": "#/definitions/Addr"
-            },
             "max_auctions_to_settle_per_block": {
               "type": "integer",
               "format": "uint64",
@@ -1003,6 +1028,9 @@
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
+            },
+            "trading_fee_pct": {
+              "$ref": "#/definitions/Decimal"
             }
           },
           "additionalProperties": false
