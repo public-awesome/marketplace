@@ -16,7 +16,7 @@ pub const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -88,7 +88,7 @@ pub fn instantiate(
     HALT_MANAGER.save(
         deps.storage,
         &HaltManager {
-            prev_block_time: env.block.time.seconds(),
+            prev_block_time: 0,
             halt_infos: vec![],
         },
     )?;

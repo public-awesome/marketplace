@@ -30,10 +30,7 @@ fn try_halt_detection() {
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(
-        response.halt_manager.prev_block_time,
-        genesis_start_timestamp.seconds()
-    );
+    assert_eq!(response.halt_manager.prev_block_time, 0);
     assert!(response.halt_manager.halt_infos.is_empty());
 
     // Test that prev block time is recorded

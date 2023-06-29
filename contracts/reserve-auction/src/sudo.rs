@@ -56,7 +56,9 @@ pub fn sudo_begin_block(deps: DepsMut, env: Env) -> Result<Response, ContractErr
     let current_block_time = env.block.time.seconds();
     let seconds_since_last_block = current_block_time - halt_manager.prev_block_time;
 
-    if seconds_since_last_block >= config.halt_duration_threshold {
+    if halt_manager.prev_block_time > 0
+        && seconds_since_last_block >= config.halt_duration_threshold
+    {
         halt_manager.halt_infos.push(HaltWindow {
             start_time: halt_manager.prev_block_time,
             end_time: current_block_time + config.halt_buffer_duration,

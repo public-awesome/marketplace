@@ -71,6 +71,8 @@ pub fn settle_auction(
         )?;
         response = response.add_event(
             Event::new("postpone-auction")
+                .add_attribute("collection", auction.collection.to_string())
+                .add_attribute("token_id", auction.token_id.to_string())
                 .add_attribute("auction_end_time", new_auction_end_time.to_string()),
         );
         return Ok(response);
@@ -100,8 +102,11 @@ pub fn settle_auction(
     )?;
 
     // Transfer NFT to highest bidder
-    let transfer_msg = transfer_nft(&auction.collection, &auction.token_id, &high_bid.bidder);
-    response = response.add_submessage(transfer_msg);
+    response = response.add_submessage(transfer_nft(
+        &auction.collection,
+        &auction.token_id,
+        &high_bid.bidder,
+    ));
 
     response = response.add_event(
         Event::new("settle-auction")
