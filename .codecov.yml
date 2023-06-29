@@ -10,5 +10,6 @@ coverage:
         target: 90%
 
 ignore:
-  - "contracts/marketplace/testing/.*"
-  - "contracts/reserve-auction/tests/.*"
+  - "contracts/marketplace/src/testing/.*"
+  - "contracts/reserve-auction/src/tests/.*"
+  - "packages/sg-marketplace-common/src/tests/.*"
