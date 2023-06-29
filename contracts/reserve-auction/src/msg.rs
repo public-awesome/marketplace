@@ -1,5 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Coin;
+use sg_marketplace_common::query::QueryOptions;
 
 use crate::state::{Auction, Config, HaltManager};
 
@@ -67,6 +68,19 @@ pub enum ExecuteMsg {
 }
 
 #[cw_serde]
+#[derive(Default)]
+pub struct MinReservePriceOffset {
+    pub denom: String,
+}
+
+#[cw_serde]
+#[derive(Default)]
+pub struct AuctionKeyOffset {
+    pub collection: String,
+    pub token_id: String,
+}
+
+#[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
@@ -75,7 +89,7 @@ pub enum QueryMsg {
     HaltManager {},
     #[returns(CoinsResponse)]
     MinReservePrices {
-        query_options: Option<QueryOptions<String>>,
+        query_options: Option<QueryOptions<MinReservePriceOffset>>,
     },
     #[returns(AuctionResponse)]
     Auction {
@@ -85,25 +99,13 @@ pub enum QueryMsg {
     #[returns(AuctionsResponse)]
     AuctionsBySeller {
         seller: String,
-        query_options: Option<QueryOptions<(String, String)>>,
+        query_options: Option<QueryOptions<AuctionKeyOffset>>,
     },
     #[returns(AuctionsResponse)]
     AuctionsByEndTime {
         end_time: u64,
-        query_options: Option<QueryOptions<(String, String)>>,
+        query_options: Option<QueryOptions<AuctionKeyOffset>>,
     },
-}
-
-/// QueryOptions are used to paginate contract queries
-#[cw_serde]
-#[derive(Default)]
-pub struct QueryOptions<T> {
-    /// Whether to sort items in ascending or descending order
-    pub descending: Option<bool>,
-    /// The key to start the query after
-    pub start_after: Option<T>,
-    // The number of items that will be returned
-    pub limit: Option<u32>,
 }
 
 #[cw_serde]

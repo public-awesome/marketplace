@@ -1,4 +1,4 @@
-use crate::msg::{AuctionsResponse, QueryMsg, QueryOptions};
+use crate::msg::{AuctionKeyOffset, AuctionsResponse, QueryMsg};
 use crate::tests::helpers::auction_functions::place_bid;
 use crate::tests::helpers::constants::{CREATE_AUCTION_FEE, DEFAULT_DURATION, MIN_RESERVE_PRICE};
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
@@ -12,6 +12,7 @@ use crate::tests::{
 };
 
 use cosmwasm_std::coin;
+use sg_marketplace_common::query::QueryOptions;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
@@ -82,10 +83,7 @@ fn try_query_auctions_by_seller() {
 
     let limit: u32 = 3;
     let start_after_auction = &response_1.auctions[3].clone();
-    let start_after = (
-        start_after_auction.collection.to_string(),
-        start_after_auction.token_id.clone(),
-    );
+
     let response_2: AuctionsResponse = router
         .wrap()
         .query_wasm_smart(
@@ -95,7 +93,10 @@ fn try_query_auctions_by_seller() {
                 query_options: Some(QueryOptions {
                     descending: Some(true),
                     limit: Some(limit),
-                    start_after: Some(start_after),
+                    start_after: Some(AuctionKeyOffset {
+                        collection: start_after_auction.collection.to_string(),
+                        token_id: start_after_auction.token_id.clone(),
+                    }),
                 }),
             },
         )
@@ -186,7 +187,7 @@ fn try_query_auctions_by_end_time() {
                 query_options: Some(QueryOptions {
                     descending: None,
                     limit: None,
-                    start_after: Some(("".to_string(), "".to_string())),
+                    start_after: None,
                 }),
             },
         )
@@ -209,7 +210,7 @@ fn try_query_auctions_by_end_time() {
                 query_options: Some(QueryOptions {
                     descending: Some(true),
                     limit: Some(limit),
-                    start_after: Some(("".to_string(), "".to_string())),
+                    start_after: None,
                 }),
             },
         )

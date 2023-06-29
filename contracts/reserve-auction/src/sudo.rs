@@ -142,7 +142,7 @@ pub fn sudo_update_params(
     }
     if let Some(trading_fee_bps) = trading_fee_bps {
         config.trading_fee_pct = bps_to_decimal(trading_fee_bps);
-        event = event.add_attribute("trading_fee_pct", &config.trading_fee_pct.to_string());
+        event = event.add_attribute("trading_fee_pct", config.trading_fee_pct.to_string());
     }
     if let Some(min_bid_increment_bps) = min_bid_increment_bps {
         config.min_bid_increment_pct = bps_to_decimal(min_bid_increment_bps);

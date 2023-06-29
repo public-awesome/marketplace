@@ -106,7 +106,7 @@ pub fn execute_create_auction(
     // Cannot create a duplicate auction for an NFT
     only_no_auction(deps.as_ref(), &collection, token_id)?;
 
-    only_tradable(deps.as_ref(), &env.block, &collection)?;
+    only_tradable(&deps.querier, &env.block, &collection)?;
 
     let mut response = Response::new();
 

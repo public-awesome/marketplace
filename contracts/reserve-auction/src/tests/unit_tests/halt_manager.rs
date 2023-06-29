@@ -1,6 +1,4 @@
-use crate::msg::{
-    AuctionResponse, AuctionsResponse, HaltManagerResponse, QueryMsg, QueryOptions, SudoMsg,
-};
+use crate::msg::{AuctionResponse, AuctionsResponse, HaltManagerResponse, QueryMsg, SudoMsg};
 use crate::tests::helpers::auction_functions::{create_standard_auction, place_bid};
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, DEFAULT_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
@@ -13,6 +11,7 @@ use crate::tests::setup::{
     setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template,
 };
 use cosmwasm_std::{coin, Timestamp};
+use sg_marketplace_common::query::QueryOptions;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
@@ -293,7 +292,7 @@ fn try_postpone_auction() {
                 query_options: Some(QueryOptions {
                     descending: Some(false),
                     limit: Some(100),
-                    start_after: Some(("".to_string(), "".to_string())),
+                    start_after: None,
                 }),
             },
         )
@@ -319,7 +318,7 @@ fn try_postpone_auction() {
                 query_options: Some(QueryOptions {
                     descending: Some(false),
                     limit: Some(100),
-                    start_after: Some(("".to_string(), "".to_string())),
+                    start_after: None,
                 }),
             },
         )

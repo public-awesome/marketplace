@@ -1,4 +1,4 @@
-use crate::msg::{AuctionsResponse, ConfigResponse, QueryMsg, QueryOptions, SudoMsg};
+use crate::msg::{AuctionsResponse, ConfigResponse, QueryMsg, SudoMsg};
 use crate::tests::helpers::auction_functions::place_bid;
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, DEFAULT_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
@@ -17,6 +17,7 @@ use crate::tests::{
 use cosmwasm_std::{coin, Decimal, Uint128};
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_marketplace_common::coin::bps_to_decimal;
+use sg_marketplace_common::query::QueryOptions;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
@@ -127,7 +128,7 @@ fn try_sudo_end_block() {
                 end_time: block_time.seconds(),
                 query_options: Some(QueryOptions {
                     limit: None,
-                    start_after: Some(("".to_string(), "".to_string())),
+                    start_after: None,
                     descending: None,
                 }),
             },
@@ -155,7 +156,7 @@ fn try_sudo_end_block() {
                 end_time: block_time.seconds(),
                 query_options: Some(QueryOptions {
                     limit: None,
-                    start_after: Some(("".to_string(), "".to_string())),
+                    start_after: None,
                     descending: None,
                 }),
             },

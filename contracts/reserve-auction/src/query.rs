@@ -1,12 +1,13 @@
 use crate::msg::{
-    AuctionResponse, AuctionsResponse, CoinsResponse, ConfigResponse, HaltManagerResponse,
-    QueryMsg, QueryOptions,
+    AuctionKeyOffset, AuctionResponse, AuctionsResponse, CoinsResponse, ConfigResponse,
+    HaltManagerResponse, MinReservePriceOffset, QueryMsg,
 };
 use crate::state::{auctions, Auction, HALT_MANAGER};
 use crate::state::{CONFIG, MIN_RESERVE_PRICES};
 
-use cosmwasm_std::{coin, to_binary, Addr, Binary, Coin, Deps, Env, Order, StdResult};
-use cw_storage_plus::{Bound, PrimaryKey};
+use cosmwasm_std::{coin, to_binary, Addr, Binary, Coin, Deps, Env, StdResult};
+use cw_storage_plus::Bound;
+use sg_marketplace_common::query::{unpack_query_options, QueryOptions};
 
 // Query limits
 const DEFAULT_QUERY_LIMIT: u32 = 10;
@@ -59,9 +60,14 @@ pub fn query_halt_manager(deps: Deps) -> StdResult<HaltManagerResponse> {
 
 pub fn query_min_reserve_prices(
     deps: Deps,
-    query_options: QueryOptions<String>,
+    query_options: QueryOptions<MinReservePriceOffset>,
 ) -> StdResult<CoinsResponse> {
-    let (limit, order, min, max) = unpack_query_options(query_options, Bound::exclusive);
+    let (limit, order, min, max) = unpack_query_options(
+        query_options,
+        Box::new(|sa| Bound::exclusive(sa.denom)),
+        DEFAULT_QUERY_LIMIT,
+        MAX_QUERY_LIMIT,
+    );
 
     let coins: Vec<Coin> = MIN_RESERVE_PRICES
         .range(deps.storage, min, max, order)
@@ -85,13 +91,16 @@ pub fn query_auction(
 pub fn query_auctions_by_seller(
     deps: Deps,
     seller: String,
-    query_options: QueryOptions<(String, String)>,
+    query_options: QueryOptions<AuctionKeyOffset>,
 ) -> StdResult<AuctionsResponse> {
     deps.api.addr_validate(&seller)?;
 
-    let (limit, order, min, max) = unpack_query_options(query_options, |sa| {
-        Bound::exclusive((Addr::unchecked(sa.0), sa.1))
-    });
+    let (limit, order, min, max) = unpack_query_options(
+        query_options,
+        Box::new(|sa| Bound::exclusive((Addr::unchecked(sa.collection), sa.token_id))),
+        DEFAULT_QUERY_LIMIT,
+        MAX_QUERY_LIMIT,
+    );
 
     let auctions: Vec<Auction> = auctions()
         .idx
@@ -108,7 +117,7 @@ pub fn query_auctions_by_seller(
 pub fn query_auctions_by_end_time(
     deps: Deps,
     end_time: u64,
-    query_options: QueryOptions<(String, String)>,
+    query_options: QueryOptions<AuctionKeyOffset>,
 ) -> StdResult<AuctionsResponse> {
     let query_options = QueryOptions {
         descending: query_options.descending,
@@ -117,12 +126,17 @@ pub fn query_auctions_by_end_time(
             query_options
                 .start_after
                 .map_or((end_time, (Addr::unchecked(""), "".to_string())), |sa| {
-                    (end_time, (Addr::unchecked(sa.0), sa.1))
+                    (end_time, (Addr::unchecked(sa.collection), sa.token_id))
                 }),
         ),
     };
 
-    let (limit, order, min, max) = unpack_query_options(query_options, Bound::exclusive);
+    let (limit, order, min, max) = unpack_query_options(
+        query_options,
+        Box::new(Bound::exclusive),
+        DEFAULT_QUERY_LIMIT,
+        MAX_QUERY_LIMIT,
+    );
 
     let max = max.unwrap_or(Bound::exclusive((
         u64::MAX,
@@ -138,33 +152,4 @@ pub fn query_auctions_by_end_time(
         .collect::<StdResult<_>>()?;
 
     Ok(AuctionsResponse { auctions })
-}
-
-pub fn unpack_query_options<'a, T: PrimaryKey<'a>, U>(
-    query_options: QueryOptions<U>,
-    start_after_fn: fn(U) -> Bound<'a, T>,
-) -> (usize, Order, Option<Bound<'a, T>>, Option<Bound<'a, T>>) {
-    let limit = query_options
-        .limit
-        .unwrap_or(DEFAULT_QUERY_LIMIT)
-        .min(MAX_QUERY_LIMIT) as usize;
-
-    let mut order = Order::Ascending;
-    if let Some(_descending) = query_options.descending {
-        if _descending {
-            order = Order::Descending;
-        }
-    };
-
-    let (mut min, mut max) = (None, None);
-    let mut bound = None;
-    if let Some(_start_after) = query_options.start_after {
-        bound = Some(start_after_fn(_start_after));
-    };
-    match order {
-        Order::Ascending => min = bound,
-        Order::Descending => max = bound,
-    };
-
-    (limit, order, min, max)
 }

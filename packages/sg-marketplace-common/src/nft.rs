@@ -1,5 +1,5 @@
 use cosmwasm_std::{
-    to_binary, Addr, Api, BlockInfo, Deps, Empty, MessageInfo, QuerierWrapper, StdError, StdResult,
+    to_binary, Addr, Api, BlockInfo, Empty, MessageInfo, QuerierWrapper, StdError, StdResult,
     WasmMsg,
 };
 use cw721::{ApprovalResponse, Cw721ExecuteMsg, OwnerOfResponse};
@@ -62,28 +62,27 @@ pub fn has_approval(
 
 /// Checks that the collection is tradable
 pub fn only_tradable(
-    deps: Deps,
+    querier: &QuerierWrapper,
     block: &BlockInfo,
     collection: &Addr,
-) -> Result<bool, MarketplaceCommonError> {
-    let res: Result<CollectionInfoResponse, StdError> = deps
-        .querier
-        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {});
+) -> Result<(), MarketplaceCommonError> {
+    let response: Result<CollectionInfoResponse, StdError> =
+        querier.query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {});
 
-    match res {
+    match response {
         Ok(collection_info) => match collection_info.start_trading_time {
             Some(start_trading_time) => {
                 if start_trading_time > block.time {
                     Err(MarketplaceCommonError::CollectionNotTradable {})
                 } else {
-                    Ok(true)
+                    Ok(())
                 }
             }
             // not set by collection, so tradable
-            None => Ok(true),
+            None => Ok(()),
         },
         // not supported by collection
-        Err(_) => Ok(true),
+        Err(_) => Ok(()),
     }
 }
 

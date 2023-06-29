@@ -1,7 +1,7 @@
 use cosmwasm_std::{
-    testing::{mock_dependencies, mock_info},
-    to_binary, Addr, ContractResult, Decimal, Querier, QuerierResult, QuerierWrapper, StdError,
-    SystemResult,
+    testing::{mock_dependencies, mock_env, mock_info},
+    to_binary, Addr, Binary, ContractResult, Decimal, Querier, QuerierResult, QuerierWrapper,
+    StdError, SystemError, SystemResult, Timestamp,
 };
 use cw721::OwnerOfResponse;
 use mockall::*;
@@ -9,7 +9,9 @@ use sg721::{RoyaltyInfo, RoyaltyInfoResponse};
 use sg721_base::msg::CollectionInfoResponse;
 use test_suite::common_setup::templates::base_minter_with_sg721;
 
-use crate::nft::{has_approval, load_collection_royalties, only_owner, owner_of, transfer_nft};
+use crate::nft::{
+    has_approval, load_collection_royalties, only_owner, only_tradable, owner_of, transfer_nft,
+};
 
 #[test]
 fn try_transfer_nft() {
@@ -141,6 +143,122 @@ fn try_has_approval() {
             &token_id.to_string(),
             None
         )
+    );
+}
+
+#[test]
+fn try_only_tradable() {
+    mock! {
+        QuerierStruct {}
+        impl Querier for QuerierStruct {
+            fn raw_query(&self, bin_request: &[u8]) -> QuerierResult;
+        }
+    }
+
+    let collection = Addr::unchecked("collection");
+
+    let env = mock_env();
+    let mut mock = MockQuerierStruct::new();
+
+    // CollectionInfo query error response is ok
+    let return_value = SystemResult::Err(SystemError::InvalidResponse {
+        error: "error".to_string(),
+        response: Binary::from_base64("").unwrap(),
+    });
+    mock.expect_raw_query()
+        .with(predicate::always())
+        .times(1)
+        .returning(move |_| return_value.clone());
+
+    let querier_wrapper = QuerierWrapper::new(&mock);
+
+    assert_eq!(
+        Ok(()),
+        only_tradable(&querier_wrapper, &env.block, &collection)
+    );
+
+    // No start trading time set is ok
+    let return_value = SystemResult::Ok(ContractResult::Ok(
+        to_binary(&CollectionInfoResponse {
+            creator: "creator".to_string(),
+            description: "description".to_string(),
+            image: "image".to_string(),
+            external_link: None,
+            explicit_content: None,
+            start_trading_time: None,
+            royalty_info: Some(RoyaltyInfoResponse {
+                payment_address: "payment_address".to_string(),
+                share: Decimal::percent(200),
+            }),
+        })
+        .unwrap(),
+    ));
+    mock.expect_raw_query()
+        .with(predicate::always())
+        .times(1)
+        .returning(move |_| return_value.clone());
+
+    let querier_wrapper = QuerierWrapper::new(&mock);
+
+    assert_eq!(
+        Ok(()),
+        only_tradable(&querier_wrapper, &env.block, &collection)
+    );
+
+    // Start trading time in the past is ok
+    let return_value = SystemResult::Ok(ContractResult::Ok(
+        to_binary(&CollectionInfoResponse {
+            creator: "creator".to_string(),
+            description: "description".to_string(),
+            image: "image".to_string(),
+            external_link: None,
+            explicit_content: None,
+            start_trading_time: Some(Timestamp::from_seconds(0)),
+            royalty_info: Some(RoyaltyInfoResponse {
+                payment_address: "payment_address".to_string(),
+                share: Decimal::percent(200),
+            }),
+        })
+        .unwrap(),
+    ));
+    mock.expect_raw_query()
+        .with(predicate::always())
+        .times(1)
+        .returning(move |_| return_value.clone());
+
+    let querier_wrapper = QuerierWrapper::new(&mock);
+
+    assert_eq!(
+        Ok(()),
+        only_tradable(&querier_wrapper, &env.block, &collection)
+    );
+
+    // Start trading time in the future throws an error
+    let return_value = SystemResult::Ok(ContractResult::Ok(
+        to_binary(&CollectionInfoResponse {
+            creator: "creator".to_string(),
+            description: "description".to_string(),
+            image: "image".to_string(),
+            external_link: None,
+            explicit_content: None,
+            start_trading_time: Some(env.block.time.plus_seconds(1)),
+            royalty_info: Some(RoyaltyInfoResponse {
+                payment_address: "payment_address".to_string(),
+                share: Decimal::percent(200),
+            }),
+        })
+        .unwrap(),
+    ));
+    mock.expect_raw_query()
+        .with(predicate::always())
+        .times(1)
+        .returning(move |_| return_value.clone());
+
+    let querier_wrapper = QuerierWrapper::new(&mock);
+
+    assert_eq!(
+        Err(crate::MarketplaceCommonError::CollectionNotTradable {}),
+        only_tradable(&querier_wrapper, &env.block, &collection)
     );
 }
 
