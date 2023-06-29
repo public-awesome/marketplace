@@ -1,8 +1,12 @@
+use cosmwasm_std::StdError;
 use thiserror::Error;
 
-#[derive(Error, Debug, PartialEq, Eq)]
+#[derive(Error, Debug, PartialEq)]
 pub enum MarketplaceCommonError {
-    #[error("Invalid fair burn : {0}")]
+    #[error("{0}")]
+    Std(#[from] StdError),
+
+    #[error("Invalid fair burn: {0}")]
     InvalidFairBurn(String),
 
     #[error("Zero amount bank send")]

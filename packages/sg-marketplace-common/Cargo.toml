@@ -1,12 +1,15 @@
 [package]
-name        = "sg-marketplace-common"
-version     = "1.0.0"
-authors     = ["Shane Vitarana <s@noreply.publicawesome.com>"]
+name = "sg-marketplace-common"
+version = "1.0.0"
+authors = [
+  "Shane Vitarana <s@noreply.publicawesome.com>",
+  "Tasio Victoria <tasiovictoria@ujulabs.com>",
+]
 description = "Common functionality used in Marketplace contracts"
-edition     = { workspace = true }
-homepage    = { workspace = true }
-repository  = { workspace = true }
-license     = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
