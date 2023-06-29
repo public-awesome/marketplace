@@ -460,6 +460,7 @@
             ]
           },
           "limit": {
+            "description": "The number of items that will be returned",
             "type": [
               "integer",
               "null"
@@ -493,6 +494,7 @@
             ]
           },
           "limit": {
+            "description": "The number of items that will be returned",
             "type": [
               "integer",
               "null"

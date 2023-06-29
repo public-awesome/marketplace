@@ -72,7 +72,7 @@ pub fn settle_auction(
         response = response.add_event(
             Event::new("postpone-auction")
                 .add_attribute("collection", auction.collection.to_string())
-                .add_attribute("token_id", auction.token_id.to_string())
+                .add_attribute("token_id", auction.token_id)
                 .add_attribute("auction_end_time", new_auction_end_time.to_string()),
         );
         return Ok(response);

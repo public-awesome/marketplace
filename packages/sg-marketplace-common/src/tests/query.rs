@@ -21,9 +21,8 @@ fn try_unpack_query_options() {
         Order::Ascending => panic!("Order should be descending"),
         Order::Descending => (),
     }
-    match min {
-        Some(_) => panic!("Min should be None"),
-        None => {}
+    if min.is_some() {
+        panic!("Min should be None")
     }
     match max {
         Some(_) => {}
