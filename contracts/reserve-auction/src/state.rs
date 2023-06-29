@@ -52,7 +52,7 @@ impl Config {
     }
 }
 
-pub const CONFIG: Item<Config> = Item::new("c");
+pub const CONFIG: Item<Config> = Item::new("cfg");
 
 // A map of acceptable denoms to their minimum reserve price.
 // Denoms not found in the Map are not accepted.
