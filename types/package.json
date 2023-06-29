@@ -1,12 +1,12 @@
 {
   "name": "@stargazezone/marketplace-types",
-  "version": "1.5.3",
+  "version": "1.0.0",
   "description": "Types for Stargaze Marketplace",
   "main": "build/codegen.js",
   "scripts": {
     "prepare": "tsc",
     "build": "tsc",
-    "codegen": "ts-node codegen.ts",
+    "codegen": "ts-node src/codegen.ts",
     "publish": "npm run build && npm run codegen && npm publish --access public"
   },
   "keywords": [],
@@ -24,7 +24,7 @@
     "@cosmjs/proto-signing": "^0.30.1",
     "@cosmjs/stargate": "^0.30.1",
     "@cosmjs/tendermint-rpc": "^0.30.1",
-    "@cosmwasm/ts-codegen": "^0.28.0",
+    "@cosmwasm/ts-codegen": "^0.26.0",
     "cosmjs-types": "^0.7.2",
     "cosmwasm": "^1.1.1",
     "ts-node": "^10.9.1",
