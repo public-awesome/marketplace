@@ -12,20 +12,18 @@ use crate::tests::{
             auction_contract, create_standard_auction, instantiate_auction, place_bid,
             query_auction,
         },
+        constants::TRADING_FEE_BPS,
         nft_functions::{approve, mint, query_owner_of},
         utils::{assert_error, calc_min_bid_increment},
     },
-    setup::{
-        setup_auctions::setup_reserve_auction,
-        setup_marketplace::{setup_marketplace, TRADING_FEE_BPS},
-        setup_minters::standard_minter_template,
-    },
+    setup::{setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template},
 };
 use crate::ContractError;
 
 use cosmwasm_std::{coin, Decimal, StdError, Uint128};
 use cw_multi_test::Executor;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
+use sg_marketplace_common::coin::bps_to_decimal;
 use sg_multi_test::StargazeApp;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
@@ -37,11 +35,10 @@ fn try_instantiate() {
     let vt = standard_minter_template(1);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator).unwrap();
 
     let msg = InstantiateMsg {
         fair_burn: fair_burn.to_string(),
-        marketplace: marketplace.to_string(),
+        trading_fee_bps: 400,
         min_duration: 120,
         max_duration: 180,
         min_bid_increment_bps: 10,
@@ -63,8 +60,12 @@ fn try_instantiate() {
     assert_eq!(&res.config.create_auction_fee, &msg.create_auction_fee);
     assert_eq!(&res.config.min_duration, &msg.min_duration);
     assert_eq!(
+        &res.config.trading_fee_pct,
+        bps_to_decimal(msg.trading_fee_bps)
+    );
+    assert_eq!(
         &res.config.min_bid_increment_pct,
-        &Decimal::percent(msg.min_bid_increment_bps)
+        bps_to_decimal(msg.min_bid_increment_bps)
     );
     assert_eq!(&res.config.extend_duration, &msg.extend_duration);
 }
@@ -74,9 +75,7 @@ fn try_create_auction() {
     let vt = standard_minter_template(1);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -304,9 +303,7 @@ fn try_update_reserve_price() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -409,9 +406,7 @@ fn try_cancel_auction() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -516,9 +511,7 @@ fn try_place_bid() {
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let second_bidder = setup_addtl_account(&mut router, "second_bidder", INITIAL_BALANCE).unwrap();
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -693,9 +686,7 @@ fn try_settle_auction_with_bids() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -870,9 +861,7 @@ fn try_settle_auction_with_no_bids() {
     let vt = standard_minter_template(1);
     let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();

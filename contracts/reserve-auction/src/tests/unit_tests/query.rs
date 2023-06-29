@@ -8,10 +8,7 @@ use crate::tests::{
         auction_functions::create_standard_auction,
         nft_functions::{approve, mint},
     },
-    setup::{
-        setup_auctions::setup_reserve_auction, setup_marketplace::setup_marketplace,
-        setup_minters::standard_minter_template,
-    },
+    setup::{setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template},
 };
 
 use cosmwasm_std::coin;
@@ -23,9 +20,7 @@ fn try_query_auctions_by_seller() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
@@ -117,9 +112,7 @@ fn try_query_auctions_by_end_time() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 

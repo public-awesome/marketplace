@@ -10,8 +10,7 @@ use crate::tests::helpers::nft_functions::{approve, mint};
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
 use crate::tests::setup::setup_fair_burn::setup_fair_burn;
 use crate::tests::setup::{
-    setup_auctions::setup_reserve_auction, setup_marketplace::setup_marketplace,
-    setup_minters::standard_minter_template,
+    setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template,
 };
 use cosmwasm_std::{coin, Timestamp};
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
@@ -22,14 +21,12 @@ fn try_halt_detection() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
 
     let genesis_start_timestamp = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
     setup_block_time(&mut router, genesis_start_timestamp.nanos(), None);
 
     // Test that halt manager is instantiated with contract
-    let reserve_auction =
-        setup_reserve_auction(&mut router, creator, fair_burn, marketplace).unwrap();
+    let reserve_auction = setup_reserve_auction(&mut router, creator, fair_burn).unwrap();
     let response: HaltManagerResponse = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
@@ -116,7 +113,6 @@ fn try_postpone_auction() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
 
@@ -127,8 +123,7 @@ fn try_postpone_auction() {
     let next_block_timestamp = genesis_timestamp.plus_seconds(DEFAULT_DURATION);
     setup_block_time(&mut router, next_block_timestamp.nanos(), None);
 
-    let reserve_auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
 
     /*
        Halt Window

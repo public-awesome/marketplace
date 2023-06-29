@@ -29,7 +29,6 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-sg-marketplace        = { workspace = true }
 stargaze-fair-burn    = { workspace = true }
 cosmwasm-schema       = { workspace = true }
 cosmwasm-std          = { workspace = true }

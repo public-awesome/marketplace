@@ -1,7 +1,7 @@
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, EXTEND_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
     HALT_POSTPONE_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MAX_DURATION, MIN_BID_INCREMENT_BPS,
-    MIN_DURATION, MIN_RESERVE_PRICE,
+    MIN_DURATION, MIN_RESERVE_PRICE, TRADING_FEE_BPS,
 };
 use crate::{msg::InstantiateMsg, ContractError};
 
@@ -19,12 +19,11 @@ pub fn setup_reserve_auction(
     router: &mut StargazeApp,
     auction_admin: Addr,
     fair_burn: Addr,
-    marketplace: Addr,
 ) -> Result<Addr, ContractError> {
     let reserve_auction_id = router.store_code(contract_reserve_auction());
     let msg = InstantiateMsg {
         fair_burn: fair_burn.to_string(),
-        marketplace: marketplace.to_string(),
+        trading_fee_bps: TRADING_FEE_BPS,
         min_duration: MIN_DURATION,
         max_duration: MAX_DURATION,
         min_bid_increment_bps: MIN_BID_INCREMENT_BPS,

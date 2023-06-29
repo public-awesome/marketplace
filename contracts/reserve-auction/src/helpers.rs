@@ -1,15 +1,12 @@
-use crate::state::{auctions, Auction, Config, HaltManager, MIN_RESERVE_PRICES};
-use crate::ContractError;
-
-use cosmwasm_std::{
-    coin, ensure, Addr, Coin, Deps, DepsMut, Event, QuerierWrapper, StdResult, Storage, Timestamp,
-};
-use sg_marketplace::msg::{ParamsResponse, QueryMsg as MarketplaceQueryMsg};
-use sg_marketplace::state::SudoParams;
+use cosmwasm_std::{coin, ensure, Addr, Coin, Deps, DepsMut, Event, Storage, Timestamp};
 use sg_marketplace_common::{
-    calculate_nft_sale_fees, load_collection_royalties, payout_nft_sale_fees, transfer_nft,
+    nft::{load_collection_royalties, transfer_nft},
+    sale::payout_nft_sale_fees,
 };
 use sg_std::Response;
+
+use crate::state::{auctions, Auction, Config, HaltManager, MIN_RESERVE_PRICES};
+use crate::ContractError;
 
 pub fn only_no_auction(deps: Deps, collection: &Addr, token_id: &str) -> Result<(), ContractError> {
     if auctions()
@@ -22,15 +19,6 @@ pub fn only_no_auction(deps: Deps, collection: &Addr, token_id: &str) -> Result<
         });
     }
     Ok(())
-}
-
-pub fn load_marketplace_params(
-    querier: &QuerierWrapper,
-    marketplace: &Addr,
-) -> StdResult<SudoParams> {
-    let marketplace_params: ParamsResponse =
-        querier.query_wasm_smart(marketplace, &MarketplaceQueryMsg::Params {})?;
-    Ok(marketplace_params.params)
 }
 
 pub fn validate_reserve_price(
@@ -97,19 +85,19 @@ pub fn settle_auction(
     // High bid must exist if end time exists
     let high_bid = auction.high_bid.unwrap();
 
-    let marketplace_params = load_marketplace_params(&deps.querier, &config.marketplace)?;
     let royalty_info = load_collection_royalties(&deps.querier, deps.api, &auction.collection)?;
 
-    let tx_fees = calculate_nft_sale_fees(
+    (_, response) = payout_nft_sale_fees(
         &high_bid.coin,
-        marketplace_params.trading_fee_percent,
-        auction.seller,
+        &auction.seller,
+        &config.fair_burn,
         None,
+        None,
+        config.trading_fee_pct,
         None,
         royalty_info,
+        response,
     )?;
-
-    response = payout_nft_sale_fees(&config.fair_burn, tx_fees, None, response)?;
 
     // Transfer NFT to highest bidder
     let transfer_msg = transfer_nft(&auction.collection, &auction.token_id, &high_bid.bidder);

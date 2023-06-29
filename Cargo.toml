@@ -52,7 +52,7 @@ cute          = "0.3.0"
 codegen-units = 1
 incremental   = false
 
-[profile.release.package.sg-reserve-auction]
+[profile.release.package.stargaze-reserve-auction]
 codegen-units = 1
 incremental   = false
 

@@ -7,8 +7,8 @@ use crate::state::{Auction, Config, HaltManager};
 pub struct InstantiateMsg {
     // The address of the fair burn contract
     pub fair_burn: String,
-    // The address of the marketplace contract
-    pub marketplace: String,
+    // The number of basis points that is fair burned on each settled auction
+    pub trading_fee_bps: u64,
     // Each bid must be some number of basis points greater than the previous bid
     pub min_bid_increment_bps: u64,
     // The minimum duration of an auction
@@ -137,9 +137,9 @@ pub enum SudoMsg {
     EndBlock {},   // Is called by x/cron module EndBlocker
     UpdateParams {
         fair_burn: Option<String>,
-        marketplace: Option<String>,
-        min_duration: Option<u64>,
+        trading_fee_bps: Option<u64>,
         min_bid_increment_bps: Option<u64>,
+        min_duration: Option<u64>,
         extend_duration: Option<u64>,
         create_auction_fee: Option<Coin>,
         max_auctions_to_settle_per_block: Option<u64>,

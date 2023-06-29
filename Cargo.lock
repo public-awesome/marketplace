@@ -1631,7 +1631,6 @@ dependencies = [
  "regex",
  "schemars",
  "serde",
- "sg-marketplace",
  "sg-marketplace-common",
  "sg-multi-test",
  "sg-std",

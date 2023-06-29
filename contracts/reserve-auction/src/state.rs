@@ -2,14 +2,13 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coin, ensure, Addr, Coin, Decimal, Storage, Timestamp, Uint128};
 use cw_storage_macro::index_list;
 use cw_storage_plus::{IndexedMap, Item, Map, MultiIndex};
-use std::cmp::max;
 
 use crate::ContractError;
 
 #[cw_serde]
 pub struct Config {
     pub fair_burn: Addr,
-    pub marketplace: Addr,
+    pub trading_fee_pct: Decimal,
     pub min_bid_increment_pct: Decimal,
     pub min_duration: u64,
     pub max_duration: u64,
@@ -36,7 +35,7 @@ impl Config {
             )
         );
         ensure!(
-            self.min_bid_increment_pct < Decimal::percent(10000),
+            self.min_bid_increment_pct < Decimal::one(),
             ContractError::InvalidConfig(
                 "min_bid_increment_pct must be less than 100%".to_string(),
             )
@@ -85,12 +84,10 @@ impl Auction {
 
     pub fn min_bid_coin(&self, min_bid_increment_pct: Decimal) -> Coin {
         let amount = match &self.high_bid {
-            Some(high_bid) => {
-                let next_min_bid = high_bid.coin.amount
-                    * (Decimal::percent(10000) + min_bid_increment_pct)
-                    / Uint128::from(100u128);
-                max(next_min_bid, high_bid.coin.amount + Uint128::one())
-            }
+            Some(high_bid) => high_bid
+                .coin
+                .amount
+                .mul_ceil(Decimal::one() + min_bid_increment_pct),
             None => self.reserve_price.amount,
         };
         coin(amount.u128(), self.denom())

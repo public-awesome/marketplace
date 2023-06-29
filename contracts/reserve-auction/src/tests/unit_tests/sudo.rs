@@ -3,7 +3,7 @@ use crate::tests::helpers::auction_functions::place_bid;
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, DEFAULT_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
     HALT_POSTPONE_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MIN_BID_INCREMENT_BPS, MIN_DURATION,
-    MIN_RESERVE_PRICE,
+    MIN_RESERVE_PRICE, TRADING_FEE_BPS,
 };
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
 use crate::tests::setup::setup_fair_burn::setup_fair_burn;
@@ -12,14 +12,11 @@ use crate::tests::{
         auction_functions::create_standard_auction,
         nft_functions::{approve, mint, query_owner_of},
     },
-    setup::{
-        setup_auctions::setup_reserve_auction,
-        setup_marketplace::{setup_marketplace, TRADING_FEE_BPS},
-        setup_minters::standard_minter_template,
-    },
+    setup::{setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template},
 };
 use cosmwasm_std::{coin, Decimal, Uint128};
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
+use sg_marketplace_common::coin::bps_to_decimal;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
@@ -28,9 +25,7 @@ fn try_sudo_begin_block() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction =
-        setup_reserve_auction(&mut router, creator, fair_burn, marketplace).unwrap();
+    let reserve_auction = setup_reserve_auction(&mut router, creator, fair_burn).unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
@@ -44,9 +39,7 @@ fn try_sudo_end_block() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction =
-        setup_reserve_auction(&mut router, creator.clone(), fair_burn, marketplace).unwrap();
+    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
@@ -259,15 +252,13 @@ fn try_sudo_update_params() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction =
-        setup_reserve_auction(&mut router, creator, fair_burn, marketplace).unwrap();
+    let reserve_auction = setup_reserve_auction(&mut router, creator, fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
 
     let delta: u64 = 1;
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: Some(minter.to_string()),
-        marketplace: Some(minter.to_string()),
+        trading_fee_bps: Some(TRADING_FEE_BPS + delta),
         min_duration: Some(MIN_DURATION + delta),
         min_bid_increment_bps: Some(MIN_BID_INCREMENT_BPS + delta),
         extend_duration: Some(MIN_DURATION + delta),
@@ -296,11 +287,14 @@ fn try_sudo_update_params() {
     let config = response.config;
 
     assert_eq!(config.fair_burn, minter);
-    assert_eq!(config.marketplace, minter);
+    assert_eq!(
+        config.trading_fee_pct,
+        bps_to_decimal(TRADING_FEE_BPS + delta)
+    );
     assert_eq!(config.min_duration, MIN_DURATION + delta);
     assert_eq!(
         config.min_bid_increment_pct,
-        Decimal::percent(MIN_BID_INCREMENT_BPS + delta)
+        bps_to_decimal(MIN_BID_INCREMENT_BPS + delta)
     );
     assert_eq!(config.extend_duration, MIN_DURATION + delta);
     assert_eq!(
@@ -326,7 +320,7 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: None,
-        marketplace: None,
+        trading_fee_bps: None,
         min_duration: Some(0u64),
         min_bid_increment_bps: None,
         extend_duration: None,
@@ -344,7 +338,7 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: None,
-        marketplace: None,
+        trading_fee_bps: None,
         min_duration: None,
         min_bid_increment_bps: Some(0u64),
         extend_duration: None,
@@ -362,7 +356,7 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: None,
-        marketplace: None,
+        trading_fee_bps: None,
         min_duration: None,
         min_bid_increment_bps: Some(10000u64),
         extend_duration: None,
@@ -380,7 +374,7 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: None,
-        marketplace: None,
+        trading_fee_bps: None,
         min_duration: None,
         min_bid_increment_bps: None,
         extend_duration: Some(0u64),
