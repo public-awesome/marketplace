@@ -1,4 +1,4 @@
-use crate::msg::{AuctionsResponse, ConfigResponse, QueryMsg, SudoMsg};
+use crate::msg::{AuctionsResponse, CoinsResponse, ConfigResponse, QueryMsg, SudoMsg};
 use crate::tests::helpers::auction_functions::place_bid;
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, DEFAULT_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
@@ -390,4 +390,86 @@ fn try_sudo_update_params() {
         response.unwrap_err().to_string(),
         "InvalidConfig: extend_duration must be greater than zero"
     );
+}
+
+#[test]
+fn try_sudo_min_reserve_prices() {
+    let vt = standard_minter_template(1000);
+    let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let reserve_auction = setup_reserve_auction(&mut router, creator, fair_burn).unwrap();
+
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+
+    let coins_response: CoinsResponse = router
+        .wrap()
+        .query_wasm_smart(
+            reserve_auction.clone(),
+            &QueryMsg::MinReservePrices {
+                query_options: None,
+            },
+        )
+        .unwrap();
+
+    // Duplicate denom throws error
+    let set_min_reserve_prices_msg = SudoMsg::SetMinReservePrices {
+        min_reserve_prices: vec![coins_response.coins[0].clone()],
+    };
+    let response = router.wasm_sudo(reserve_auction.clone(), &set_min_reserve_prices_msg);
+    assert_eq!(
+        response.unwrap_err().to_string(),
+        "InvalidInput: found duplicate denom"
+    );
+
+    // New denoms can be added
+    let new_coins = vec![coin(3000000, "uosmo"), coin(4000000, "ujuno")];
+    let set_min_reserve_prices_msg = SudoMsg::SetMinReservePrices {
+        min_reserve_prices: new_coins.clone(),
+    };
+    let response = router.wasm_sudo(reserve_auction.clone(), &set_min_reserve_prices_msg);
+    assert!(response.is_ok());
+
+    let next_coins_response: CoinsResponse = router
+        .wrap()
+        .query_wasm_smart(
+            reserve_auction.clone(),
+            &QueryMsg::MinReservePrices {
+                query_options: None,
+            },
+        )
+        .unwrap();
+
+    let mut expected_coins = coins_response.coins.clone();
+    expected_coins.extend(new_coins);
+    assert_eq!(next_coins_response.coins.len(), expected_coins.len());
+
+    // Removing non-existent denoms throws error
+    let unset_min_reserve_prices_msg = SudoMsg::UnsetMinReservePrices {
+        denoms: vec!["uusd".to_string()],
+    };
+    let response = router.wasm_sudo(reserve_auction.clone(), &unset_min_reserve_prices_msg);
+    assert_eq!(
+        response.unwrap_err().to_string(),
+        "InvalidInput: denom not found"
+    );
+
+    // Removing existent denoms is ok
+    let remove_coins = vec!["uosmo".to_string(), "ujuno".to_string()];
+    let unset_min_reserve_prices_msg = SudoMsg::UnsetMinReservePrices {
+        denoms: remove_coins,
+    };
+    let response = router.wasm_sudo(reserve_auction.clone(), &unset_min_reserve_prices_msg);
+    assert!(response.is_ok());
+
+    let next_coins_response: CoinsResponse = router
+        .wrap()
+        .query_wasm_smart(
+            reserve_auction.clone(),
+            &QueryMsg::MinReservePrices {
+                query_options: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(next_coins_response.coins.len(), coins_response.coins.len());
 }
