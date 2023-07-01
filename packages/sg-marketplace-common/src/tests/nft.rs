@@ -257,7 +257,7 @@ fn try_only_tradable() {
     let querier_wrapper = QuerierWrapper::new(&mock);
 
     assert_eq!(
-        Err(crate::MarketplaceCommonError::CollectionNotTradable {}),
+        Err(crate::MarketplaceStdError::CollectionNotTradable {}),
         only_tradable(&querier_wrapper, &env.block, &collection)
     );
 }

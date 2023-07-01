@@ -8,8 +8,8 @@ use crate::ContractError;
 #[cw_serde]
 pub struct Config {
     pub fair_burn: Addr,
-    pub trading_fee_pct: Decimal,
-    pub min_bid_increment_pct: Decimal,
+    pub trading_fee_percent: Decimal,
+    pub min_bid_increment_percent: Decimal,
     pub min_duration: u64,
     pub max_duration: u64,
     pub extend_duration: u64,
@@ -29,15 +29,15 @@ impl Config {
 
     fn validate(&self) -> Result<(), ContractError> {
         ensure!(
-            !self.min_bid_increment_pct.is_zero(),
+            !self.min_bid_increment_percent.is_zero(),
             ContractError::InvalidConfig(
-                "min_bid_increment_pct must be greater than zero".to_string(),
+                "min_bid_increment_percent must be greater than zero".to_string(),
             )
         );
         ensure!(
-            self.min_bid_increment_pct < Decimal::one(),
+            self.min_bid_increment_percent < Decimal::one(),
             ContractError::InvalidConfig(
-                "min_bid_increment_pct must be less than 100%".to_string(),
+                "min_bid_increment_percent must be less than 100%".to_string(),
             )
         );
         ensure!(
@@ -82,12 +82,12 @@ impl Auction {
         self.reserve_price.denom.clone()
     }
 
-    pub fn min_bid_coin(&self, min_bid_increment_pct: Decimal) -> Coin {
+    pub fn min_bid_coin(&self, min_bid_increment_percent: Decimal) -> Coin {
         let amount = match &self.high_bid {
             Some(high_bid) => high_bid
                 .coin
                 .amount
-                .mul_ceil(Decimal::one() + min_bid_increment_pct),
+                .mul_ceil(Decimal::one() + min_bid_increment_percent),
             None => self.reserve_price.amount,
         };
         coin(amount.u128(), self.denom())

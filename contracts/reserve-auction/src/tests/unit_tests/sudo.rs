@@ -1,9 +1,12 @@
-use crate::msg::{AuctionsResponse, CoinsResponse, ConfigResponse, QueryMsg, SudoMsg};
+use std::str::FromStr;
+
+use crate::msg::{QueryMsg, SudoMsg};
+use crate::state::{Auction, Config};
 use crate::tests::helpers::auction_functions::place_bid;
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, DEFAULT_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
-    HALT_POSTPONE_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MIN_BID_INCREMENT_BPS, MIN_DURATION,
-    MIN_RESERVE_PRICE, TRADING_FEE_BPS,
+    HALT_POSTPONE_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MIN_BID_INCREMENT_PCT, MIN_DURATION,
+    MIN_RESERVE_PRICE, TRADING_FEE_PCT,
 };
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
 use crate::tests::setup::setup_fair_burn::setup_fair_burn;
@@ -14,7 +17,8 @@ use crate::tests::{
     },
     setup::{setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template},
 };
-use cosmwasm_std::{coin, Decimal, Uint128};
+
+use cosmwasm_std::{coin, Coin, Decimal, Uint128};
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_marketplace_common::coin::bps_to_decimal;
 use sg_marketplace_common::query::QueryOptions;
@@ -98,7 +102,7 @@ fn try_sudo_end_block() {
         .find(|&e| e.ty == "wasm-sudo-end-block")
         .unwrap();
 
-    let response_1: AuctionsResponse = router
+    let auctions_1: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -108,7 +112,7 @@ fn try_sudo_end_block() {
             },
         )
         .unwrap();
-    assert_eq!(response_1.auctions.len(), num_auctions as usize);
+    assert_eq!(auctions_1.len(), num_auctions as usize);
 
     // Test end block removes auctions with bids that have ended
     let num_remove_auctions: u64 = 9;
@@ -120,7 +124,7 @@ fn try_sudo_end_block() {
     let response = router.wasm_sudo(reserve_auction.clone(), &end_block_msg);
     assert!(response.is_ok());
 
-    let response_2: AuctionsResponse = router
+    let auctions_2: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -135,7 +139,7 @@ fn try_sudo_end_block() {
         )
         .unwrap();
     assert_eq!(
-        response_2.auctions.len(),
+        auctions_2.len(),
         num_auctions as usize - num_remove_auctions as usize
     );
 
@@ -148,7 +152,7 @@ fn try_sudo_end_block() {
     let sudo_response = router.wasm_sudo(reserve_auction.clone(), &end_block_msg);
     assert!(sudo_response.is_ok());
 
-    let response_3: AuctionsResponse = router
+    let auctions_3: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -162,7 +166,7 @@ fn try_sudo_end_block() {
             },
         )
         .unwrap();
-    assert_eq!(response_3.auctions.len(), 0);
+    assert_eq!(auctions_3.len(), 0);
 
     // check that fair burn was paid
     let fair_burn_event = sudo_response
@@ -191,10 +195,9 @@ fn try_sudo_end_block() {
         .parse::<u64>()
         .unwrap();
 
-    let trading_fee_percent = Decimal::percent(TRADING_FEE_BPS) / Uint128::from(100u128);
     let protocol_fee = Uint128::from(burn_amount + dist_amount);
     assert_eq!(
-        Uint128::from(MIN_RESERVE_PRICE) * trading_fee_percent,
+        Uint128::from(MIN_RESERVE_PRICE) * Decimal::from_str(TRADING_FEE_PCT).unwrap(),
         protocol_fee
     );
 
@@ -257,11 +260,14 @@ fn try_sudo_update_params() {
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
 
     let delta: u64 = 1;
+    let delta_decimal = bps_to_decimal(delta);
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: Some(minter.to_string()),
-        trading_fee_bps: Some(TRADING_FEE_BPS + delta),
+        trading_fee_percent: Some(Decimal::from_str(TRADING_FEE_PCT).unwrap() + delta_decimal),
         min_duration: Some(MIN_DURATION + delta),
-        min_bid_increment_bps: Some(MIN_BID_INCREMENT_BPS + delta),
+        min_bid_increment_percent: Some(
+            Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap() + delta_decimal,
+        ),
         extend_duration: Some(MIN_DURATION + delta),
         create_auction_fee: Some(coin(
             CREATE_AUCTION_FEE.u128() + Uint128::from(delta).u128(),
@@ -281,21 +287,20 @@ fn try_sudo_update_params() {
         .find(|&e| e.ty == "wasm-sudo-update-params")
         .unwrap();
 
-    let response: ConfigResponse = router
+    let config: Config = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::Config {})
         .unwrap();
-    let config = response.config;
 
     assert_eq!(config.fair_burn, minter);
     assert_eq!(
-        config.trading_fee_pct,
-        bps_to_decimal(TRADING_FEE_BPS + delta)
+        config.trading_fee_percent,
+        Decimal::from_str(TRADING_FEE_PCT).unwrap() + delta_decimal
     );
     assert_eq!(config.min_duration, MIN_DURATION + delta);
     assert_eq!(
-        config.min_bid_increment_pct,
-        bps_to_decimal(MIN_BID_INCREMENT_BPS + delta)
+        config.min_bid_increment_percent,
+        Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap() + delta_decimal
     );
     assert_eq!(config.extend_duration, MIN_DURATION + delta);
     assert_eq!(
@@ -321,9 +326,9 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: None,
-        trading_fee_bps: None,
+        trading_fee_percent: None,
         min_duration: Some(0u64),
-        min_bid_increment_bps: None,
+        min_bid_increment_percent: None,
         extend_duration: None,
         create_auction_fee: None,
         max_auctions_to_settle_per_block: None,
@@ -339,9 +344,9 @@ fn try_sudo_update_params() {
 
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: None,
-        trading_fee_bps: None,
+        trading_fee_percent: None,
         min_duration: None,
-        min_bid_increment_bps: Some(0u64),
+        min_bid_increment_percent: Some(Decimal::zero()),
         extend_duration: None,
         create_auction_fee: None,
         max_auctions_to_settle_per_block: None,
@@ -352,14 +357,14 @@ fn try_sudo_update_params() {
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
     assert_eq!(
         response.unwrap_err().to_string(),
-        "InvalidConfig: min_bid_increment_pct must be greater than zero"
+        "InvalidConfig: min_bid_increment_percent must be greater than zero"
     );
 
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: None,
-        trading_fee_bps: None,
+        trading_fee_percent: None,
         min_duration: None,
-        min_bid_increment_bps: Some(10000u64),
+        min_bid_increment_percent: Some(Decimal::one()),
         extend_duration: None,
         create_auction_fee: None,
         max_auctions_to_settle_per_block: None,
@@ -370,14 +375,14 @@ fn try_sudo_update_params() {
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
     assert_eq!(
         response.unwrap_err().to_string(),
-        "InvalidConfig: min_bid_increment_pct must be less than 100%"
+        "InvalidConfig: min_bid_increment_percent must be less than 100%"
     );
 
     let update_params_msg = SudoMsg::UpdateParams {
         fair_burn: None,
-        trading_fee_bps: None,
+        trading_fee_percent: None,
         min_duration: None,
-        min_bid_increment_bps: None,
+        min_bid_increment_percent: None,
         extend_duration: Some(0u64),
         create_auction_fee: None,
         max_auctions_to_settle_per_block: None,
@@ -401,7 +406,7 @@ fn try_sudo_min_reserve_prices() {
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
-    let coins_response: CoinsResponse = router
+    let coins_response: Vec<Coin> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -413,7 +418,7 @@ fn try_sudo_min_reserve_prices() {
 
     // Duplicate denom throws error
     let set_min_reserve_prices_msg = SudoMsg::SetMinReservePrices {
-        min_reserve_prices: vec![coins_response.coins[0].clone()],
+        min_reserve_prices: vec![coins_response[0].clone()],
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &set_min_reserve_prices_msg);
     assert_eq!(
@@ -429,7 +434,7 @@ fn try_sudo_min_reserve_prices() {
     let response = router.wasm_sudo(reserve_auction.clone(), &set_min_reserve_prices_msg);
     assert!(response.is_ok());
 
-    let next_coins_response: CoinsResponse = router
+    let next_coins_response: Vec<Coin> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -439,9 +444,9 @@ fn try_sudo_min_reserve_prices() {
         )
         .unwrap();
 
-    let mut expected_coins = coins_response.coins.clone();
+    let mut expected_coins = coins_response.clone();
     expected_coins.extend(new_coins);
-    assert_eq!(next_coins_response.coins.len(), expected_coins.len());
+    assert_eq!(next_coins_response.len(), expected_coins.len());
 
     // Removing non-existent denoms throws error
     let unset_min_reserve_prices_msg = SudoMsg::UnsetMinReservePrices {
@@ -461,15 +466,15 @@ fn try_sudo_min_reserve_prices() {
     let response = router.wasm_sudo(reserve_auction.clone(), &unset_min_reserve_prices_msg);
     assert!(response.is_ok());
 
-    let next_coins_response: CoinsResponse = router
+    let next_coins_response: Vec<Coin> = router
         .wrap()
         .query_wasm_smart(
-            reserve_auction.clone(),
+            reserve_auction,
             &QueryMsg::MinReservePrices {
                 query_options: None,
             },
         )
         .unwrap();
 
-    assert_eq!(next_coins_response.coins.len(), coins_response.coins.len());
+    assert_eq!(next_coins_response.len(), coins_response.len());
 }

@@ -1,6 +1,8 @@
+use std::str::FromStr;
+
 use crate::msg::ExecuteMsg;
 use crate::tests::helpers::constants::{
-    CREATE_AUCTION_FEE, DEFAULT_DURATION, EXTEND_DURATION, MAX_DURATION, MIN_BID_INCREMENT_BPS,
+    CREATE_AUCTION_FEE, DEFAULT_DURATION, EXTEND_DURATION, MAX_DURATION, MIN_BID_INCREMENT_PCT,
     MIN_DURATION, MIN_RESERVE_PRICE,
 };
 use crate::tests::setup::setup_accounts::{fund_account, setup_addtl_account, INITIAL_BALANCE};
@@ -8,7 +10,7 @@ use crate::tests::setup::setup_fair_burn::setup_fair_burn;
 use crate::tests::{
     helpers::{
         auction_functions::{create_standard_auction, place_bid, query_auction},
-        constants::TRADING_FEE_BPS,
+        constants::TRADING_FEE_PCT,
         nft_functions::{approve, mint, query_owner_of},
         utils::{assert_error, calc_min_bid_increment},
     },
@@ -571,7 +573,13 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
         coin(
-            calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128() - 1u128,
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                1,
+            )
+            .u128()
+                - 1u128,
             DUMMY_DENOM,
         ),
     );
@@ -579,7 +587,7 @@ fn try_place_bid() {
         res,
         ContractError::BidTooLow(calc_min_bid_increment(
             MIN_RESERVE_PRICE,
-            MIN_BID_INCREMENT_BPS,
+            Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
             1,
         ))
         .to_string(),
@@ -593,7 +601,12 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
         coin(
-            calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128(),
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                1,
+            )
+            .u128(),
             DUMMY_DENOM,
         ),
     );
@@ -620,7 +633,12 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
         coin(
-            calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 2).u128(),
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                2,
+            )
+            .u128(),
             DUMMY_DENOM,
         ),
     );
@@ -645,7 +663,12 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
         coin(
-            calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 3).u128(),
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                3,
+            )
+            .u128(),
             DUMMY_DENOM,
         ),
     );
@@ -713,8 +736,12 @@ fn try_settle_auction_with_bids() {
     );
     assert!(res.is_ok());
 
-    let high_bid_amount =
-        calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128();
+    let high_bid_amount = calc_min_bid_increment(
+        MIN_RESERVE_PRICE,
+        Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+        1,
+    )
+    .u128();
 
     // place bid above next valid bid succeeds
     fund_account(
@@ -771,9 +798,8 @@ fn try_settle_auction_with_bids() {
 
     let burn_coin = parse_coin(burn_amount).unwrap();
 
-    let trading_fee_percent = Decimal::percent(TRADING_FEE_BPS) / Uint128::from(100u128);
     assert_eq!(
-        Uint128::from(high_bid_amount) * trading_fee_percent,
+        Uint128::from(high_bid_amount) * Decimal::from_str(TRADING_FEE_PCT).unwrap(),
         burn_coin.amount
     );
 

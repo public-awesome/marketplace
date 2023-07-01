@@ -1,6 +1,5 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
-use sg_marketplace_common::coin::bps_to_decimal;
 
 use crate::msg::InstantiateMsg;
 use crate::state::{Config, HaltManager, HALT_MANAGER};
@@ -23,8 +22,8 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
     let config = Config {
         fair_burn: deps.api.addr_validate(&msg.fair_burn)?,
-        trading_fee_pct: bps_to_decimal(msg.trading_fee_bps),
-        min_bid_increment_pct: bps_to_decimal(msg.min_bid_increment_bps),
+        trading_fee_percent: msg.trading_fee_percent,
+        min_bid_increment_percent: msg.min_bid_increment_percent,
         min_duration: msg.min_duration,
         max_duration: msg.max_duration,
         extend_duration: msg.extend_duration,
@@ -42,10 +41,13 @@ pub fn instantiate(
         .add_attribute("contract_name", CONTRACT_NAME)
         .add_attribute("contract_version", CONTRACT_VERSION)
         .add_attribute("fair_burn", &config.fair_burn)
-        .add_attribute("trading_fee_pct", &config.trading_fee_pct.to_string())
         .add_attribute(
-            "min_bid_increment_pct",
-            &config.min_bid_increment_pct.to_string(),
+            "trading_fee_percent",
+            &config.trading_fee_percent.to_string(),
+        )
+        .add_attribute(
+            "min_bid_increment_percent",
+            &config.min_bid_increment_percent.to_string(),
         )
         .add_attribute("min_duration", &config.min_duration.to_string())
         .add_attribute("extend_duration", &config.extend_duration.to_string())

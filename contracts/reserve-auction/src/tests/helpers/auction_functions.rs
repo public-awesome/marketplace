@@ -1,5 +1,5 @@
 use crate::{
-    msg::{AuctionResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::Auction,
 };
 use anyhow::Error;
@@ -68,7 +68,7 @@ pub fn query_auction(
     collection: &str,
     token_id: &str,
 ) -> Auction {
-    let res: AuctionResponse = router
+    let auction: Option<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction,
@@ -78,5 +78,5 @@ pub fn query_auction(
             },
         )
         .unwrap();
-    res.auction
+    auction.unwrap()
 }

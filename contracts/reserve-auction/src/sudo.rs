@@ -1,14 +1,14 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use sg_marketplace_common::coin::bps_to_decimal;
-
 use crate::error::ContractError;
 use crate::helpers::settle_auction;
 use crate::msg::SudoMsg;
 use crate::state::{auctions, Auction, HaltWindow, CONFIG, HALT_MANAGER, MIN_RESERVE_PRICES};
-use cosmwasm_std::{Addr, Coin, DepsMut, Env, Event, Order, StdResult};
+
+use cosmwasm_std::{Addr, Coin, Decimal, DepsMut, Env, Event, Order, StdResult};
 use cw_storage_plus::Bound;
 use sg_std::Response;
+
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractError> {
@@ -17,8 +17,8 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
         SudoMsg::EndBlock {} => sudo_end_block(deps, env),
         SudoMsg::UpdateParams {
             fair_burn,
-            trading_fee_bps,
-            min_bid_increment_bps,
+            trading_fee_percent,
+            min_bid_increment_percent,
             min_duration,
             extend_duration,
             create_auction_fee,
@@ -30,8 +30,8 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             deps,
             env,
             fair_burn,
-            trading_fee_bps,
-            min_bid_increment_bps,
+            trading_fee_percent,
+            min_bid_increment_percent,
             min_duration,
             extend_duration,
             create_auction_fee,
@@ -124,8 +124,8 @@ pub fn sudo_update_params(
     deps: DepsMut,
     _env: Env,
     fair_burn: Option<String>,
-    trading_fee_bps: Option<u64>,
-    min_bid_increment_bps: Option<u64>,
+    trading_fee_percent: Option<Decimal>,
+    min_bid_increment_percent: Option<Decimal>,
     min_duration: Option<u64>,
     extend_duration: Option<u64>,
     create_auction_fee: Option<Coin>,
@@ -142,15 +142,18 @@ pub fn sudo_update_params(
         config.fair_burn = deps.api.addr_validate(&fair_burn)?;
         event = event.add_attribute("fair_burn", &config.fair_burn);
     }
-    if let Some(trading_fee_bps) = trading_fee_bps {
-        config.trading_fee_pct = bps_to_decimal(trading_fee_bps);
-        event = event.add_attribute("trading_fee_pct", config.trading_fee_pct.to_string());
-    }
-    if let Some(min_bid_increment_bps) = min_bid_increment_bps {
-        config.min_bid_increment_pct = bps_to_decimal(min_bid_increment_bps);
+    if let Some(trading_fee_percent) = trading_fee_percent {
+        config.trading_fee_percent = trading_fee_percent;
         event = event.add_attribute(
-            "min_bid_increment_pct",
-            config.min_bid_increment_pct.to_string(),
+            "trading_fee_percent",
+            config.trading_fee_percent.to_string(),
+        );
+    }
+    if let Some(min_bid_increment_percent) = min_bid_increment_percent {
+        config.min_bid_increment_percent = min_bid_increment_percent;
+        event = event.add_attribute(
+            "min_bid_increment_percent",
+            config.min_bid_increment_percent.to_string(),
         );
     }
     if let Some(min_duration) = min_duration {

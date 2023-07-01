@@ -1,7 +1,7 @@
 use cosmwasm_std::{Addr, BankMsg, Coin, Decimal, Uint128};
 use sg_std::SubMsg;
 
-pub use crate::errors::MarketplaceCommonError;
+pub use crate::errors::MarketplaceStdError;
 
 /// Invoke `transfer_coin` to build a `SubMsg` to transfer a single coin to an address.
 pub fn transfer_coin(send_coin: Coin, to: &Addr) -> SubMsg {
@@ -18,19 +18,16 @@ pub fn transfer_coins(funds: Vec<Coin>, to: &Addr) -> SubMsg {
 
 /// Invoke `checked_transfer_coin` to build a `SubMsg` to transfer a single coin to an address.
 /// If no funds are sent, an error is thrown.
-pub fn checked_transfer_coin(send_coin: Coin, to: &Addr) -> Result<SubMsg, MarketplaceCommonError> {
+pub fn checked_transfer_coin(send_coin: Coin, to: &Addr) -> Result<SubMsg, MarketplaceStdError> {
     checked_transfer_coins(vec![send_coin], to)
 }
 
 /// Invoke `checked_transfer_coin` to build a `SubMsg` to transfer a vector of coins to an address.
 /// If no funds are sent, an error is thrown.
-pub fn checked_transfer_coins(
-    funds: Vec<Coin>,
-    to: &Addr,
-) -> Result<SubMsg, MarketplaceCommonError> {
+pub fn checked_transfer_coins(funds: Vec<Coin>, to: &Addr) -> Result<SubMsg, MarketplaceStdError> {
     for item in &funds {
         if item.amount.is_zero() {
-            return Err(MarketplaceCommonError::ZeroAmountBankSend);
+            return Err(MarketplaceStdError::ZeroAmountBankSend);
         }
     }
     Ok(transfer_coins(funds, to))

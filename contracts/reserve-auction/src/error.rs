@@ -1,6 +1,6 @@
 use cosmwasm_std::{Coin, StdError, Uint128};
 use cw_utils::PaymentError;
-use sg_marketplace_common::MarketplaceCommonError;
+use sg_marketplace_common::MarketplaceStdError;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -12,7 +12,7 @@ pub enum ContractError {
     PaymentError(#[from] PaymentError),
 
     #[error("{0}")]
-    MarketplaceCommonError(#[from] MarketplaceCommonError),
+    MarketplaceStdError(#[from] MarketplaceStdError),
 
     #[error("InvalidConfig: {0}")]
     InvalidConfig(String),

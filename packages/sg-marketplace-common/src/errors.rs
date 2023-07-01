@@ -2,7 +2,7 @@ use cosmwasm_std::StdError;
 use thiserror::Error;
 
 #[derive(Error, Debug, PartialEq)]
-pub enum MarketplaceCommonError {
+pub enum MarketplaceStdError {
     #[error("{0}")]
     Std(#[from] StdError),
 

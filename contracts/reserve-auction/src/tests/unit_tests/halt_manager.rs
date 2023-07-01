@@ -1,4 +1,5 @@
-use crate::msg::{AuctionResponse, AuctionsResponse, HaltManagerResponse, QueryMsg, SudoMsg};
+use crate::msg::{QueryMsg, SudoMsg};
+use crate::state::{Auction, HaltManager};
 use crate::tests::helpers::auction_functions::{create_standard_auction, place_bid};
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, DEFAULT_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
@@ -26,12 +27,12 @@ fn try_halt_detection() {
 
     // Test that halt manager is instantiated with contract
     let reserve_auction = setup_reserve_auction(&mut router, creator, fair_burn).unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(response.halt_manager.prev_block_time, 0);
-    assert!(response.halt_manager.halt_infos.is_empty());
+    assert_eq!(halt_manager.prev_block_time, 0);
+    assert!(halt_manager.halt_infos.is_empty());
 
     // Test that prev block time is recorded
     let six_minutes = 60 * 6;
@@ -41,15 +42,12 @@ fn try_halt_detection() {
     router
         .wasm_sudo(reserve_auction.clone(), &begin_block_msg)
         .unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(
-        response.halt_manager.prev_block_time,
-        next_block_timestamp.seconds()
-    );
-    assert!(response.halt_manager.halt_infos.is_empty());
+    assert_eq!(halt_manager.prev_block_time, next_block_timestamp.seconds());
+    assert!(halt_manager.halt_infos.is_empty());
 
     // Test that prev block time is updated
     let six_minutes = 60 * 6;
@@ -59,15 +57,12 @@ fn try_halt_detection() {
     router
         .wasm_sudo(reserve_auction.clone(), &begin_block_msg)
         .unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(
-        response.halt_manager.prev_block_time,
-        next_block_timestamp.seconds()
-    );
-    assert!(response.halt_manager.halt_infos.is_empty(),);
+    assert_eq!(halt_manager.prev_block_time, next_block_timestamp.seconds());
+    assert!(halt_manager.halt_infos.is_empty(),);
 
     // Test that halt info is set after downtime threshold
     let next_block_timestamp = next_block_timestamp.plus_seconds(HALT_DURATION_THRESHOLD);
@@ -76,15 +71,12 @@ fn try_halt_detection() {
     router
         .wasm_sudo(reserve_auction.clone(), &begin_block_msg)
         .unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(
-        response.halt_manager.prev_block_time,
-        next_block_timestamp.seconds()
-    );
-    assert_eq!(response.halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.prev_block_time, next_block_timestamp.seconds());
+    assert_eq!(halt_manager.halt_infos.len(), 1);
 
     // Test that additional halt infos can be set
     let next_block_timestamp = next_block_timestamp.plus_seconds(HALT_DURATION_THRESHOLD);
@@ -93,15 +85,12 @@ fn try_halt_detection() {
     router
         .wasm_sudo(reserve_auction.clone(), &begin_block_msg)
         .unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction, &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(
-        response.halt_manager.prev_block_time,
-        next_block_timestamp.seconds()
-    );
-    assert_eq!(response.halt_manager.halt_infos.len(), 2);
+    assert_eq!(halt_manager.prev_block_time, next_block_timestamp.seconds());
+    assert_eq!(halt_manager.halt_infos.len(), 2);
 }
 
 #[test]
@@ -280,7 +269,7 @@ fn try_postpone_auction() {
     }
 
     // Fetch auctions
-    let response: AuctionsResponse = router
+    let auctions: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -294,7 +283,7 @@ fn try_postpone_auction() {
             },
         )
         .unwrap();
-    assert_eq!(response.auctions.len(), 12);
+    assert_eq!(auctions.len(), 12);
 
     // Run block before halt, validate that 3 auctions are settled
     let mut next_block_timestamp = genesis_timestamp.plus_seconds(DEFAULT_DURATION);
@@ -306,7 +295,7 @@ fn try_postpone_auction() {
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::EndBlock {})
         .unwrap();
 
-    let response: AuctionsResponse = router
+    let auctions: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -320,7 +309,7 @@ fn try_postpone_auction() {
             },
         )
         .unwrap();
-    assert_eq!(response.auctions.len(), 9);
+    assert_eq!(auctions.len(), 9);
 
     // Run block that defines halt
     // Validate that halt defining block postpones auctions
@@ -329,31 +318,32 @@ fn try_postpone_auction() {
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::BeginBlock {})
         .unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(response.halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.halt_infos.len(), 1);
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::EndBlock {})
         .unwrap();
 
     for token_id in end_during_halt_token_ids {
-        let response: AuctionResponse = router
+        let auction = router
             .wrap()
-            .query_wasm_smart(
+            .query_wasm_smart::<Option<Auction>>(
                 reserve_auction.clone(),
                 &QueryMsg::Auction {
                     collection: collection.to_string(),
                     token_id: token_id.to_string(),
                 },
             )
+            .unwrap()
             .unwrap();
         assert_eq!(
             next_block_timestamp
                 .plus_seconds(HALT_POSTPONE_DURATION)
                 .seconds(),
-            response.auction.end_time.unwrap().seconds()
+            auction.end_time.unwrap().seconds()
         );
     }
 
@@ -365,31 +355,32 @@ fn try_postpone_auction() {
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::BeginBlock {})
         .unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(response.halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.halt_infos.len(), 1);
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::EndBlock {})
         .unwrap();
 
     for token_id in end_during_halt_buffer_token_ids {
-        let response: AuctionResponse = router
+        let auction = router
             .wrap()
-            .query_wasm_smart(
+            .query_wasm_smart::<Option<Auction>>(
                 reserve_auction.clone(),
                 &QueryMsg::Auction {
                     collection: collection.to_string(),
                     token_id: token_id.to_string(),
                 },
             )
+            .unwrap()
             .unwrap();
         assert_eq!(
             next_block_timestamp
                 .plus_seconds(HALT_POSTPONE_DURATION)
                 .seconds(),
-            response.auction.end_time.unwrap().seconds()
+            auction.end_time.unwrap().seconds()
         );
     }
 
@@ -410,24 +401,27 @@ fn try_postpone_auction() {
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::BeginBlock {})
         .unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(response.halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.halt_infos.len(), 1);
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::EndBlock {})
         .unwrap();
 
     for token_id in end_after_halt_token_ids {
-        let response = router.wrap().query_wasm_smart::<AuctionResponse>(
-            reserve_auction.clone(),
-            &QueryMsg::Auction {
-                collection: collection.to_string(),
-                token_id: token_id.to_string(),
-            },
-        );
-        assert!(response.is_err());
+        let auction_option = router
+            .wrap()
+            .query_wasm_smart::<Option<Auction>>(
+                reserve_auction.clone(),
+                &QueryMsg::Auction {
+                    collection: collection.to_string(),
+                    token_id: token_id.to_string(),
+                },
+            )
+            .unwrap();
+        assert!(auction_option.is_none());
     }
 
     // Validate that halt infos are cleared
@@ -436,17 +430,17 @@ fn try_postpone_auction() {
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::BeginBlock {})
         .unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(response.halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.halt_infos.len(), 1);
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::EndBlock {})
         .unwrap();
-    let response: HaltManagerResponse = router
+    let halt_manager: HaltManager = router
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(response.halt_manager.halt_infos.len(), 0);
+    assert_eq!(halt_manager.halt_infos.len(), 0);
 }

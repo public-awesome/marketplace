@@ -1,4 +1,5 @@
-use crate::msg::{AuctionKeyOffset, AuctionsResponse, QueryMsg};
+use crate::msg::{AuctionKeyOffset, QueryMsg};
+use crate::state::Auction;
 use crate::tests::helpers::auction_functions::place_bid;
 use crate::tests::helpers::constants::{CREATE_AUCTION_FEE, DEFAULT_DURATION, MIN_RESERVE_PRICE};
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
@@ -65,7 +66,7 @@ fn try_query_auctions_by_seller() {
         .unwrap();
     }
 
-    let response_1: AuctionsResponse = router
+    let auctions_1: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -76,15 +77,15 @@ fn try_query_auctions_by_seller() {
         )
         .unwrap();
 
-    assert_eq!(response_1.auctions.len(), num_auctions / 2);
-    for auction in &response_1.auctions {
+    assert_eq!(auctions_1.len(), num_auctions / 2);
+    for auction in &auctions_1 {
         assert_eq!(auction.seller, auction_creator.to_string());
     }
 
     let limit: u32 = 3;
-    let start_after_auction = &response_1.auctions[3].clone();
+    let start_after_auction = &auctions_1[3].clone();
 
-    let response_2: AuctionsResponse = router
+    let auctions_2: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction,
@@ -102,10 +103,10 @@ fn try_query_auctions_by_seller() {
         )
         .unwrap();
 
-    assert_eq!(response_2.auctions.len(), limit as usize);
-    assert_eq!(response_2.auctions[0], response_1.auctions[2]);
-    assert_eq!(response_2.auctions[1], response_1.auctions[1]);
-    assert_eq!(response_2.auctions[2], response_1.auctions[0]);
+    assert_eq!(auctions_2.len(), limit as usize);
+    assert_eq!(auctions_2[0], auctions_1[2]);
+    assert_eq!(auctions_2[1], auctions_1[1]);
+    assert_eq!(auctions_2[2], auctions_1[0]);
 }
 
 #[test]
@@ -161,7 +162,7 @@ fn try_query_auctions_by_end_time() {
         .unwrap();
     }
 
-    let response_1: AuctionsResponse = router
+    let auctions_1: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -172,10 +173,10 @@ fn try_query_auctions_by_end_time() {
         )
         .unwrap();
 
-    assert_eq!(response_1.auctions.len(), num_auctions as usize);
+    assert_eq!(auctions_1.len(), num_auctions as usize);
 
     let skip_num: u64 = 6;
-    let response_2: AuctionsResponse = router
+    let auctions_2: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -193,15 +194,12 @@ fn try_query_auctions_by_end_time() {
         )
         .unwrap();
 
-    assert_eq!(
-        response_2.auctions.len(),
-        num_auctions as usize - skip_num as usize
-    );
+    assert_eq!(auctions_2.len(), num_auctions as usize - skip_num as usize);
 
     let limit: u32 = 3;
-    let start_after_auction = &response_1.auctions[3].clone();
+    let start_after_auction = &auctions_1[3].clone();
     let start_after = start_after_auction.end_time.unwrap().seconds();
-    let response_3: AuctionsResponse = router
+    let auctions_3: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction,
@@ -216,8 +214,8 @@ fn try_query_auctions_by_end_time() {
         )
         .unwrap();
 
-    assert_eq!(response_3.auctions.len(), limit as usize);
-    assert_eq!(response_3.auctions[0], response_1.auctions[2]);
-    assert_eq!(response_3.auctions[1], response_1.auctions[1]);
-    assert_eq!(response_3.auctions[2], response_1.auctions[0]);
+    assert_eq!(auctions_3.len(), limit as usize);
+    assert_eq!(auctions_3[0], auctions_1[2]);
+    assert_eq!(auctions_3[1], auctions_1[1]);
+    assert_eq!(auctions_3[2], auctions_1[0]);
 }

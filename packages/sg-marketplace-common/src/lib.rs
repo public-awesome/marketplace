@@ -16,4 +16,4 @@ pub mod query;
 pub mod sale;
 mod tests;
 
-pub use crate::errors::MarketplaceCommonError;
+pub use crate::errors::MarketplaceStdError;

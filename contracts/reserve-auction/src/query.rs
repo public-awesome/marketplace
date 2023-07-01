@@ -1,8 +1,5 @@
-use crate::msg::{
-    AuctionKeyOffset, AuctionResponse, AuctionsResponse, CoinsResponse, ConfigResponse,
-    HaltManagerResponse, MinReservePriceOffset, QueryMsg,
-};
-use crate::state::{auctions, Auction, HALT_MANAGER};
+use crate::msg::{AuctionKeyOffset, MinReservePriceOffset, QueryMsg};
+use crate::state::{auctions, Auction, Config, HaltManager, HALT_MANAGER};
 use crate::state::{CONFIG, MIN_RESERVE_PRICES};
 
 use cosmwasm_std::{coin, to_binary, Addr, Binary, Coin, Deps, Env, StdResult};
@@ -23,7 +20,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::HaltManager {} => to_binary(&query_halt_manager(deps)?),
         QueryMsg::MinReservePrices { query_options } => to_binary(&query_min_reserve_prices(
             deps,
-            query_options.unwrap_or(QueryOptions::default()),
+            query_options.unwrap_or_default(),
         )?),
         QueryMsg::Auction {
             collection,
@@ -35,7 +32,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => to_binary(&query_auctions_by_seller(
             deps,
             seller,
-            query_options.unwrap_or(QueryOptions::default()),
+            query_options.unwrap_or_default(),
         )?),
         QueryMsg::AuctionsByEndTime {
             end_time,
@@ -43,25 +40,25 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         } => to_binary(&query_auctions_by_end_time(
             deps,
             end_time,
-            query_options.unwrap_or(QueryOptions::default()),
+            query_options.unwrap_or_default(),
         )?),
     }
 }
 
-pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
+pub fn query_config(deps: Deps) -> StdResult<Config> {
     let config = CONFIG.load(deps.storage)?;
-    Ok(ConfigResponse { config })
+    Ok(config)
 }
 
-pub fn query_halt_manager(deps: Deps) -> StdResult<HaltManagerResponse> {
+pub fn query_halt_manager(deps: Deps) -> StdResult<HaltManager> {
     let halt_manager = HALT_MANAGER.load(deps.storage)?;
-    Ok(HaltManagerResponse { halt_manager })
+    Ok(halt_manager)
 }
 
 pub fn query_min_reserve_prices(
     deps: Deps,
     query_options: QueryOptions<MinReservePriceOffset>,
-) -> StdResult<CoinsResponse> {
+) -> StdResult<Vec<Coin>> {
     let (limit, order, min, max) = unpack_query_options(
         query_options,
         Box::new(|sa| Bound::exclusive(sa.denom)),
@@ -75,24 +72,24 @@ pub fn query_min_reserve_prices(
         .map(|item| item.map(|(denom, amount)| coin(amount.u128(), denom)))
         .collect::<StdResult<_>>()?;
 
-    Ok(CoinsResponse { coins })
+    Ok(coins)
 }
 
 pub fn query_auction(
     deps: Deps,
     collection: String,
     token_id: String,
-) -> StdResult<AuctionResponse> {
+) -> StdResult<Option<Auction>> {
     let collection = deps.api.addr_validate(&collection)?;
-    let auction = auctions().load(deps.storage, (collection, token_id))?;
-    Ok(AuctionResponse { auction })
+    let auction = auctions().may_load(deps.storage, (collection, token_id))?;
+    Ok(auction)
 }
 
 pub fn query_auctions_by_seller(
     deps: Deps,
     seller: String,
     query_options: QueryOptions<AuctionKeyOffset>,
-) -> StdResult<AuctionsResponse> {
+) -> StdResult<Vec<Auction>> {
     deps.api.addr_validate(&seller)?;
 
     let (limit, order, min, max) = unpack_query_options(
@@ -102,7 +99,7 @@ pub fn query_auctions_by_seller(
         MAX_QUERY_LIMIT,
     );
 
-    let auctions: Vec<Auction> = auctions()
+    let auctions_result: Vec<Auction> = auctions()
         .idx
         .seller
         .prefix(seller)
@@ -111,14 +108,14 @@ pub fn query_auctions_by_seller(
         .map(|item| item.map(|(_, v)| v))
         .collect::<StdResult<_>>()?;
 
-    Ok(AuctionsResponse { auctions })
+    Ok(auctions_result)
 }
 
 pub fn query_auctions_by_end_time(
     deps: Deps,
     end_time: u64,
     query_options: QueryOptions<AuctionKeyOffset>,
-) -> StdResult<AuctionsResponse> {
+) -> StdResult<Vec<Auction>> {
     let query_options = QueryOptions {
         descending: query_options.descending,
         limit: query_options.limit,
@@ -143,7 +140,7 @@ pub fn query_auctions_by_end_time(
         (Addr::unchecked(""), "".to_string()),
     )));
 
-    let auctions: Vec<Auction> = auctions()
+    let auctions_result: Vec<Auction> = auctions()
         .idx
         .end_time
         .range(deps.storage, min, Some(max), order)
@@ -151,5 +148,5 @@ pub fn query_auctions_by_end_time(
         .map(|item| item.map(|(_, v)| v))
         .collect::<StdResult<_>>()?;
 
-    Ok(AuctionsResponse { auctions })
+    Ok(auctions_result)
 }

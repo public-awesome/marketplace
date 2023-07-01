@@ -95,7 +95,7 @@ pub fn settle_auction(
         &config.fair_burn,
         None,
         None,
-        config.trading_fee_pct,
+        config.trading_fee_percent,
         None,
         royalty_info,
         response,

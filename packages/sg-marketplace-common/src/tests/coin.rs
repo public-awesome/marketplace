@@ -6,7 +6,7 @@ use crate::{
         bps_to_decimal, checked_transfer_coin, checked_transfer_coins, decimal_to_bps,
         transfer_coin, transfer_coins,
     },
-    MarketplaceCommonError,
+    MarketplaceStdError,
 };
 
 #[test]
@@ -50,7 +50,7 @@ fn try_checked_transfer_coin() {
     let recipient = Addr::unchecked("recipient");
 
     assert_eq!(
-        Err(MarketplaceCommonError::ZeroAmountBankSend),
+        Err(MarketplaceStdError::ZeroAmountBankSend),
         checked_transfer_coin(coin(0u128, NATIVE_DENOM), &recipient)
     );
 
@@ -73,7 +73,7 @@ fn try_checked_transfer_coins() {
     let recipient = Addr::unchecked("recipient");
 
     assert_eq!(
-        Err(MarketplaceCommonError::ZeroAmountBankSend),
+        Err(MarketplaceStdError::ZeroAmountBankSend),
         checked_transfer_coins(vec![coin(0u128, NATIVE_DENOM)], &recipient)
     );
 

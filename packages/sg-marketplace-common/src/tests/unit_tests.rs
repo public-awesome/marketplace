@@ -1,7 +1,7 @@
 use crate::{
     calculate_nft_sale_fees, checked_transfer_coin, has_approval, load_collection_royalties,
-    only_owner, owner_of, payout_nft_sale_fees, transfer_coin, transfer_nft,
-    MarketplaceCommonError, TokenPayment, TransactionFees,
+    only_owner, owner_of, payout_nft_sale_fees, transfer_coin, transfer_nft, MarketplaceStdError,
+    TokenPayment, TransactionFees,
 };
 
 use cosmwasm_std::{
@@ -35,7 +35,7 @@ fn try_checked_transfer_coin() {
     let recipient = Addr::unchecked("recipient");
 
     assert_eq!(
-        Err(MarketplaceCommonError::ZeroAmountBankSend),
+        Err(MarketplaceStdError::ZeroAmountBankSend),
         checked_transfer_coin(coin(0u128, NATIVE_DENOM), &recipient)
     );
 

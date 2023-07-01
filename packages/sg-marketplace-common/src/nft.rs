@@ -9,7 +9,7 @@ use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_std::SubMsg;
 use std::marker::PhantomData;
 
-pub use crate::errors::MarketplaceCommonError;
+pub use crate::errors::MarketplaceStdError;
 
 /// Invoke `transfer_nft` to build a `SubMsg` to transfer an NFT to an address.
 pub fn transfer_nft(collection: &Addr, token_id: &str, recipient: &Addr) -> SubMsg {
@@ -69,7 +69,7 @@ pub fn only_tradable(
     querier: &QuerierWrapper,
     block: &BlockInfo,
     collection: &Addr,
-) -> Result<(), MarketplaceCommonError> {
+) -> Result<(), MarketplaceStdError> {
     let response: Result<CollectionInfoResponse, StdError> =
         querier.query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {});
 
@@ -77,7 +77,7 @@ pub fn only_tradable(
         Ok(collection_info) => match collection_info.start_trading_time {
             Some(start_trading_time) => {
                 if start_trading_time > block.time {
-                    Err(MarketplaceCommonError::CollectionNotTradable {})
+                    Err(MarketplaceStdError::CollectionNotTradable {})
                 } else {
                     Ok(())
                 }

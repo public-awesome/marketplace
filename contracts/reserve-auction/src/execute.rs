@@ -279,7 +279,7 @@ pub fn execute_place_bid(
     );
 
     // Ensure minimum bid amount is met
-    let min_bid = auction.min_bid_coin(config.min_bid_increment_pct);
+    let min_bid = auction.min_bid_coin(config.min_bid_increment_percent);
     ensure!(
         has_coins(&info.funds, &min_bid),
         ContractError::BidTooLow(min_bid.amount)

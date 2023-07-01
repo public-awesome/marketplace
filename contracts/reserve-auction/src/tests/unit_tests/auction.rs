@@ -1,7 +1,10 @@
-use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use std::str::FromStr;
+
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::Config;
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, DEFAULT_DURATION, EXTEND_DURATION, HALT_BUFFER_DURATION,
-    HALT_DURATION_THRESHOLD, HALT_POSTPONE_DURATION, MAX_DURATION, MIN_BID_INCREMENT_BPS,
+    HALT_DURATION_THRESHOLD, HALT_POSTPONE_DURATION, MAX_DURATION, MIN_BID_INCREMENT_PCT,
     MIN_DURATION, MIN_RESERVE_PRICE,
 };
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
@@ -12,7 +15,7 @@ use crate::tests::{
             auction_contract, create_standard_auction, instantiate_auction, place_bid,
             query_auction,
         },
-        constants::TRADING_FEE_BPS,
+        constants::TRADING_FEE_PCT,
         nft_functions::{approve, mint, query_owner_of},
         utils::{assert_error, calc_min_bid_increment},
     },
@@ -23,7 +26,6 @@ use crate::ContractError;
 use cosmwasm_std::{coin, Decimal, StdError, Uint128};
 use cw_multi_test::Executor;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_marketplace_common::coin::bps_to_decimal;
 use sg_multi_test::StargazeApp;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
@@ -38,10 +40,10 @@ fn try_instantiate() {
 
     let msg = InstantiateMsg {
         fair_burn: fair_burn.to_string(),
-        trading_fee_bps: 400,
+        trading_fee_percent: Decimal::from_str("0.04").unwrap(),
         min_duration: 120,
         max_duration: 180,
-        min_bid_increment_bps: 10,
+        min_bid_increment_percent: Decimal::from_str("0.01").unwrap(),
         extend_duration: 60,
         create_auction_fee: coin(1u128, NATIVE_DENOM),
         max_auctions_to_settle_per_block: 200,
@@ -52,22 +54,19 @@ fn try_instantiate() {
     };
     let auction_addr = instantiate_auction(&mut app, auction_id, msg.clone());
 
-    let res: ConfigResponse = app
+    let config: Config = app
         .wrap()
         .query_wasm_smart(auction_addr, &QueryMsg::Config {})
         .unwrap();
 
-    assert_eq!(&res.config.create_auction_fee, &msg.create_auction_fee);
-    assert_eq!(&res.config.min_duration, &msg.min_duration);
+    assert_eq!(&config.create_auction_fee, &msg.create_auction_fee);
+    assert_eq!(&config.min_duration, &msg.min_duration);
+    assert_eq!(&config.trading_fee_percent, msg.trading_fee_percent);
     assert_eq!(
-        &res.config.trading_fee_pct,
-        bps_to_decimal(msg.trading_fee_bps)
+        &config.min_bid_increment_percent,
+        msg.min_bid_increment_percent
     );
-    assert_eq!(
-        &res.config.min_bid_increment_pct,
-        bps_to_decimal(msg.min_bid_increment_bps)
-    );
-    assert_eq!(&res.config.extend_duration, &msg.extend_duration);
+    assert_eq!(&config.extend_duration, &msg.extend_duration);
 }
 
 #[test]
@@ -605,7 +604,13 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
         coin(
-            calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128() - 1u128,
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                1,
+            )
+            .u128()
+                - 1u128,
             NATIVE_DENOM,
         ),
     );
@@ -613,7 +618,7 @@ fn try_place_bid() {
         res,
         ContractError::BidTooLow(calc_min_bid_increment(
             MIN_RESERVE_PRICE,
-            MIN_BID_INCREMENT_BPS,
+            Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
             1,
         ))
         .to_string(),
@@ -627,7 +632,12 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
         coin(
-            calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128(),
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                1,
+            )
+            .u128(),
             NATIVE_DENOM,
         ),
     );
@@ -649,7 +659,12 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
         coin(
-            calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 2).u128(),
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                2,
+            )
+            .u128(),
             NATIVE_DENOM,
         ),
     );
@@ -674,7 +689,12 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
         coin(
-            calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 3).u128(),
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                3,
+            )
+            .u128(),
             NATIVE_DENOM,
         ),
     );
@@ -741,8 +761,12 @@ fn try_settle_auction_with_bids() {
     );
     assert!(res.is_ok());
 
-    let high_bid_amount =
-        calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128();
+    let high_bid_amount = calc_min_bid_increment(
+        MIN_RESERVE_PRICE,
+        Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+        1,
+    )
+    .u128();
 
     // place bid above next valid bid succeeds
     let res = place_bid(
@@ -795,10 +819,9 @@ fn try_settle_auction_with_bids() {
         .parse::<u64>()
         .unwrap();
 
-    let trading_fee_percent = Decimal::percent(TRADING_FEE_BPS) / Uint128::from(100u128);
     let protocol_fee = Uint128::from(burn_amount + dist_amount);
     assert_eq!(
-        Uint128::from(high_bid_amount) * trading_fee_percent,
+        Uint128::from(high_bid_amount) * Decimal::from_str(TRADING_FEE_PCT).unwrap(),
         protocol_fee
     );
 

@@ -1,41 +1,41 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Coin;
+use cosmwasm_std::{Coin, Decimal};
 use sg_marketplace_common::query::QueryOptions;
 
 use crate::state::{Auction, Config, HaltManager};
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    // The address of the fair burn contract
+    /// The address of the fair burn contract
     pub fair_burn: String,
-    // The number of basis points that is fair burned on each settled auction
-    pub trading_fee_bps: u64,
-    // Each bid must be some number of basis points greater than the previous bid
-    pub min_bid_increment_bps: u64,
-    // The minimum duration of an auction
+    /// The number of basis points that is fair burned on each settled auction
+    pub trading_fee_percent: Decimal,
+    /// Each bid must be some number of basis points greater than the previous bid
+    pub min_bid_increment_percent: Decimal,
+    /// The minimum duration of an auction
     pub min_duration: u64,
-    // The maximum duration of an auction
+    /// The maximum duration of an auction
     pub max_duration: u64,
-    // When a bid is placed near the end of an auction,
-    // extend the auction by this duration
+    /// When a bid is placed near the end of an auction,
+    /// extend the auction by this duration
     pub extend_duration: u64,
-    // The fee that must be paid when creating an auction
+    /// The fee that must be paid when creating an auction
     pub create_auction_fee: Coin,
-    // The maximum number of auctions that can be processed in each block
+    /// The maximum number of auctions that can be processed in each block
     pub max_auctions_to_settle_per_block: u64,
-    // If the time between blocks exceeds the halt_duration_threshold,
-    // then it is determined that a halt has occurred.
+    /// If the time between blocks exceeds the halt_duration_threshold,
+    /// then it is determined that a halt has occurred.
     pub halt_duration_threshold: u64,
-    // The amount of time, in seconds, added to the end of a halt period
-    // and used to determine a halt window. If an auction ends
-    // within a halt window it cannot be settled, it must be
-    // postponed.
+    /// The amount of time, in seconds, added to the end of a halt period
+    /// and used to determine a halt window. If an auction ends
+    /// within a halt window it cannot be settled, it must be
+    /// postponed.
     pub halt_buffer_duration: u64,
-    // The amount of time, in seconds, that should be added to an auction
-    // that needs to be postponed.
+    /// The amount of time, in seconds, that should be added to an auction
+    /// that needs to be postponed.
     pub halt_postpone_duration: u64,
-    // The minimum reserve prices for the various denoms. Denoms
-    // no defined are not supported.
+    /// The minimum reserve prices for the various denoms. Denoms
+    /// no defined are not supported.
     pub min_reserve_prices: Vec<Coin>,
 }
 
@@ -83,64 +83,40 @@ pub struct AuctionKeyOffset {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(ConfigResponse)]
+    #[returns(Config)]
     Config {},
-    #[returns(HaltManagerResponse)]
+    #[returns(HaltManager)]
     HaltManager {},
-    #[returns(CoinsResponse)]
+    #[returns(Vec<Coin>)]
     MinReservePrices {
         query_options: Option<QueryOptions<MinReservePriceOffset>>,
     },
-    #[returns(AuctionResponse)]
+    #[returns(Option<Auction>)]
     Auction {
         collection: String,
         token_id: String,
     },
-    #[returns(AuctionsResponse)]
+    #[returns(Vec<Auction>)]
     AuctionsBySeller {
         seller: String,
         query_options: Option<QueryOptions<AuctionKeyOffset>>,
     },
-    #[returns(AuctionsResponse)]
+    #[returns(Vec<Auction>)]
     AuctionsByEndTime {
         end_time: u64,
         query_options: Option<QueryOptions<AuctionKeyOffset>>,
     },
 }
 
-#[cw_serde]
-pub struct ConfigResponse {
-    pub config: Config,
-}
-
-#[cw_serde]
-pub struct HaltManagerResponse {
-    pub halt_manager: HaltManager,
-}
-
-#[cw_serde]
-pub struct CoinsResponse {
-    pub coins: Vec<Coin>,
-}
-
-#[cw_serde]
-pub struct AuctionResponse {
-    pub auction: Auction,
-}
-
-#[cw_serde]
-pub struct AuctionsResponse {
-    pub auctions: Vec<Auction>,
-}
-
+#[allow(clippy::large_enum_variant)]
 #[cw_serde]
 pub enum SudoMsg {
     BeginBlock {}, // Is called by x/cron module BeginBlocker
     EndBlock {},   // Is called by x/cron module EndBlocker
     UpdateParams {
         fair_burn: Option<String>,
-        trading_fee_bps: Option<u64>,
-        min_bid_increment_bps: Option<u64>,
+        trading_fee_percent: Option<Decimal>,
+        min_bid_increment_percent: Option<Decimal>,
         min_duration: Option<u64>,
         extend_duration: Option<u64>,
         create_auction_fee: Option<Coin>,

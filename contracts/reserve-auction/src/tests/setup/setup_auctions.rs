@@ -1,11 +1,13 @@
+use std::str::FromStr;
+
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, EXTEND_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
-    HALT_POSTPONE_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MAX_DURATION, MIN_BID_INCREMENT_BPS,
-    MIN_DURATION, MIN_RESERVE_PRICE, TRADING_FEE_BPS,
+    HALT_POSTPONE_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MAX_DURATION, MIN_BID_INCREMENT_PCT,
+    MIN_DURATION, MIN_RESERVE_PRICE, TRADING_FEE_PCT,
 };
 use crate::{msg::InstantiateMsg, ContractError};
 
-use cosmwasm_std::{coin, Addr};
+use cosmwasm_std::{coin, Addr, Decimal};
 use cw_multi_test::Executor;
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
@@ -23,10 +25,10 @@ pub fn setup_reserve_auction(
     let reserve_auction_id = router.store_code(contract_reserve_auction());
     let msg = InstantiateMsg {
         fair_burn: fair_burn.to_string(),
-        trading_fee_bps: TRADING_FEE_BPS,
+        trading_fee_percent: Decimal::from_str(TRADING_FEE_PCT).unwrap(),
         min_duration: MIN_DURATION,
         max_duration: MAX_DURATION,
-        min_bid_increment_bps: MIN_BID_INCREMENT_BPS,
+        min_bid_increment_percent: Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
         extend_duration: EXTEND_DURATION,
         create_auction_fee: coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
         max_auctions_to_settle_per_block: MAX_AUCTIONS_TO_SETTLE_PER_BLOCK,
