@@ -7,11 +7,11 @@ MSG=$(cat <<EOF
 	"operators": [],
 	"trading_fee_bps": 200,
 	"ask_expiry": {
-		"min": 86400,
+		"min": 0,
 		"max": 15552000
 	},
 	"bid_expiry": {
-		"min": 86400,
+		"min": 0,
 		"max": 15552000
 	},
 	"max_finders_fee_bps": 1000,
