@@ -32,7 +32,7 @@ fn try_halt_detection() {
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
     assert_eq!(halt_manager.prev_block_time, 0);
-    assert!(halt_manager.halt_infos.is_empty());
+    assert!(halt_manager.halt_windows.is_empty());
 
     // Test that prev block time is recorded
     let six_minutes = 60 * 6;
@@ -47,7 +47,7 @@ fn try_halt_detection() {
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
     assert_eq!(halt_manager.prev_block_time, next_block_timestamp.seconds());
-    assert!(halt_manager.halt_infos.is_empty());
+    assert!(halt_manager.halt_windows.is_empty());
 
     // Test that prev block time is updated
     let six_minutes = 60 * 6;
@@ -62,7 +62,7 @@ fn try_halt_detection() {
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
     assert_eq!(halt_manager.prev_block_time, next_block_timestamp.seconds());
-    assert!(halt_manager.halt_infos.is_empty(),);
+    assert!(halt_manager.halt_windows.is_empty(),);
 
     // Test that halt info is set after downtime threshold
     let next_block_timestamp = next_block_timestamp.plus_seconds(HALT_DURATION_THRESHOLD);
@@ -76,7 +76,7 @@ fn try_halt_detection() {
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
     assert_eq!(halt_manager.prev_block_time, next_block_timestamp.seconds());
-    assert_eq!(halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.halt_windows.len(), 1);
 
     // Test that additional halt infos can be set
     let next_block_timestamp = next_block_timestamp.plus_seconds(HALT_DURATION_THRESHOLD);
@@ -90,7 +90,7 @@ fn try_halt_detection() {
         .query_wasm_smart(reserve_auction, &QueryMsg::HaltManager {})
         .unwrap();
     assert_eq!(halt_manager.prev_block_time, next_block_timestamp.seconds());
-    assert_eq!(halt_manager.halt_infos.len(), 2);
+    assert_eq!(halt_manager.halt_windows.len(), 2);
 }
 
 #[test]
@@ -322,7 +322,7 @@ fn try_postpone_auction() {
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.halt_windows.len(), 1);
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::EndBlock {})
         .unwrap();
@@ -359,7 +359,7 @@ fn try_postpone_auction() {
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.halt_windows.len(), 1);
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::EndBlock {})
         .unwrap();
@@ -405,7 +405,7 @@ fn try_postpone_auction() {
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.halt_windows.len(), 1);
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::EndBlock {})
         .unwrap();
@@ -434,7 +434,7 @@ fn try_postpone_auction() {
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(halt_manager.halt_infos.len(), 1);
+    assert_eq!(halt_manager.halt_windows.len(), 1);
     router
         .wasm_sudo(reserve_auction.clone(), &SudoMsg::EndBlock {})
         .unwrap();
@@ -442,5 +442,5 @@ fn try_postpone_auction() {
         .wrap()
         .query_wasm_smart(reserve_auction.clone(), &QueryMsg::HaltManager {})
         .unwrap();
-    assert_eq!(halt_manager.halt_infos.len(), 0);
+    assert_eq!(halt_manager.halt_windows.len(), 0);
 }

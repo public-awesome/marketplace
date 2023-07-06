@@ -91,7 +91,7 @@ pub fn instantiate(
         deps.storage,
         &HaltManager {
             prev_block_time: 0,
-            halt_infos: vec![],
+            halt_windows: vec![],
         },
     )?;
 

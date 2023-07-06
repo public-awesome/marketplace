@@ -59,11 +59,15 @@ pub fn sudo_begin_block(deps: DepsMut, env: Env) -> Result<Response, ContractErr
     if halt_manager.prev_block_time > 0
         && seconds_since_last_block >= config.halt_duration_threshold
     {
-        halt_manager.halt_infos.push(HaltWindow {
+        let halt_window = HaltWindow {
             start_time: halt_manager.prev_block_time,
             end_time: current_block_time + config.halt_buffer_duration,
-        });
-        response = response.add_event(Event::new("halt-detected"));
+        };
+        response = response
+            .add_event(Event::new("halt-detected"))
+            .add_attribute("start_time", halt_window.start_time.to_string())
+            .add_attribute("end_time", halt_window.end_time.to_string());
+        halt_manager.halt_windows.push(halt_window);
     }
 
     halt_manager.prev_block_time = current_block_time;
@@ -86,13 +90,13 @@ pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractE
         (Addr::unchecked(""), "".to_string()),
     )));
 
-    let auctions: Vec<Auction> = auctions()
+    let auctions = auctions()
         .idx
         .end_time
         .range(deps.storage, None, max, order)
         .take(limit)
         .map(|item| item.map(|(_, v)| v))
-        .collect::<StdResult<_>>()?;
+        .collect::<StdResult<Vec<Auction>>>()?;
 
     let earliest_auction_end_time = auctions.first().map(|a| a.end_time.unwrap());
 

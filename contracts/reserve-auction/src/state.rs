@@ -123,14 +123,14 @@ pub struct HaltWindow {
 #[cw_serde]
 pub struct HaltManager {
     pub prev_block_time: u64, // in seconds
-    pub halt_infos: Vec<HaltWindow>,
+    pub halt_windows: Vec<HaltWindow>,
 }
 
 pub const HALT_MANAGER: Item<HaltManager> = Item::new("hm");
 
 impl HaltManager {
     pub fn is_within_halt_window(&self, block_time: u64) -> bool {
-        for halt_info in &self.halt_infos {
+        for halt_info in &self.halt_windows {
             if block_time > halt_info.start_time && block_time < halt_info.end_time {
                 return true;
             }
@@ -142,14 +142,14 @@ impl HaltManager {
         &mut self,
         earliest_auction_end_time: Option<Timestamp>,
     ) -> Option<HaltWindow> {
-        if self.halt_infos.is_empty() {
+        if self.halt_windows.is_empty() {
             return None;
         }
-        let halt_info = self.halt_infos.first().unwrap();
+        let halt_info = self.halt_windows.first().unwrap();
         if earliest_auction_end_time.is_none()
             || earliest_auction_end_time.unwrap().seconds() > halt_info.end_time
         {
-            return Some(self.halt_infos.remove(0));
+            return Some(self.halt_windows.remove(0));
         }
         None
     }
