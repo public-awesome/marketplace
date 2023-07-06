@@ -1,30 +1,33 @@
-use crate::msg::{AuctionsResponse, QueryMsg, QueryOptions};
-use crate::tests::helpers::constants::{CREATE_AUCTION_FEE, MIN_DURATION, MIN_RESERVE_PRICE};
+use crate::msg::{AuctionKeyOffset, QueryMsg};
+use crate::state::Auction;
+use crate::tests::helpers::auction_functions::place_bid;
+use crate::tests::helpers::constants::{CREATE_AUCTION_FEE, DEFAULT_DURATION, MIN_RESERVE_PRICE};
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
+use crate::tests::setup::setup_fair_burn::setup_fair_burn;
 use crate::tests::{
     helpers::{
         auction_functions::create_standard_auction,
         nft_functions::{approve, mint},
     },
-    setup::{
-        setup_auctions::setup_reserve_auction, setup_marketplace::setup_marketplace,
-        setup_minters::standard_minter_template,
-    },
+    setup::{setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template},
 };
-use sg_std::GENESIS_MINT_START_TIME;
+
+use cosmwasm_std::coin;
+use sg_marketplace_common::query::QueryOptions;
+use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
 use test_suite::common_setup::setup_accounts_and_block::setup_block_time;
 
 #[test]
 fn try_query_auctions_by_seller() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
-    let block_time = router.block_info().time;
+    let _block_time = router.block_info().time;
 
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
@@ -55,16 +58,15 @@ fn try_query_auctions_by_seller() {
             &reserve_auction,
             collection.as_ref(),
             &token_id.to_string(),
-            block_time,
-            block_time.plus_seconds(MIN_DURATION),
-            MIN_RESERVE_PRICE,
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+            DEFAULT_DURATION,
             None,
-            CREATE_AUCTION_FEE.u128(),
+            coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
         )
         .unwrap();
     }
 
-    let response_1: AuctionsResponse = router
+    let auctions_1: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
@@ -75,18 +77,15 @@ fn try_query_auctions_by_seller() {
         )
         .unwrap();
 
-    assert_eq!(response_1.auctions.len(), num_auctions / 2);
-    for auction in &response_1.auctions {
+    assert_eq!(auctions_1.len(), num_auctions / 2);
+    for auction in &auctions_1 {
         assert_eq!(auction.seller, auction_creator.to_string());
     }
 
     let limit: u32 = 3;
-    let start_after_auction = &response_1.auctions[3].clone();
-    let start_after = (
-        start_after_auction.collection.to_string(),
-        start_after_auction.token_id.clone(),
-    );
-    let response_2: AuctionsResponse = router
+    let start_after_auction = &auctions_1[3].clone();
+
+    let auctions_2: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction,
@@ -95,24 +94,27 @@ fn try_query_auctions_by_seller() {
                 query_options: Some(QueryOptions {
                     descending: Some(true),
                     limit: Some(limit),
-                    start_after: Some(start_after),
+                    start_after: Some(AuctionKeyOffset {
+                        collection: start_after_auction.collection.to_string(),
+                        token_id: start_after_auction.token_id.clone(),
+                    }),
                 }),
             },
         )
         .unwrap();
 
-    assert_eq!(response_2.auctions.len(), limit as usize);
-    assert_eq!(response_2.auctions[0], response_1.auctions[2]);
-    assert_eq!(response_2.auctions[1], response_1.auctions[1]);
-    assert_eq!(response_2.auctions[2], response_1.auctions[0]);
+    assert_eq!(auctions_2.len(), limit as usize);
+    assert_eq!(auctions_2[0], auctions_1[2]);
+    assert_eq!(auctions_2[1], auctions_1[1]);
+    assert_eq!(auctions_2[2], auctions_1[0]);
 }
 
 #[test]
 fn try_query_auctions_by_end_time() {
     let vt = standard_minter_template(1000);
-    let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
@@ -136,42 +138,53 @@ fn try_query_auctions_by_end_time() {
         );
         token_ids.push(token_id);
 
-        let start_time = block_time.plus_seconds(idx);
+        setup_block_time(&mut router, block_time.plus_seconds(idx).nanos(), None);
         create_standard_auction(
             &mut router,
             &auction_creator,
             &reserve_auction,
             collection.as_ref(),
             &token_id.to_string(),
-            start_time,
-            start_time.plus_seconds(MIN_DURATION),
-            MIN_RESERVE_PRICE,
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+            DEFAULT_DURATION,
             None,
-            CREATE_AUCTION_FEE.u128(),
+            coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
+        )
+        .unwrap();
+        place_bid(
+            &mut router,
+            &reserve_auction,
+            &bidder,
+            collection.as_ref(),
+            &token_id.to_string(),
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
         )
         .unwrap();
     }
 
-    let response_1: AuctionsResponse = router
+    let auctions_1: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
-                end_time: block_time.plus_seconds(MIN_DURATION),
+                end_time: 0u64,
                 query_options: None,
             },
         )
         .unwrap();
 
-    assert_eq!(response_1.auctions.len(), num_auctions as usize);
+    assert_eq!(auctions_1.len(), num_auctions as usize);
 
     let skip_num: u64 = 6;
-    let response_2: AuctionsResponse = router
+    let auctions_2: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction.clone(),
             &QueryMsg::AuctionsByEndTime {
-                end_time: block_time.plus_seconds(skip_num).plus_seconds(MIN_DURATION),
+                end_time: block_time
+                    .plus_seconds(skip_num)
+                    .plus_seconds(DEFAULT_DURATION)
+                    .seconds(),
                 query_options: Some(QueryOptions {
                     descending: None,
                     limit: None,
@@ -181,37 +194,28 @@ fn try_query_auctions_by_end_time() {
         )
         .unwrap();
 
-    assert_eq!(
-        response_2.auctions.len(),
-        num_auctions as usize - skip_num as usize
-    );
+    assert_eq!(auctions_2.len(), num_auctions as usize - skip_num as usize);
 
     let limit: u32 = 3;
-    let start_after_auction = &response_1.auctions[3].clone();
-    let start_after = (
-        start_after_auction.end_time.seconds(),
-        (
-            start_after_auction.collection.to_string(),
-            start_after_auction.token_id.clone(),
-        ),
-    );
-    let response_3: AuctionsResponse = router
+    let start_after_auction = &auctions_1[3].clone();
+    let start_after = start_after_auction.end_time.unwrap().seconds();
+    let auctions_3: Vec<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction,
             &QueryMsg::AuctionsByEndTime {
-                end_time: block_time.plus_seconds(MIN_DURATION),
+                end_time: start_after,
                 query_options: Some(QueryOptions {
                     descending: Some(true),
                     limit: Some(limit),
-                    start_after: Some(start_after),
+                    start_after: None,
                 }),
             },
         )
         .unwrap();
 
-    assert_eq!(response_3.auctions.len(), limit as usize);
-    assert_eq!(response_3.auctions[0], response_1.auctions[2]);
-    assert_eq!(response_3.auctions[1], response_1.auctions[1]);
-    assert_eq!(response_3.auctions[2], response_1.auctions[0]);
+    assert_eq!(auctions_3.len(), limit as usize);
+    assert_eq!(auctions_3[0], auctions_1[2]);
+    assert_eq!(auctions_3[1], auctions_1[1]);
+    assert_eq!(auctions_3[2], auctions_1[0]);
 }

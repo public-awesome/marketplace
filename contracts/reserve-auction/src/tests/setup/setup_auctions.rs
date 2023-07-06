@@ -1,29 +1,44 @@
+use std::str::FromStr;
+
 use crate::tests::helpers::constants::{
-    CREATE_AUCTION_FEE, EXTEND_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MIN_BID_INCREMENT_BPS,
-    MIN_DURATION, MIN_RESERVE_PRICE,
+    CREATE_AUCTION_FEE, EXTEND_DURATION, HALT_BUFFER_DURATION, HALT_DURATION_THRESHOLD,
+    HALT_POSTPONE_DURATION, MAX_AUCTIONS_TO_SETTLE_PER_BLOCK, MAX_DURATION, MIN_BID_INCREMENT_PCT,
+    MIN_DURATION, MIN_RESERVE_PRICE, TRADING_FEE_PCT,
 };
 use crate::{msg::InstantiateMsg, ContractError};
-use cosmwasm_std::{coin, Addr};
+
+use cosmwasm_std::{coin, Addr, Decimal};
 use cw_multi_test::Executor;
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
 
 use super::setup_contracts::*;
 
+pub const DUMMY_DENOM: &str =
+    "ibc/773B5B5E24EC48005205A2EB35E6C0743EE47C9147E94BD5A4E0CBB63082314D";
+
 pub fn setup_reserve_auction(
     router: &mut StargazeApp,
     auction_admin: Addr,
-    marketplace: Addr,
+    fair_burn: Addr,
 ) -> Result<Addr, ContractError> {
-    let reserve_auction_id = router.store_code(reserve_auction_contract());
+    let reserve_auction_id = router.store_code(contract_reserve_auction());
     let msg = InstantiateMsg {
-        marketplace: marketplace.to_string(),
-        min_reserve_price: coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        fair_burn: fair_burn.to_string(),
+        trading_fee_percent: Decimal::from_str(TRADING_FEE_PCT).unwrap(),
         min_duration: MIN_DURATION,
-        min_bid_increment_bps: MIN_BID_INCREMENT_BPS,
+        max_duration: MAX_DURATION,
+        min_bid_increment_percent: Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
         extend_duration: EXTEND_DURATION,
-        create_auction_fee: CREATE_AUCTION_FEE,
+        create_auction_fee: coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
         max_auctions_to_settle_per_block: MAX_AUCTIONS_TO_SETTLE_PER_BLOCK,
+        halt_duration_threshold: HALT_DURATION_THRESHOLD,
+        halt_buffer_duration: HALT_BUFFER_DURATION,
+        halt_postpone_duration: HALT_POSTPONE_DURATION,
+        min_reserve_prices: vec![
+            coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+            coin(MIN_RESERVE_PRICE, DUMMY_DENOM),
+        ],
     };
     let auction = router
         .instantiate_contract(

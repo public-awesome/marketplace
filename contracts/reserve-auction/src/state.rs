@@ -1,21 +1,62 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Coin, Decimal, Timestamp, Uint128};
+use cosmwasm_std::{coin, ensure, Addr, Coin, Decimal, Storage, Timestamp, Uint128};
 use cw_storage_macro::index_list;
-use cw_storage_plus::{IndexedMap, Item, MultiIndex};
-use std::cmp::max;
+use cw_storage_plus::{IndexedMap, Item, Map, MultiIndex};
+
+use crate::ContractError;
 
 #[cw_serde]
 pub struct Config {
-    pub marketplace: Addr,
-    pub min_reserve_price: Coin,
-    pub min_bid_increment_pct: Decimal,
+    pub fair_burn: Addr,
+    pub trading_fee_percent: Decimal,
+    pub min_bid_increment_percent: Decimal,
     pub min_duration: u64,
+    pub max_duration: u64,
     pub extend_duration: u64,
-    pub create_auction_fee: Uint128,
+    pub create_auction_fee: Coin,
     pub max_auctions_to_settle_per_block: u64,
+    pub halt_duration_threshold: u64, // in seconds
+    pub halt_buffer_duration: u64,    // in seconds
+    pub halt_postpone_duration: u64,  // in seconds
 }
 
-pub const CONFIG: Item<Config> = Item::new("config");
+impl Config {
+    pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
+        self.validate()?;
+        CONFIG.save(storage, self)?;
+        Ok(())
+    }
+
+    fn validate(&self) -> Result<(), ContractError> {
+        ensure!(
+            !self.min_bid_increment_percent.is_zero(),
+            ContractError::InvalidConfig(
+                "min_bid_increment_percent must be greater than zero".to_string(),
+            )
+        );
+        ensure!(
+            self.min_bid_increment_percent < Decimal::one(),
+            ContractError::InvalidConfig(
+                "min_bid_increment_percent must be less than 100%".to_string(),
+            )
+        );
+        ensure!(
+            self.min_duration > 0,
+            ContractError::InvalidConfig("min_duration must be greater than zero".to_string(),)
+        );
+        ensure!(
+            self.extend_duration > 0,
+            ContractError::InvalidConfig("extend_duration must be greater than zero".to_string(),)
+        );
+        Ok(())
+    }
+}
+
+pub const CONFIG: Item<Config> = Item::new("cfg");
+
+// A map of acceptable denoms to their minimum reserve price.
+// Denoms not found in the Map are not accepted.
+pub const MIN_RESERVE_PRICES: Map<String, Uint128> = Map::new("mrp");
 
 #[cw_serde]
 pub struct HighBid {
@@ -29,29 +70,31 @@ pub struct Auction {
     pub token_id: String,
     pub seller: Addr,
     pub reserve_price: Coin,
-    pub start_time: Timestamp,
-    pub end_time: Timestamp,
+    pub duration: u64, // in seconds
+    pub end_time: Option<Timestamp>,
     pub seller_funds_recipient: Option<Addr>,
     pub high_bid: Option<HighBid>,
     pub first_bid_time: Option<Timestamp>,
 }
 
 impl Auction {
-    pub fn min_bid(&self, min_bid_increment_pct: Decimal) -> Uint128 {
-        if let Some(_high_bid) = &self.high_bid {
-            let next_min_bid = _high_bid.coin.amount
-                * (Decimal::percent(10000) + min_bid_increment_pct)
-                / Uint128::from(100u128);
-            max(next_min_bid, _high_bid.coin.amount + Uint128::one())
-        } else {
-            self.reserve_price.amount
-        }
+    pub fn denom(&self) -> String {
+        self.reserve_price.denom.clone()
+    }
+
+    pub fn min_bid_coin(&self, min_bid_increment_percent: Decimal) -> Coin {
+        let amount = match &self.high_bid {
+            Some(high_bid) => high_bid
+                .coin
+                .amount
+                .mul_ceil(Decimal::one() + min_bid_increment_percent),
+            None => self.reserve_price.amount,
+        };
+        coin(amount.u128(), self.denom())
     }
 }
 
-pub type TokenId = String;
-pub type Collection = Addr;
-pub type AuctionKey = (Collection, TokenId);
+pub type AuctionKey = (Addr, String);
 
 #[index_list(Auction)]
 pub struct AuctionIndexes<'a> {
@@ -61,16 +104,53 @@ pub struct AuctionIndexes<'a> {
 
 pub fn auctions<'a>() -> IndexedMap<'a, AuctionKey, Auction, AuctionIndexes<'a>> {
     let indexes = AuctionIndexes {
-        seller: MultiIndex::new(
-            |_pk: &[u8], d: &Auction| d.seller.to_string(),
-            "auctions",
-            "auctions__seller",
-        ),
+        seller: MultiIndex::new(|_pk: &[u8], a: &Auction| a.seller.to_string(), "a", "a__s"),
         end_time: MultiIndex::new(
-            |_pk: &[u8], d: &Auction| d.end_time.seconds(),
-            "auctions",
-            "auctions__end_time",
+            |_pk: &[u8], a: &Auction| a.end_time.map_or(u64::MAX, |et| et.seconds()),
+            "a",
+            "a__et",
         ),
     };
-    IndexedMap::new("auctions", indexes)
+    IndexedMap::new("a", indexes)
+}
+
+#[cw_serde]
+pub struct HaltWindow {
+    pub start_time: u64, // in seconds
+    pub end_time: u64,   // in seconds
+}
+
+#[cw_serde]
+pub struct HaltManager {
+    pub prev_block_time: u64, // in seconds
+    pub halt_windows: Vec<HaltWindow>,
+}
+
+pub const HALT_MANAGER: Item<HaltManager> = Item::new("hm");
+
+impl HaltManager {
+    pub fn is_within_halt_window(&self, block_time: u64) -> bool {
+        for halt_info in &self.halt_windows {
+            if block_time > halt_info.start_time && block_time < halt_info.end_time {
+                return true;
+            }
+        }
+        false
+    }
+
+    pub fn find_stale_halt_info(
+        &mut self,
+        earliest_auction_end_time: Option<Timestamp>,
+    ) -> Option<HaltWindow> {
+        if self.halt_windows.is_empty() {
+            return None;
+        }
+        let halt_info = self.halt_windows.first().unwrap();
+        if earliest_auction_end_time.is_none()
+            || earliest_auction_end_time.unwrap().seconds() > halt_info.end_time
+        {
+            return Some(self.halt_windows.remove(0));
+        }
+        None
+    }
 }

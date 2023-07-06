@@ -1,12 +1,15 @@
 [package]
-name        = "reserve-auction"
-authors     = ["Shane Vitarana <s+git@publicawesome.com>"]
+name = "stargaze-reserve-auction"
+version = "1.2.0"
+authors = [
+  "Shane Vitarana <s+git@publicawesome.com>",
+  "Tasio Victoria <tasiovictoria@ujulabs.com>",
+]
 description = "Stargaze Reserve Auction Contract"
-version     = { workspace = true }
-edition     = { workspace = true }
-homepage    = { workspace = true }
-repository  = { workspace = true }
-license     = { workspace = true }
+edition = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -26,7 +29,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-sg-marketplace       = { workspace = true }
+stargaze-fair-burn    = { workspace = true }
 cosmwasm-schema       = { workspace = true }
 cosmwasm-std          = { workspace = true }
 cw-storage-macro      = { workspace = true }
@@ -44,10 +47,11 @@ sg721-base            = { workspace = true }
 thiserror             = { workspace = true }
 
 [dev-dependencies]
-cw-multi-test         = { workspace = true }
-sg-multi-test         = { workspace = true }
-sg2                   = { workspace = true }
-sg721                 = { workspace = true }
-vending-minter        = { workspace = true }
-anyhow                = { workspace = true }
-test-suite            = { workspace = true }
+cw-multi-test  = { workspace = true }
+sg-multi-test  = { workspace = true }
+sg2            = { workspace = true }
+sg721          = { workspace = true }
+vending-minter = { workspace = true }
+anyhow         = { workspace = true }
+test-suite     = { workspace = true }
+regex          = { workspace = true }
