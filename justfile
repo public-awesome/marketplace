@@ -58,7 +58,7 @@ e2e-test:
 
 e2e-test-full: download-artifacts optimize deploy-local e2e-test
 
-e2e-test-arm-full: download-artifacts optimize-arm deploy-local-arm e2e-test
+e2e-test-full-arm: download-artifacts optimize-arm deploy-local-arm e2e-test
 
 e2e-watch: deploy-local-arm
 	#!/usr/bin/env bash

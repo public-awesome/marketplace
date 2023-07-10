@@ -29,3 +29,15 @@ build/
 
 # Schema files
 */schema/raw/*
+
+# Typescript
+*-debug.log
+*-error.log
+/.nyc_output
+/package-lock.json
+dist
+tmp
+node_modules
+oclif.manifest.json
+lerna-debug.log
+tsconfig.tsbuildinfo

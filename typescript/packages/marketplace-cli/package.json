@@ -1,0 +1,87 @@
+{
+  "name": "@stargazezone/marketplace-cli",
+  "version": "0.1.0",
+  "description": "CLI tool for interacting with Stargaze Marketplace smart contracts",
+  "author": "Tasio Victoria @tasiov",
+  "bin": {
+    "@stargazezone/marketplace-cli": "./bin/run"
+  },
+  "homepage": "https://stargaze.zone/",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "repository": "https://github.com/public-awesome/marketplace",
+  "files": [
+    "/bin",
+    "/dist",
+    "/npm-shrinkwrap.json",
+    "/oclif.manifest.json"
+  ],
+  "dependencies": {
+    "@cosmjs/cosmwasm-stargate": "^0.28.4",
+    "@cosmjs/proto-signing": "^0.28.4",
+    "@cosmjs/stargate": "^0.28.4",
+    "@stargazezone/marketplace-types": "^2.0.0",
+    "@oclif/config": "^1.18.3",
+    "@oclif/core": "^1",
+    "@oclif/plugin-help": "^5",
+    "@oclif/plugin-plugins": "^2.0.1",
+    "@types/bn.js": "^5.1.0",
+    "@types/js-yaml": "^4.0.5",
+    "axios": "^0.27.2",
+    "conf-cli": "^0.1.9",
+    "csv-parser": "^3.0.0",
+    "files-from-path": "^0.2.6",
+    "ipfs-car": "^0.7.0",
+    "js-yaml": "^4.1.0",
+    "lodash": "^4.17.21",
+    "nft.storage": "^6.2.0",
+    "typescript-natural-sort": "^0.7.2",
+    "zod": "^3.14.4"
+  },
+  "devDependencies": {
+    "@oclif/test": "^2",
+    "@types/chai": "^4",
+    "@types/node": "^16.9.4",
+    "chai": "^4",
+    "eslint": "^7.32.0",
+    "eslint-config-oclif": "^4",
+    "eslint-config-oclif-typescript": "^1.0.2",
+    "globby": "^11",
+    "oclif": "^2",
+    "shx": "^0.3.3",
+    "ts-node": "^10.2.1",
+    "tslib": "^2.3.1",
+    "typescript": "^4.4.3"
+  },
+  "oclif": {
+    "bin": "@stargazezone/marketplace-cli",
+    "dirname": "@stargazezone/marketplace-cli",
+    "commands": "./dist/commands",
+    "plugins": [
+      "@oclif/plugin-help",
+      "conf-cli"
+    ],
+    "topicSeparator": " ",
+    "topics": {
+      "keys": {
+        "description": "manage local keypairs"
+      }
+    }
+  },
+  "scripts": {
+    "build": "shx rm -rf dist && tsc -b",
+    "lint": "eslint . --ext .ts --config .eslintrc",
+    "postpack": "shx rm -f oclif.manifest.json",
+    "posttest": "yarn lint",
+    "prepack": "yarn build && oclif manifest && oclif readme",
+    "version": "oclif readme && git add README.md"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "bugs": "https://github.com/public-awesome/marketplace/issues",
+  "keywords": [
+    "oclif"
+  ],
+  "types": "dist/index.d.ts"
+}
