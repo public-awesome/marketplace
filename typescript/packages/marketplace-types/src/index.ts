@@ -7,16 +7,20 @@
 import * as _0 from "./Marketplace.types";
 import * as _1 from "./Marketplace.client";
 import * as _2 from "./Marketplace.message-composer";
-import * as _3 from "./ReserveAuction.types";
-import * as _4 from "./ReserveAuction.client";
-import * as _5 from "./ReserveAuction.message-composer";
+import * as _3 from "./Marketplace.react-query";
+import * as _4 from "./ReserveAuction.types";
+import * as _5 from "./ReserveAuction.client";
+import * as _6 from "./ReserveAuction.message-composer";
+import * as _7 from "./ReserveAuction.react-query";
 export namespace contracts {
   export const Marketplace = { ..._0,
     ..._1,
-    ..._2
+    ..._2,
+    ..._3
   };
-  export const ReserveAuction = { ..._3,
-    ..._4,
-    ..._5
+  export const ReserveAuction = { ..._4,
+    ..._5,
+    ..._6,
+    ..._7
   };
 }
