@@ -4,7 +4,10 @@ lint:
 schema:
 	sh scripts/schema.sh
 
-download-artifacts:
+artifacts:
+	mkdir -p artifacts
+
+download-artifacts: artifacts
 	scripts/download-core-artifacts.sh
 	scripts/download-launchpad-artifacts.sh
 	scripts/download-marketplace-artifacts.sh
