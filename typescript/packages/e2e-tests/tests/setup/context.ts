@@ -53,6 +53,11 @@ export default class Context {
   }
 
   getContractAddress = (contractKey: string, index: number = 0) => {
+    try {
+      return this.contracts[contractKey][index]
+    } catch {
+      console.log(`error ${contractKey} ${index} ${JSON.stringify(this.contracts)}}`)
+    }
     return this.contracts[contractKey][index]
   }
 
@@ -109,12 +114,12 @@ export default class Context {
     // Instantiate stargaze reserve auction
     let reserveAuctionInstantiateMsg: ReserveAuctionInstantiateMsg = {
       create_auction_fee: { amount: '500000', denom: 'ustars' },
-      extend_duration: 30,
+      extend_duration: 5,
       fair_burn: instantiateFairBurnResult.contractAddress,
       max_auctions_to_settle_per_block: 100,
       max_duration: 600,
       min_bid_increment_percent: '0.01',
-      min_duration: 60,
+      min_duration: 1,
       min_reserve_prices: [{ amount: '1000000', denom: 'ustars' }],
       trading_fee_percent: '0.02',
       halt_duration_threshold: 30,

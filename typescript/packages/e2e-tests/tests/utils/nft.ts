@@ -1,3 +1,4 @@
+import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate'
 import Context, { CONTRACT_MAP } from '../setup/context'
 import { getClient, getSigningClient } from './client'
 import { getExpirationString } from './datetime'
@@ -46,7 +47,12 @@ export const createMinter = async (context: Context) => {
   return executeResult
 }
 
-export const mintNft = async (context: Context, recipientAddress: string): Promise<[string, string]> => {
+export const mintNft = async (
+  context: Context,
+  signingClient: SigningCosmWasmClient,
+  sender: string,
+  recipientAddress: string,
+): Promise<[string, string]> => {
   const queryClient = await getClient()
 
   let baseFactoryAddress = context.getContractAddress(CONTRACT_MAP.BASE_FACTORY)
@@ -60,7 +66,6 @@ export const mintNft = async (context: Context, recipientAddress: string): Promi
   })
   let collectionAddress = minterConfig.collection_address
 
-  const { client: signingClient, address: sender } = await getSigningClient()
   let mintMsg = { mint: { token_uri: 'ipfs://bafybeiek33kk3js27dhodwadtmrf3p6b64netr6t3xzi3sbfyxovxe36qe/1.png' } }
 
   let mintPrice = (factoryParams.mint_fee_bps * factoryParams.min_mint_price.amount) / 10000
@@ -95,16 +100,13 @@ export const mintNft = async (context: Context, recipientAddress: string): Promi
 }
 
 export const approveNft = async (
-  context: Context,
-  clientIdx: number,
+  signingClient: SigningCosmWasmClient,
+  sender: string,
   collectionAddress: string,
   tokenId: string,
   approveAddress: string,
 ) => {
-  const { client: signingClient, address: sender } = await getSigningClient(clientIdx)
-
   let msg = { approve: { spender: approveAddress, token_id: tokenId } }
   let executeResult = await signingClient.execute(sender, collectionAddress, msg, 'auto', 'approve-nft')
-
   return executeResult
 }

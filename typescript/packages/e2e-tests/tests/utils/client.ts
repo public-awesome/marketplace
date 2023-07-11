@@ -25,5 +25,29 @@ export const getSigningClient = async (testAccountIdx: number = 0) => {
   const gasPrice = GasPrice.fromString(`${gas_prices}${denom}`)
   const client = await SigningCosmWasmClient.connectWithSigner(grpc_endpoint, wallet, { gasPrice })
 
-  return { address, client, gasPrice }
+  return { address, client }
+}
+
+type TestUser = {
+  name: string
+  address: string
+  client: SigningCosmWasmClient
+}
+
+export type TestUserMap = { [name: string]: TestUser }
+
+export const initializeTestUsers = async (): Promise<TestUserMap> => {
+  const clientMap: TestUserMap = {}
+
+  for (let i = 0; i < testAccounts.length; i++) {
+    const signingClient = await getSigningClient(i)
+    const testAccount = testAccounts[i]
+    clientMap[testAccount.name] = {
+      name: testAccount.name,
+      address: signingClient.address,
+      client: signingClient.client,
+    }
+  }
+
+  return clientMap
 }
