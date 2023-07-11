@@ -7,9 +7,10 @@ export type StringMap = Record<string, string>
 const config = new Conf<string | StringMap | undefined>()
 
 export const STORAGE_MAP = {
-  MNEMONICS: 'MNEMONICS',
-  DEFAULT_MNEMONIC: 'DEFAULT_MNEMONIC',
-  NODE: 'NODE',
+  MNEMONICS: 'mnemonics',
+  DEFAULT_MNEMONIC: 'default-mnemonic',
+  NODE: 'node',
+  GAS_PRICE: 'gas-price',
 }
 
 type StorageKeys = keyof typeof STORAGE_MAP

@@ -6,10 +6,8 @@ import {
 import { Coin, DirectSecp256k1HdWallet } from '@cosmjs/proto-signing'
 import { GasPrice } from '@cosmjs/stargate'
 import storage, { STORAGE_MAP, StringMap } from '../confStorage'
-import { isValidHttpUrl } from '../types/httpUrl'
+import { isValidHttpUrl } from '../helpers/httpUrl'
 import { fromRawAmount } from './unitConversions'
-
-export const getChainConfig = async () => {}
 
 export const getCosmWasmClient = async () => {
   const uri = storage.get(STORAGE_MAP.NODE) as string
@@ -19,24 +17,24 @@ export const getCosmWasmClient = async () => {
   return await CosmWasmClient.connect(uri)
 }
 
-export const getGasPrice = () => {
-  return GasPrice.fromString(`"0.0025ustars`)
-}
-
-export const getSigningCosmWasmClient = async (prefix = 'stars') => {
-  const defaultMnemonic = storage.get(STORAGE_MAP.DEFAULT_MNEMONIC) as string
+export const getSigningCosmWasmClient = async (accountName?: string) => {
+  if (!accountName) {
+    accountName = storage.get(STORAGE_MAP.DEFAULT_MNEMONIC) as string
+  }
   const mnemonicMap = storage.get(STORAGE_MAP.MNEMONICS) as StringMap
-  const mnemonic = mnemonicMap[defaultMnemonic]
+  const mnemonic = mnemonicMap[accountName]
   const uri = storage.get(STORAGE_MAP.NODE) as string
   const wallet = await DirectSecp256k1HdWallet.fromMnemonic(mnemonic, {
-    prefix,
+    prefix: 'stars',
   })
 
   if (!isValidHttpUrl(uri)) {
     throw new Error('Invalid RPC endpoint')
   }
   const [firstAccount] = await wallet.getAccounts()
-  const gasPrice = getGasPrice()
+  const gasPrice = GasPrice.fromString(
+    storage.get(STORAGE_MAP.GAS_PRICE) as string,
+  )
   const client = await SigningCosmWasmClient.connectWithSigner(uri, wallet, {
     gasPrice,
   })
@@ -44,15 +42,20 @@ export const getSigningCosmWasmClient = async (prefix = 'stars') => {
   return {
     address: firstAccount.address,
     client,
-    gasPrice,
   }
 }
 
-export const initCliClient = async (logger: any) => {
-  const initialResponse = await getSigningCosmWasmClient()
-  const network = await initialResponse.client.getChainId()
+export const initCliClient = async (
+  logger: any,
+): Promise<{
+  address: string
+  client: SigningCosmWasmClient
+  balance: Coin
+}> => {
+  const queryClient = await getCosmWasmClient()
+  const network = await queryClient.getChainId()
 
-  const { address, client, gasPrice } = await getSigningCosmWasmClient()
+  const { address, client } = await getSigningCosmWasmClient()
   const DENOM = 'ustars'
 
   const balance = await client.getBalance(address, DENOM)
@@ -63,10 +66,9 @@ Client
 network: ${network}
 address: ${address}
 balance: ${fromRawAmount(balance.amount)}${balance.denom}
-gasPrice: ${gasPrice}
 `)
 
-  return { address, client, balance, gasPrice }
+  return { address, client, balance }
 }
 
 const printMessage = (logger: any, msg: any) => {

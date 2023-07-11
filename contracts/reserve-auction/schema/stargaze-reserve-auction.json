@@ -103,7 +103,10 @@
     "definitions": {
       "Coin": {
         "type": "object",
-        "required": ["amount", "denom"],
+        "required": [
+          "amount",
+          "denom"
+        ],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -129,11 +132,18 @@
     "oneOf": [
       {
         "type": "object",
-        "required": ["create_auction"],
+        "required": [
+          "create_auction"
+        ],
         "properties": {
           "create_auction": {
             "type": "object",
-            "required": ["collection", "duration", "reserve_price", "token_id"],
+            "required": [
+              "collection",
+              "duration",
+              "reserve_price",
+              "token_id"
+            ],
             "properties": {
               "collection": {
                 "type": "string"
@@ -147,7 +157,10 @@
                 "$ref": "#/definitions/Coin"
               },
               "seller_funds_recipient": {
-                "type": ["string", "null"]
+                "type": [
+                  "string",
+                  "null"
+                ]
               },
               "token_id": {
                 "type": "string"
@@ -160,11 +173,17 @@
       },
       {
         "type": "object",
-        "required": ["update_reserve_price"],
+        "required": [
+          "update_reserve_price"
+        ],
         "properties": {
           "update_reserve_price": {
             "type": "object",
-            "required": ["collection", "reserve_price", "token_id"],
+            "required": [
+              "collection",
+              "reserve_price",
+              "token_id"
+            ],
             "properties": {
               "collection": {
                 "type": "string"
@@ -183,11 +202,16 @@
       },
       {
         "type": "object",
-        "required": ["cancel_auction"],
+        "required": [
+          "cancel_auction"
+        ],
         "properties": {
           "cancel_auction": {
             "type": "object",
-            "required": ["collection", "token_id"],
+            "required": [
+              "collection",
+              "token_id"
+            ],
             "properties": {
               "collection": {
                 "type": "string"
@@ -203,11 +227,16 @@
       },
       {
         "type": "object",
-        "required": ["place_bid"],
+        "required": [
+          "place_bid"
+        ],
         "properties": {
           "place_bid": {
             "type": "object",
-            "required": ["collection", "token_id"],
+            "required": [
+              "collection",
+              "token_id"
+            ],
             "properties": {
               "collection": {
                 "type": "string"
@@ -223,11 +252,16 @@
       },
       {
         "type": "object",
-        "required": ["settle_auction"],
+        "required": [
+          "settle_auction"
+        ],
         "properties": {
           "settle_auction": {
             "type": "object",
-            "required": ["collection", "token_id"],
+            "required": [
+              "collection",
+              "token_id"
+            ],
             "properties": {
               "collection": {
                 "type": "string"
@@ -245,7 +279,10 @@
     "definitions": {
       "Coin": {
         "type": "object",
-        "required": ["amount", "denom"],
+        "required": [
+          "amount",
+          "denom"
+        ],
         "properties": {
           "amount": {
             "$ref": "#/definitions/Uint128"
@@ -267,7 +304,9 @@
     "oneOf": [
       {
         "type": "object",
-        "required": ["config"],
+        "required": [
+          "config"
+        ],
         "properties": {
           "config": {
             "type": "object",
@@ -278,7 +317,9 @@
       },
       {
         "type": "object",
-        "required": ["halt_manager"],
+        "required": [
+          "halt_manager"
+        ],
         "properties": {
           "halt_manager": {
             "type": "object",
@@ -289,7 +330,9 @@
       },
       {
         "type": "object",
-        "required": ["min_reserve_prices"],
+        "required": [
+          "min_reserve_prices"
+        ],
         "properties": {
           "min_reserve_prices": {
             "type": "object",
@@ -312,11 +355,16 @@
       },
       {
         "type": "object",
-        "required": ["auction"],
+        "required": [
+          "auction"
+        ],
         "properties": {
           "auction": {
             "type": "object",
-            "required": ["collection", "token_id"],
+            "required": [
+              "collection",
+              "token_id"
+            ],
             "properties": {
               "collection": {
                 "type": "string"
@@ -332,11 +380,15 @@
       },
       {
         "type": "object",
-        "required": ["auctions_by_seller"],
+        "required": [
+          "auctions_by_seller"
+        ],
         "properties": {
           "auctions_by_seller": {
             "type": "object",
-            "required": ["seller"],
+            "required": [
+              "seller"
+            ],
             "properties": {
               "query_options": {
                 "anyOf": [
@@ -359,11 +411,15 @@
       },
       {
         "type": "object",
-        "required": ["auctions_by_end_time"],
+        "required": [
+          "auctions_by_end_time"
+        ],
         "properties": {
           "auctions_by_end_time": {
             "type": "object",
-            "required": ["end_time"],
+            "required": [
+              "end_time"
+            ],
             "properties": {
               "end_time": {
                 "type": "integer",
@@ -390,7 +446,10 @@
     "definitions": {
       "AuctionKeyOffset": {
         "type": "object",
-        "required": ["collection", "token_id"],
+        "required": [
+          "collection",
+          "token_id"
+        ],
         "properties": {
           "collection": {
             "type": "string"
@@ -403,7 +462,9 @@
       },
       "MinReservePriceOffset": {
         "type": "object",
-        "required": ["denom"],
+        "required": [
+          "denom"
+        ],
         "properties": {
           "denom": {
             "type": "string"
@@ -417,11 +478,17 @@
         "properties": {
           "descending": {
             "description": "Whether to sort items in ascending or descending order",
-            "type": ["boolean", "null"]
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "limit": {
             "description": "The number of items that will be returned",
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "uint32",
             "minimum": 0.0
           },
@@ -445,11 +512,17 @@
         "properties": {
           "descending": {
             "description": "Whether to sort items in ascending or descending order",
-            "type": ["boolean", "null"]
+            "type": [
+              "boolean",
+              "null"
+            ]
           },
           "limit": {
             "description": "The number of items that will be returned",
-            "type": ["integer", "null"],
+            "type": [
+              "integer",
+              "null"
+            ],
             "format": "uint32",
             "minimum": 0.0
           },
@@ -560,7 +633,10 @@
         },
         "Coin": {
           "type": "object",
-          "required": ["amount", "denom"],
+          "required": [
+            "amount",
+            "denom"
+          ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -572,7 +648,10 @@
         },
         "HighBid": {
           "type": "object",
-          "required": ["bidder", "coin"],
+          "required": [
+            "bidder",
+            "coin"
+          ],
           "properties": {
             "bidder": {
               "$ref": "#/definitions/Addr"
@@ -685,7 +764,10 @@
         },
         "Coin": {
           "type": "object",
-          "required": ["amount", "denom"],
+          "required": [
+            "amount",
+            "denom"
+          ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -697,7 +779,10 @@
         },
         "HighBid": {
           "type": "object",
-          "required": ["bidder", "coin"],
+          "required": [
+            "bidder",
+            "coin"
+          ],
           "properties": {
             "bidder": {
               "$ref": "#/definitions/Addr"
@@ -810,7 +895,10 @@
         },
         "Coin": {
           "type": "object",
-          "required": ["amount", "denom"],
+          "required": [
+            "amount",
+            "denom"
+          ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -822,7 +910,10 @@
         },
         "HighBid": {
           "type": "object",
-          "required": ["bidder", "coin"],
+          "required": [
+            "bidder",
+            "coin"
+          ],
           "properties": {
             "bidder": {
               "$ref": "#/definitions/Addr"
@@ -925,7 +1016,10 @@
         },
         "Coin": {
           "type": "object",
-          "required": ["amount", "denom"],
+          "required": [
+            "amount",
+            "denom"
+          ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"
@@ -949,7 +1043,10 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "HaltManager",
       "type": "object",
-      "required": ["halt_windows", "prev_block_time"],
+      "required": [
+        "halt_windows",
+        "prev_block_time"
+      ],
       "properties": {
         "halt_windows": {
           "type": "array",
@@ -967,7 +1064,10 @@
       "definitions": {
         "HaltWindow": {
           "type": "object",
-          "required": ["end_time", "start_time"],
+          "required": [
+            "end_time",
+            "start_time"
+          ],
           "properties": {
             "end_time": {
               "type": "integer",
@@ -994,7 +1094,10 @@
       "definitions": {
         "Coin": {
           "type": "object",
-          "required": ["amount", "denom"],
+          "required": [
+            "amount",
+            "denom"
+          ],
           "properties": {
             "amount": {
               "$ref": "#/definitions/Uint128"

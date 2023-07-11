@@ -1,4 +1,4 @@
-# Passage CLI
+# Stargaze Marketplace CLI
 
 ## Getting Started
 

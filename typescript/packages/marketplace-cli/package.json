@@ -17,14 +17,14 @@
     "/oclif.manifest.json"
   ],
   "dependencies": {
-    "@cosmjs/cosmwasm-stargate": "^0.28.4",
-    "@cosmjs/proto-signing": "^0.28.4",
-    "@cosmjs/stargate": "^0.28.4",
-    "@stargazezone/marketplace-types": "^2.0.0",
+    "@cosmjs/cosmwasm-stargate": "^0.31.0",
+    "@cosmjs/proto-signing": "^0.31.0",
+    "@cosmjs/stargate": "^0.31.0",
     "@oclif/config": "^1.18.3",
     "@oclif/core": "^1",
     "@oclif/plugin-help": "^5",
     "@oclif/plugin-plugins": "^2.0.1",
+    "@stargazezone/marketplace-types": "^2.0.0",
     "@types/bn.js": "^5.1.0",
     "@types/js-yaml": "^4.0.5",
     "axios": "^0.27.2",
