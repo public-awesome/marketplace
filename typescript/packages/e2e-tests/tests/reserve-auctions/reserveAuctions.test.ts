@@ -1,11 +1,9 @@
-import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate'
 import Context, { CONTRACT_MAP } from '../setup/context'
-import { TestUserMap, getClient, getSigningClient, initializeTestUsers } from '../utils/client'
+import { TestUserMap, getClient, initializeTestUsers } from '../utils/client'
 import { approveNft, createMinter, mintNft } from '../utils/nft'
 import { sleep } from '../utils/sleep'
-import { Coin } from '@stargazezone/launchpad/src/BaseFactory.types'
 import { contracts } from '@stargazezone/marketplace-types'
-import { ReserveAuctionQueryClient as ReserveAuctionQueryClientType } from '@stargazezone/marketplace-types/build/src/ReserveAuction.client'
+import { ReserveAuctionQueryClient as ReserveAuctionQueryClientType } from '@stargazezone/marketplace-types/lib/ReserveAuction.client'
 import { Auction, Config, HighBid } from '@stargazezone/marketplace-types/src/ReserveAuction.types'
 import _ from 'lodash'
 

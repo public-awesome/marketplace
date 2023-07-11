@@ -24,9 +24,6 @@ artifacts/
 # code coverage
 tarpaulin-report.*
 
-node_modules/
-build/
-
 # Schema files
 */schema/raw/*
 
@@ -35,6 +32,7 @@ build/
 *-error.log
 /.nyc_output
 /package-lock.json
+lib
 dist
 tmp
 node_modules

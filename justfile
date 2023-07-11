@@ -52,7 +52,7 @@ deploy-local-arm:
 		publicawesome/stargaze:10.0.1 /data/entry-point.sh $TEST_ADDRS
 
 e2e-test:
-	#!/usr/bin/env bash
+	#!/usr/bin/env bash -e
 	START_DIR=$(pwd)
 	cd typescript/packages/e2e-tests
 	yarn install
@@ -64,7 +64,7 @@ e2e-test-full: download-artifacts optimize deploy-local e2e-test
 e2e-test-full-arm: download-artifacts optimize-arm deploy-local-arm e2e-test
 
 e2e-watch: deploy-local-arm
-	#!/usr/bin/env bash
+	#!/usr/bin/env bash -e
 	START_DIR=$(pwd)
 	cd typescript/packages/e2e-tests
 	yarn test
