@@ -19,7 +19,7 @@
     "@cosmjs/stargate": "^0.31.0",
     "@stargazezone/launchpad": "^2.3.3",
     "@stargazezone/marketplace-v1-types": "npm:@stargazezone/marketplace-types@^1.5.2",
-    "@stargazezone/marketplace-types": "^2.0.0",
+    "@stargazezone/marketplace-types": "2.0.0",
     "@types/jest": "^29.5.2",
     "axios": "^1.4.0",
     "jest": "^29.5.0",
