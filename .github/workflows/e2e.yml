@@ -47,5 +47,14 @@ jobs:
 
       - uses: extractions/setup-just@v1
 
-      - name: Run e2e test
-        run: just e2e-test-full
+      - name: Download artifacts
+        run: just download-artifacts
+
+      - name: Optimize contracts
+        run: just optimize
+
+      - name: Run local stargaze chain
+        run: just deploy-local
+
+      - name: Run e2e tests
+        run: just e2e-test
