@@ -1,0 +1,4 @@
+{
+  "space-in-brackets": ["error", "always"],
+  "extends": ["oclif", "oclif-typescript"]
+}
