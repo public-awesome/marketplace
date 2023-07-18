@@ -34,6 +34,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
+sg-marketplace-common = { version = "1.1.0" }
 stargaze-fair-burn    = { workspace = true }
 cosmwasm-schema       = { workspace = true }
 cosmwasm-std          = { workspace = true }
@@ -45,7 +46,6 @@ cw721                 = { workspace = true }
 cw721-base            = { workspace = true }
 schemars              = { workspace = true }
 serde                 = { workspace = true }
-sg-marketplace-common = { workspace = true }
 sg-std                = { workspace = true }
 sg1                   = { workspace = true }
 sg721-base            = { workspace = true }

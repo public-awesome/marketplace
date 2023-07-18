@@ -1370,6 +1370,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "sg-marketplace-common"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8576ca3bbf23da4e575c05f739c5f595bcea53d55411fdf738071b4f05fd95a1"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-storage-macro",
+ "cw-storage-plus 0.16.0",
+ "cw-utils 0.16.0",
+ "cw2 0.16.0",
+ "cw721",
+ "cw721-base",
+ "schemars",
+ "serde",
+ "sg-std",
+ "sg1",
+ "sg721",
+ "sg721-base",
+ "stargaze-fair-burn",
+ "thiserror",
+]
+
+[[package]]
 name = "sg-multi-test"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1631,7 +1656,7 @@ dependencies = [
  "regex",
  "schemars",
  "serde",
- "sg-marketplace-common",
+ "sg-marketplace-common 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "sg-multi-test",
  "sg-std",
  "sg1",
