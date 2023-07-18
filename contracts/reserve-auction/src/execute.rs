@@ -6,7 +6,8 @@ use crate::msg::ExecuteMsg;
 use crate::state::{auctions, Auction, HighBid};
 use crate::state::{CONFIG, HALT_MANAGER};
 use cosmwasm_std::{
-    coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Timestamp,
+    attr, coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo,
+    Timestamp,
 };
 use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg_marketplace_common::{
@@ -300,14 +301,23 @@ pub fn execute_place_bid(
         // If this is not the first bid, refund previous bidder and extend end_time if necessary
         Some(_) => {
             // Refund previous bidder
-            let high_bid = auction.high_bid.unwrap();
-            response =
-                response.add_submessage(checked_transfer_coin(high_bid.coin, &high_bid.bidder)?);
+            let previous_high_bid = auction.high_bid.unwrap();
+            response = response.add_submessage(checked_transfer_coin(
+                previous_high_bid.coin.clone(),
+                &previous_high_bid.bidder,
+            )?);
 
             let time_remaining = auction.end_time.unwrap().seconds() - block_time.seconds();
             if time_remaining < config.extend_duration {
                 auction.end_time = Some(block_time.plus_seconds(config.extend_duration));
             }
+
+            response = response.add_event(Event::new("remove-bid").add_attributes(vec![
+                attr("collection", auction.collection.to_string()),
+                attr("token_id", auction.token_id.clone()),
+                attr("previous_bidder", previous_high_bid.bidder),
+                attr("previous_bid_amount", previous_high_bid.coin.to_string()),
+            ]));
         }
     };
 
