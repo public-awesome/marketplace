@@ -1,6 +1,6 @@
 [package]
 name = "stargaze-reserve-auction"
-version = "1.2.0"
+version = "1.0.0"
 authors = [
   "Shane Vitarana <s+git@publicawesome.com>",
   "Tasio Victoria <tasiovictoria@ujulabs.com>",
@@ -22,6 +22,11 @@ exclude = [
 [lib]
 crate-type = ["cdylib", "rlib"]
 
+[[bin]]
+name = "schema"
+path = "src/bin/schema.rs"
+doc  = false
+
 [features]
 # for more explicit tests, cargo test --features=backtraces
 backtraces = ["cosmwasm-std/backtraces"]
@@ -29,6 +34,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
+sg-marketplace-common = { version = "1.1.0" }
 stargaze-fair-burn    = { workspace = true }
 cosmwasm-schema       = { workspace = true }
 cosmwasm-std          = { workspace = true }
@@ -40,7 +46,6 @@ cw721                 = { workspace = true }
 cw721-base            = { workspace = true }
 schemars              = { workspace = true }
 serde                 = { workspace = true }
-sg-marketplace-common = { workspace = true }
 sg-std                = { workspace = true }
 sg1                   = { workspace = true }
 sg721-base            = { workspace = true }
