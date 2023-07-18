@@ -2,9 +2,9 @@ set -eux
 
 CONTRACT=artifacts/stargaze_reserve_auction.wasm
 
-TITLE="Stargaze Reserve Auction v1.2.0" 
-DESCRIPTION=$(cat scripts/markdown/stargaze_reserve_auction-v1.2.0.md | jq -Rsa | tr -d '"')
-SOURCE="https://github.com/public-awesome/core/releases/tag/stargaze_reserve_auction-v1.2.0"
+TITLE="Stargaze Reserve Auction v1.0.0" 
+DESCRIPTION=$(cat scripts/markdown/stargaze_reserve_auction-v1.0.0.md | jq -Rsa | tr -d '"')
+SOURCE="https://github.com/public-awesome/core/releases/tag/stargaze_reserve_auction-v1.0.0"
 BUILDER="cosmwasm/workspace-optimizer:0.12.13"
 HASH="f2674f0df06a37254563b81aefc0dd184874c996a4efaeaaec7199e390128153"
 

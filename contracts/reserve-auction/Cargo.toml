@@ -1,6 +1,6 @@
 [package]
 name = "stargaze-reserve-auction"
-version = "1.2.0"
+version = "1.0.0"
 authors = [
   "Shane Vitarana <s+git@publicawesome.com>",
   "Tasio Victoria <tasiovictoria@ujulabs.com>",
@@ -21,6 +21,11 @@ exclude = [
 
 [lib]
 crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "schema"
+path = "src/bin/schema.rs"
+doc  = false
 
 [features]
 # for more explicit tests, cargo test --features=backtraces

@@ -1,8 +1,8 @@
 ## Store WASM Code
 
-This uploads the code for Stargaze Reserve Auction v1.2.0
+This uploads the code for Stargaze Reserve Auction v1.0.0
 
-The source code is available at https://github.com/public-awesome/core/releases/tag/stargaze_reserve_auction-v1.2.0
+The source code is available at https://github.com/public-awesome/core/releases/tag/stargaze_reserve_auction-v1.0.0
 
 ### Compile Instructions
 
