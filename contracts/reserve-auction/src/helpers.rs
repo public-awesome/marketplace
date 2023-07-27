@@ -112,6 +112,7 @@ pub fn settle_auction(
         Event::new("settle-auction")
             .add_attribute("collection", auction.collection.to_string())
             .add_attribute("token_id", auction.token_id)
+            .add_attribute("seller", auction.seller)
             .add_attribute("bidder", high_bid.bidder.to_string())
             .add_attribute("bid_amount", high_bid.coin.amount.to_string()),
     );
