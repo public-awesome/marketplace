@@ -2,6 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{coin, ensure, Addr, Coin, Decimal, Storage, Timestamp, Uint128};
 use cw_storage_macro::index_list;
 use cw_storage_plus::{IndexedMap, Item, Map, MultiIndex};
+use sg_marketplace_common::address::address_or;
 
 use crate::ContractError;
 
@@ -80,6 +81,10 @@ pub struct Auction {
 impl Auction {
     pub fn denom(&self) -> String {
         self.reserve_price.denom.clone()
+    }
+
+    pub fn funds_recipient(&self) -> Addr {
+        address_or(self.seller_funds_recipient.as_ref(), &self.seller)
     }
 
     pub fn min_bid_coin(&self, min_bid_increment_percent: Decimal) -> Coin {

@@ -85,13 +85,13 @@ pub fn settle_auction(
     )?;
 
     // High bid must exist if end time exists
-    let high_bid = auction.high_bid.unwrap();
+    let high_bid = auction.high_bid.as_ref().unwrap();
 
     let royalty_info = load_collection_royalties(&deps.querier, deps.api, &auction.collection)?;
 
     (_, response) = payout_nft_sale_fees(
         &high_bid.coin,
-        &auction.seller,
+        &auction.funds_recipient(),
         &config.fair_burn,
         None,
         None,
