@@ -312,9 +312,13 @@ pub fn execute_place_bid(
                 auction.end_time = Some(block_time.plus_seconds(config.extend_duration));
             }
 
-            response = response.add_event(Event::new("remove-bid").add_attributes(vec![
+            let new_bid_amount = coin(bid_amount.u128(), auction_denom.clone());
+            response = response.add_event(Event::new("refund-bid").add_attributes(vec![
                 attr("collection", auction.collection.to_string()),
                 attr("token_id", auction.token_id.clone()),
+                attr("seller", auction.seller.to_string()),
+                attr("new_bidder", info.sender.to_string()),
+                attr("new_bid_amount", new_bid_amount.to_string()),
                 attr("previous_bidder", previous_high_bid.bidder),
                 attr("previous_bid_amount", previous_high_bid.coin.to_string()),
             ]));
@@ -336,6 +340,7 @@ pub fn execute_place_bid(
     let event = Event::new("place-bid")
         .add_attribute("collection", auction.collection.to_string())
         .add_attribute("token_id", auction.token_id)
+        .add_attribute("seller", auction.seller.to_string())
         .add_attribute("bidder", high_bid.bidder.to_string())
         .add_attribute("bid_amount", high_bid.coin.to_string())
         .add_attribute("auction_end_time", auction.end_time.unwrap().to_string());
