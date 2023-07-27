@@ -2,12 +2,12 @@ set -eux
 
 CONTRACT=artifacts/stargaze_reserve_auction.wasm
 
-TITLE="Stargaze Live Auction v1.0.0" 
-MARKDOWN="scripts/markdown/stargaze_reserve_auction-v1.0.0.md"
+TITLE="Stargaze Live Auction v1.0.1" 
+MARKDOWN="scripts/markdown/storeWasmCodeReserveAuctionv1.0.1.md"
 DESCRIPTION=$(cat "$MARKDOWN" | base64 | tr -d '\n')
-SOURCE="https://github.com/public-awesome/core/releases/tag/stargaze_reserve_auction-v1.0.0"
+SOURCE="https://github.com/public-awesome/marketplace/releases/tag/stargaze_reserve_auction-v1.0.1"
 BUILDER="cosmwasm/workspace-optimizer:0.12.13"
-HASH="f7cdf509a1889e21399c33eee9e68ac328abd4a456142db080d760d15135fe56"
+HASH="4e77dfe1830d5a33058502d19ef990773f45acfee7862ebb5355626c75bd0eb1"
 
 FROM="hot-wallet"
 DEPOSIT="10000000000ustars"
