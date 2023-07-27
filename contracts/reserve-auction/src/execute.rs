@@ -292,11 +292,31 @@ pub fn execute_place_bid(
         ContractError::AuctionEnded {}
     );
 
+    let next_bid = HighBid {
+        bidder: info.sender,
+        coin: coin(bid_amount.u128(), auction_denom),
+    };
+
+    let mut event = Event::new("place-bid")
+        .add_attribute("collection", auction.collection.to_string())
+        .add_attribute("token_id", auction.token_id.clone())
+        .add_attribute("seller", auction.seller.to_string())
+        .add_attribute("bidder", next_bid.bidder.to_string())
+        .add_attribute("bid_amount", next_bid.coin.to_string());
+
     match auction.first_bid_time {
         // If this is the first bid, set the first_bid_time and end_time
         None => {
             auction.first_bid_time = Some(block_time);
             auction.end_time = Some(block_time.plus_seconds(auction.duration));
+
+            event = event.add_attributes(vec![
+                attr("first_bid", true.to_string()),
+                attr(
+                    "auction_end_time",
+                    auction.end_time.as_ref().unwrap().to_string(),
+                ),
+            ]);
         }
         // If this is not the first bid, refund previous bidder and extend end_time if necessary
         Some(_) => {
@@ -312,33 +332,25 @@ pub fn execute_place_bid(
                 auction.end_time = Some(block_time.plus_seconds(config.extend_duration));
             }
 
-            response = response.add_event(Event::new("remove-bid").add_attributes(vec![
-                attr("collection", auction.collection.to_string()),
-                attr("token_id", auction.token_id.clone()),
+            event = event.add_attributes(vec![
+                attr("first_bid", false.to_string()),
+                attr(
+                    "auction_end_time",
+                    auction.end_time.as_ref().unwrap().to_string(),
+                ),
                 attr("previous_bidder", previous_high_bid.bidder),
                 attr("previous_bid_amount", previous_high_bid.coin.to_string()),
-            ]));
+            ]);
         }
     };
 
-    auction.high_bid = Some(HighBid {
-        bidder: info.sender,
-        coin: coin(bid_amount.u128(), auction_denom),
-    });
-
+    auction.high_bid = Some(next_bid);
     auctions().save(
         deps.storage,
         (auction.collection.clone(), auction.token_id.clone()),
         &auction,
     )?;
 
-    let high_bid = &auction.high_bid.unwrap();
-    let event = Event::new("place-bid")
-        .add_attribute("collection", auction.collection.to_string())
-        .add_attribute("token_id", auction.token_id)
-        .add_attribute("bidder", high_bid.bidder.to_string())
-        .add_attribute("bid_amount", high_bid.coin.to_string())
-        .add_attribute("auction_end_time", auction.end_time.unwrap().to_string());
     response = response.add_event(event);
 
     Ok(response)

@@ -23,7 +23,7 @@ use crate::tests::{
 };
 use crate::ContractError;
 
-use cosmwasm_std::{coin, Decimal, StdError, Uint128};
+use cosmwasm_std::{coin, Addr, Decimal, StdError, Uint128};
 use cw_multi_test::Executor;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_multi_test::StargazeApp;
@@ -717,6 +717,7 @@ fn try_settle_auction_with_bids() {
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
     let second_bidder = setup_addtl_account(&mut router, "second_bidder", INITIAL_BALANCE).unwrap();
+    let seller_funds_recipient = Addr::unchecked("seller_funds_recipient");
 
     // mint nft for creator
     mint(&mut router, &minter, &creator, &auction_creator);
@@ -737,7 +738,7 @@ fn try_settle_auction_with_bids() {
         &token_id.to_string(),
         coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
         DEFAULT_DURATION,
-        None,
+        Some(seller_funds_recipient.to_string()),
         coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert!(res.is_ok());
@@ -843,7 +844,7 @@ fn try_settle_auction_with_bids() {
         Uint128::from(INITIAL_BALANCE) + royalty_fee
     );
 
-    // check that seller was paid
+    // check that seller funds recipient was paid
     let seller_payment = Uint128::from(high_bid_amount) - protocol_fee - royalty_fee;
     let new_auction_creator_balance = router
         .wrap()
@@ -852,8 +853,15 @@ fn try_settle_auction_with_bids() {
         .amount;
     assert_eq!(
         new_auction_creator_balance,
-        Uint128::from(INITIAL_BALANCE) - CREATE_AUCTION_FEE + seller_payment
+        Uint128::from(INITIAL_BALANCE) - CREATE_AUCTION_FEE
     );
+
+    let new_seller_funds_recipient_balance = router
+        .wrap()
+        .query_balance(&seller_funds_recipient, NATIVE_DENOM)
+        .unwrap()
+        .amount;
+    assert_eq!(new_seller_funds_recipient_balance, seller_payment);
 
     // check that first bidder was fully refunded
     let first_bidder_balance = router

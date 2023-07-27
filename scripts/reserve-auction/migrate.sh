@@ -1,22 +1,29 @@
-RESERVE_AUCTION_ADDRESS=stars1pl77jpe2rrmtppv5tvs7d0g6xjq6smqxd879snksf2jwmuvxl6qs0jtvyt
-# MSG=$(cat <<EOF
-# {
-#   "fair_burn": "stars1mp4dg9mst3hxn5xvcd9zllyx6gguu5jsp5tyt9nsfrtghhwj2akqudhls8"
-# }
-
-# EOF
-# )
-
-# starsd tx wasm migrate $RESERVE_AUCTION_ADDRESS 2355 "$MSG" \
-#   --from testnet-1 --gas-prices 0.1ustars --gas-adjustment 1.7 --gas auto \
-#   -b block -o json | jq .
-
+RESERVE_AUCTION="stars1dnadsd7tx0dmnpp26ms7d66zsp7tduygwjgfjzueh0lg9t5lq5vq9kn47c"
+NEW_CODE_ID=123
 MSG=$(cat <<EOF
 {
-  "config": {}
-}
 
+}
 EOF
 )
 
-starsd query wasm contract-state smart $RESERVE_AUCTION_ADDRESS "$MSG" -o json | jq .
+TITLE="Stargaze Live Auction v1.0.1" 
+MARKDOWN="scripts/markdown/migrateContractReserveAuctionV1.0.1.md"
+DESCRIPTION=$(cat "$MARKDOWN" | base64 | tr -d '\n')
+
+FROM="hot-wallet"
+DEPOSIT="10000000000ustars"
+
+CHAIN_ID="stargaze-1"
+NODE="https://rpc.stargaze-apis.com:443"
+
+starsd tx gov submit-proposal migrate-contract "$RESERVE_AUCTION" $NEW_CODE_ID "$MSG" \
+    --title "$TITLE" \
+    --description "$(echo "$DESCRIPTION" | base64 --decode)" \
+    --from "$FROM" \
+    --deposit "$DEPOSIT" \
+    --chain-id "$CHAIN_ID" \
+    --node "$NODE" \
+    --gas-prices 1ustars \
+    --gas auto \
+    --gas-adjustment 1.5
