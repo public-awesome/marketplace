@@ -293,8 +293,8 @@ pub fn execute_place_bid(
     );
 
     let next_bid = HighBid {
-        bidder: info.sender.clone(),
-        coin: coin(bid_amount.u128(), auction_denom).clone(),
+        bidder: info.sender,
+        coin: coin(bid_amount.u128(), auction_denom),
     };
 
     let mut event = Event::new("place-bid")
