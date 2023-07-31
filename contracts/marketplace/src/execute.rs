@@ -203,7 +203,7 @@ pub fn execute(
                 finder: maybe_addr(api, finder)?,
                 finders_fee_bps,
             },
-            maybe_addr(api, Some(asset_recipient))?,
+            Some(api.addr_validate(&asset_recipient)?),
             true,
         ),
         ExecuteMsg::RemoveBid {
