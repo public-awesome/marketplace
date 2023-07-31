@@ -160,6 +160,7 @@ pub fn execute(
                 finder: maybe_addr(api, finder)?,
                 finders_fee_bps,
             },
+            None,
             false,
         ),
         ExecuteMsg::BuyNow {
@@ -180,6 +181,29 @@ pub fn execute(
                 finder: maybe_addr(api, finder)?,
                 finders_fee_bps,
             },
+            None,
+            true,
+        ),
+        ExecuteMsg::BuyFor {
+            collection,
+            token_id,
+            expires,
+            finder,
+            finders_fee_bps,
+            asset_recipient,
+        } => execute_set_bid(
+            deps,
+            env,
+            info,
+            SaleType::FixedPrice,
+            BidInfo {
+                collection: api.addr_validate(&collection)?,
+                token_id,
+                expires,
+                finder: maybe_addr(api, finder)?,
+                finders_fee_bps,
+            },
+            maybe_addr(api, Some(asset_recipient))?,
             true,
         ),
         ExecuteMsg::RemoveBid {
@@ -451,6 +475,7 @@ pub fn execute_set_bid(
     info: MessageInfo,
     sale_type: SaleType,
     bid_info: BidInfo,
+    asset_recipient: Option<Addr>,
     buy_now: bool,
 ) -> Result<Response, ContractError> {
     let BidInfo {
@@ -567,6 +592,7 @@ pub fn execute_set_bid(
                             bid_price,
                             bidder.clone(),
                             finder,
+                            asset_recipient,
                             &mut res,
                         )?;
                         None
@@ -691,6 +717,7 @@ pub fn execute_accept_bid(
         bid.price,
         bidder.clone(),
         finder,
+        None,
         &mut res,
     )?;
 
@@ -882,6 +909,7 @@ pub fn execute_accept_collection_bid(
         bid.price,
         bidder.clone(),
         finder,
+        None,
         &mut res,
     )?;
 
@@ -1103,6 +1131,7 @@ fn finalize_sale(
     price: Uint128,
     buyer: Addr,
     finder: Option<Addr>,
+    asset_recipient: Option<Addr>,
     res: &mut Response,
 ) -> StdResult<()> {
     payout(
@@ -1117,9 +1146,10 @@ fn finalize_sale(
         res,
     )?;
 
+    let recipient = asset_recipient.unwrap_or_else(|| buyer.clone());
     let cw721_transfer_msg = Cw721ExecuteMsg::TransferNft {
         token_id: ask.token_id.to_string(),
-        recipient: buyer.to_string(),
+        recipient: recipient.to_string(),
     };
 
     let exec_cw721_transfer = WasmMsg::Execute {
@@ -1137,7 +1167,8 @@ fn finalize_sale(
         .add_attribute("token_id", ask.token_id.to_string())
         .add_attribute("seller", ask.seller.to_string())
         .add_attribute("buyer", buyer.to_string())
-        .add_attribute("price", price.to_string());
+        .add_attribute("price", price.to_string())
+        .add_attribute("asset_recipient", recipient.to_string());
     res.events.push(event);
 
     Ok(())

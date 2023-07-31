@@ -75,6 +75,14 @@ pub enum ExecuteMsg {
         finder: Option<String>,
         finders_fee_bps: Option<u64>,
     },
+    BuyFor {
+        collection: String,
+        token_id: TokenId,
+        expires: Timestamp,
+        finder: Option<String>,
+        finders_fee_bps: Option<u64>,
+        asset_recipient: String,
+    },
     /// Remove an existing bid from an ask
     RemoveBid {
         collection: String,
