@@ -632,6 +632,21 @@ export interface MarketplaceInterface extends MarketplaceReadOnlyInterface {
     findersFeeBps?: number;
     tokenId: number;
   }, fee?: number | StdFee | "auto", memo?: string, _funds?: Coin[]) => Promise<ExecuteResult>;
+  buyFor: ({
+    assetRecipient,
+    collection,
+    expires,
+    finder,
+    findersFeeBps,
+    tokenId
+  }: {
+    assetRecipient: string;
+    collection: string;
+    expires: Timestamp;
+    finder?: string;
+    findersFeeBps?: number;
+    tokenId: number;
+  }, fee?: number | StdFee | "auto", memo?: string, _funds?: Coin[]) => Promise<ExecuteResult>;
   removeBid: ({
     collection,
     tokenId
@@ -730,6 +745,7 @@ export class MarketplaceClient extends MarketplaceQueryClient implements Marketp
     this.updateAskPrice = this.updateAskPrice.bind(this);
     this.setBid = this.setBid.bind(this);
     this.buyNow = this.buyNow.bind(this);
+    this.buyFor = this.buyFor.bind(this);
     this.removeBid = this.removeBid.bind(this);
     this.acceptBid = this.acceptBid.bind(this);
     this.rejectBid = this.rejectBid.bind(this);
@@ -846,6 +862,32 @@ export class MarketplaceClient extends MarketplaceQueryClient implements Marketp
   }, fee: number | StdFee | "auto" = "auto", memo?: string, _funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       buy_now: {
+        collection,
+        expires,
+        finder,
+        finders_fee_bps: findersFeeBps,
+        token_id: tokenId
+      }
+    }, fee, memo, _funds);
+  };
+  buyFor = async ({
+    assetRecipient,
+    collection,
+    expires,
+    finder,
+    findersFeeBps,
+    tokenId
+  }: {
+    assetRecipient: string;
+    collection: string;
+    expires: Timestamp;
+    finder?: string;
+    findersFeeBps?: number;
+    tokenId: number;
+  }, fee: number | StdFee | "auto" = "auto", memo?: string, _funds?: Coin[]): Promise<ExecuteResult> => {
+    return await this.client.execute(this.sender, this.contractAddress, {
+      buy_for: {
+        asset_recipient: assetRecipient,
         collection,
         expires,
         finder,

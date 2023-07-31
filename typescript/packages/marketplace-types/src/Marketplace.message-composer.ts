@@ -74,6 +74,21 @@ export interface MarketplaceMessage {
     findersFeeBps?: number;
     tokenId: number;
   }, _funds?: Coin[]) => MsgExecuteContractEncodeObject;
+  buyFor: ({
+    assetRecipient,
+    collection,
+    expires,
+    finder,
+    findersFeeBps,
+    tokenId
+  }: {
+    assetRecipient: string;
+    collection: string;
+    expires: Timestamp;
+    finder?: string;
+    findersFeeBps?: number;
+    tokenId: number;
+  }, _funds?: Coin[]) => MsgExecuteContractEncodeObject;
   removeBid: ({
     collection,
     tokenId
@@ -169,6 +184,7 @@ export class MarketplaceMessageComposer implements MarketplaceMessage {
     this.updateAskPrice = this.updateAskPrice.bind(this);
     this.setBid = this.setBid.bind(this);
     this.buyNow = this.buyNow.bind(this);
+    this.buyFor = this.buyFor.bind(this);
     this.removeBid = this.removeBid.bind(this);
     this.acceptBid = this.acceptBid.bind(this);
     this.rejectBid = this.rejectBid.bind(this);
@@ -322,6 +338,40 @@ export class MarketplaceMessageComposer implements MarketplaceMessage {
         contract: this.contractAddress,
         msg: toUtf8(JSON.stringify({
           buy_now: {
+            collection,
+            expires,
+            finder,
+            finders_fee_bps: findersFeeBps,
+            token_id: tokenId
+          }
+        })),
+        funds: _funds
+      })
+    };
+  };
+  buyFor = ({
+    assetRecipient,
+    collection,
+    expires,
+    finder,
+    findersFeeBps,
+    tokenId
+  }: {
+    assetRecipient: string;
+    collection: string;
+    expires: Timestamp;
+    finder?: string;
+    findersFeeBps?: number;
+    tokenId: number;
+  }, _funds?: Coin[]): MsgExecuteContractEncodeObject => {
+    return {
+      typeUrl: "/cosmwasm.wasm.v1.MsgExecuteContract",
+      value: MsgExecuteContract.fromPartial({
+        sender: this.sender,
+        contract: this.contractAddress,
+        msg: toUtf8(JSON.stringify({
+          buy_for: {
+            asset_recipient: assetRecipient,
             collection,
             expires,
             finder,
