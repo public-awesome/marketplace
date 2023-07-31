@@ -66,6 +66,15 @@ export type ExecuteMsg = {
     token_id: number;
   };
 } | {
+  buy_for: {
+    asset_recipient: string;
+    collection: string;
+    expires: Timestamp;
+    finder?: string | null;
+    finders_fee_bps?: number | null;
+    token_id: number;
+  };
+} | {
   remove_bid: {
     collection: string;
     token_id: number;

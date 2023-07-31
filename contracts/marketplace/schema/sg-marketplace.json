@@ -373,6 +373,55 @@
         "additionalProperties": false
       },
       {
+        "type": "object",
+        "required": [
+          "buy_for"
+        ],
+        "properties": {
+          "buy_for": {
+            "type": "object",
+            "required": [
+              "asset_recipient",
+              "collection",
+              "expires",
+              "token_id"
+            ],
+            "properties": {
+              "asset_recipient": {
+                "type": "string"
+              },
+              "collection": {
+                "type": "string"
+              },
+              "expires": {
+                "$ref": "#/definitions/Timestamp"
+              },
+              "finder": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "finders_fee_bps": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint64",
+                "minimum": 0.0
+              },
+              "token_id": {
+                "type": "integer",
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
         "description": "Remove an existing bid from an ask",
         "type": "object",
         "required": [
