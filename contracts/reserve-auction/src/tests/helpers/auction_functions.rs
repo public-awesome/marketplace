@@ -1,12 +1,12 @@
 use crate::{
-    msg::{AuctionResponse, ExecuteMsg, InstantiateMsg, QueryMsg},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::Auction,
 };
 use anyhow::Error;
-use cosmwasm_std::{coin, Addr, Timestamp};
+use cosmwasm_std::{Addr, Coin};
 use cw_multi_test::{AppResponse, Contract, ContractWrapper, Executor};
 use sg_multi_test::StargazeApp;
-use sg_std::{StargazeMsgWrapper, NATIVE_DENOM};
+use sg_std::StargazeMsgWrapper;
 
 pub fn auction_contract() -> Box<dyn Contract<StargazeMsgWrapper>> {
     let contract = ContractWrapper::new(
@@ -32,26 +32,19 @@ pub fn create_standard_auction(
     auction: &Addr,
     collection: &str,
     token_id: &str,
-    start_time: Timestamp,
-    end_time: Timestamp,
-    reserve_price: u128,
+    reserve_price: Coin,
+    duration: u64,
     seller_funds_recipient: Option<String>,
-    creation_fee: u128,
+    funds: Coin,
 ) -> Result<AppResponse, Error> {
     let msg = ExecuteMsg::CreateAuction {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
-        reserve_price: coin(reserve_price, NATIVE_DENOM),
-        start_time,
-        end_time,
+        reserve_price,
+        duration,
         seller_funds_recipient,
     };
-    router.execute_contract(
-        creator.clone(),
-        auction.clone(),
-        &msg,
-        &[coin(creation_fee, NATIVE_DENOM)],
-    )
+    router.execute_contract(creator.clone(), auction.clone(), &msg, &[funds])
 }
 
 pub fn place_bid(
@@ -60,18 +53,13 @@ pub fn place_bid(
     bidder: &Addr,
     collection: &str,
     token_id: &str,
-    bid_amount: u128,
+    bid_coin: Coin,
 ) -> Result<AppResponse, Error> {
     let msg = ExecuteMsg::PlaceBid {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
     };
-    router.execute_contract(
-        bidder.clone(),
-        reserve_auction.clone(),
-        &msg,
-        &[coin(bid_amount, NATIVE_DENOM)],
-    )
+    router.execute_contract(bidder.clone(), reserve_auction.clone(), &msg, &[bid_coin])
 }
 
 pub fn query_auction(
@@ -80,7 +68,7 @@ pub fn query_auction(
     collection: &str,
     token_id: &str,
 ) -> Auction {
-    let res: AuctionResponse = router
+    let auction: Option<Auction> = router
         .wrap()
         .query_wasm_smart(
             reserve_auction,
@@ -90,5 +78,5 @@ pub fn query_auction(
             },
         )
         .unwrap();
-    res.auction
+    auction.unwrap()
 }

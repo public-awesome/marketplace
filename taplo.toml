@@ -1,0 +1,4 @@
+# Formatting config file for Even Better TOML: https://marketplace.visualstudio.com/items?itemName=tamasfe.even-better-toml
+
+[formatting]
+align_entries = true

@@ -1,16 +1,24 @@
-#[cfg(not(feature = "library"))]
-use cosmwasm_std::entry_point;
-use sg1::fair_burn;
+use std::vec;
 
 use crate::error::ContractError;
-use crate::helpers::{only_no_auction, settle_auction};
+use crate::helpers::{only_no_auction, settle_auction, validate_reserve_price};
 use crate::msg::ExecuteMsg;
-use crate::state::CONFIG;
 use crate::state::{auctions, Auction, HighBid};
-use cosmwasm_std::{coin, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Timestamp};
+use crate::state::{CONFIG, HALT_MANAGER};
+use cosmwasm_std::{
+    attr, coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo,
+    Timestamp,
+};
 use cw_utils::{maybe_addr, must_pay, nonpayable};
-use sg_marketplace_common::{bank_send, has_approval, only_owner, transfer_nft};
-use sg_std::{Response, NATIVE_DENOM};
+use sg_marketplace_common::{
+    coin::checked_transfer_coin,
+    nft::{has_approval, only_owner, only_tradable, transfer_nft},
+};
+use sg_std::Response;
+use stargaze_fair_burn::append_fair_burn_msg;
+
+#[cfg(not(feature = "library"))]
+use cosmwasm_std::entry_point;
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn execute(
@@ -26,8 +34,7 @@ pub fn execute(
             collection,
             token_id,
             reserve_price,
-            start_time,
-            end_time,
+            duration,
             seller_funds_recipient,
         } => execute_create_auction(
             deps,
@@ -35,8 +42,7 @@ pub fn execute(
             env,
             api.addr_validate(&collection)?,
             &token_id,
-            start_time,
-            end_time,
+            duration,
             reserve_price,
             maybe_addr(api, seller_funds_recipient)?,
         ),
@@ -47,6 +53,7 @@ pub fn execute(
         } => execute_update_reserve_price(
             deps,
             info,
+            env,
             api.addr_validate(&collection)?,
             token_id,
             reserve_price,
@@ -79,39 +86,62 @@ pub fn execute_create_auction(
     env: Env,
     collection: Addr,
     token_id: &str,
-    start_time: Timestamp,
-    end_time: Timestamp,
+    duration: u64,
     reserve_price: Coin,
     seller_funds_recipient: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    only_owner(deps.as_ref(), &info, &collection, token_id)?;
-    has_approval(deps.as_ref(), &env.contract.address, &collection, token_id)?;
+    // Only NFT owner can create auction for an NFT
+    only_owner(&deps.querier, &info, &collection, token_id)?;
+
+    // NFT owner must have approved the reserve auction contract to transfer the NFT
+    has_approval(
+        &deps.querier,
+        &env.contract.address,
+        &collection,
+        token_id,
+        Some(false),
+    )?;
+
+    // Cannot create a duplicate auction for an NFT
     only_no_auction(deps.as_ref(), &collection, token_id)?;
+
+    only_tradable(&deps.querier, &env.block, &collection)?;
 
     let mut response = Response::new();
 
-    let fee = must_pay(&info, NATIVE_DENOM)?;
-    if fee != config.create_auction_fee {
-        return Err(ContractError::WrongFee {
-            required: config.create_auction_fee,
-            given: fee,
-        });
-    }
-    fair_burn(fee.u128(), None, &mut response);
+    validate_reserve_price(deps.as_ref().storage, &reserve_price)?;
 
-    if !has_coins(&[reserve_price.clone()], &config.min_reserve_price) {
-        return Err(ContractError::InvalidReservePrice {
-            min: config.min_reserve_price,
-        });
-    }
+    // Ensure that the duration is within the min and max duration
+    ensure!(
+        duration >= config.min_duration && duration <= config.max_duration,
+        ContractError::InvalidDuration {
+            min: config.min_duration,
+            max: config.max_duration,
+            got: duration
+        }
+    );
 
-    if start_time < env.block.time {
-        return Err(ContractError::InvalidStartTime {});
-    }
-    if end_time < start_time.plus_seconds(config.min_duration) {
-        return Err(ContractError::InvalidEndTime {});
+    // Handle create auction fee payment
+    if config.create_auction_fee.amount.is_zero() {
+        // If create auction fee is zero, ensure no payment is sent
+        nonpayable(&info)?;
+    } else {
+        // If create auction fee is non zero, ensure user has sent the correct amount,
+        // and send it to the fair-burn contract
+        ensure!(
+            has_coins(&info.funds, &config.create_auction_fee),
+            ContractError::WrongFee {
+                expected: config.create_auction_fee,
+            }
+        );
+        response = append_fair_burn_msg(
+            &config.fair_burn,
+            vec![config.create_auction_fee],
+            None,
+            response,
+        );
     }
 
     let auction = Auction {
@@ -119,8 +149,8 @@ pub fn execute_create_auction(
         collection: collection.clone(),
         seller: info.sender,
         reserve_price,
-        start_time,
-        end_time,
+        duration,
+        end_time: None,
         seller_funds_recipient,
         high_bid: None,
         first_bid_time: None,
@@ -128,29 +158,27 @@ pub fn execute_create_auction(
 
     auctions().save(
         deps.storage,
-        (collection.clone(), token_id.to_string()),
+        (auction.collection.clone(), auction.token_id.clone()),
         &auction,
     )?;
 
-    let event = Event::new("create-auction")
+    let mut event = Event::new("create-auction")
         .add_attribute("collection", auction.collection.to_string())
         .add_attribute("token_id", auction.token_id.to_string())
         .add_attribute("seller", auction.seller.to_string())
-        .add_attribute("reserve_price", auction.reserve_price.to_string())
-        .add_attribute("start_time", auction.start_time.to_string())
-        .add_attribute("end_time", auction.end_time.to_string())
-        .add_attribute(
+        .add_attribute("reserve_price", auction.reserve_price.to_string());
+    if auction.seller_funds_recipient.is_some() {
+        event = event.add_attribute(
             "seller_funds_recipient",
-            auction
-                .seller_funds_recipient
-                .map_or("None".to_string(), |a| a.to_string()),
+            auction.seller_funds_recipient.unwrap().to_string(),
         );
+    }
 
     response = response.add_event(event).add_submessage(transfer_nft(
-        collection,
+        &collection,
         token_id,
-        env.contract.address,
-    )?);
+        &env.contract.address,
+    ));
 
     Ok(response)
 }
@@ -158,34 +186,32 @@ pub fn execute_create_auction(
 pub fn execute_update_reserve_price(
     deps: DepsMut,
     info: MessageInfo,
+    _env: Env,
     collection: Addr,
     token_id: String,
     reserve_price: Coin,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
-    let config = CONFIG.load(deps.storage)?;
-    let mut auction = auctions().load(deps.storage, (collection.clone(), token_id.clone()))?;
+    let mut auction = auctions().load(deps.storage, (collection, token_id))?;
 
-    // make sure caller is the seller
-    if auction.seller != info.sender {
-        return Err(ContractError::Unauthorized {});
-    }
+    // Ensure caller is the seller
+    ensure_eq!(auction.seller, info.sender, ContractError::Unauthorized {});
 
-    // make sure auction hasn't started
-    if auction.first_bid_time.is_some() {
-        return Err(ContractError::AuctionStarted {});
-    }
+    // Ensure auction hasn't started
+    ensure!(
+        auction.first_bid_time.is_none(),
+        ContractError::AuctionStarted {}
+    );
 
-    // make sure min reserve price is met
-    if !has_coins(&[reserve_price.clone()], &config.min_reserve_price) {
-        return Err(ContractError::InvalidReservePrice {
-            min: config.min_reserve_price,
-        });
-    }
+    validate_reserve_price(deps.as_ref().storage, &reserve_price)?;
 
-    // update reserve price
+    // Update reserve price
     auction.reserve_price = reserve_price;
-    auctions().save(deps.storage, (collection, token_id), &auction)?;
+    auctions().save(
+        deps.storage,
+        (auction.collection.clone(), auction.token_id.clone()),
+        &auction,
+    )?;
 
     let event = Event::new("update-reserve-price")
         .add_attribute("token_id", auction.token_id.to_string())
@@ -204,18 +230,20 @@ pub fn execute_cancel_auction(
     nonpayable(&info)?;
     let auction = auctions().load(deps.storage, (collection.clone(), token_id.to_string()))?;
 
-    // make sure auction hasn't started
-    if auction.first_bid_time.is_some() {
-        return Err(ContractError::AuctionStarted {});
-    }
+    // Ensure caller is the seller
+    ensure_eq!(auction.seller, info.sender, ContractError::Unauthorized {});
 
-    // make sure caller is the seller or a new owner
-    if info.sender != auction.seller {
-        return Err(ContractError::Unauthorized {});
-    }
+    // Ensure auction hasn't started
+    ensure!(
+        auction.first_bid_time.is_none(),
+        ContractError::AuctionStarted {}
+    );
 
-    // remove auction from storage
-    auctions().remove(deps.storage, (collection.clone(), token_id.to_string()))?;
+    // Remove auction from storage
+    auctions().remove(
+        deps.storage,
+        (auction.collection.clone(), auction.token_id.clone()),
+    )?;
 
     let event = Event::new("cancel-auction")
         .add_attribute("collection", auction.collection.to_string())
@@ -223,7 +251,7 @@ pub fn execute_cancel_auction(
 
     let response = Response::new()
         .add_event(event)
-        .add_submessage(transfer_nft(collection, token_id, auction.seller)?);
+        .add_submessage(transfer_nft(&collection, token_id, &auction.seller));
 
     Ok(response)
 }
@@ -237,72 +265,92 @@ pub fn execute_place_bid(
 ) -> Result<Response, ContractError> {
     let config = CONFIG.load(deps.storage)?;
 
-    let mut auction = auctions().load(deps.storage, (collection.clone(), token_id.to_string()))?;
+    let mut auction = auctions().load(deps.storage, (collection, token_id.to_string()))?;
 
-    let denom = config.min_reserve_price.denom.clone();
-    let bid = must_pay(&info, &denom)?;
+    let auction_denom = auction.denom();
+    let bid_amount = must_pay(&info, &auction_denom)?;
 
     let mut response = Response::new();
     let block_time = env.block.time;
 
-    // make sure seller is not bidder
-    if auction.seller == info.sender {
-        return Err(ContractError::SellerShouldNotBid {});
-    }
+    // Ensure seller is not the bidder
+    ensure!(
+        auction.seller != info.sender,
+        ContractError::SellerShouldNotBid {}
+    );
 
-    // make sure auction has started
-    if block_time < auction.start_time {
-        return Err(ContractError::AuctionNotStarted {});
-    }
+    // Ensure minimum bid amount is met
+    let min_bid = auction.min_bid_coin(config.min_bid_increment_percent);
+    ensure!(
+        has_coins(&info.funds, &min_bid),
+        ContractError::BidTooLow(min_bid.amount)
+    );
 
-    // make sure auction has not ended
-    if block_time >= auction.end_time {
-        return Err(ContractError::AuctionEnded {});
-    }
+    // Ensure auction has not ended
+    ensure!(
+        auction.end_time.is_none() || auction.end_time.unwrap().seconds() > block_time.seconds(),
+        ContractError::AuctionEnded {}
+    );
+
+    let next_bid = HighBid {
+        bidder: info.sender,
+        coin: coin(bid_amount.u128(), auction_denom),
+    };
+
+    let mut event = Event::new("place-bid")
+        .add_attribute("collection", auction.collection.to_string())
+        .add_attribute("token_id", auction.token_id.clone())
+        .add_attribute("seller", auction.seller.to_string())
+        .add_attribute("bidder", next_bid.bidder.to_string())
+        .add_attribute("bid_amount", next_bid.coin.to_string());
 
     match auction.first_bid_time {
-        // if this is the first bid, start the auction
+        // If this is the first bid, set the first_bid_time and end_time
         None => {
-            // ensure the reserve price has been met
-            if !has_coins(&info.funds, &auction.reserve_price) {
-                return Err(ContractError::ReserveNotMet {
-                    min: auction.reserve_price,
-                });
-            }
             auction.first_bid_time = Some(block_time);
+            auction.end_time = Some(block_time.plus_seconds(auction.duration));
+
+            event = event.add_attributes(vec![
+                attr("first_bid", true.to_string()),
+                attr(
+                    "auction_end_time",
+                    auction.end_time.as_ref().unwrap().to_string(),
+                ),
+            ]);
         }
-        // first bid has been placed, and auction has started
-        Some(_first_bid_time) => {
-            // High bid guaranteed to exist when first_bid_time is set
-            let min_bid = auction.min_bid(config.min_bid_increment_pct);
-            if bid < min_bid {
-                return Err(ContractError::BidTooLow(min_bid));
+        // If this is not the first bid, refund previous bidder and extend end_time if necessary
+        Some(_) => {
+            // Refund previous bidder
+            let previous_high_bid = auction.high_bid.unwrap();
+            response = response.add_submessage(checked_transfer_coin(
+                previous_high_bid.coin.clone(),
+                &previous_high_bid.bidder,
+            )?);
+
+            let time_remaining = auction.end_time.unwrap().seconds() - block_time.seconds();
+            if time_remaining < config.extend_duration {
+                auction.end_time = Some(block_time.plus_seconds(config.extend_duration));
             }
 
-            // refund previous bidder
-            let high_bid = auction.high_bid.unwrap();
-            response = response.add_submessage(bank_send(high_bid.coin, high_bid.bidder)?);
+            event = event.add_attributes(vec![
+                attr("first_bid", false.to_string()),
+                attr(
+                    "auction_end_time",
+                    auction.end_time.as_ref().unwrap().to_string(),
+                ),
+                attr("previous_bidder", previous_high_bid.bidder),
+                attr("previous_bid_amount", previous_high_bid.coin.to_string()),
+            ]);
         }
     };
 
-    auction.high_bid = Some(HighBid {
-        bidder: info.sender,
-        coin: coin(bid.u128(), denom),
-    });
+    auction.high_bid = Some(next_bid);
+    auctions().save(
+        deps.storage,
+        (auction.collection.clone(), auction.token_id.clone()),
+        &auction,
+    )?;
 
-    let time_remaining = auction.end_time.seconds() - block_time.seconds();
-    if time_remaining <= config.extend_duration {
-        auction.end_time = block_time.plus_seconds(config.extend_duration);
-    }
-
-    auctions().save(deps.storage, (collection, token_id.to_string()), &auction)?;
-
-    let high_bid = &auction.high_bid.unwrap();
-    let event = Event::new("place-bid")
-        .add_attribute("collection", auction.collection.to_string())
-        .add_attribute("token_id", auction.token_id)
-        .add_attribute("bidder", high_bid.bidder.to_string())
-        .add_attribute("bid_amount", high_bid.coin.to_string());
     response = response.add_event(event);
 
     Ok(response)
@@ -317,9 +365,10 @@ pub fn execute_settle_auction(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     let config = CONFIG.load(deps.storage)?;
+    let halt_manager = HALT_MANAGER.load(deps.storage)?;
     let auction = auctions().load(deps.storage, (collection, token_id.to_string()))?;
 
     let response = Response::new();
 
-    settle_auction(deps, block_time, &config, auction, response)
+    settle_auction(deps, block_time, auction, &config, &halt_manager, response)
 }

@@ -24,8 +24,18 @@ artifacts/
 # code coverage
 tarpaulin-report.*
 
-node_modules/
-build/
-
 # Schema files
 */schema/raw/*
+
+# Typescript
+*-debug.log
+*-error.log
+/.nyc_output
+/package-lock.json
+lib
+dist
+tmp
+node_modules
+oclif.manifest.json
+lerna-debug.log
+tsconfig.tsbuildinfo

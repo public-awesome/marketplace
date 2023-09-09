@@ -1,6 +1,6 @@
 use crate::error::ContractError;
 use cosmwasm_std::{coins, Addr, Coin};
-use cw_multi_test::SudoMsg as CwSudoMsg;
+use cw_multi_test::{AppResponse, SudoMsg as CwSudoMsg};
 use cw_multi_test::{BankSudo, SudoMsg};
 use sg_multi_test::StargazeApp;
 use sg_std::NATIVE_DENOM;
@@ -78,4 +78,16 @@ pub fn setup_addtl_account(
     assert_eq!(bidder_native_balances, funds);
 
     Ok(addr)
+}
+
+pub fn fund_account(router: &mut StargazeApp, addr: &Addr, initial_balance: Coin) -> AppResponse {
+    let funds: Vec<Coin> = coins(initial_balance.amount.u128(), initial_balance.denom);
+    router
+        .sudo(CwSudoMsg::Bank({
+            BankSudo::Mint {
+                to_address: addr.to_string(),
+                amount: funds,
+            }
+        }))
+        .unwrap()
 }

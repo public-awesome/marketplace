@@ -1,25 +1,29 @@
-use crate::msg::{ConfigResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use std::str::FromStr;
+
+use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::state::Config;
 use crate::tests::helpers::constants::{
-    CREATE_AUCTION_FEE, EXTEND_DURATION, MIN_BID_INCREMENT_BPS, MIN_DURATION, MIN_RESERVE_PRICE,
+    CREATE_AUCTION_FEE, DEFAULT_DURATION, EXTEND_DURATION, HALT_BUFFER_DURATION,
+    HALT_DURATION_THRESHOLD, HALT_POSTPONE_DURATION, MAX_DURATION, MIN_BID_INCREMENT_PCT,
+    MIN_DURATION, MIN_RESERVE_PRICE,
 };
 use crate::tests::setup::setup_accounts::{setup_addtl_account, INITIAL_BALANCE};
+use crate::tests::setup::setup_fair_burn::setup_fair_burn;
 use crate::tests::{
     helpers::{
         auction_functions::{
             auction_contract, create_standard_auction, instantiate_auction, place_bid,
             query_auction,
         },
+        constants::TRADING_FEE_PCT,
         nft_functions::{approve, mint, query_owner_of},
         utils::{assert_error, calc_min_bid_increment},
     },
-    setup::{
-        setup_auctions::setup_reserve_auction,
-        setup_marketplace::{setup_marketplace, TRADING_FEE_BPS},
-        setup_minters::standard_minter_template,
-    },
+    setup::{setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template},
 };
 use crate::ContractError;
-use cosmwasm_std::{coin, Decimal, StdError, Uint128};
+
+use cosmwasm_std::{coin, Addr, Decimal, StdError, Uint128};
 use cw_multi_test::Executor;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_multi_test::StargazeApp;
@@ -32,46 +36,51 @@ fn try_instantiate() {
     let auction_id = app.store_code(auction_contract());
     let vt = standard_minter_template(1);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, creator);
 
     let msg = InstantiateMsg {
-        marketplace: marketplace.to_string(),
-        min_reserve_price: coin(1u128, NATIVE_DENOM),
+        fair_burn: fair_burn.to_string(),
+        trading_fee_percent: Decimal::from_str("0.04").unwrap(),
         min_duration: 120,
-        min_bid_increment_bps: 10,
+        max_duration: 180,
+        min_bid_increment_percent: Decimal::from_str("0.01").unwrap(),
         extend_duration: 60,
-        create_auction_fee: Uint128::new(1),
+        create_auction_fee: coin(1u128, NATIVE_DENOM),
         max_auctions_to_settle_per_block: 200,
+        halt_duration_threshold: HALT_DURATION_THRESHOLD,
+        halt_buffer_duration: HALT_BUFFER_DURATION,
+        halt_postpone_duration: HALT_POSTPONE_DURATION,
+        min_reserve_prices: vec![coin(MIN_RESERVE_PRICE, NATIVE_DENOM)],
     };
     let auction_addr = instantiate_auction(&mut app, auction_id, msg.clone());
 
-    let res: ConfigResponse = app
+    let config: Config = app
         .wrap()
         .query_wasm_smart(auction_addr, &QueryMsg::Config {})
         .unwrap();
 
-    assert_eq!(&res.config.create_auction_fee, &msg.create_auction_fee);
-    assert_eq!(&res.config.min_reserve_price, &msg.min_reserve_price);
-    assert_eq!(&res.config.min_duration, &msg.min_duration);
+    assert_eq!(&config.create_auction_fee, &msg.create_auction_fee);
+    assert_eq!(&config.min_duration, &msg.min_duration);
+    assert_eq!(&config.trading_fee_percent, msg.trading_fee_percent);
     assert_eq!(
-        &res.config.min_bid_increment_pct,
-        &Decimal::percent(msg.min_bid_increment_bps)
+        &config.min_bid_increment_percent,
+        msg.min_bid_increment_percent
     );
-    assert_eq!(&res.config.extend_duration, &msg.extend_duration);
+    assert_eq!(&config.extend_duration, &msg.extend_duration);
 }
 
 #[test]
 fn try_create_auction() {
     let vt = standard_minter_template(1);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
-    let block_time = router.block_info().time;
+    let _block_time = router.block_info().time;
 
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
@@ -86,11 +95,10 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert_error(res, StdError::generic_err("Unauthorized").to_string());
 
@@ -101,11 +109,10 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert_error(
         res,
@@ -127,11 +134,10 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE - 1,
+        coin(MIN_RESERVE_PRICE - 1, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert_error(
         res,
@@ -141,35 +147,49 @@ fn try_create_auction() {
         .to_string(),
     );
 
-    // create auction with invalid start time fails
+    // create auction with duration below minimum fails
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time.minus_seconds(1),
-        block_time.plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        MIN_DURATION - 1,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
-    assert_error(res, ContractError::InvalidStartTime {}.to_string());
+    assert_error(
+        res,
+        ContractError::InvalidDuration {
+            min: MIN_DURATION,
+            max: MAX_DURATION,
+            got: MIN_DURATION - 1,
+        }
+        .to_string(),
+    );
 
-    // create auction with invalid end time fails
+    // create auction with duration above max fails
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION - 1),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        MAX_DURATION + 1,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
-    assert_error(res, ContractError::InvalidEndTime {}.to_string());
+    assert_error(
+        res,
+        ContractError::InvalidDuration {
+            min: MIN_DURATION,
+            max: MAX_DURATION,
+            got: MAX_DURATION + 1,
+        }
+        .to_string(),
+    );
 
     // create auction with invalid create auction fee fails
     let res = create_standard_auction(
@@ -178,17 +198,15 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION - 1),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128() - 1u128,
+        coin(CREATE_AUCTION_FEE.u128() - 1u128, NATIVE_DENOM),
     );
     assert_error(
         res,
         ContractError::WrongFee {
-            given: Uint128::from(CREATE_AUCTION_FEE.u128() - 1u128),
-            required: CREATE_AUCTION_FEE,
+            expected: coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
         }
         .to_string(),
     );
@@ -200,11 +218,10 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
@@ -258,8 +275,9 @@ fn try_create_auction() {
         coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
         auction_info.reserve_price
     );
-    assert_eq!(block_time, auction_info.start_time);
-    assert_eq!(block_time.plus_seconds(MIN_DURATION), auction_info.end_time);
+
+    assert_eq!(DEFAULT_DURATION, auction_info.duration);
+    assert_eq!(None, auction_info.end_time);
     assert_eq!(None, auction_info.seller_funds_recipient);
     assert_eq!(None, auction_info.high_bid);
     assert_eq!(None, auction_info.first_bid_time);
@@ -271,11 +289,10 @@ fn try_create_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert_error(res, StdError::generic_err("Unauthorized").to_string());
 }
@@ -284,14 +301,14 @@ fn try_create_auction() {
 fn try_update_reserve_price() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
-    let block_time = router.block_info().time;
+    let _block_time = router.block_info().time;
 
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
@@ -313,11 +330,10 @@ fn try_update_reserve_price() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
@@ -363,7 +379,7 @@ fn try_update_reserve_price() {
         &bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        new_reserve_price.amount.u128(),
+        coin(new_reserve_price.amount.u128(), NATIVE_DENOM),
     );
     assert!(res.is_ok());
     let msg = ExecuteMsg::UpdateReservePrice {
@@ -388,14 +404,14 @@ fn try_update_reserve_price() {
 fn try_cancel_auction() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
-    let block_time = router.block_info().time;
+    let _block_time = router.block_info().time;
 
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
@@ -417,11 +433,10 @@ fn try_cancel_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
@@ -447,7 +462,10 @@ fn try_cancel_auction() {
         token_id: token_id.to_string(),
     };
     let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
-    assert_error(res, "reserve_auction::state::Auction not found".to_string());
+    assert_error(
+        res,
+        "stargaze_reserve_auction::state::Auction not found".to_string(),
+    );
 
     // cancel auction fails after bid has been placed
     approve(
@@ -463,11 +481,10 @@ fn try_cancel_auction() {
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time,
-        block_time.plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert!(res.is_ok());
     let res = place_bid(
@@ -476,14 +493,14 @@ fn try_cancel_auction() {
         &bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
     );
     assert!(res.is_ok());
     let msg = ExecuteMsg::CancelAuction {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
     };
-    let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
+    let res = router.execute_contract(auction_creator.clone(), auction.clone(), &msg, &[]);
     assert_error(res, ContractError::AuctionStarted {}.to_string());
 }
 
@@ -492,8 +509,8 @@ fn try_place_bid() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let second_bidder = setup_addtl_account(&mut router, "second_bidder", INITIAL_BALANCE).unwrap();
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -515,47 +532,28 @@ fn try_place_bid() {
     );
 
     // creating valid auction succeeds
-    let duration_buffer = 100u64;
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time.plus_seconds(duration_buffer),
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
-    // place bid before auction start fails
-    let res = place_bid(
-        &mut router,
-        &auction,
-        &bidder,
-        collection.as_ref(),
-        &token_id.to_string(),
-        MIN_RESERVE_PRICE,
-    );
-    assert_error(res, ContractError::AuctionNotStarted {}.to_string());
-
     // place bid with owner fails
-    setup_block_time(
-        &mut router,
-        block_time.plus_seconds(duration_buffer).nanos(),
-        None,
-    );
+    setup_block_time(&mut router, block_time.plus_seconds(10).nanos(), None);
     let res = place_bid(
         &mut router,
         &auction,
         &auction_creator,
         collection.as_ref(),
         &token_id.to_string(),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
     );
     assert_error(res, ContractError::SellerShouldNotBid {}.to_string());
 
@@ -566,9 +564,12 @@ fn try_place_bid() {
         &bidder,
         collection.as_ref(),
         &2.to_string(),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
     );
-    assert_error(res, "reserve_auction::state::Auction not found".to_string());
+    assert_error(
+        res,
+        "stargaze_reserve_auction::state::Auction not found".to_string(),
+    );
 
     // place bid below reserve fails
     let res = place_bid(
@@ -577,14 +578,11 @@ fn try_place_bid() {
         &bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        MIN_RESERVE_PRICE - 1,
+        coin(MIN_RESERVE_PRICE - 1, NATIVE_DENOM),
     );
     assert_error(
         res,
-        ContractError::ReserveNotMet {
-            min: coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
-        }
-        .to_string(),
+        ContractError::BidTooLow(Uint128::from(MIN_RESERVE_PRICE)).to_string(),
     );
 
     // place bid above reserve succeeds
@@ -594,7 +592,7 @@ fn try_place_bid() {
         &bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
@@ -605,13 +603,22 @@ fn try_place_bid() {
         &bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128() - 1u128,
+        coin(
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                1,
+            )
+            .u128()
+                - 1u128,
+            NATIVE_DENOM,
+        ),
     );
     assert_error(
         res,
         ContractError::BidTooLow(calc_min_bid_increment(
             MIN_RESERVE_PRICE,
-            MIN_BID_INCREMENT_BPS,
+            Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
             1,
         ))
         .to_string(),
@@ -624,7 +631,15 @@ fn try_place_bid() {
         &bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128(),
+        coin(
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                1,
+            )
+            .u128(),
+            NATIVE_DENOM,
+        ),
     );
     assert!(res.is_ok());
 
@@ -635,13 +650,7 @@ fn try_place_bid() {
         collection.as_ref(),
         &token_id.to_string(),
     );
-    assert_eq!(
-        auction_info.end_time,
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION)
-    );
-    let bid_time = auction_info.end_time.minus_seconds(1u64);
+    let bid_time = auction_info.end_time.unwrap().minus_seconds(1u64);
     setup_block_time(&mut router, bid_time.nanos(), None);
     let res = place_bid(
         &mut router,
@@ -649,7 +658,15 @@ fn try_place_bid() {
         &second_bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 2).u128(),
+        coin(
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                2,
+            )
+            .u128(),
+            NATIVE_DENOM,
+        ),
     );
     assert!(res.is_ok());
     let auction_info = query_auction(
@@ -659,19 +676,27 @@ fn try_place_bid() {
         &token_id.to_string(),
     );
     assert_eq!(
-        auction_info.end_time,
+        auction_info.end_time.unwrap(),
         bid_time.plus_seconds(EXTEND_DURATION)
     );
 
     // place bid after auction ends fails
-    setup_block_time(&mut router, auction_info.end_time.nanos(), None);
+    setup_block_time(&mut router, auction_info.end_time.unwrap().nanos(), None);
     let res = place_bid(
         &mut router,
         &auction,
         &bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 3).u128(),
+        coin(
+            calc_min_bid_increment(
+                MIN_RESERVE_PRICE,
+                Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+                3,
+            )
+            .u128(),
+            NATIVE_DENOM,
+        ),
     );
     assert_error(res, ContractError::AuctionEnded {}.to_string());
 }
@@ -680,8 +705,8 @@ fn try_place_bid() {
 fn try_settle_auction_with_bids() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -692,6 +717,7 @@ fn try_settle_auction_with_bids() {
     let auction_creator =
         setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
     let second_bidder = setup_addtl_account(&mut router, "second_bidder", INITIAL_BALANCE).unwrap();
+    let seller_funds_recipient = Addr::unchecked("seller_funds_recipient");
 
     // mint nft for creator
     mint(&mut router, &minter, &creator, &auction_creator);
@@ -704,36 +730,18 @@ fn try_settle_auction_with_bids() {
     );
 
     // creating valid auction succeeds
-    let duration_buffer = 100u64;
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time.plus_seconds(duration_buffer),
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
-        None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
+        Some(seller_funds_recipient.to_string()),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert!(res.is_ok());
-
-    // settle auction before auction start fails
-    let msg = ExecuteMsg::SettleAuction {
-        collection: collection.to_string(),
-        token_id: token_id.to_string(),
-    };
-    let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
-    assert_error(res, ContractError::AuctionNotStarted {}.to_string());
-
-    setup_block_time(
-        &mut router,
-        block_time.plus_seconds(duration_buffer).nanos(),
-        None,
-    );
 
     // settle auction before auction end fails
     let msg = ExecuteMsg::SettleAuction {
@@ -750,12 +758,17 @@ fn try_settle_auction_with_bids() {
         &bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
-    let high_bid_amount =
-        calc_min_bid_increment(MIN_RESERVE_PRICE, MIN_BID_INCREMENT_BPS, 1).u128();
+    let high_bid_amount = calc_min_bid_increment(
+        MIN_RESERVE_PRICE,
+        Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+        1,
+    )
+    .u128();
+
     // place bid above next valid bid succeeds
     let res = place_bid(
         &mut router,
@@ -763,17 +776,13 @@ fn try_settle_auction_with_bids() {
         &second_bidder,
         collection.as_ref(),
         &token_id.to_string(),
-        high_bid_amount,
+        coin(high_bid_amount, NATIVE_DENOM),
     );
-    println!("{:?}", res);
     assert!(res.is_ok());
 
     setup_block_time(
         &mut router,
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION)
-            .nanos(),
+        block_time.plus_seconds(DEFAULT_DURATION).nanos(),
         None,
     );
 
@@ -811,10 +820,9 @@ fn try_settle_auction_with_bids() {
         .parse::<u64>()
         .unwrap();
 
-    let trading_fee_percent = Decimal::percent(TRADING_FEE_BPS) / Uint128::from(100u128);
     let protocol_fee = Uint128::from(burn_amount + dist_amount);
     assert_eq!(
-        Uint128::from(high_bid_amount) * trading_fee_percent,
+        Uint128::from(high_bid_amount) * Decimal::from_str(TRADING_FEE_PCT).unwrap(),
         protocol_fee
     );
 
@@ -836,7 +844,7 @@ fn try_settle_auction_with_bids() {
         Uint128::from(INITIAL_BALANCE) + royalty_fee
     );
 
-    // check that seller was paid
+    // check that seller funds recipient was paid
     let seller_payment = Uint128::from(high_bid_amount) - protocol_fee - royalty_fee;
     let new_auction_creator_balance = router
         .wrap()
@@ -845,8 +853,15 @@ fn try_settle_auction_with_bids() {
         .amount;
     assert_eq!(
         new_auction_creator_balance,
-        Uint128::from(INITIAL_BALANCE) - CREATE_AUCTION_FEE + seller_payment
+        Uint128::from(INITIAL_BALANCE) - CREATE_AUCTION_FEE
     );
+
+    let new_seller_funds_recipient_balance = router
+        .wrap()
+        .query_balance(&seller_funds_recipient, NATIVE_DENOM)
+        .unwrap()
+        .amount;
+    assert_eq!(new_seller_funds_recipient_balance, seller_payment);
 
     // check that first bidder was fully refunded
     let first_bidder_balance = router
@@ -876,8 +891,8 @@ fn try_settle_auction_with_bids() {
 fn try_settle_auction_with_no_bids() {
     let vt = standard_minter_template(1);
     let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
-    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
-    let auction = setup_reserve_auction(&mut router, creator.clone(), marketplace).unwrap();
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -899,59 +914,30 @@ fn try_settle_auction_with_no_bids() {
     );
 
     // creating valid auction succeeds
-    let duration_buffer = 100u64;
     let res = create_standard_auction(
         &mut router,
         &auction_creator,
         &auction,
         collection.as_ref(),
         &token_id.to_string(),
-        block_time.plus_seconds(duration_buffer),
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION),
-        MIN_RESERVE_PRICE,
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
         None,
-        CREATE_AUCTION_FEE.u128(),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
     );
     assert!(res.is_ok());
 
     setup_block_time(
         &mut router,
-        block_time.plus_seconds(duration_buffer).nanos(),
+        block_time.plus_seconds(DEFAULT_DURATION).nanos(),
         None,
     );
 
-    setup_block_time(
-        &mut router,
-        block_time
-            .plus_seconds(duration_buffer)
-            .plus_seconds(MIN_DURATION)
-            .nanos(),
-        None,
-    );
-
+    // Cannot settle an auction that has no bid
     let msg = ExecuteMsg::SettleAuction {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
     };
     let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
-    assert!(res.is_ok());
-
-    // check that seller was given NFT
-    assert_eq!(
-        query_owner_of(&router, &collection, &token_id.to_string()),
-        auction_creator.to_string()
-    );
-
-    // check that seller has correct final balance
-    let new_auction_creator_balance = router
-        .wrap()
-        .query_balance(&auction_creator, NATIVE_DENOM)
-        .unwrap()
-        .amount;
-    assert_eq!(
-        new_auction_creator_balance,
-        Uint128::from(INITIAL_BALANCE) - CREATE_AUCTION_FEE
-    );
+    assert_error(res, ContractError::AuctionNotEnded {}.to_string());
 }

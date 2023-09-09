@@ -1,118 +1,21 @@
-# Stargaze Reserve (Timed) Auctions
+# Stargaze Reserve Auction (aka Live Auction)
 
-Reserve auctions enable an NFT to receive bids of increasing value for a certain duration of time.
-
-This contract honors royalties.
-
-## State
-
-### `Config`
-
-These parameters will be set on contract instantiation. They can also be updated via Sudo.
-
-```rs
-pub struct Config {
-    pub create_auction_fee: Uint128,
-    pub min_reserve_price: Coin,
-    pub min_bid_increment: u64,
-    pub min_duration: u64,
-    pub extend_duration: u64,
-    pub trading_fee: Decimal,
-}
-```
-
-### `Auction`
-
-```rs
-pub struct HighBid {
-    pub coin: Coin,
-    pub bidder: Addr,
-}
-
-pub struct Auction {
-    pub token_id: String,
-    pub collection: Addr,
-    pub seller: Addr,
-    pub reserve_price: Coin,
-    pub start_time: Timestamp,
-    pub end_time: Timestamp,
-    pub seller_funds_recipient: Option<Addr>,
-    pub high_bid: Option<HighBid>,
-    pub first_bid_time: Option<Timestamp>,
-}
-```
+This CosmWasm smart contract implements a reserve auction on the Stargaze network. In a reserve auction, an item is not sold unless the highest bid is equal to or greater than a predetermined reserve price. The contract includes several key features such as auction creation, bid placement, auction settlement, and cancellation. The auction also provides the ability to update the reserve price.
 
 ## Messages
 
-### `Instantiate`
+The contract functionality is implemented in the following executable messages.
 
-```rs
-pub struct InstantiateMsg {
-    pub create_auction_fee: Uint128,
-    pub min_reserve_price: Coin,
-    pub min_duration: u64,
-    pub min_bid_increment: u64,
-    pub extend_duration: u64,
-    pub trading_fee_bps: u64,
-}
-```
+**CreateAuction**: Allows the owner of an NFT to create an auction. The owner sets the reserve price, auction duration, and an optional recipient address for the auction proceeds. Upon creation, the contract verifies that the NFT owner has approved the auction contract to transfer the NFT. The function also handles the creation fee, which is sent to a fair-burn contract if applicable. The auction officially starts when the first bid has been placed.
 
-### `CreateAuction`
+**UpdateReservePrice**: Allows the seller to update the reserve price of an auction. This operation is only permissible if the auction has not yet started (i.e., no bids have been placed).
 
-Creates an auction for the given NFT, the NFT is escrowed at the time of contract creation. The timer stars after `start_time`. The contract maintains custody of the NFT until the auction is finished. `Approval` must be given this contract so it can transfer the NFT to itself. `Approval` can be batched to run before `CreateAuction`.
+**CancelAuction**: Allows the seller to cancel an auction. Like updating the reserve price, cancellation is only permissible if the auction has not yet started.
 
-```rs
-CreateAuction {
-    collection: String,
-    token_id: String,
-    reserve_price: Coin,
-    start_time: Timestamp,
-    end_time: Timestamp,
-    seller_funds_recipient: Option<String>,
-}
-```
+**PlaceBid**: Allows a participant to place a bid on an NFT. If the participant is placing the first bid, then the bid must be higher than the reserve price. If it is not the first bid, then the bid must be higher than the previous highest bid. If a bid is placed near the end of an auction, the end time of the auction may be extended in order to allow for more bidding.
 
-### `UpdateReservePrice`
+**SettleAuction**: Allows anyone to settle an auction after it has ended. The function distributes the winning bid to the seller, transfers the NFT to the winning bidder, and burns the platform fee. This message is also invoked within the CosmosSDK's EndBlocker to allow for timely settling of auctions.
 
-Updated the reserve price of an existing auction. This only runs if the auction hasn't started yet.
+## Addresses
 
-```rs
-UpdateReservePrice {
-    collection: String,
-    token_id: String,
-    reserve_price: Coin,
-}
-```
-
-### `CancelAuction`
-
-Cancels an existing auction. This only runs if the auction hasn't started yet.
-
-```rs
-CancelAuction {
-    collection: String,
-    token_id: String,
-}
-```
-
-### `PlaceBid`
-
-Places a bid on the given NFT. Each bid must be a fixed amount greater than the last. The amount for the bid is held in escrow by the contract until either the auction ends or a higher bid is placed. When a higher bid is placed, the previous bid is refunded. If a bid is placed within `extend_duration` of the auction ending, the auction is extended by `extend_duration` seconds.
-
-```rs
-PlaceBid {
-    collection: String,
-    token_id: String,
-}
-```
-
-### `SettleAuction`
-
-Ends the auction for the given NFT. It sends it to the highest bidder, and transfers the funds from the bid to the seller. Royalties are paid to the creator. Anyone can call this function.
-
-```rs
-SettleAuction {
-    collection: String,
-    token_id: String,
-}
-```
+- `elfagar-1: stars1dnadsd7tx0dmnpp26ms7d66zsp7tduygwjgfjzueh0lg9t5lq5vq9kn47c`
