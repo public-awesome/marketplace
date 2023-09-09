@@ -705,7 +705,7 @@ pub fn execute_accept_bid(
 
 pub fn execute_reject_bid(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
@@ -717,10 +717,6 @@ pub fn execute_reject_bid(
     let bid_key = bid_key(&collection, token_id, &bidder);
 
     let bid = bids().load(deps.storage, bid_key.clone())?;
-    if bid.is_expired(&env.block) {
-        return Err(ContractError::BidExpired {});
-    }
-
     bids().remove(deps.storage, bid_key)?;
 
     let refund_msg = BankMsg::Send {
