@@ -700,7 +700,7 @@ pub fn execute_accept_bid(
         expires_at: bid.expires_at,
         is_active: true,
         seller: info.sender.clone(),
-        funds_recipient: Some(info.sender),
+        funds_recipient: Some(info.sender.clone()),
         reserve_for: None,
         finders_fee_bps: bid.finders_fee_bps,
     };
@@ -722,6 +722,7 @@ pub fn execute_accept_bid(
     )?;
 
     let event = Event::new("accept-bid")
+        .add_attribute("seller", info.sender)
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
@@ -754,6 +755,7 @@ pub fn execute_reject_bid(
     let hook = prepare_bid_hook(deps.as_ref(), &bid, HookAction::Delete)?;
 
     let event = Event::new("reject-bid")
+        .add_attribute("seller", info.sender)
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
