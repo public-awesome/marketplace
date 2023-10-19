@@ -700,7 +700,7 @@ pub fn execute_accept_bid(
         expires_at: bid.expires_at,
         is_active: true,
         seller: info.sender.clone(),
-        funds_recipient: Some(info.sender),
+        funds_recipient: Some(info.sender.clone()),
         reserve_for: None,
         finders_fee_bps: bid.finders_fee_bps,
     };
@@ -722,6 +722,7 @@ pub fn execute_accept_bid(
     )?;
 
     let event = Event::new("accept-bid")
+        .add_attribute("seller", info.sender)
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
@@ -732,7 +733,7 @@ pub fn execute_accept_bid(
 
 pub fn execute_reject_bid(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
     collection: Addr,
     token_id: TokenId,
@@ -744,10 +745,6 @@ pub fn execute_reject_bid(
     let bid_key = bid_key(&collection, token_id, &bidder);
 
     let bid = bids().load(deps.storage, bid_key.clone())?;
-    if bid.is_expired(&env.block) {
-        return Err(ContractError::BidExpired {});
-    }
-
     bids().remove(deps.storage, bid_key)?;
 
     let refund_msg = BankMsg::Send {
@@ -758,6 +755,7 @@ pub fn execute_reject_bid(
     let hook = prepare_bid_hook(deps.as_ref(), &bid, HookAction::Delete)?;
 
     let event = Event::new("reject-bid")
+        .add_attribute("seller", info.sender)
         .add_attribute("collection", collection.to_string())
         .add_attribute("token_id", token_id.to_string())
         .add_attribute("bidder", bidder)
