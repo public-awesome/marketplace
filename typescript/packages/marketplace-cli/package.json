@@ -27,7 +27,7 @@
     "@stargazezone/marketplace-types": "^2.0.0",
     "@types/bn.js": "^5.1.0",
     "@types/js-yaml": "^4.0.5",
-    "axios": "^0.27.2",
+    "axios": "^1.6.0",
     "conf-cli": "^0.1.9",
     "csv-parser": "^3.0.0",
     "files-from-path": "^0.2.6",
