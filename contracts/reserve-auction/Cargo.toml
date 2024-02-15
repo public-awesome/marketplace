@@ -1,6 +1,6 @@
 [package]
 name = "stargaze-reserve-auction"
-version = "1.0.1"
+version = "1.0.2"
 authors = [
   "Shane Vitarana <s+git@publicawesome.com>",
   "Tasio Victoria <tasiovictoria@ujulabs.com>",
