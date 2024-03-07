@@ -114,7 +114,8 @@ pub fn settle_auction(
             .add_attribute("token_id", auction.token_id)
             .add_attribute("seller", auction.seller)
             .add_attribute("bidder", high_bid.bidder.to_string())
-            .add_attribute("bid_amount", high_bid.coin.amount.to_string()),
+            .add_attribute("bid_amount", high_bid.coin.amount.to_string())
+            .add_attribute("bid_denom", high_bid.coin.denom.to_string()),
     );
 
     Ok(response)
