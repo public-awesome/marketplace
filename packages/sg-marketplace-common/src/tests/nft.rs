@@ -1,23 +1,25 @@
 use cosmwasm_std::{
     testing::{mock_dependencies, mock_env, mock_info},
-    to_binary, Addr, Binary, ContractResult, Decimal, Querier, QuerierResult, QuerierWrapper,
+    to_json_binary, Addr, Binary, ContractResult, Decimal, Querier, QuerierResult, QuerierWrapper,
     StdError, SystemError, SystemResult, Timestamp,
 };
-use cw721::OwnerOfResponse;
+use cw721::{Approval, OwnerOfResponse};
 use mockall::*;
 use sg721::{RoyaltyInfo, RoyaltyInfoResponse};
 use sg721_base::msg::CollectionInfoResponse;
+use sg_std::Response;
 use test_suite::common_setup::templates::base_minter_with_sg721;
 
 use crate::nft::{
-    has_approval, load_collection_royalties, only_owner, only_tradable, owner_of, transfer_nft,
+    has_approval, load_collection_royalties, only_owner, only_tradable, only_with_owner_approval,
+    owner_of, transfer_nft,
 };
 
 #[test]
 fn try_transfer_nft() {
     let collection = Addr::unchecked("collection");
     let recipient = Addr::unchecked("recipient");
-    transfer_nft(&collection, "1", &recipient);
+    transfer_nft(&collection, "1", &recipient, Response::new());
 }
 
 #[test]
@@ -35,7 +37,7 @@ fn try_owner_of() {
     }
 
     let return_value = SystemResult::Ok(ContractResult::Ok(
-        to_binary(&OwnerOfResponse {
+        to_json_binary(&OwnerOfResponse {
             owner: creator.to_string(),
             approvals: vec![],
         })
@@ -77,7 +79,7 @@ fn try_only_owner() {
     }
 
     let return_value = SystemResult::Ok(ContractResult::Ok(
-        to_binary(&OwnerOfResponse {
+        to_json_binary(&OwnerOfResponse {
             owner: creator.to_string(),
             approvals: vec![],
         })
@@ -147,6 +149,97 @@ fn try_has_approval() {
 }
 
 #[test]
+fn try_with_owner_approval() {
+    let bmt = base_minter_with_sg721(1);
+    let collection = bmt.collection_response_vec[0].collection.clone().unwrap();
+
+    let creator = bmt.accts.creator;
+    let buyer = bmt.accts.buyer;
+
+    let contract = Addr::unchecked("contract");
+
+    let token_id = 1;
+
+    mock! {
+        QuerierStruct {}
+        impl Querier for QuerierStruct {
+            fn raw_query(&self, bin_request: &[u8]) -> QuerierResult;
+        }
+    }
+
+    let return_value = SystemResult::Ok(ContractResult::Ok(
+        to_json_binary(&OwnerOfResponse {
+            owner: creator.to_string(),
+            approvals: vec![],
+        })
+        .unwrap(),
+    ));
+
+    let mut mock = MockQuerierStruct::new();
+    mock.expect_raw_query()
+        .with(predicate::always())
+        .times(2)
+        .returning(move |_| return_value.clone());
+
+    let querier_wrapper = QuerierWrapper::new(&mock);
+
+    let info = mock_info(buyer.as_ref(), &[]);
+    assert_eq!(
+        Err(crate::MarketplaceStdError::Unauthorized(
+            "sender is not owner".to_string()
+        )),
+        only_with_owner_approval(
+            &querier_wrapper,
+            &info,
+            &collection,
+            &token_id.to_string(),
+            &contract
+        )
+    );
+
+    let info = mock_info(creator.as_ref(), &[]);
+    assert_eq!(
+        Err(crate::MarketplaceStdError::Unauthorized(
+            "contract is not approved".to_string()
+        )),
+        only_with_owner_approval(
+            &querier_wrapper,
+            &info,
+            &collection,
+            &token_id.to_string(),
+            &contract
+        )
+    );
+
+    let return_value = SystemResult::Ok(ContractResult::Ok(
+        to_json_binary(&OwnerOfResponse {
+            owner: creator.to_string(),
+            approvals: vec![Approval {
+                spender: contract.to_string(),
+                expires: cw_utils::Expiration::Never {},
+            }],
+        })
+        .unwrap(),
+    ));
+    let mut mock = MockQuerierStruct::new();
+    mock.expect_raw_query()
+        .with(predicate::always())
+        .times(1)
+        .returning(move |_| return_value.clone());
+    let querier_wrapper = QuerierWrapper::new(&mock);
+    assert_eq!(
+        Ok(()),
+        only_with_owner_approval(
+            &querier_wrapper,
+            &info,
+            &collection,
+            &token_id.to_string(),
+            &contract
+        )
+    );
+}
+
+#[test]
 fn try_only_tradable() {
     mock! {
         QuerierStruct {}
@@ -179,7 +272,7 @@ fn try_only_tradable() {
 
     // No start trading time set is ok
     let return_value = SystemResult::Ok(ContractResult::Ok(
-        to_binary(&CollectionInfoResponse {
+        to_json_binary(&CollectionInfoResponse {
             creator: "creator".to_string(),
             description: "description".to_string(),
             image: "image".to_string(),
@@ -207,7 +300,7 @@ fn try_only_tradable() {
 
     // Start trading time in the past is ok
     let return_value = SystemResult::Ok(ContractResult::Ok(
-        to_binary(&CollectionInfoResponse {
+        to_json_binary(&CollectionInfoResponse {
             creator: "creator".to_string(),
             description: "description".to_string(),
             image: "image".to_string(),
@@ -235,7 +328,7 @@ fn try_only_tradable() {
 
     // Start trading time in the future throws an error
     let return_value = SystemResult::Ok(ContractResult::Ok(
-        to_binary(&CollectionInfoResponse {
+        to_json_binary(&CollectionInfoResponse {
             creator: "creator".to_string(),
             description: "description".to_string(),
             image: "image".to_string(),
@@ -272,7 +365,7 @@ fn try_load_collection_royalties() {
     }
 
     let return_value = SystemResult::Ok(ContractResult::Ok(
-        to_binary(&CollectionInfoResponse {
+        to_json_binary(&CollectionInfoResponse {
             creator: "creator".to_string(),
             description: "description".to_string(),
             image: "image".to_string(),

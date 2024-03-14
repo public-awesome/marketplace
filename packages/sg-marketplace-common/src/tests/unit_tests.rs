@@ -7,7 +7,7 @@ use crate::{
 use cosmwasm_std::{
     coin,
     testing::{mock_dependencies, mock_info},
-    to_binary, Addr, BankMsg, ContractResult, Decimal, Querier, QuerierResult, QuerierWrapper,
+    to_json_binary, Addr, BankMsg, ContractResult, Decimal, Querier, QuerierResult, QuerierWrapper,
     StdError, SystemResult, Uint128, WasmMsg,
 };
 use cw721::OwnerOfResponse;
@@ -58,7 +58,7 @@ fn try_owner_of() {
     }
 
     let return_value = SystemResult::Ok(ContractResult::Ok(
-        to_binary(&OwnerOfResponse {
+        to_json_binary(&OwnerOfResponse {
             owner: creator.to_string(),
             approvals: vec![],
         })
@@ -100,7 +100,7 @@ fn try_only_owner() {
     }
 
     let return_value = SystemResult::Ok(ContractResult::Ok(
-        to_binary(&OwnerOfResponse {
+        to_json_binary(&OwnerOfResponse {
             owner: creator.to_string(),
             approvals: vec![],
         })
@@ -179,7 +179,7 @@ fn try_load_collection_royalties() {
     }
 
     let return_value = SystemResult::Ok(ContractResult::Ok(
-        to_binary(&CollectionInfoResponse {
+        to_json_binary(&CollectionInfoResponse {
             creator: "creator".to_string(),
             description: "description".to_string(),
             image: "image".to_string(),
@@ -304,10 +304,6 @@ fn try_payout_nft_sale_fees() {
     let response = Response::new();
     let response =
         payout_nft_sale_fees(&fair_burn, tx_fees.clone(), Some(developer), response).unwrap();
-
-    for msg in response.messages.iter() {
-        println!("{:?}", msg);
-    }
 
     match response.messages[0].msg.clone() {
         CosmosMsg::Wasm(WasmMsg::Execute { contract_addr, .. }) => {

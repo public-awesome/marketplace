@@ -5,6 +5,7 @@
 
 contracts=(
     "stargaze_fair_burn"
+    "stargaze_royalty_registry"
 )
 
 # Check if Cargo.toml file exists

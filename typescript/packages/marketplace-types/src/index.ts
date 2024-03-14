@@ -8,19 +8,28 @@ import * as _0 from "./Marketplace.types";
 import * as _1 from "./Marketplace.client";
 import * as _2 from "./Marketplace.message-composer";
 import * as _3 from "./Marketplace.react-query";
-import * as _4 from "./ReserveAuction.types";
-import * as _5 from "./ReserveAuction.client";
-import * as _6 from "./ReserveAuction.message-composer";
-import * as _7 from "./ReserveAuction.react-query";
+import * as _4 from "./MarketplaceV2.types";
+import * as _5 from "./MarketplaceV2.client";
+import * as _6 from "./MarketplaceV2.message-composer";
+import * as _7 from "./MarketplaceV2.react-query";
+import * as _8 from "./ReserveAuction.types";
+import * as _9 from "./ReserveAuction.client";
+import * as _10 from "./ReserveAuction.message-composer";
+import * as _11 from "./ReserveAuction.react-query";
 export namespace contracts {
   export const Marketplace = { ..._0,
     ..._1,
     ..._2,
     ..._3
   };
-  export const ReserveAuction = { ..._4,
+  export const MarketplaceV2 = { ..._4,
     ..._5,
     ..._6,
     ..._7
+  };
+  export const ReserveAuction = { ..._8,
+    ..._9,
+    ..._10,
+    ..._11
   };
 }

@@ -1,22 +1,33 @@
 import { SigningCosmWasmClient } from '@cosmjs/cosmwasm-stargate'
 import Context, { CONTRACT_MAP } from '../setup/context'
-import { getClient, getSigningClient } from './client'
-import { getExpirationString } from './datetime'
+import { Sg2ExecuteMsgForVendingMinterInitMsgExtension } from '../types/vendingFactory'
+import { getQueryClient, getSigningClient } from './client'
+import { getFutureTimestamp, nanoToMs, waitUntil } from './datetime'
+import { sleep } from './sleep'
 import { ExecuteMsg as BaseFactoryExecuteMsg } from '@stargazezone/launchpad/src/BaseFactory.types'
 import assert from 'assert'
 import _ from 'lodash'
 
 export const createMinter = async (context: Context) => {
-  const queryClient = await getClient()
+  const queryClient = await getQueryClient()
 
-  let baseFactoryAddress = context.getContractAddress(CONTRACT_MAP.BASE_FACTORY)
-  let { params: factoryParams } = await queryClient.queryContractSmart(baseFactoryAddress, {
+  let vendingFactoryAddress = context.getContractAddress(CONTRACT_MAP.VENDING_FACTORY)
+  let { params: factoryParams } = await queryClient.queryContractSmart(vendingFactoryAddress, {
     params: {},
   })
 
-  const { client: signingClient, address: sender } = await getSigningClient()
-  let msg: BaseFactoryExecuteMsg = {
+  const { client: signingClient, address: sender } = context.getTestUser('user1')
+  let msg: Sg2ExecuteMsgForVendingMinterInitMsgExtension = {
     create_minter: {
+      init_msg: {
+        base_token_uri: 'ipfs://bafybeiek33kk3js27dhodwadtmrf3p6b64netr6t3xzi3sbfyxovxe36qe',
+        payment_address: sender,
+        start_time: getFutureTimestamp(8),
+        num_tokens: 10_000,
+        mint_price: { amount: '1000000', denom: 'ustars' },
+        per_address_limit: 100,
+        whitelist: null,
+      },
       collection_params: {
         code_id: context.getCodeId(CONTRACT_MAP.SG721_BASE),
         name: 'Test Collection',
@@ -25,7 +36,7 @@ export const createMinter = async (context: Context) => {
           creator: sender,
           description: 'This is the collection description',
           image: 'ipfs://bafybeiek33kk3js27dhodwadtmrf3p6b64netr6t3xzi3sbfyxovxe36qe/1.png',
-          start_trading_time: getExpirationString(0),
+          start_trading_time: getFutureTimestamp(8),
           royalty_info: {
             payment_address: sender,
             share: '0.05',
@@ -34,17 +45,26 @@ export const createMinter = async (context: Context) => {
       },
     },
   }
-  let executeResult = await signingClient.execute(sender, baseFactoryAddress, msg, 'auto', 'instantiate-base-minter', [
-    factoryParams.creation_fee,
-  ])
+  let executeResult = await signingClient.execute(
+    sender,
+    vendingFactoryAddress,
+    msg,
+    'auto',
+    'instantiate-vending-minter',
+    [factoryParams.creation_fee],
+  )
 
   let instantiateEvents = _.filter(executeResult.events, (event) => {
     return event.type === 'instantiate'
   })
-  context.pushContractAddress(CONTRACT_MAP.BASE_MINTER, instantiateEvents[0].attributes[0].value)
-  context.pushContractAddress(CONTRACT_MAP.SG721_BASE, instantiateEvents[1].attributes[0].value)
 
-  return executeResult
+  let minterAddress = instantiateEvents[0].attributes[0].value
+  let collectionAddress = instantiateEvents[1].attributes[0].value
+
+  context.addContractAddress(CONTRACT_MAP.VENDING_MINTER, minterAddress)
+  context.addContractAddress(CONTRACT_MAP.SG721_BASE, collectionAddress)
+
+  return collectionAddress
 }
 
 export const mintNft = async (
@@ -52,25 +72,27 @@ export const mintNft = async (
   signingClient: SigningCosmWasmClient,
   sender: string,
   recipientAddress: string,
-): Promise<[string, string]> => {
-  const queryClient = await getClient()
+): Promise<string> => {
+  const queryClient = await getQueryClient()
 
-  let baseFactoryAddress = context.getContractAddress(CONTRACT_MAP.BASE_FACTORY)
-  let { params: factoryParams } = await queryClient.queryContractSmart(baseFactoryAddress, {
+  let vendingFactoryAddress = context.getContractAddress(CONTRACT_MAP.VENDING_FACTORY)
+  let { params: factoryParams } = await queryClient.queryContractSmart(vendingFactoryAddress, {
     params: {},
   })
 
-  let baseMinterAddress = context.getContractAddress(CONTRACT_MAP.BASE_MINTER)
-  let minterConfig = await queryClient.queryContractSmart(baseMinterAddress, {
+  let vendingMinterAddress = context.getContractAddress(CONTRACT_MAP.VENDING_MINTER)
+  let minterConfig = await queryClient.queryContractSmart(vendingMinterAddress, {
     config: {},
   })
-  let collectionAddress = minterConfig.collection_address
 
-  let mintMsg = { mint: { token_uri: 'ipfs://bafybeiek33kk3js27dhodwadtmrf3p6b64netr6t3xzi3sbfyxovxe36qe/1.png' } }
+  await waitUntil(new Date(nanoToMs(minterConfig.start_time) + 2000))
 
-  let mintPrice = (factoryParams.mint_fee_bps * factoryParams.min_mint_price.amount) / 10000
-  let mintExecuteResult = await signingClient.execute(sender, baseMinterAddress, mintMsg, 'auto', 'mint-nft', [
-    { amount: mintPrice.toString(), denom: factoryParams.min_mint_price.denom },
+  let collectionAddress = minterConfig.sg721_address
+
+  let mintMsg = { mint: {} }
+  // let mintPrice = (factoryParams.mint_fee_bps * factoryParams.min_mint_price.amount) / 10000
+  let mintExecuteResult = await signingClient.execute(sender, vendingMinterAddress, mintMsg, 'auto', 'mint-nft', [
+    minterConfig.mint_price,
   ])
 
   let tokenId: string = ''
@@ -87,16 +109,18 @@ export const mintNft = async (
   assert(tokenId, 'token_id not found in wasm event attributes')
 
   // Transfer NFT to recipient
-  let transferMsg = { transfer_nft: { recipient: recipientAddress, token_id: tokenId } }
-  let transferExecuteResult = await signingClient.execute(
-    sender,
-    collectionAddress,
-    transferMsg,
-    'auto',
-    'transfer-nft',
-  )
+  if (sender !== recipientAddress) {
+    let transferMsg = { transfer_nft: { recipient: recipientAddress, token_id: tokenId } }
+    let transferExecuteResult = await signingClient.execute(
+      sender,
+      collectionAddress,
+      transferMsg,
+      'auto',
+      'transfer-nft',
+    )
+  }
 
-  return [collectionAddress, tokenId]
+  return tokenId
 }
 
 export const approveNft = async (

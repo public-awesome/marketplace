@@ -9,17 +9,17 @@
     "node": ">=v16.16.0"
   },
   "scripts": {
-    "test": "jest",
-    "test:nosetup": "jest --globalSetup ''",
-    "test:watch": "jest --watch --verbose --globalSetup ''"
+    "test": "jest --runInBand",
+    "test:nosetup": "jest --runInBand --globalSetup ''",
+    "test:watch": "jest --runInBand --watch --verbose --globalSetup ''"
   },
   "dependencies": {
     "@cosmjs/cosmwasm-stargate": "^0.31.0",
     "@cosmjs/proto-signing": "^0.31.0",
     "@cosmjs/stargate": "^0.31.0",
     "@stargazezone/launchpad": "^2.3.3",
-    "@stargazezone/marketplace-v1-types": "npm:@stargazezone/marketplace-types@^1.5.2",
-    "@stargazezone/marketplace-types": "2.0.0",
+    "@stargazezone/marketplace-types": "2.2.0",
+    "@stargazezone/core-types": "0.1.0",
     "@types/jest": "^29.5.2",
     "axios": "^1.4.0",
     "jest": "^29.5.0",

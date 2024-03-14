@@ -1,17 +1,22 @@
-export const getExpirationString = (expiration: number): string => {
+import { sleep } from './sleep'
+
+export const getFutureTimestamp = (seconds: number): string => {
   const now = new Date()
-  now.setDate(now.getDate() + expiration)
+  const future = new Date(now.getTime() + seconds * 1000)
+  return msToNano(future.getTime()).toString()
+}
 
-  let padding = 0
-  switch (expiration) {
-    case 1:
-      padding = 20 * 60 * 1_000_000 // +20 minutes (clock drift on chain can be higher)
-      break
-    case 180:
-      padding = 20 * 60 * 1_000_000 * -1 // -20 minutes (clock drift on chain can be higher)
-      break
+export const waitUntil = async (datetime: Date): Promise<void> => {
+  const diffMs = datetime.getTime() - new Date().getTime()
+  if (diffMs > 0) {
+    await sleep(diffMs)
   }
+}
 
-  const expires = (now.getTime() * 1_000_000 + padding).toString()
-  return expires
+export const msToNano = (ms: number): number => {
+  return ms * 1000000
+}
+
+export const nanoToMs = (nano: number): number => {
+  return nano / 1000000
 }

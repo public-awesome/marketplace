@@ -5,9 +5,7 @@ const main = async () => {
   console.log('\nRunning global setup')
   await pollConnection()
   const context = new Context()
-  await context.uploadContracts()
-  await context.instantiateContracts()
-  context.writeContext()
+  await context.initialize(false)
 }
 
 export default main
