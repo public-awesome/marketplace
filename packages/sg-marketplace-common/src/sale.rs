@@ -1,101 +1,122 @@
-use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{coin, Addr, Coin, Decimal, StdError};
-use sg721::RoyaltyInfo;
-use sg_std::Response;
-use stargaze_fair_burn::append_fair_burn_msg;
-
 use crate::coin::transfer_coins;
 
-/// `TokenPayment` is a struct that represents a payment of a single token to a single address.
+use cosmwasm_schema::cw_serde;
+use cosmwasm_std::{coin, Addr, Coin, Decimal, Event, StdError};
+use sg_std::Response;
+use stargaze_fair_burn::append_fair_burn_msg;
+use std::fmt;
+
 #[cw_serde]
-pub struct TokenPayment {
-    pub label: String,
-    pub coin: Coin,
-    pub recipient: Addr,
+pub enum FeeType {
+    FairBurn,
+    Royalty,
+    Finder,
+    Seller,
 }
 
-/// Invoke `payout_nft_sale_fees` to build a vector of `TokenPayment` structs representing the fees
-/// paid out in an NFT sale.
-#[allow(clippy::too_many_arguments)]
-pub fn payout_nft_sale_fees(
-    sale_coin: &Coin,
-    seller: &Addr,
-    fair_burn: &Addr,
-    fair_burn_recipient: Option<&Addr>,
-    finder: Option<&Addr>,
-    trading_fee_percent: Decimal,
-    finders_fee_percent: Option<Decimal>,
-    royalty_info: Option<RoyaltyInfo>,
-    mut response: Response,
-) -> Result<(Vec<TokenPayment>, Response), StdError> {
-    let mut token_payments: Vec<TokenPayment> = Vec::new();
-    let mut seller_amount = sale_coin.amount;
-    let denom = sale_coin.denom.clone();
+impl fmt::Display for FeeType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            FeeType::FairBurn => write!(f, "fair-burn-fee"),
+            FeeType::Royalty => write!(f, "royalty-fee"),
+            FeeType::Finder => write!(f, "finder-fee"),
+            FeeType::Seller => write!(f, "seller-fee"),
+        }
+    }
+}
 
-    // Fair Burn
-    let fair_burn_fee = coin(
-        sale_coin.amount.mul_ceil(trading_fee_percent).u128(),
-        &denom,
-    );
-    token_payments.push(TokenPayment {
-        label: "fair-burn".to_string(),
-        coin: fair_burn_fee.clone(),
-        recipient: fair_burn.clone(),
-    });
-    seller_amount = seller_amount.checked_sub(fair_burn_fee.amount)?;
+pub struct Fee {
+    pub fee_type: FeeType,
+    pub recipient: Addr,
+    pub share: Decimal,
+}
 
-    // Finders Fee
-    if let Some(finder) = finder {
-        let finders_fee_percent = finders_fee_percent.unwrap();
-        let finders_fee_amount = sale_coin.amount.mul_ceil(finders_fee_percent);
+#[cw_serde]
+pub struct Payment {
+    pub fee_type: FeeType,
+    pub recipient: Addr,
+    pub funds: Coin,
+}
 
-        if !finders_fee_amount.is_zero() {
-            token_payments.push(TokenPayment {
-                label: "finder".to_string(),
-                coin: coin(finders_fee_amount.u128(), &denom),
-                recipient: finder.clone(),
-            });
-            seller_amount = seller_amount.checked_sub(finders_fee_amount)?;
+pub struct NftSaleProcessor {
+    pub sale_coin: Coin,
+    pub seller_recipient: Addr,
+    pub fees: Vec<Fee>,
+    pub payments: Vec<Payment>,
+}
+
+impl NftSaleProcessor {
+    pub fn new(sale_coin: Coin, seller_recipient: Addr) -> Self {
+        Self {
+            sale_coin,
+            seller_recipient,
+            fees: vec![],
+            payments: vec![],
         }
     }
 
-    // Royalty Fee
-    if let Some(royalty_info) = royalty_info {
-        let royalty_fee_amount = sale_coin.amount.mul_ceil(royalty_info.share);
-        if !royalty_fee_amount.is_zero() {
-            token_payments.push(TokenPayment {
-                label: "royalty".to_string(),
-                coin: coin(royalty_fee_amount.u128(), &denom),
-                recipient: royalty_info.payment_address,
-            });
-            seller_amount = seller_amount.checked_sub(royalty_fee_amount)?;
-        }
-    }
-
-    // Seller Payment
-    if !seller_amount.is_zero() {
-        token_payments.push(TokenPayment {
-            label: "seller".to_string(),
-            coin: coin(seller_amount.u128(), &denom),
-            recipient: seller.clone(),
+    pub fn add_fee(&mut self, fee_type: FeeType, share: Decimal, recipient: Addr) {
+        self.fees.push(Fee {
+            fee_type,
+            share,
+            recipient,
         });
     }
 
-    for token_payment in &token_payments {
-        response = if token_payment.label == "fair-burn" {
-            append_fair_burn_msg(
-                fair_burn,
-                vec![token_payment.coin.clone()],
-                fair_burn_recipient,
-                response,
-            )
-        } else {
-            response.add_submessage(transfer_coins(
-                vec![token_payment.coin.clone()],
-                &token_payment.recipient,
-            ))
+    pub fn build_payments(&mut self) -> Result<(), StdError> {
+        let mut seller_amount = self.sale_coin.amount;
+        let denom = self.sale_coin.denom.clone();
+
+        for fee in &self.fees {
+            if fee.share.is_zero() {
+                continue;
+            }
+
+            let fee_amount = self.sale_coin.amount.mul_ceil(fee.share);
+            let fee_coin = coin(fee_amount.u128(), &denom);
+            seller_amount = seller_amount.checked_sub(fee_amount)?;
+
+            self.payments.push(Payment {
+                fee_type: fee.fee_type.clone(),
+                recipient: fee.recipient.clone(),
+                funds: fee_coin,
+            });
         }
+
+        if !seller_amount.is_zero() {
+            self.payments.push(Payment {
+                fee_type: FeeType::Seller,
+                recipient: self.seller_recipient.clone(),
+                funds: coin(seller_amount.u128(), &denom),
+            });
+        }
+
+        Ok(())
     }
 
-    Ok((token_payments, response))
+    pub fn find_payment(&self, fee_type: FeeType) -> Option<&Payment> {
+        self.payments.iter().find(|p| p.fee_type == fee_type)
+    }
+
+    pub fn payout(&self, mut response: Response) -> Response {
+        for payment in self.payments.iter() {
+            response = match payment.fee_type {
+                FeeType::FairBurn => append_fair_burn_msg(
+                    &payment.recipient,
+                    vec![payment.funds.clone()],
+                    None,
+                    response,
+                ),
+                _ => transfer_coins(vec![payment.funds.clone()], &payment.recipient, response),
+            };
+
+            response = response.add_event(
+                Event::new(payment.fee_type.to_string())
+                    .add_attribute("coin", payment.funds.to_string())
+                    .add_attribute("recipient", payment.recipient.to_string()),
+            );
+        }
+
+        response
+    }
 }

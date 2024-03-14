@@ -7,6 +7,10 @@ codegen({
       dir: '../../../contracts/marketplace/schema',
     },
     {
+      name: 'MarketplaceV2',
+      dir: '../../../contracts/marketplace-v2/schema',
+    },
+    {
       name: 'ReserveAuction',
       dir: '../../../contracts/reserve-auction/schema',
     },

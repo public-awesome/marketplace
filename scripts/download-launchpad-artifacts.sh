@@ -4,8 +4,8 @@
 # and place them in the proper location for the integration tests.
 
 contracts=(
-    "base_factory"
-    "base_minter"
+    "vending_factory"
+    "vending_minter"
     "sg721_base"
 )
 

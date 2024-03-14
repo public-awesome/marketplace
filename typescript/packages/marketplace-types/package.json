@@ -1,6 +1,6 @@
 {
   "name": "@stargazezone/marketplace-types",
-  "version": "2.1.0",
+  "version": "2.3.0",
   "description": "The official types package for the Stargaze Marketplace",
   "author": "Shane Vitarana",
   "homepage": "https://stargaze.zone/",
@@ -8,7 +8,8 @@
   "main": "lib/index.js",
   "scripts": {
     "build": "tsc -p src/tsconfig.json",
-    "codegen": "ts-node codegen.ts"
+    "codegen": "ts-node codegen.ts",
+    "prepublishOnly": "yarn install && yarn codegen && yarn build"
   },
   "files": [
     "lib"

@@ -1,15 +1,15 @@
 import Context, { CONTRACT_MAP } from '../setup/context'
-import { TestUserMap, getClient, initializeTestUsers } from '../utils/client'
+import { getQueryClient } from '../utils/client'
 import { approveNft, createMinter, mintNft } from '../utils/nft'
 import { sleep } from '../utils/sleep'
 import { contracts } from '@stargazezone/marketplace-types'
 import { ReserveAuctionQueryClient as ReserveAuctionQueryClientType } from '@stargazezone/marketplace-types/lib/ReserveAuction.client'
-import { Auction, Config, HighBid } from '@stargazezone/marketplace-types/src/ReserveAuction.types'
+import { Auction, Config, HighBid } from '@stargazezone/marketplace-types/lib/ReserveAuction.types'
 import _ from 'lodash'
 
 const { ReserveAuctionClient, ReserveAuctionQueryClient } = contracts.ReserveAuction
 
-describe('Reserve Auctions', () => {
+describe('ReserveAuctions', () => {
   const creatorName = 'user1'
   const sellerName = 'user2'
   const sellerAssetRecipientName = 'user3'
@@ -21,28 +21,25 @@ describe('Reserve Auctions', () => {
   let reserveAuctionAddress: string
   let reserveAuctionQueryClient: ReserveAuctionQueryClientType
   let config: Config
-  let testUsers: TestUserMap
 
   beforeAll(async () => {
     context = new Context()
-    await context.hydrateContext()
-    await createMinter(context)
+    await context.initialize(true)
+    collectionAddress = await createMinter(context)
 
     reserveAuctionAddress = context.getContractAddress(CONTRACT_MAP.RESERVE_AUCTION)
 
-    let queryClient = await getClient()
+    let queryClient = await getQueryClient()
     reserveAuctionQueryClient = new ReserveAuctionQueryClient(queryClient, reserveAuctionAddress)
     config = await reserveAuctionQueryClient.config()
-
-    testUsers = await initializeTestUsers()
   })
 
   test('auction lifecycle', async () => {
-    const creator = testUsers[creatorName]
-    const seller = testUsers[sellerName]
-    const sellerAssetRecipient = testUsers[sellerAssetRecipientName]
-    const firstBuyer = testUsers[firstBuyerName]
-    const secondBuyer = testUsers[secondBuyerName]
+    const creator = context.getTestUser(creatorName)
+    const seller = context.getTestUser(sellerName)
+    const sellerAssetRecipient = context.getTestUser(sellerAssetRecipientName)
+    const firstBuyer = context.getTestUser(firstBuyerName)
+    const secondBuyer = context.getTestUser(secondBuyerName)
 
     const sellerReserveAuctionClient = new ReserveAuctionClient(seller.client, seller.address, reserveAuctionAddress)
     const firstBuyerReserveAuctionClient = new ReserveAuctionClient(
@@ -56,7 +53,7 @@ describe('Reserve Auctions', () => {
       reserveAuctionAddress,
     )
 
-    let [collectionAddress, tokenId] = await mintNft(context, creator.client, creator.address, seller.address)
+    let tokenId = await mintNft(context, creator.client, creator.address, seller.address)
     await approveNft(seller.client, seller.address, collectionAddress, tokenId, reserveAuctionAddress)
 
     let reservePrice = { amount: '100000000', denom: 'ustars' }

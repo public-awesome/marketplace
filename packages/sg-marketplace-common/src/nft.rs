@@ -1,27 +1,32 @@
 use cosmwasm_std::{
-    to_binary, Addr, Api, BlockInfo, Empty, MessageInfo, QuerierWrapper, StdError, StdResult,
+    to_json_binary, Addr, Api, BlockInfo, Empty, MessageInfo, QuerierWrapper, StdError, StdResult,
     WasmMsg,
 };
 use cw721::{ApprovalResponse, Cw721ExecuteMsg, OwnerOfResponse};
 use cw721_base::helpers::Cw721Contract;
 use sg721::RoyaltyInfo;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
-use sg_std::SubMsg;
+use sg_std::{Response, SubMsg};
 use std::marker::PhantomData;
 
 pub use crate::errors::MarketplaceStdError;
 
 /// Invoke `transfer_nft` to build a `SubMsg` to transfer an NFT to an address.
-pub fn transfer_nft(collection: &Addr, token_id: &str, recipient: &Addr) -> SubMsg {
-    SubMsg::new(WasmMsg::Execute {
+pub fn transfer_nft(
+    collection: &Addr,
+    token_id: &str,
+    recipient: &Addr,
+    response: Response,
+) -> Response {
+    response.add_submessage(SubMsg::new(WasmMsg::Execute {
         contract_addr: collection.to_string(),
-        msg: to_binary(&Cw721ExecuteMsg::TransferNft {
+        msg: to_json_binary(&Cw721ExecuteMsg::TransferNft {
             token_id: token_id.to_string(),
             recipient: recipient.to_string(),
         })
         .unwrap(),
         funds: vec![],
-    })
+    }))
 }
 
 /// Invoke `owner_of` to get the owner of an NFT.
@@ -62,6 +67,33 @@ pub fn has_approval(
         spender.as_str(),
         include_expired,
     )
+}
+
+/// Invoke `only_with_owner_approval` to check that the sender is the owner of the NFT.
+pub fn only_with_owner_approval(
+    querier: &QuerierWrapper,
+    info: &MessageInfo,
+    collection: &Addr,
+    token_id: &str,
+    contract: &Addr,
+) -> Result<(), MarketplaceStdError> {
+    let owner_of_response = owner_of(querier, collection, token_id)?;
+    if owner_of_response.owner != info.sender {
+        return Err(MarketplaceStdError::Unauthorized(
+            "sender is not owner".to_string(),
+        ));
+    }
+    if !owner_of_response
+        .approvals
+        .iter()
+        .any(|a| a.spender == *contract)
+    {
+        return Err(MarketplaceStdError::Unauthorized(
+            "contract is not approved".to_string(),
+        ));
+    }
+
+    Ok(())
 }
 
 /// Invoke `only_tradable` to check that the NFT collection start trade time threshold has elapsed.

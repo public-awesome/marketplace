@@ -1,0 +1,73 @@
+[package]
+name = "stargaze-marketplace-v2"
+version = "0.1.0"
+authors = [
+  "Shane Vitarana <s@noreply.publicawesome.com>",
+  "Jorge Hernandez <jorge@publicawesome.com>",
+  "Tasio Victoria <tasiovictoria@ujulabs.com>",
+]
+description = "Stargaze Marketplace V2 Smart Contract"
+edition = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
+
+exclude = [
+  # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
+  "contract.wasm",
+  "hash.txt",
+]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[features]
+# for more explicit tests, cargo test --features=backtraces
+backtraces = ["cosmwasm-std/backtraces"]
+# use library feature to disable all instantiate/execute/query exports
+library = []
+
+[dependencies]
+cosmwasm-schema = "1.5.3"
+cosmwasm-std    = "1.5.3"
+cw-address-like = "1.0.4"
+cw-storage-plus = "1.2.0"
+cw-utils        = "1.0.3"
+cw2             = "1.1.2"
+cw721           = "0.18.0"
+cw721-base      = { version = "0.18.0", features = ["library"] }
+
+sg-marketplace-common     = "1.2.0"
+sg-index-query            = "0.1.1"
+sg-std                    = "2.1.0"
+sg1                       = "2.1.0"
+sg2                       = "2.1.0"
+sg-controllers            = "2.1.0"
+stargaze-royalty-registry = { version = "0.3.0", features = ["library"] }
+stargaze-fair-burn        = { version = "1.0.4", features = ["library"] }
+sg721-base                = { version = "2.1.0", features = ["library"] }
+sg721                     = { version = "2.1.0", features = ["library"] }
+
+serde     = "1.0.196"
+semver    = "1.0.21"
+thiserror = "1.0.56"
+
+[dev-dependencies]
+cw-multi-test   = "0.16.2"
+sg-multi-test   = "2.1.0"
+vending-factory = "2.1.0"
+vending-minter  = "2.1.0"
+base-minter     = "2.1.0"
+test-suite      = "2.1.0"
+cute            = "0.3.0"
+anyhow          = "1.0.79"
+
+[profile.release]
+rpath            = false
+lto              = true
+overflow-checks  = true
+opt-level        = 3
+debug            = false
+debug-assertions = false

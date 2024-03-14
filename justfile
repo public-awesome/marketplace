@@ -1,16 +1,22 @@
 lint:
 	cargo clippy --all-targets -- -D warnings
 
+lint-fix:
+	cargo clippy --all-targets --fix -- -D warnings
+
 schema:
 	sh scripts/schema.sh
 
 artifacts:
 	mkdir -p artifacts
 
+clear-artifacts: artifacts
+	rm -rf artifacts
+	mkdir -p artifacts
+
 download-artifacts: artifacts
 	scripts/download-core-artifacts.sh
 	scripts/download-launchpad-artifacts.sh
-	scripts/download-marketplace-artifacts.sh
 
 optimize:
 	sh scripts/optimize.sh

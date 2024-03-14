@@ -1,0 +1,4806 @@
+{
+  "contract_name": "stargaze-marketplace-v2",
+  "contract_version": "0.1.0",
+  "idl_version": "1.0.0",
+  "instantiate": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "InstantiateMsg",
+    "type": "object",
+    "required": [
+      "price_ranges",
+      "sudo_params"
+    ],
+    "properties": {
+      "price_ranges": {
+        "description": "Min/max values for offers and asks",
+        "type": "array",
+        "items": {
+          "type": "array",
+          "items": [
+            {
+              "type": "string"
+            },
+            {
+              "$ref": "#/definitions/PriceRange"
+            }
+          ],
+          "maxItems": 2,
+          "minItems": 2
+        }
+      },
+      "sudo_params": {
+        "description": "The initial configuration for the contract",
+        "allOf": [
+          {
+            "$ref": "#/definitions/SudoParams_for_String"
+          }
+        ]
+      }
+    },
+    "additionalProperties": false,
+    "definitions": {
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "type": "string"
+          }
+        }
+      },
+      "Decimal": {
+        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+        "type": "string"
+      },
+      "PriceRange": {
+        "type": "object",
+        "required": [
+          "max",
+          "min"
+        ],
+        "properties": {
+          "max": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "min": {
+            "$ref": "#/definitions/Uint128"
+          }
+        },
+        "additionalProperties": false
+      },
+      "SudoParams_for_String": {
+        "type": "object",
+        "required": [
+          "fair_burn",
+          "listing_fee",
+          "max_asks_removed_per_block",
+          "max_collection_offers_removed_per_block",
+          "max_finders_fee_percent",
+          "max_offers_removed_per_block",
+          "max_royalty_fee_percent",
+          "min_ask_removal_reward",
+          "min_expiration_seconds",
+          "min_offer_removal_reward",
+          "order_removal_lookahead_secs",
+          "royalty_registry",
+          "trading_fee_percent"
+        ],
+        "properties": {
+          "fair_burn": {
+            "description": "The address of the fair burn contract",
+            "type": "string"
+          },
+          "listing_fee": {
+            "description": "Listing fee to reduce spam",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Coin"
+              }
+            ]
+          },
+          "max_asks_removed_per_block": {
+            "description": "The maximum number of asks that can be removed per block",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max_collection_offers_removed_per_block": {
+            "description": "The maximum number of collection offers that can be removed per block",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max_finders_fee_percent": {
+            "description": "Max value for the finders fee",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Decimal"
+              }
+            ]
+          },
+          "max_offers_removed_per_block": {
+            "description": "The maximum number of offers that can be removed per block",
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max_royalty_fee_percent": {
+            "description": "Max value for the royalty fee",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Decimal"
+              }
+            ]
+          },
+          "min_ask_removal_reward": {
+            "description": "Minimum ask removal reward",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Coin"
+              }
+            ]
+          },
+          "min_expiration_seconds": {
+            "description": "Minimum expiry seconds for asks / offers",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "min_offer_removal_reward": {
+            "description": "Minimum expired offer removal reward",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Coin"
+              }
+            ]
+          },
+          "order_removal_lookahead_secs": {
+            "description": "The number of seconds to look ahead for orders to remove",
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "royalty_registry": {
+            "description": "The address of the royalty registry contract",
+            "type": "string"
+          },
+          "trading_fee_percent": {
+            "description": "Fair Burn fee",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Decimal"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      }
+    }
+  },
+  "execute": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "ExecuteMsg",
+    "oneOf": [
+      {
+        "description": "List an NFT on the marketplace by creating a new ask",
+        "type": "object",
+        "required": [
+          "set_ask"
+        ],
+        "properties": {
+          "set_ask": {
+            "type": "object",
+            "required": [
+              "collection",
+              "price",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "order_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/OrderOptions_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "price": {
+                "$ref": "#/definitions/Coin"
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Update the price of an existing ask",
+        "type": "object",
+        "required": [
+          "update_ask"
+        ],
+        "properties": {
+          "update_ask": {
+            "type": "object",
+            "required": [
+              "collection",
+              "token_id"
+            ],
+            "properties": {
+              "asset_recipient": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UpdateVal_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection": {
+                "type": "string"
+              },
+              "expiration_info": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UpdateVal_for_ExpirationInfo"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "finders_fee_percent": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UpdateVal_for_Decimal"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Buy an NFT from the marketplace",
+        "type": "object",
+        "required": [
+          "accept_ask"
+        ],
+        "properties": {
+          "accept_ask": {
+            "type": "object",
+            "required": [
+              "collection",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "order_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/OrderOptions_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Remove an existing ask from the marketplace",
+        "type": "object",
+        "required": [
+          "remove_ask"
+        ],
+        "properties": {
+          "remove_ask": {
+            "type": "object",
+            "required": [
+              "collection",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Privileged operation to remove stale or invalid asks.",
+        "type": "object",
+        "required": [
+          "remove_expired_ask"
+        ],
+        "properties": {
+          "remove_expired_ask": {
+            "type": "object",
+            "required": [
+              "collection",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Create an offer for an NFT",
+        "type": "object",
+        "required": [
+          "set_offer"
+        ],
+        "properties": {
+          "set_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "price",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "order_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/OrderOptions_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "price": {
+                "$ref": "#/definitions/Coin"
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Update the price of an existing offer",
+        "type": "object",
+        "required": [
+          "update_offer"
+        ],
+        "properties": {
+          "update_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "token_id"
+            ],
+            "properties": {
+              "asset_recipient": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UpdateVal_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection": {
+                "type": "string"
+              },
+              "expiration_info": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UpdateVal_for_ExpirationInfo"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "finders_fee_percent": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UpdateVal_for_Decimal"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Accept a offer on an existing ask",
+        "type": "object",
+        "required": [
+          "accept_offer"
+        ],
+        "properties": {
+          "accept_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "creator",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "creator": {
+                "type": "string"
+              },
+              "order_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/OrderOptions_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Remove an existing offer from an ask",
+        "type": "object",
+        "required": [
+          "remove_offer"
+        ],
+        "properties": {
+          "remove_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Reject a offer on an existing ask",
+        "type": "object",
+        "required": [
+          "reject_offer"
+        ],
+        "properties": {
+          "reject_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "creator",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "creator": {
+                "type": "string"
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Remove an existing offer from an ask",
+        "type": "object",
+        "required": [
+          "remove_expired_offer"
+        ],
+        "properties": {
+          "remove_expired_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "creator",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "creator": {
+                "type": "string"
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Place an offer (limit order) across an entire collection",
+        "type": "object",
+        "required": [
+          "set_collection_offer"
+        ],
+        "properties": {
+          "set_collection_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "price"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "order_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/OrderOptions_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "price": {
+                "$ref": "#/definitions/Coin"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Update the price of an existing offer",
+        "type": "object",
+        "required": [
+          "update_collection_offer"
+        ],
+        "properties": {
+          "update_collection_offer": {
+            "type": "object",
+            "required": [
+              "collection"
+            ],
+            "properties": {
+              "asset_recipient": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UpdateVal_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "collection": {
+                "type": "string"
+              },
+              "expiration_info": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UpdateVal_for_ExpirationInfo"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "finders_fee_percent": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/UpdateVal_for_Decimal"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Accept a collection offer",
+        "type": "object",
+        "required": [
+          "accept_collection_offer"
+        ],
+        "properties": {
+          "accept_collection_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "creator",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "creator": {
+                "type": "string"
+              },
+              "order_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/OrderOptions_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Remove an offer across an entire collection",
+        "type": "object",
+        "required": [
+          "remove_collection_offer"
+        ],
+        "properties": {
+          "remove_collection_offer": {
+            "type": "object",
+            "required": [
+              "collection"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Remove an offer across an entire collection",
+        "type": "object",
+        "required": [
+          "remove_expired_collection_offer"
+        ],
+        "properties": {
+          "remove_expired_collection_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "creator"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "creator": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "Coin": {
+        "type": "object",
+        "required": [
+          "amount",
+          "denom"
+        ],
+        "properties": {
+          "amount": {
+            "$ref": "#/definitions/Uint128"
+          },
+          "denom": {
+            "type": "string"
+          }
+        }
+      },
+      "Decimal": {
+        "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+        "type": "string"
+      },
+      "ExpirationInfo": {
+        "type": "object",
+        "required": [
+          "expiration",
+          "removal_reward"
+        ],
+        "properties": {
+          "expiration": {
+            "$ref": "#/definitions/Timestamp"
+          },
+          "removal_reward": {
+            "$ref": "#/definitions/Coin"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OrderOptions_for_String": {
+        "type": "object",
+        "properties": {
+          "asset_recipient": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiration_info": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/ExpirationInfo"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "finder": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finders_fee_percent": {
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Decimal"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "Timestamp": {
+        "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+        "allOf": [
+          {
+            "$ref": "#/definitions/Uint64"
+          }
+        ]
+      },
+      "Uint128": {
+        "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+        "type": "string"
+      },
+      "Uint64": {
+        "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+        "type": "string"
+      },
+      "UpdateVal_for_Decimal": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "unset"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "set"
+            ],
+            "properties": {
+              "set": {
+                "$ref": "#/definitions/Decimal"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "UpdateVal_for_ExpirationInfo": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "unset"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "set"
+            ],
+            "properties": {
+              "set": {
+                "$ref": "#/definitions/ExpirationInfo"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "UpdateVal_for_String": {
+        "oneOf": [
+          {
+            "type": "string",
+            "enum": [
+              "unset"
+            ]
+          },
+          {
+            "type": "object",
+            "required": [
+              "set"
+            ],
+            "properties": {
+              "set": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "query": {
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryMsg",
+    "oneOf": [
+      {
+        "description": "Get the config for the contract",
+        "type": "object",
+        "required": [
+          "sudo_params"
+        ],
+        "properties": {
+          "sudo_params": {
+            "type": "object",
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get the config for the contract",
+        "type": "object",
+        "required": [
+          "price_range"
+        ],
+        "properties": {
+          "price_range": {
+            "type": "object",
+            "required": [
+              "denom"
+            ],
+            "properties": {
+              "denom": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get the config for the contract",
+        "type": "object",
+        "required": [
+          "price_ranges"
+        ],
+        "properties": {
+          "price_ranges": {
+            "type": "object",
+            "properties": {
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_String"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get the current ask for specific NFT",
+        "type": "object",
+        "required": [
+          "ask"
+        ],
+        "properties": {
+          "ask": {
+            "type": "object",
+            "required": [
+              "collection",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all asks for a collection",
+        "type": "object",
+        "required": [
+          "asks_by_collection"
+        ],
+        "properties": {
+          "asks_by_collection": {
+            "type": "object",
+            "required": [
+              "collection"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_AsksByCollectionOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all asks for a collection, sorted by price",
+        "type": "object",
+        "required": [
+          "asks_by_price"
+        ],
+        "properties": {
+          "asks_by_price": {
+            "type": "object",
+            "required": [
+              "collection",
+              "denom"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "denom": {
+                "type": "string"
+              },
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_AsksByPriceOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all asks by creator",
+        "type": "object",
+        "required": [
+          "asks_by_creator"
+        ],
+        "properties": {
+          "asks_by_creator": {
+            "type": "object",
+            "required": [
+              "creator"
+            ],
+            "properties": {
+              "creator": {
+                "type": "string"
+              },
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_AsksByCreatorOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all asks sorted by the expiration time",
+        "type": "object",
+        "required": [
+          "asks_by_expiration"
+        ],
+        "properties": {
+          "asks_by_expiration": {
+            "type": "object",
+            "properties": {
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_AsksByExpirationOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get data for a specific offer",
+        "type": "object",
+        "required": [
+          "offer"
+        ],
+        "properties": {
+          "offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "creator",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "creator": {
+                "type": "string"
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all offers on a collection",
+        "type": "object",
+        "required": [
+          "offers_by_collection"
+        ],
+        "properties": {
+          "offers_by_collection": {
+            "type": "object",
+            "required": [
+              "collection"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_OffersByCollectionOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all offers on a collection token, sorted by price",
+        "type": "object",
+        "required": [
+          "offers_by_token_price"
+        ],
+        "properties": {
+          "offers_by_token_price": {
+            "type": "object",
+            "required": [
+              "collection",
+              "denom",
+              "token_id"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "denom": {
+                "type": "string"
+              },
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_OffersByTokenPriceOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "token_id": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all offers made by a creator",
+        "type": "object",
+        "required": [
+          "offers_by_creator"
+        ],
+        "properties": {
+          "offers_by_creator": {
+            "type": "object",
+            "required": [
+              "creator"
+            ],
+            "properties": {
+              "creator": {
+                "type": "string"
+              },
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_OffersByCreatorOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all offers sorted by the expiration time",
+        "type": "object",
+        "required": [
+          "offers_by_expiration"
+        ],
+        "properties": {
+          "offers_by_expiration": {
+            "type": "object",
+            "properties": {
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_OffersByExpirationOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get data for a specific collection offer",
+        "type": "object",
+        "required": [
+          "collection_offer"
+        ],
+        "properties": {
+          "collection_offer": {
+            "type": "object",
+            "required": [
+              "collection",
+              "creator"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "creator": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get data for collection offers sorted by collection",
+        "type": "object",
+        "required": [
+          "collection_offers_by_collection"
+        ],
+        "properties": {
+          "collection_offers_by_collection": {
+            "type": "object",
+            "required": [
+              "collection"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_CollectionOffersByCollectionOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all collection offers for a collection, sorted by price",
+        "type": "object",
+        "required": [
+          "collection_offers_by_price"
+        ],
+        "properties": {
+          "collection_offers_by_price": {
+            "type": "object",
+            "required": [
+              "collection",
+              "denom"
+            ],
+            "properties": {
+              "collection": {
+                "type": "string"
+              },
+              "denom": {
+                "type": "string"
+              },
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_CollectionOffersByPriceOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all collection offers made by a creator",
+        "type": "object",
+        "required": [
+          "collection_offers_by_creator"
+        ],
+        "properties": {
+          "collection_offers_by_creator": {
+            "type": "object",
+            "required": [
+              "creator"
+            ],
+            "properties": {
+              "creator": {
+                "type": "string"
+              },
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_CollectionOffersByCreatorOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "description": "Get all collection offers sorted by the expiration time",
+        "type": "object",
+        "required": [
+          "collection_offers_by_expiration"
+        ],
+        "properties": {
+          "collection_offers_by_expiration": {
+            "type": "object",
+            "properties": {
+              "query_options": {
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/QueryOptions_for_CollectionOffersByExpirationOffset"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    ],
+    "definitions": {
+      "AsksByCollectionOffset": {
+        "type": "object",
+        "required": [
+          "token_id"
+        ],
+        "properties": {
+          "token_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AsksByCreatorOffset": {
+        "type": "object",
+        "required": [
+          "collection",
+          "token_id"
+        ],
+        "properties": {
+          "collection": {
+            "type": "string"
+          },
+          "token_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AsksByExpirationOffset": {
+        "type": "object",
+        "required": [
+          "collection",
+          "expiration",
+          "token_id"
+        ],
+        "properties": {
+          "collection": {
+            "type": "string"
+          },
+          "expiration": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "token_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "AsksByPriceOffset": {
+        "type": "object",
+        "required": [
+          "amount",
+          "token_id"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0.0
+          },
+          "token_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CollectionOffersByCollectionOffset": {
+        "type": "object",
+        "required": [
+          "creator"
+        ],
+        "properties": {
+          "creator": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CollectionOffersByCreatorOffset": {
+        "type": "object",
+        "required": [
+          "collection"
+        ],
+        "properties": {
+          "collection": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "CollectionOffersByExpirationOffset": {
+        "type": "object",
+        "required": [
+          "collection",
+          "creator",
+          "expiration"
+        ],
+        "properties": {
+          "collection": {
+            "type": "string"
+          },
+          "creator": {
+            "type": "string"
+          },
+          "expiration": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
+        },
+        "additionalProperties": false
+      },
+      "CollectionOffersByPriceOffset": {
+        "type": "object",
+        "required": [
+          "amount",
+          "creator"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0.0
+          },
+          "creator": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OffersByCollectionOffset": {
+        "type": "object",
+        "required": [
+          "creator",
+          "token_id"
+        ],
+        "properties": {
+          "creator": {
+            "type": "string"
+          },
+          "token_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OffersByCreatorOffset": {
+        "type": "object",
+        "required": [
+          "collection",
+          "token_id"
+        ],
+        "properties": {
+          "collection": {
+            "type": "string"
+          },
+          "token_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OffersByExpirationOffset": {
+        "type": "object",
+        "required": [
+          "collection",
+          "creator",
+          "expiration",
+          "token_id"
+        ],
+        "properties": {
+          "collection": {
+            "type": "string"
+          },
+          "creator": {
+            "type": "string"
+          },
+          "expiration": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          },
+          "token_id": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "OffersByTokenPriceOffset": {
+        "type": "object",
+        "required": [
+          "amount",
+          "creator"
+        ],
+        "properties": {
+          "amount": {
+            "type": "integer",
+            "format": "uint128",
+            "minimum": 0.0
+          },
+          "creator": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryBound_for_AsksByCollectionOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/AsksByCollectionOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/AsksByCollectionOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_AsksByCreatorOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/AsksByCreatorOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/AsksByCreatorOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_AsksByExpirationOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/AsksByExpirationOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/AsksByExpirationOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_AsksByPriceOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/AsksByPriceOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/AsksByPriceOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_CollectionOffersByCollectionOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/CollectionOffersByCollectionOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/CollectionOffersByCollectionOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_CollectionOffersByCreatorOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/CollectionOffersByCreatorOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/CollectionOffersByCreatorOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_CollectionOffersByExpirationOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/CollectionOffersByExpirationOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/CollectionOffersByExpirationOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_CollectionOffersByPriceOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/CollectionOffersByPriceOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/CollectionOffersByPriceOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_OffersByCollectionOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/OffersByCollectionOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/OffersByCollectionOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_OffersByCreatorOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/OffersByCreatorOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/OffersByCreatorOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_OffersByExpirationOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/OffersByExpirationOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/OffersByExpirationOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_OffersByTokenPriceOffset": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "$ref": "#/definitions/OffersByTokenPriceOffset"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "$ref": "#/definitions/OffersByTokenPriceOffset"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryBound_for_String": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "inclusive"
+            ],
+            "properties": {
+              "inclusive": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": [
+              "exclusive"
+            ],
+            "properties": {
+              "exclusive": {
+                "type": "string"
+              }
+            },
+            "additionalProperties": false
+          }
+        ]
+      },
+      "QueryOptions_for_AsksByCollectionOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_AsksByCollectionOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_AsksByCollectionOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_AsksByCreatorOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_AsksByCreatorOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_AsksByCreatorOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_AsksByExpirationOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_AsksByExpirationOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_AsksByExpirationOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_AsksByPriceOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_AsksByPriceOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_AsksByPriceOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_CollectionOffersByCollectionOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_CollectionOffersByCollectionOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_CollectionOffersByCollectionOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_CollectionOffersByCreatorOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_CollectionOffersByCreatorOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_CollectionOffersByCreatorOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_CollectionOffersByExpirationOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_CollectionOffersByExpirationOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_CollectionOffersByExpirationOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_CollectionOffersByPriceOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_CollectionOffersByPriceOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_CollectionOffersByPriceOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_OffersByCollectionOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_OffersByCollectionOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_OffersByCollectionOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_OffersByCreatorOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_OffersByCreatorOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_OffersByCreatorOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_OffersByExpirationOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_OffersByExpirationOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_OffersByExpirationOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_OffersByTokenPriceOffset": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_OffersByTokenPriceOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_OffersByTokenPriceOffset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "QueryOptions_for_String": {
+        "description": "QueryOptions are used to pass in options to a query function",
+        "type": "object",
+        "properties": {
+          "descending": {
+            "description": "Whether to sort items in ascending or descending order",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "limit": {
+            "description": "The number of items that will be returned",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "max": {
+            "description": "The maximum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_String"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "min": {
+            "description": "The minimum key value to fetch",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/QueryBound_for_String"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "migrate": null,
+  "sudo": null,
+  "responses": {
+    "ask": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Nullable_Ask",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Ask"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Ask": {
+          "description": "Represents an ask on the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "asks_by_collection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Ask",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Ask"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Ask": {
+          "description": "Represents an ask on the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "asks_by_creator": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Ask",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Ask"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Ask": {
+          "description": "Represents an ask on the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "asks_by_expiration": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Ask",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Ask"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Ask": {
+          "description": "Represents an ask on the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "asks_by_price": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Ask",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Ask"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Ask": {
+          "description": "Represents an ask on the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "collection_offer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Nullable_CollectionOffer",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/CollectionOffer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "CollectionOffer": {
+          "description": "Represents an offer across an entire collection in the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "collection_offers_by_collection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Offer",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Offer"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Offer": {
+          "description": "Represents an offer on an NFT in the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "collection_offers_by_creator": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_CollectionOffer",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CollectionOffer"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "CollectionOffer": {
+          "description": "Represents an offer across an entire collection in the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "collection_offers_by_expiration": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_CollectionOffer",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CollectionOffer"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "CollectionOffer": {
+          "description": "Represents an offer across an entire collection in the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "collection_offers_by_price": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_CollectionOffer",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/CollectionOffer"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "CollectionOffer": {
+          "description": "Represents an offer across an entire collection in the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "offer": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Offer",
+      "description": "Represents an offer on an NFT in the marketplace",
+      "type": "object",
+      "required": [
+        "collection",
+        "order_info",
+        "token_id"
+      ],
+      "properties": {
+        "collection": {
+          "$ref": "#/definitions/Addr"
+        },
+        "order_info": {
+          "$ref": "#/definitions/OrderInfo"
+        },
+        "token_id": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "offers_by_collection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Offer",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Offer"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Offer": {
+          "description": "Represents an offer on an NFT in the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "offers_by_creator": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Offer",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Offer"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Offer": {
+          "description": "Represents an offer on an NFT in the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "offers_by_expiration": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Offer",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Offer"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Offer": {
+          "description": "Represents an offer on an NFT in the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "offers_by_token_price": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Offer",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Offer"
+      },
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "ExpirationInfo": {
+          "type": "object",
+          "required": [
+            "expiration",
+            "removal_reward"
+          ],
+          "properties": {
+            "expiration": {
+              "$ref": "#/definitions/Timestamp"
+            },
+            "removal_reward": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Offer": {
+          "description": "Represents an offer on an NFT in the marketplace",
+          "type": "object",
+          "required": [
+            "collection",
+            "order_info",
+            "token_id"
+          ],
+          "properties": {
+            "collection": {
+              "$ref": "#/definitions/Addr"
+            },
+            "order_info": {
+              "$ref": "#/definitions/OrderInfo"
+            },
+            "token_id": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
+        },
+        "OrderInfo": {
+          "type": "object",
+          "required": [
+            "creator",
+            "price"
+          ],
+          "properties": {
+            "asset_recipient": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "creator": {
+              "$ref": "#/definitions/Addr"
+            },
+            "expiration_info": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/ExpirationInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "finders_fee_percent": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Decimal"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "price": {
+              "$ref": "#/definitions/Coin"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Timestamp": {
+          "description": "A point in time in nanosecond precision.\n\nThis type can represent times from 1970-01-01T00:00:00Z to 2554-07-21T23:34:33Z.\n\n## Examples\n\n``` # use cosmwasm_std::Timestamp; let ts = Timestamp::from_nanos(1_000_000_202); assert_eq!(ts.nanos(), 1_000_000_202); assert_eq!(ts.seconds(), 1); assert_eq!(ts.subsec_nanos(), 202);\n\nlet ts = ts.plus_seconds(2); assert_eq!(ts.nanos(), 3_000_000_202); assert_eq!(ts.seconds(), 3); assert_eq!(ts.subsec_nanos(), 202); ```",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Uint64"
+            }
+          ]
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        },
+        "Uint64": {
+          "description": "A thin wrapper around u64 that is using strings for JSON encoding/decoding, such that the full u64 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u64` to get the value out:\n\n``` # use cosmwasm_std::Uint64; let a = Uint64::from(42u64); assert_eq!(a.u64(), 42);\n\nlet b = Uint64::from(70u32); assert_eq!(b.u64(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "price_range": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PriceRange",
+      "type": "object",
+      "required": [
+        "max",
+        "min"
+      ],
+      "properties": {
+        "max": {
+          "$ref": "#/definitions/Uint128"
+        },
+        "min": {
+          "$ref": "#/definitions/Uint128"
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "price_ranges": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Array_of_Tuple_of_String_and_PriceRange",
+      "type": "array",
+      "items": {
+        "type": "array",
+        "items": [
+          {
+            "type": "string"
+          },
+          {
+            "$ref": "#/definitions/PriceRange"
+          }
+        ],
+        "maxItems": 2,
+        "minItems": 2
+      },
+      "definitions": {
+        "PriceRange": {
+          "type": "object",
+          "required": [
+            "max",
+            "min"
+          ],
+          "properties": {
+            "max": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "min": {
+              "$ref": "#/definitions/Uint128"
+            }
+          },
+          "additionalProperties": false
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        }
+      }
+    },
+    "sudo_params": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "SudoParams_for_Addr",
+      "type": "object",
+      "required": [
+        "fair_burn",
+        "listing_fee",
+        "max_asks_removed_per_block",
+        "max_collection_offers_removed_per_block",
+        "max_finders_fee_percent",
+        "max_offers_removed_per_block",
+        "max_royalty_fee_percent",
+        "min_ask_removal_reward",
+        "min_expiration_seconds",
+        "min_offer_removal_reward",
+        "order_removal_lookahead_secs",
+        "royalty_registry",
+        "trading_fee_percent"
+      ],
+      "properties": {
+        "fair_burn": {
+          "description": "The address of the fair burn contract",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            }
+          ]
+        },
+        "listing_fee": {
+          "description": "Listing fee to reduce spam",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Coin"
+            }
+          ]
+        },
+        "max_asks_removed_per_block": {
+          "description": "The maximum number of asks that can be removed per block",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max_collection_offers_removed_per_block": {
+          "description": "The maximum number of collection offers that can be removed per block",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max_finders_fee_percent": {
+          "description": "Max value for the finders fee",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal"
+            }
+          ]
+        },
+        "max_offers_removed_per_block": {
+          "description": "The maximum number of offers that can be removed per block",
+          "type": "integer",
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "max_royalty_fee_percent": {
+          "description": "Max value for the royalty fee",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal"
+            }
+          ]
+        },
+        "min_ask_removal_reward": {
+          "description": "Minimum ask removal reward",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Coin"
+            }
+          ]
+        },
+        "min_expiration_seconds": {
+          "description": "Minimum expiry seconds for asks / offers",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "min_offer_removal_reward": {
+          "description": "Minimum expired offer removal reward",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Coin"
+            }
+          ]
+        },
+        "order_removal_lookahead_secs": {
+          "description": "The number of seconds to look ahead for orders to remove",
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "royalty_registry": {
+          "description": "The address of the royalty registry contract",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Addr"
+            }
+          ]
+        },
+        "trading_fee_percent": {
+          "description": "Fair Burn fee",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Decimal"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
+        "Coin": {
+          "type": "object",
+          "required": [
+            "amount",
+            "denom"
+          ],
+          "properties": {
+            "amount": {
+              "$ref": "#/definitions/Uint128"
+            },
+            "denom": {
+              "type": "string"
+            }
+          }
+        },
+        "Decimal": {
+          "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
+          "type": "string"
+        },
+        "Uint128": {
+          "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
+          "type": "string"
+        }
+      }
+    }
+  }
+}

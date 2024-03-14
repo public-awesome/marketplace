@@ -4,7 +4,7 @@
   "description": "CLI tool for interacting with Stargaze Marketplace smart contracts",
   "author": "Tasio Victoria @tasiov",
   "bin": {
-    "@stargazezone/marketplace-cli": "./bin/run"
+    "sg-mkt": "./bin/run"
   },
   "homepage": "https://stargaze.zone/",
   "license": "MIT",

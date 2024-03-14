@@ -1,6 +1,6 @@
 [package]
 name = "sg-marketplace-common"
-version = "1.1.0"
+version = "1.2.0"
 authors = [
   "Shane Vitarana <s@noreply.publicawesome.com>",
   "Tasio Victoria <tasiovictoria@ujulabs.com>",
@@ -29,27 +29,27 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-cosmwasm-schema    = { workspace = true }
-cosmwasm-std       = { workspace = true }
-cosmwasm-storage   = { workspace = true }
-cw-storage-macro   = { workspace = true }
-cw-storage-plus    = { workspace = true }
-cw-utils           = { workspace = true }
-cw2                = { workspace = true }
-cw721              = { workspace = true }
-cw721-base         = { workspace = true }
-sg721-base         = { workspace = true }
-sg721              = { workspace = true }
-schemars           = { workspace = true }
-serde              = { workspace = true }
-sg-std             = { workspace = true }
-sg1                = { workspace = true }
-stargaze-fair-burn = { workspace = true }
-thiserror          = { workspace = true }
+cosmwasm-schema = "1.5.3"
+cosmwasm-std    = "1.5.3"
+cw-storage-plus = "1.2.0"
+cw-utils        = "1.0.3"
+cw2             = "1.1.2"
+cw721           = "0.18.0"
+cw721-base      = { version = "0.18.0", features = ["library"] }
+
+sg721-base         = { version = "2.1.0", features = ["library"] }
+sg721              = { version = "2.1.0", features = ["library"] }
+sg-std             = "2.1.0"
+sg1                = "2.1.0"
+stargaze-fair-burn = { version = "1.0.4", features = ["library"] }
+
+
+serde     = "1.0.196"
+thiserror = "1.0.56"
 
 [dev-dependencies]
-cw-multi-test = { workspace = true }
-sg-multi-test = { workspace = true }
-test-suite    = { workspace = true }
-base-minter   = { workspace = true }
+cw-multi-test = "0.16.2"
+sg-multi-test = "2.1.0"
+test-suite    = "2.1.0"
+base-minter   = "2.1.0"
 mockall       = { workspace = true }
