@@ -292,6 +292,25 @@ fn try_buy_for() {
         &listing_funds(LISTING_FEE).unwrap(),
     );
     assert!(res.is_ok());
+    // bider buys for different price
+
+    let asset_recipient = Addr::unchecked("asset_recipient".to_string());
+    let buy_for_msg = ExecuteMsg::BuyFor {
+        collection: collection.to_string(),
+        token_id,
+        finders_fee_bps: None,
+        expires: router.block_info().time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+        asset_recipient: asset_recipient.to_string(),
+    };
+
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &buy_for_msg,
+        &coins(140, NATIVE_DENOM),
+    );
+    assert!(res.is_err());
 
     // bidder buys for asset_recipient address
     let asset_recipient = Addr::unchecked("asset_recipient".to_string());
