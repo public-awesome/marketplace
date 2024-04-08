@@ -561,13 +561,18 @@ pub fn execute_set_bid(
         Some(ask) => match ask.sale_type {
             SaleType::FixedPrice => {
                 // check if bid matches ask price then execute the sale
-                // if the bid is lower than the ask price save the bid
+                // if the bid is lower than the ask price save the bid if not buy_now
                 // otherwise return an error
                 match bid_price.cmp(&ask.price) {
                     Ordering::Greater => {
                         return Err(ContractError::InvalidPrice {});
                     }
-                    Ordering::Less => save_bid(deps.storage)?,
+                    Ordering::Less => {
+                        if buy_now {
+                            return Err(ContractError::InvalidPrice {});
+                        }
+                        save_bid(deps.storage)?
+                    }
                     Ordering::Equal => {
                         asks().remove(deps.storage, ask_key)?;
                         let owner = match Cw721Contract::<Empty, Empty>(
