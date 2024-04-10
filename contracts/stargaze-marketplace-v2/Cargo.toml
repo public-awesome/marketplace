@@ -1,0 +1,57 @@
+[package]
+name = "stargaze-marketplace-v2"
+version = "0.1.0"
+authors = [
+  "Shane Vitarana <s@noreply.publicawesome.com>",
+  "Jorge Hernandez <jorge@publicawesome.com>",
+  "Tasio Victoria <tasiovictoria@ujulabs.com>",
+]
+description = "Stargaze Marketplace V2 Smart Contract"
+edition = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+license = { workspace = true }
+
+exclude = [
+  "contract.wasm",
+  "hash.txt",
+]
+
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "schema"
+path = "src/bin/schema.rs"
+doc  = false
+
+[features]
+backtraces = ["cosmwasm-std/backtraces"]
+library = []
+
+[dependencies]
+cosmwasm-schema = "1.5.3"
+cosmwasm-std = { version = "1.5.3" }
+cw-address-like = "1.0.4"
+cw-storage-plus = "1.2.0"
+cw-utils        = "1.0.3"
+cw2             = "1.1.2"
+cw721           = "0.18.0"
+
+sg-marketplace-common     = { path = "../../packages/sg-marketplace-common" }
+sg-index-query            = "0.1.1"
+
+serde     = "1.0.196"
+semver    = "1.0.21"
+thiserror = "1.0.56"
+sha2      = "0.10.0"
+digest    = "0.10.0"
+
+[dev-dependencies]
+cw-multi-test   = "0.20.0"
+cw721-base      = { version = "0.18.0", features = ["library"] }
+stargaze-royalty-registry = { git = "https://github.com/public-awesome/core.git", rev = "d41ce961481322557313635a863991cb4856a261", package = "stargaze-royalty-registry", features = ["library"] }
+cute            = "0.3.0"
+anyhow          = "1.0.79"
+

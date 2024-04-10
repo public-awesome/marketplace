@@ -6,6 +6,9 @@ pub enum MarketplaceStdError {
     #[error("{0}")]
     Std(#[from] StdError),
 
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+
     #[error("Invalid fair burn: {0}")]
     InvalidFairBurn(String),
 
