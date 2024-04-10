@@ -12,8 +12,8 @@ use crate::state::{
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, Addr, BankMsg, BlockInfo, Coin, Decimal, Deps, DepsMut, Empty, Env, Event,
-    MessageInfo, Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
+    coin, to_json_binary, Addr, BankMsg, BlockInfo, Coin, Decimal, Deps, DepsMut, Empty, Env,
+    Event, MessageInfo, Reply, StdError, StdResult, Storage, Timestamp, Uint128, WasmMsg,
 };
 use cw2::set_contract_version;
 use cw721::{Cw721ExecuteMsg, OwnerOfResponse};
@@ -1150,7 +1150,7 @@ fn finalize_sale(
 
     let exec_cw721_transfer = WasmMsg::Execute {
         contract_addr: ask.collection.to_string(),
-        msg: to_binary(&cw721_transfer_msg)?,
+        msg: to_json_binary(&cw721_transfer_msg)?,
         funds: vec![],
     };
     res.messages.push(SubMsg::new(exec_cw721_transfer));
@@ -1393,7 +1393,7 @@ fn prepare_ask_hook(deps: Deps, ask: &Ask, action: HookAction) -> StdResult<Vec<
         let msg = AskHookMsg { ask: ask.clone() };
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: msg.into_binary(action.clone())?,
+            msg: msg.into_json_binary(action.clone())?,
             funds: vec![],
         };
         Ok(SubMsg::reply_on_error(execute, HookReply::Ask as u64))
@@ -1413,7 +1413,7 @@ fn prepare_sale_hook(deps: Deps, ask: &Ask, buyer: Addr) -> StdResult<Vec<SubMsg
         };
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: msg.into_binary()?,
+            msg: msg.into_json_binary()?,
             funds: vec![],
         };
         Ok(SubMsg::reply_on_error(execute, HookReply::Sale as u64))
@@ -1427,7 +1427,7 @@ fn prepare_bid_hook(deps: Deps, bid: &Bid, action: HookAction) -> StdResult<Vec<
         let msg = BidHookMsg { bid: bid.clone() };
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: msg.into_binary(action.clone())?,
+            msg: msg.into_json_binary(action.clone())?,
             funds: vec![],
         };
         Ok(SubMsg::reply_on_error(execute, HookReply::Bid as u64))
@@ -1447,7 +1447,7 @@ fn prepare_collection_bid_hook(
         };
         let execute = WasmMsg::Execute {
             contract_addr: h.to_string(),
-            msg: msg.into_binary(action.clone())?,
+            msg: msg.into_json_binary(action.clone())?,
             funds: vec![],
         };
         Ok(SubMsg::reply_on_error(
