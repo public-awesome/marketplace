@@ -9,6 +9,7 @@ target/
 
 # IDEs
 .vscode/
+*.code-workspace
 .idea/
 *.iml
 
@@ -25,17 +26,12 @@ artifacts/
 tarpaulin-report.*
 
 # Schema files
-*/schema/raw/*
+schema/
 
 # Typescript
-*-debug.log
-*-error.log
-/.nyc_output
 /package-lock.json
 lib
 dist
 tmp
 node_modules
-oclif.manifest.json
-lerna-debug.log
 tsconfig.tsbuildinfo
