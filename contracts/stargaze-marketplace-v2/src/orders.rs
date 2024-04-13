@@ -19,7 +19,7 @@ use sg_marketplace_common::address::address_or;
 #[cw_serde]
 pub struct OrderDetails<T: AddressLike> {
     pub price: Coin,
-    pub asset_recipient: Option<T>,
+    pub actor: Option<T>,
     pub finder: Option<T>,
 }
 
@@ -27,7 +27,7 @@ impl OrderDetails<String> {
     pub fn str_to_addr(self, api: &dyn Api) -> StdResult<OrderDetails<Addr>> {
         Ok(OrderDetails {
             price: self.price,
-            asset_recipient: maybe_addr(api, self.asset_recipient)?,
+            actor: maybe_addr(api, self.actor)?,
             finder: maybe_addr(api, self.finder)?,
         })
     }
@@ -64,7 +64,7 @@ impl Ask {
     }
 
     pub fn asset_recipient(&self) -> Addr {
-        address_or(self.details.asset_recipient.as_ref(), &self.creator)
+        address_or(self.details.actor.as_ref(), &self.creator)
     }
 
     pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
@@ -138,11 +138,11 @@ impl Ask {
                 "collection" => Some(attr("collection", self.collection.to_string())),
                 "token_id" => Some(attr("token_id", self.token_id.to_string())),
                 "price" => Some(attr("price", self.details.price.to_string())),
-                "asset_recipient" => self
+                "actor" => self
                     .details
-                    .asset_recipient
+                    .actor
                     .as_ref()
-                    .map(|asset_recipient| attr("asset_recipient", asset_recipient.to_string())),
+                    .map(|actor| attr("actor", actor.to_string())),
                 "finder" => self
                     .details
                     .finder
@@ -193,7 +193,7 @@ impl Offer {
     }
 
     pub fn asset_recipient(&self) -> Addr {
-        address_or(self.details.asset_recipient.as_ref(), &self.creator)
+        address_or(self.details.actor.as_ref(), &self.creator)
     }
 
     pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
@@ -229,11 +229,11 @@ impl Offer {
                 "collection" => Some(attr("collection", self.collection.to_string())),
                 "token_id" => Some(attr("token_id", self.token_id.to_string())),
                 "price" => Some(attr("price", self.details.price.to_string())),
-                "asset_recipient" => self
+                "actor" => self
                     .details
-                    .asset_recipient
+                    .actor
                     .as_ref()
-                    .map(|asset_recipient| attr("asset_recipient", asset_recipient.to_string())),
+                    .map(|actor| attr("actor", actor.to_string())),
                 "finder" => self
                     .details
                     .finder
@@ -280,7 +280,7 @@ impl CollectionOffer {
     }
 
     pub fn asset_recipient(&self) -> Addr {
-        address_or(self.details.asset_recipient.as_ref(), &self.creator)
+        address_or(self.details.actor.as_ref(), &self.creator)
     }
 
     pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
@@ -321,11 +321,11 @@ impl CollectionOffer {
                 "creator" => Some(attr("creator", self.creator.to_string())),
                 "collection" => Some(attr("collection", self.collection.to_string())),
                 "price" => Some(attr("price", self.details.price.to_string())),
-                "asset_recipient" => self
+                "actor" => self
                     .details
-                    .asset_recipient
+                    .actor
                     .as_ref()
-                    .map(|asset_recipient| attr("asset_recipient", asset_recipient.to_string())),
+                    .map(|actor| attr("actor", actor.to_string())),
                 "finder" => self
                     .details
                     .finder

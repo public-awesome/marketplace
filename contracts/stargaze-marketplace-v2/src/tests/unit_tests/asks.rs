@@ -54,7 +54,7 @@ fn try_set_ask() {
         token_id: token_ids[0].clone(),
         details: OrderDetails {
             price: coin(1_000_000, NATIVE_DENOM),
-            asset_recipient: None,
+            actor: None,
             finder: None,
         },
     };
@@ -72,7 +72,7 @@ fn try_set_ask() {
         token_id: token_ids[0].clone(),
         details: OrderDetails {
             price: coin(1_000_000, JUNO_DENOM),
-            asset_recipient: None,
+            actor: None,
             finder: None,
         },
     };
@@ -83,7 +83,7 @@ fn try_set_ask() {
     );
 
     // Create ask succeeds
-    let asset_recipient = Addr::unchecked("asset_recipient".to_string());
+    let actor = Addr::unchecked("actor".to_string());
     let finder = Addr::unchecked("finder".to_string());
     let price = coin(1_000_000, NATIVE_DENOM);
     let set_ask = ExecuteMsg::SetAsk {
@@ -91,7 +91,7 @@ fn try_set_ask() {
         token_id: token_ids[0].clone(),
         details: OrderDetails {
             price: price.clone(),
-            asset_recipient: Some(asset_recipient.to_string()),
+            actor: Some(actor.to_string()),
             finder: Some(finder.to_string()),
         },
     };
@@ -107,7 +107,7 @@ fn try_set_ask() {
     assert_eq!(ask.collection, collection);
     assert_eq!(ask.token_id, token_ids[0]);
     assert_eq!(ask.details.price, price);
-    assert_eq!(ask.details.asset_recipient, Some(asset_recipient));
+    assert_eq!(ask.details.actor, Some(actor));
     assert_eq!(ask.details.finder, Some(finder));
 
     // Create duplicate ask fails
@@ -134,7 +134,7 @@ pub fn try_update_ask() {
             },
     } = test_context();
 
-    let asset_recipient = setup_additional_account(&mut app, "asset_recipient").unwrap();
+    let actor = setup_additional_account(&mut app, "actor").unwrap();
     let finder = setup_additional_account(&mut app, "finder").unwrap();
 
     let num_nfts: u8 = 4;
@@ -151,7 +151,7 @@ pub fn try_update_ask() {
             &[],
             OrderDetails {
                 price: coin(1000000 + idx as u128, NATIVE_DENOM),
-                asset_recipient: Some(asset_recipient.to_string()),
+                actor: Some(actor.to_string()),
                 finder: Some(finder.to_string()),
             },
         );
@@ -164,7 +164,7 @@ pub fn try_update_ask() {
         id: ask_id.clone(),
         details: OrderDetails {
             price: coin(1000000, NATIVE_DENOM).clone(),
-            asset_recipient: None,
+            actor: None,
             finder: None,
         },
     };
@@ -177,14 +177,14 @@ pub fn try_update_ask() {
         .to_string(),
     );
 
-    // Setting asset_recipient and finder to None succeeds
+    // Setting actor and finder to None succeeds
     let new_price = coin(1000001u128, NATIVE_DENOM);
     let ask_id = generate_id(vec![collection.as_bytes(), token_ids[0_usize].as_bytes()]);
     let update_ask = ExecuteMsg::UpdateAsk {
         id: ask_id.clone(),
         details: OrderDetails {
             price: new_price.clone(),
-            asset_recipient: None,
+            actor: None,
             finder: None,
         },
     };
@@ -197,7 +197,7 @@ pub fn try_update_ask() {
         .unwrap();
 
     assert_eq!(ask.details.price, new_price);
-    assert_eq!(ask.details.asset_recipient, None);
+    assert_eq!(ask.details.actor, None);
     assert_eq!(ask.details.finder, None);
 }
 
@@ -234,7 +234,7 @@ pub fn try_remove_ask() {
             &[],
             OrderDetails {
                 price: coin(1000000 + idx as u128, NATIVE_DENOM),
-                asset_recipient: None,
+                actor: None,
                 finder: None,
             },
         );

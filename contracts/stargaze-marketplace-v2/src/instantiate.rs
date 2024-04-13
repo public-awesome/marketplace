@@ -15,7 +15,7 @@ use cosmwasm_std::entry_point;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
@@ -26,20 +26,14 @@ pub fn instantiate(
     config.save(deps.storage)?;
 
     ALLOW_DENOMS.save(deps.storage, &msg.allow_denoms)?;
-
     NONCE.save(deps.storage, &0)?;
 
-    let contract_info_response = deps
-        .querier
-        .query_wasm_contract_info(env.contract.address)?;
-
-    let instantiate_event = Event::new("instantiate".to_string())
-        .add_attribute("code_id", contract_info_response.code_id.to_string())
-        .add_attribute("contract_name", CONTRACT_NAME)
-        .add_attribute("contract_version", CONTRACT_VERSION);
-
     let response = Response::new()
-        .add_event(instantiate_event)
+        .add_event(
+            Event::new("instantiate".to_string())
+                .add_attribute("contract_name", CONTRACT_NAME)
+                .add_attribute("contract_version", CONTRACT_VERSION),
+        )
         .add_event(
             ConfigEvent {
                 ty: "set-config",

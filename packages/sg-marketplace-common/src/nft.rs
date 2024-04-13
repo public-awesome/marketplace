@@ -44,7 +44,7 @@ pub fn only_owner(
 
     match owner_of_response {
         Ok(owner_of_response) => {
-            if owner_of_response.owner != info.sender.to_string() {
+            if owner_of_response.owner != info.sender {
                 return Err(MarketplaceStdError::Unauthorized(
                     "sender is not owner".to_string(),
                 ));
