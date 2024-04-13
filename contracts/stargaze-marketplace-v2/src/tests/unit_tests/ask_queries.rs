@@ -42,7 +42,7 @@ fn try_query_asks_by_collection() {
             &[],
             OrderDetails {
                 price,
-                asset_recipient: None,
+                actor: None,
                 finder: None,
             },
         );
@@ -132,7 +132,7 @@ fn try_query_asks_by_creator() {
             &[],
             OrderDetails {
                 price,
-                asset_recipient: None,
+                actor: None,
                 finder: None,
             },
         );

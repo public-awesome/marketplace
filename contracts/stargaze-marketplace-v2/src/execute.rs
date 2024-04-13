@@ -54,16 +54,12 @@ pub fn execute(
             execute_update_ask(deps, env, info, id, details.str_to_addr(api)?)
         }
         ExecuteMsg::RemoveAsk { id } => execute_remove_ask(deps, env, info, id),
-        ExecuteMsg::AcceptAsk {
-            id,
-            asset_recipient,
-            finder,
-        } => execute_accept_ask(
+        ExecuteMsg::AcceptAsk { id, actor, finder } => execute_accept_ask(
             deps,
             env,
             info,
             id,
-            maybe_addr(api, asset_recipient)?,
+            maybe_addr(api, actor)?,
             maybe_addr(api, finder)?,
         ),
         ExecuteMsg::SetOffer {
@@ -82,16 +78,12 @@ pub fn execute(
             execute_update_offer(deps, env, info, id, details.str_to_addr(api)?)
         }
         ExecuteMsg::RemoveOffer { id } => execute_remove_offer(deps, env, info, id),
-        ExecuteMsg::AcceptOffer {
-            id,
-            asset_recipient,
-            finder,
-        } => execute_accept_offer(
+        ExecuteMsg::AcceptOffer { id, actor, finder } => execute_accept_offer(
             deps,
             env,
             info,
             id,
-            maybe_addr(api, asset_recipient)?,
+            maybe_addr(api, actor)?,
             maybe_addr(api, finder)?,
         ),
         ExecuteMsg::SetCollectionOffer {
@@ -113,7 +105,7 @@ pub fn execute(
         ExecuteMsg::AcceptCollectionOffer {
             id,
             token_id,
-            asset_recipient,
+            actor,
             finder,
         } => execute_accept_collection_offer(
             deps,
@@ -121,7 +113,7 @@ pub fn execute(
             info,
             id,
             token_id,
-            maybe_addr(api, asset_recipient)?,
+            maybe_addr(api, actor)?,
             maybe_addr(api, finder)?,
         ),
     }
@@ -221,7 +213,7 @@ pub fn execute_set_ask(
                     "collection",
                     "token_id",
                     "price",
-                    "asset_recipient",
+                    "actor",
                     "finder",
                 ],
             }
@@ -283,7 +275,7 @@ pub fn execute_update_ask(
             AskEvent {
                 ty: "update-ask",
                 ask: &ask,
-                attr_keys: vec!["id", "price", "asset_recipient", "finder"],
+                attr_keys: vec!["id", "price", "actor", "finder"],
             }
             .into(),
         );
@@ -331,7 +323,7 @@ pub fn execute_accept_ask(
     env: Env,
     info: MessageInfo,
     id: OrderId,
-    asset_recipient: Option<Addr>,
+    actor: Option<Addr>,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let mut funds = NativeBalance(info.funds.clone());
@@ -354,7 +346,7 @@ pub fn execute_accept_ask(
         ask.token_id.clone(),
         OrderDetails {
             price: ask.details.price.clone(),
-            asset_recipient: asset_recipient.clone(),
+            actor: actor.clone(),
             finder: finder.clone(),
         },
         env.block.height,
@@ -450,7 +442,7 @@ pub fn execute_set_offer(
                     "collection",
                     "token_id",
                     "price",
-                    "asset_recipient",
+                    "actor",
                     "finder",
                 ],
             }
@@ -538,7 +530,7 @@ pub fn execute_update_offer(
             OfferEvent {
                 ty: "update-offer",
                 offer: &offer,
-                attr_keys: vec!["id", "price", "asset_recipient", "finder"],
+                attr_keys: vec!["id", "price", "actor", "finder"],
             }
             .into(),
         );
@@ -588,7 +580,7 @@ pub fn execute_accept_offer(
     env: Env,
     info: MessageInfo,
     id: OrderId,
-    asset_recipient: Option<Addr>,
+    actor: Option<Addr>,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let offer: Offer = offers()
@@ -614,7 +606,7 @@ pub fn execute_accept_offer(
             offer.token_id.clone(),
             OrderDetails {
                 price: offer.details.price.clone(),
-                asset_recipient: asset_recipient.clone(),
+                actor: actor.clone(),
                 finder: finder.clone(),
             },
         )
@@ -693,14 +685,7 @@ pub fn execute_set_collection_offer(
             CollectionOfferEvent {
                 ty: "set-collection-offer",
                 collection_offer: &collection_offer,
-                attr_keys: vec![
-                    "id",
-                    "creator",
-                    "collection",
-                    "price",
-                    "asset_recipient",
-                    "finder",
-                ],
+                attr_keys: vec!["id", "creator", "collection", "price", "actor", "finder"],
             }
             .into(),
         );
@@ -788,7 +773,7 @@ pub fn execute_update_collection_offer(
             CollectionOfferEvent {
                 ty: "update-collection-offer",
                 collection_offer: &collection_offer,
-                attr_keys: vec!["id", "price", "asset_recipient", "finder"],
+                attr_keys: vec!["id", "price", "actor", "finder"],
             }
             .into(),
         );
@@ -840,7 +825,7 @@ pub fn execute_accept_collection_offer(
     info: MessageInfo,
     id: OrderId,
     token_id: TokenId,
-    asset_recipient: Option<Addr>,
+    actor: Option<Addr>,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let collection_offer = collection_offers()
@@ -874,7 +859,7 @@ pub fn execute_accept_collection_offer(
             token_id.clone(),
             OrderDetails {
                 price: collection_offer.details.price.clone(),
-                asset_recipient: asset_recipient.clone(),
+                actor: actor.clone(),
                 finder: finder.clone(),
             },
         )

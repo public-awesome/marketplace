@@ -39,7 +39,7 @@ pub enum ExecuteMsg {
     },
     AcceptAsk {
         id: OrderId,
-        asset_recipient: Option<String>,
+        actor: Option<String>,
         finder: Option<String>,
     },
     SetOffer {
@@ -56,7 +56,7 @@ pub enum ExecuteMsg {
     },
     AcceptOffer {
         id: OrderId,
-        asset_recipient: Option<String>,
+        actor: Option<String>,
         finder: Option<String>,
     },
     SetCollectionOffer {
@@ -73,7 +73,7 @@ pub enum ExecuteMsg {
     AcceptCollectionOffer {
         id: OrderId,
         token_id: TokenId,
-        asset_recipient: Option<String>,
+        actor: Option<String>,
         finder: Option<String>,
     },
 }

@@ -38,7 +38,7 @@ fn try_set_collection_offer() {
         collection: collection.to_string(),
         details: OrderDetails {
             price: collection_offer_price.clone(),
-            asset_recipient: None,
+            actor: None,
             finder: None,
         },
     };
@@ -59,7 +59,7 @@ fn try_set_collection_offer() {
         collection: collection.to_string(),
         details: OrderDetails {
             price: collection_offer_price.clone(),
-            asset_recipient: None,
+            actor: None,
             finder: None,
         },
     };
@@ -78,14 +78,14 @@ fn try_set_collection_offer() {
     );
 
     // Create collection_offer succeeds, even when overpaid
-    let asset_recipient = Addr::unchecked("asset_recipient".to_string());
+    let actor = Addr::unchecked("actor".to_string());
     let finder = Addr::unchecked("finder".to_string());
     let collection_offer_price = coin(1_000_000, NATIVE_DENOM);
     let set_collection_offer = ExecuteMsg::SetCollectionOffer {
         collection: collection.to_string(),
         details: OrderDetails {
             price: collection_offer_price.clone(),
-            asset_recipient: Some(asset_recipient.to_string()),
+            actor: Some(actor.to_string()),
             finder: Some(finder.to_string()),
         },
     };
@@ -128,10 +128,7 @@ fn try_set_collection_offer() {
     assert_eq!(collection_offer.creator, bidder);
     assert_eq!(collection_offer.collection, collection);
     assert_eq!(collection_offer.details.price, collection_offer_price);
-    assert_eq!(
-        collection_offer.details.asset_recipient,
-        Some(asset_recipient)
-    );
+    assert_eq!(collection_offer.details.actor, Some(actor));
     assert_eq!(collection_offer.details.finder, Some(finder));
 }
 
@@ -148,7 +145,7 @@ pub fn try_update_collection_offer() {
         accounts: TestAccounts { owner, bidder, .. },
     } = test_context();
 
-    let asset_recipient = setup_additional_account(&mut app, "asset_recipient").unwrap();
+    let actor = setup_additional_account(&mut app, "actor").unwrap();
     let finder = setup_additional_account(&mut app, "finder").unwrap();
 
     let num_collection_offers: u8 = 4;
@@ -159,7 +156,7 @@ pub fn try_update_collection_offer() {
             collection: collection.to_string(),
             details: OrderDetails {
                 price: collection_offer_price.clone(),
-                asset_recipient: None,
+                actor: None,
                 finder: None,
             },
         };
@@ -182,7 +179,7 @@ pub fn try_update_collection_offer() {
         id: collection_offer_ids[0].clone(),
         details: OrderDetails {
             price: coin(1000000u128, NATIVE_DENOM),
-            asset_recipient: Some(asset_recipient.to_string()),
+            actor: Some(actor.to_string()),
             finder: Some(finder.to_string()),
         },
     };
@@ -206,7 +203,7 @@ pub fn try_update_collection_offer() {
         id: collection_offer_ids[0].clone(),
         details: OrderDetails {
             price: new_price.clone(),
-            asset_recipient: None,
+            actor: None,
             finder: None,
         },
     };
@@ -250,7 +247,7 @@ pub fn try_remove_offer() {
             collection: collection.to_string(),
             details: OrderDetails {
                 price: price.clone(),
-                asset_recipient: None,
+                actor: None,
                 finder: None,
             },
         },
