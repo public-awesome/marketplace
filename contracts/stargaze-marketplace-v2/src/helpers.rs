@@ -186,7 +186,8 @@ pub fn finalize_sale(
     let mut sale_event = Event::new("finalize-sale")
         .add_attribute("collection", ask.collection.to_string())
         .add_attribute("token_id", ask.token_id.to_string())
-        .add_attribute("sale_price", sale_price.to_string())
+        .add_attribute("denom", sale_price.denom.to_string())
+        .add_attribute("price", sale_price.amount.to_string())
         .add_attribute("seller_recipient", seller_recipient.to_string())
         .add_attribute("nft_recipient", nft_recipient.to_string())
         .add_attribute("ask", ask.id.to_string());
@@ -202,7 +203,7 @@ pub fn finalize_sale(
     }
 
     for payment in nft_sale_processor.payments.iter() {
-        sale_event = sale_event.add_attribute(&payment.label, payment.funds.to_string());
+        sale_event = sale_event.add_attribute(&payment.label, payment.funds.amount.to_string());
     }
 
     response = response.add_event(sale_event);
