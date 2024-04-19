@@ -659,7 +659,10 @@ fn try_sale_fee_breakdown() {
     let protocol_reward_event = find_attrs(app_response.clone(), "wasm-finalize-sale", "protocol")
         .pop()
         .unwrap();
-    assert_eq!(protocol_reward_event, protocol_reward_coin.to_string());
+    assert_eq!(
+        protocol_reward_event,
+        protocol_reward_coin.amount.to_string()
+    );
 
     // Verify maker reward
     let maker_reward_coin = coin(maker_reward.u128(), NATIVE_DENOM);
@@ -670,7 +673,7 @@ fn try_sale_fee_breakdown() {
     let maker_reward_event = find_attrs(app_response.clone(), "wasm-finalize-sale", "maker")
         .pop()
         .unwrap();
-    assert_eq!(maker_reward_event, maker_reward_coin.to_string());
+    assert_eq!(maker_reward_event, maker_reward_coin.amount.to_string());
 
     // Verify taker reward
     let taker_reward_coin = coin(taker_reward.u128(), NATIVE_DENOM);
@@ -681,7 +684,7 @@ fn try_sale_fee_breakdown() {
     let taker_reward_event = find_attrs(app_response.clone(), "wasm-finalize-sale", "taker")
         .pop()
         .unwrap();
-    assert_eq!(taker_reward_event, taker_reward_coin.to_string());
+    assert_eq!(taker_reward_event, taker_reward_coin.amount.to_string());
 
     // Verify seller reward
     let seller_coin = coin(seller_amount.u128(), NATIVE_DENOM);
@@ -692,7 +695,7 @@ fn try_sale_fee_breakdown() {
     let seller_event = find_attrs(app_response.clone(), "wasm-finalize-sale", "seller")
         .pop()
         .unwrap();
-    assert_eq!(seller_event, seller_coin.to_string());
+    assert_eq!(seller_event, seller_coin.amount.to_string());
 
     // Verify bidder paid
     assert_eq!(
