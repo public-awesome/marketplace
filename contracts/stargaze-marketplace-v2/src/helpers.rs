@@ -11,7 +11,7 @@ use sg_marketplace_common::{
     nft::transfer_nft, royalties::fetch_or_set_royalties, sale::NftSaleProcessor,
     MarketplaceStdError,
 };
-use sha2::{Digest, Sha256};
+use sha3::{Digest, Keccak256};
 use std::{cmp::min, ops::Sub};
 
 pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) -> String {
@@ -20,7 +20,7 @@ pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) ->
 }
 
 pub fn generate_id(components: Vec<&[u8]>) -> String {
-    let mut hasher = Sha256::new();
+    let mut hasher = Keccak256::new();
     for component in components {
         hasher.update(component);
     }
