@@ -47,7 +47,7 @@ sha3      = "0.10"
 [dev-dependencies]
 cw-multi-test = "0.20.0"
 cw721-base = { version = "0.18.0", features = ["library"] }
-stargaze-royalty-registry = { git = "https://github.com/public-awesome/core.git", rev = "d41ce961481322557313635a863991cb4856a261", package = "stargaze-royalty-registry", features = [
+stargaze-royalty-registry = { git = "https://github.com/public-awesome/core.git", rev = "1b154821c6d3fe33573a673f33129765e55ce281", package = "stargaze-royalty-registry", features = [
   "library",
 ] }
 cute = "0.3.0"
