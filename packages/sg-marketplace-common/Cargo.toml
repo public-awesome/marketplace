@@ -1,15 +1,12 @@
 [package]
-name = "sg-marketplace-common"
-version = "1.3.0"
-authors = [
-  "Shane Vitarana <s@noreply.publicawesome.com>",
-  "Tasio Victoria <tasiovictoria@ujulabs.com>",
-]
+name        = "sg-marketplace-common"
+version     = "1.3.0"
+authors     = ["Shane Vitarana <s@noreply.publicawesome.com>", "Tasio Victoria <tasiovictoria@ujulabs.com>"]
 description = "Common functionality used in Stargaze Marketplace contracts"
-edition = { workspace = true }
-homepage = { workspace = true }
-repository = { workspace = true }
-license = { workspace = true }
+edition     = { workspace = true }
+homepage    = { workspace = true }
+repository  = { workspace = true }
+license     = { workspace = true }
 
 exclude = [
   # Those files are rust-optimizer artifacts. You might want to commit them for convenience but they should not be part of the source code publication.
@@ -33,10 +30,10 @@ cosmwasm-schema = "1.5.3"
 cosmwasm-std    = "1.5.3"
 cw-storage-plus = "1.2.0"
 cw-utils        = "1.0.3"
-cw721         = "0.18.0"
-cw721-base     = { version = "0.18.0", features = ["library"] }
+cw721           = "0.18.0"
+cw721-base      = { version = "0.18.0", features = ["library"] }
 
-stargaze-royalty-registry     = { version = "0.3.0", features = ["library"] }
+stargaze-royalty-registry = { version = "0.3.0", features = ["library"] }
 
 serde     = "1.0.196"
 thiserror = "1.0.56"
