@@ -110,7 +110,7 @@ jobs:
               echo "Compiling `basename $C`..."
               (cd $C && cargo build --release --lib --target wasm32-unknown-unknown --locked)
             done
-       - run:
+      - run:
           name: Install check_contract
           # Uses --debug for compilation speed
           command: cargo install cosmwasm-check
