@@ -97,11 +97,13 @@ export interface MarketplaceMessage {
     tokenId: number;
   }, funds?: Coin[]) => MsgExecuteContractEncodeObject;
   acceptBid: ({
+    amount,
     bidder,
     collection,
     finder,
     tokenId
   }: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string;
@@ -131,11 +133,13 @@ export interface MarketplaceMessage {
     collection: string;
   }, funds?: Coin[]) => MsgExecuteContractEncodeObject;
   acceptCollectionBid: ({
+    amount,
     bidder,
     collection,
     finder,
     tokenId
   }: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string;
@@ -406,11 +410,13 @@ export class MarketplaceMessageComposer implements MarketplaceMessage {
     };
   };
   acceptBid = ({
+    amount,
     bidder,
     collection,
     finder,
     tokenId
   }: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string;
@@ -423,6 +429,7 @@ export class MarketplaceMessageComposer implements MarketplaceMessage {
         contract: this.contractAddress,
         msg: toUtf8(JSON.stringify({
           accept_bid: {
+            amount,
             bidder,
             collection,
             finder,
@@ -503,11 +510,13 @@ export class MarketplaceMessageComposer implements MarketplaceMessage {
     };
   };
   acceptCollectionBid = ({
+    amount,
     bidder,
     collection,
     finder,
     tokenId
   }: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string;
@@ -520,6 +529,7 @@ export class MarketplaceMessageComposer implements MarketplaceMessage {
         contract: this.contractAddress,
         msg: toUtf8(JSON.stringify({
           accept_collection_bid: {
+            amount,
             bidder,
             collection,
             finder,
