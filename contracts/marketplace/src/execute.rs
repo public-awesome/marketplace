@@ -676,6 +676,7 @@ pub fn execute_remove_bid(
 }
 
 /// Seller can accept a bid which transfers funds as well as the token. The bid may or may not be associated with an ask.
+#[allow(clippy::too_many_arguments)]
 pub fn execute_accept_bid(
     deps: DepsMut,
     env: Env,
@@ -872,6 +873,7 @@ pub fn execute_remove_collection_bid(
 }
 
 /// Owner/seller of an item in a collection can accept a collection bid which transfers funds as well as a token
+#[allow(clippy::too_many_arguments)]
 pub fn execute_accept_collection_bid(
     deps: DepsMut,
     env: Env,
