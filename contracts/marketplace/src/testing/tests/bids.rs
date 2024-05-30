@@ -1619,6 +1619,7 @@ fn try_accept_bid_amount() {
         amount: Uint128::from(200u128),
         finder: None,
     };
+    // fails because is not expected price
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
     assert!(res.is_err());
     // Creator accepts bid
@@ -1667,7 +1668,7 @@ fn try_collection_bid_amount() {
     );
     assert!(res.is_ok());
 
-    // A collection bid is accepted
+    // A collection bid is accepted but should fail
     let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
         collection: collection.to_string(),
         token_id,
@@ -1676,6 +1677,7 @@ fn try_collection_bid_amount() {
         finder: None,
     };
 
+    // fails because does not match expected price
     let res = router.execute_contract(
         creator.clone(),
         marketplace.clone(),
@@ -1689,10 +1691,10 @@ fn try_collection_bid_amount() {
         collection: collection.to_string(),
         token_id,
         bidder: bidder.to_string(),
-        amount: Uint128::from(100u128),
+        amount: Uint128::from(150u128),
         finder: None,
     };
 
     let res = router.execute_contract(creator.clone(), marketplace, &accept_collection_bid, &[]);
-    assert!(res.is_err());
+    assert!(res.is_ok());
 }
