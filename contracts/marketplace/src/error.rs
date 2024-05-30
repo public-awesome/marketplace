@@ -40,6 +40,9 @@ pub enum ContractError {
     #[error("BidExpired")]
     BidExpired {},
 
+    #[error("InvalidBidAmount: Expected {0} Found: {1}")]
+    InvalidBidAmount(Uint128, Uint128),
+
     #[error("BidNotStale")]
     BidNotStale {},
 

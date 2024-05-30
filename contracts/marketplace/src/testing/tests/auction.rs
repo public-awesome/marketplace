@@ -148,9 +148,11 @@ fn set_auction_bids() {
         collection: collection.to_string(),
         token_id,
         bidder: bidder.to_string(),
+        amount: Uint128::from(200u128),
         finder: None,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
+
     assert!(res.is_ok());
     // ask should have been removed
     let res: AskResponse = router
@@ -234,6 +236,7 @@ fn transfer_accept_bid() {
         collection: collection.to_string(),
         token_id,
         bidder: bidder.to_string(),
+        amount: Uint128::from(200u128),
         finder: None,
     };
     let res = router.execute_contract(owner.clone(), marketplace.clone(), &accept_bid_msg, &[]);

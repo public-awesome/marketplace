@@ -214,6 +214,7 @@ pub fn execute(
             collection,
             token_id,
             bidder,
+            amount,
             finder,
         } => execute_accept_bid(
             deps,
@@ -222,6 +223,7 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             api.addr_validate(&bidder)?,
+            amount,
             maybe_addr(api, finder)?,
         ),
         ExecuteMsg::RejectBid {
@@ -267,6 +269,7 @@ pub fn execute(
             collection,
             token_id,
             bidder,
+            amount,
             finder,
         } => execute_accept_collection_bid(
             deps,
@@ -275,6 +278,7 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             api.addr_validate(&bidder)?,
+            amount,
             maybe_addr(api, finder)?,
         ),
         ExecuteMsg::SyncAsk {
@@ -679,6 +683,7 @@ pub fn execute_accept_bid(
     collection: Addr,
     token_id: TokenId,
     bidder: Addr,
+    amount: Uint128,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
@@ -690,6 +695,9 @@ pub fn execute_accept_bid(
     let bid = bids().load(deps.storage, bid_key.clone())?;
     if bid.is_expired(&env.block) {
         return Err(ContractError::BidExpired {});
+    }
+    if bid.price != amount {
+        return Err(ContractError::InvalidBidAmount(amount, bid.price));
     }
 
     if asks().may_load(deps.storage, ask_key.clone())?.is_some() {
@@ -871,6 +879,7 @@ pub fn execute_accept_collection_bid(
     collection: Addr,
     token_id: TokenId,
     bidder: Addr,
+    amount: Uint128,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
@@ -883,6 +892,10 @@ pub fn execute_accept_collection_bid(
     if bid.is_expired(&env.block) {
         return Err(ContractError::BidExpired {});
     }
+    if bid.price != amount {
+        return Err(ContractError::InvalidBidAmount(amount, bid.price));
+    }
+
     collection_bids().remove(deps.storage, bid_key)?;
 
     if asks().may_load(deps.storage, ask_key.clone())?.is_some() {

@@ -871,6 +871,7 @@ fn try_collection_bids() {
         collection: collection.to_string(),
         token_id,
         bidder: bidder.to_string(),
+        amount: Uint128::from(150u128),
         finder: None,
     };
 
@@ -926,6 +927,7 @@ fn try_set_accept_bid_high_fees() {
         collection: collection.to_string(),
         token_id,
         bidder: bidder.to_string(),
+        amount: Uint128::from(10000u128),
         finder: Some(owner.to_string()),
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
@@ -1231,6 +1233,7 @@ fn try_set_accept_bid_no_ask() {
         collection: collection.to_string(),
         token_id,
         bidder: bidder.to_string(),
+        amount: Uint128::from(100u128),
         finder: None,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
@@ -1422,6 +1425,7 @@ fn try_set_accept_fixed_price_bid() {
         collection: collection.to_string(),
         token_id,
         bidder: bidder.to_string(),
+        amount: Uint128::from(100u128),
         finder: None,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);

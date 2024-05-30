@@ -93,6 +93,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         bidder: String,
+        amount: Uint128,
         finder: Option<String>,
     },
     /// Reject a bid on an existing ask
@@ -114,6 +115,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
         bidder: String,
+        amount: Uint128,
         finder: Option<String>,
     },
     /// Privileged operation to change the active state of an ask when an NFT is transferred
