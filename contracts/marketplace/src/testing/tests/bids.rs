@@ -1579,3 +1579,120 @@ fn try_bid_sale_type() {
     assert_eq!(res.bids.len(), 1);
     assert_eq!(res.bids[0].price.u128(), 100u128);
 }
+
+#[test]
+fn try_accept_bid_amount() {
+    let vt = standard_minter_template(1);
+    let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let marketplace = setup_marketplace(&mut router, creator.clone()).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let token_id = 1;
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+    // Mint NFT for creator
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
+
+    // Bidder makes bid
+    let set_bid_msg = ExecuteMsg::SetBid {
+        sale_type: SaleType::Auction,
+        collection: collection.to_string(),
+        token_id,
+        finders_fee_bps: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 1),
+        finder: None,
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_msg,
+        &coins(100, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    // Creator accepts bid
+    let accept_bid_msg = ExecuteMsg::AcceptBid {
+        collection: collection.to_string(),
+        token_id,
+        bidder: bidder.to_string(),
+        amount: Uint128::from(200u128),
+        finder: None,
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
+    assert!(res.is_err());
+    // Creator accepts bid
+    let accept_bid_msg = ExecuteMsg::AcceptBid {
+        collection: collection.to_string(),
+        token_id,
+        bidder: bidder.to_string(),
+        amount: Uint128::from(100u128),
+        finder: None,
+    };
+    let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
+    assert!(res.is_ok());
+}
+
+#[test]
+fn try_collection_bid_amount() {
+    let vt = minter_two_collections(1);
+    let (mut router, owner, bidder, creator) =
+        (vt.router, vt.accts.owner, vt.accts.bidder, vt.accts.creator);
+    let marketplace = setup_marketplace(&mut router, owner).unwrap();
+    let minter_addr = vt.collection_response_vec[0].minter.clone().unwrap();
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+    let start_time = Timestamp::from_nanos(GENESIS_MINT_START_TIME);
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+
+    add_funds_for_incremental_fee(&mut router, &creator, INITIAL_BALANCE, 1u128).unwrap();
+
+    let token_id = 1;
+
+    setup_block_time(&mut router, start_time.nanos(), None);
+    // Mint NFT for creator
+    mint(&mut router, &creator, &minter_addr);
+    approve(&mut router, &creator, &collection, &marketplace, token_id);
+
+    // A collection bid is made by the bidder
+    let set_collection_bid = ExecuteMsg::SetCollectionBid {
+        collection: collection.to_string(),
+        finders_fee_bps: None,
+        expires: start_time.plus_seconds(MIN_EXPIRY + 10),
+    };
+    let res = router.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_collection_bid,
+        &coins(150, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    // A collection bid is accepted
+    let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
+        collection: collection.to_string(),
+        token_id,
+        bidder: bidder.to_string(),
+        amount: Uint128::from(200u128),
+        finder: None,
+    };
+
+    let res = router.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &accept_collection_bid,
+        &[],
+    );
+    assert!(res.is_err());
+
+    // A collection bid is accepted
+    let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
+        collection: collection.to_string(),
+        token_id,
+        bidder: bidder.to_string(),
+        amount: Uint128::from(100u128),
+        finder: None,
+    };
+
+    let res = router.execute_contract(creator.clone(), marketplace, &accept_collection_bid, &[]);
+    assert!(res.is_err());
+}
