@@ -81,6 +81,7 @@ export type ExecuteMsg = {
   };
 } | {
   accept_bid: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string | null;
@@ -104,6 +105,7 @@ export type ExecuteMsg = {
   };
 } | {
   accept_collection_bid: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string | null;

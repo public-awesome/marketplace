@@ -655,11 +655,13 @@ export interface MarketplaceInterface extends MarketplaceReadOnlyInterface {
     tokenId: number;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   acceptBid: ({
+    amount,
     bidder,
     collection,
     finder,
     tokenId
   }: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string;
@@ -689,11 +691,13 @@ export interface MarketplaceInterface extends MarketplaceReadOnlyInterface {
     collection: string;
   }, fee?: number | StdFee | "auto", memo?: string, funds?: Coin[]) => Promise<ExecuteResult>;
   acceptCollectionBid: ({
+    amount,
     bidder,
     collection,
     finder,
     tokenId
   }: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string;
@@ -911,11 +915,13 @@ export class MarketplaceClient extends MarketplaceQueryClient implements Marketp
     }, fee, memo, funds);
   };
   acceptBid = async ({
+    amount,
     bidder,
     collection,
     finder,
     tokenId
   }: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string;
@@ -923,6 +929,7 @@ export class MarketplaceClient extends MarketplaceQueryClient implements Marketp
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       accept_bid: {
+        amount,
         bidder,
         collection,
         finder,
@@ -976,11 +983,13 @@ export class MarketplaceClient extends MarketplaceQueryClient implements Marketp
     }, fee, memo, funds);
   };
   acceptCollectionBid = async ({
+    amount,
     bidder,
     collection,
     finder,
     tokenId
   }: {
+    amount: Uint128;
     bidder: string;
     collection: string;
     finder?: string;
@@ -988,6 +997,7 @@ export class MarketplaceClient extends MarketplaceQueryClient implements Marketp
   }, fee: number | StdFee | "auto" = "auto", memo?: string, funds?: Coin[]): Promise<ExecuteResult> => {
     return await this.client.execute(this.sender, this.contractAddress, {
       accept_collection_bid: {
+        amount,
         bidder,
         collection,
         finder,

@@ -7,7 +7,7 @@ use crate::testing::helpers::funds::{
 use crate::testing::helpers::nft_functions::{approve, mint};
 use crate::testing::setup::setup_accounts::INITIAL_BALANCE;
 use crate::testing::setup::setup_marketplace::{setup_marketplace, LISTING_FEE, MIN_EXPIRY};
-use cosmwasm_std::{Addr, Timestamp};
+use cosmwasm_std::{Addr, Timestamp, Uint128};
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use cw_multi_test::Executor;
 use sg_std::GENESIS_MINT_START_TIME;
@@ -120,6 +120,7 @@ fn try_bid_finders_fee() {
         collection: collection.to_string(),
         token_id,
         bidder: bidder.to_string(),
+        amount: Uint128::from(100u128),
         finder: Some(finder.to_string()),
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);

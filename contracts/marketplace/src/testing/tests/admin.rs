@@ -271,6 +271,7 @@ fn try_start_trading_time() {
         collection: collection.to_string(),
         token_id: minter_1_token_id_0,
         bidder: bidder.to_string(),
+        amount: Uint128::from(100u128),
         finder: None,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
@@ -308,6 +309,7 @@ fn try_start_trading_time() {
         collection: collection_2.to_string(),
         token_id: minter_2_token_id_0,
         bidder: bidder2.to_string(),
+        amount: Uint128::from(150u128),
         finder: None,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
@@ -322,6 +324,7 @@ fn try_start_trading_time() {
         collection: collection_2.to_string(),
         token_id: minter_2_token_id_0,
         bidder: bidder2.to_string(),
+        amount: Uint128::from(150u128),
         finder: None,
     };
 
@@ -345,6 +348,7 @@ fn try_start_trading_time() {
         collection: collection_2.to_string(),
         token_id: minter_2_token_id_0,
         bidder: bidder.to_string(),
+        amount: Uint128::from(100u128),
         finder: None,
     };
     let res = router.execute_contract(creator.clone(), marketplace.clone(), &accept_bid_msg, &[]);
@@ -394,6 +398,7 @@ fn try_start_trading_time() {
         collection: collection_2.to_string(),
         token_id: minter_2_token_id_0,
         bidder: bidder2.to_string(),
+        amount: Uint128::from(100u128),
         finder: None,
     };
 

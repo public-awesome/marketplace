@@ -1,6 +1,6 @@
 {
   "contract_name": "sg-marketplace",
-  "contract_version": "1.5.0",
+  "contract_version": "1.8.0",
   "idl_version": "1.0.0",
   "instantiate": {
     "$schema": "http://json-schema.org/draft-07/schema#",
@@ -459,11 +459,15 @@
           "accept_bid": {
             "type": "object",
             "required": [
+              "amount",
               "bidder",
               "collection",
               "token_id"
             ],
             "properties": {
+              "amount": {
+                "$ref": "#/definitions/Uint128"
+              },
               "bidder": {
                 "type": "string"
               },
@@ -585,11 +589,15 @@
           "accept_collection_bid": {
             "type": "object",
             "required": [
+              "amount",
               "bidder",
               "collection",
               "token_id"
             ],
             "properties": {
+              "amount": {
+                "$ref": "#/definitions/Uint128"
+              },
               "bidder": {
                 "type": "string"
               },
