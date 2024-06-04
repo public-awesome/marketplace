@@ -43,30 +43,30 @@ pub fn instantiate(
         .add_attribute("fair_burn", &config.fair_burn)
         .add_attribute(
             "trading_fee_percent",
-            &config.trading_fee_percent.to_string(),
+            config.trading_fee_percent.to_string(),
         )
         .add_attribute(
             "min_bid_increment_percent",
-            &config.min_bid_increment_percent.to_string(),
+            config.min_bid_increment_percent.to_string(),
         )
-        .add_attribute("min_duration", &config.min_duration.to_string())
-        .add_attribute("extend_duration", &config.extend_duration.to_string())
-        .add_attribute("create_auction_fee", &config.create_auction_fee.to_string())
+        .add_attribute("min_duration", config.min_duration.to_string())
+        .add_attribute("extend_duration", config.extend_duration.to_string())
+        .add_attribute("create_auction_fee", config.create_auction_fee.to_string())
         .add_attribute(
             "max_auctions_to_settle_per_block",
-            &config.max_auctions_to_settle_per_block.to_string(),
+            config.max_auctions_to_settle_per_block.to_string(),
         )
         .add_attribute(
             "halt_duration_threshold",
-            &config.halt_duration_threshold.to_string(),
+            config.halt_duration_threshold.to_string(),
         )
         .add_attribute(
             "halt_buffer_duration",
-            &config.halt_buffer_duration.to_string(),
+            config.halt_buffer_duration.to_string(),
         )
         .add_attribute(
             "halt_postpone_duration",
-            &config.halt_postpone_duration.to_string(),
+            config.halt_postpone_duration.to_string(),
         );
 
     for min_reserve_price in msg.min_reserve_prices {

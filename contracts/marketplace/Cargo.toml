@@ -54,7 +54,7 @@ serde            = { version = "1.0.145", default-features = false, features = [
 sg721-base       = { version = "2.1.0", features = ["library"] }
 sg721            = { version = "2.1.0", features = ["library"] }
 thiserror        = "1.0.31"
-sg-std           = "2.1.0"
+sg-std           = { version = "2.1.0", features = ["library"] }
 cw-utils         = "0.16.0"
 sg1              = "2.1.0"
 sg2              = "2.1.0"
@@ -69,11 +69,3 @@ cw-multi-test   = "0.16.0"
 sg-multi-test   = "2.1.0"
 base-minter     = "2.1.0"
 test-suite      = "2.1.0"
-
-[profile.release]
-rpath            = false
-lto              = true
-overflow-checks  = true
-opt-level        = 3
-debug            = false
-debug-assertions = false

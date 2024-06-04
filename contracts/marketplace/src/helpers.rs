@@ -1,6 +1,6 @@
 use crate::msg::ExecuteMsg;
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{to_binary, Addr, Api, BlockInfo, StdError, StdResult, Timestamp, WasmMsg};
+use cosmwasm_std::{to_json_binary, Addr, Api, BlockInfo, StdError, StdResult, Timestamp, WasmMsg};
 use sg_std::CosmosMsg;
 use thiserror::Error;
 
@@ -14,7 +14,7 @@ impl MarketplaceContract {
     }
 
     pub fn call<T: Into<ExecuteMsg>>(&self, msg: T) -> StdResult<CosmosMsg> {
-        let msg = to_binary(&msg.into())?;
+        let msg = to_json_binary(&msg.into())?;
         Ok(WasmMsg::Execute {
             contract_addr: self.addr().into(),
             msg,

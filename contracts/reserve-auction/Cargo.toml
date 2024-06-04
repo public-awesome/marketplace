@@ -34,29 +34,29 @@ backtraces = ["cosmwasm-std/backtraces"]
 library = []
 
 [dependencies]
-sg-marketplace-common = { version = "1.1.0" }
-stargaze-fair-burn    = { workspace = true }
-cosmwasm-schema       = { workspace = true }
-cosmwasm-std          = { workspace = true }
-cw-storage-macro      = { workspace = true }
-cw-storage-plus       = { workspace = true }
-cw-utils              = { workspace = true }
-cw2                   = { workspace = true }
-cw721                 = { workspace = true }
-cw721-base            = { workspace = true }
-schemars              = { workspace = true }
-serde                 = { workspace = true }
-sg-std                = { workspace = true }
-sg1                   = { workspace = true }
-sg721-base            = { workspace = true }
-thiserror             = { workspace = true }
+sg-marketplace-common = { version = "= 1.1.0" }
+stargaze-fair-burn    = { version = "1.0.2", features = ["library"] }
+cosmwasm-std          = "1.5.3"
+cosmwasm-schema       = "1.5.3"
+cw-storage-macro      = "0.16.0"
+cw-storage-plus       = "0.16.0"
+cw-utils              = "0.16.0"
+cw2                   = "0.16.0"
+cw721                 = "0.16.0"
+cw721-base            = { version = "0.16.0", features = ["library"] }
+schemars              = "0.8.11"
+serde                 = { version = "1.0.145", default-features = false, features = ["derive"] }
+sg-std                = { version = "2.1.0", features = ["library"] }
+sg1                   = "2.1.0"
+sg721-base            = { version = "2.1.0", features = ["library"] }
+thiserror             = "1.0.31"
 
 [dev-dependencies]
-cw-multi-test  = { workspace = true }
-sg-multi-test  = { workspace = true }
-sg2            = { workspace = true }
-sg721          = { workspace = true }
-vending-minter = { workspace = true }
-anyhow         = { workspace = true }
-test-suite     = { workspace = true }
-regex          = { workspace = true }
+cw-multi-test  = "0.16.0"
+sg-multi-test  = "2.1.0"
+sg2            = "2.1.0"
+sg721          = { version = "2.1.0", features = ["library"] }
+vending-minter = { version = "2.1.0", features = ["library"] }
+anyhow         = "1.0.41"
+test-suite     = "2.1.0"
+regex          = "1.8.3"
