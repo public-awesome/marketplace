@@ -8,7 +8,7 @@ use crate::{
             utils::assert_error,
         },
         setup::{
-            setup_accounts::{setup_additional_account, TestAccounts},
+            setup_accounts::TestAccounts,
             setup_contracts::{JUNO_DENOM, NATIVE_DENOM},
             templates::{test_context, TestContext, TestContracts},
         },
@@ -54,7 +54,7 @@ fn try_set_ask() {
         token_id: token_ids[0].clone(),
         details: OrderDetails {
             price: coin(1_000_000, NATIVE_DENOM),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -72,7 +72,7 @@ fn try_set_ask() {
         token_id: token_ids[0].clone(),
         details: OrderDetails {
             price: coin(1_000_000, JUNO_DENOM),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -83,7 +83,7 @@ fn try_set_ask() {
     );
 
     // Create ask succeeds
-    let actor = Addr::unchecked("actor".to_string());
+    let recipient = Addr::unchecked("recipient".to_string());
     let finder = Addr::unchecked("finder".to_string());
     let price = coin(1_000_000, NATIVE_DENOM);
     let set_ask = ExecuteMsg::SetAsk {
@@ -91,7 +91,7 @@ fn try_set_ask() {
         token_id: token_ids[0].clone(),
         details: OrderDetails {
             price: price.clone(),
-            actor: Some(actor.to_string()),
+            recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
         },
     };
@@ -107,98 +107,12 @@ fn try_set_ask() {
     assert_eq!(ask.collection, collection);
     assert_eq!(ask.token_id, token_ids[0]);
     assert_eq!(ask.details.price, price);
-    assert_eq!(ask.details.actor, Some(actor));
+    assert_eq!(ask.details.recipient, Some(recipient));
     assert_eq!(ask.details.finder, Some(finder));
 
     // Create duplicate ask fails
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
     assert_error(response, "Unauthorized: sender is not owner".to_string());
-}
-
-#[test]
-pub fn try_update_ask() {
-    let TestContext {
-        mut app,
-        contracts:
-            TestContracts {
-                marketplace,
-                collection,
-                ..
-            },
-        accounts:
-            TestAccounts {
-                creator,
-                owner,
-                bidder,
-                ..
-            },
-    } = test_context();
-
-    let actor = setup_additional_account(&mut app, "actor").unwrap();
-    let finder = setup_additional_account(&mut app, "finder").unwrap();
-
-    let num_nfts: u8 = 4;
-    let mut token_ids: Vec<String> = vec![];
-    for idx in 1..(num_nfts + 1) {
-        let token_id = idx.to_string();
-        mint_and_set_ask(
-            &mut app,
-            &creator,
-            &owner,
-            &marketplace,
-            &collection,
-            &token_id,
-            &[],
-            OrderDetails {
-                price: coin(1000000 + idx as u128, NATIVE_DENOM),
-                actor: Some(actor.to_string()),
-                finder: Some(finder.to_string()),
-            },
-        );
-        token_ids.push(token_id.clone());
-    }
-
-    // Non creator updating ask fails
-    let ask_id = generate_id(vec![collection.as_bytes(), token_ids[0_usize].as_bytes()]);
-    let update_ask = ExecuteMsg::UpdateAsk {
-        id: ask_id.clone(),
-        details: OrderDetails {
-            price: coin(1000000, NATIVE_DENOM).clone(),
-            actor: None,
-            finder: None,
-        },
-    };
-    let response = app.execute_contract(bidder.clone(), marketplace.clone(), &update_ask, &[]);
-    assert_error(
-        response,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of ask can perform this action".to_string(),
-        )
-        .to_string(),
-    );
-
-    // Setting actor and finder to None succeeds
-    let new_price = coin(1000001u128, NATIVE_DENOM);
-    let ask_id = generate_id(vec![collection.as_bytes(), token_ids[0_usize].as_bytes()]);
-    let update_ask = ExecuteMsg::UpdateAsk {
-        id: ask_id.clone(),
-        details: OrderDetails {
-            price: new_price.clone(),
-            actor: None,
-            finder: None,
-        },
-    };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &update_ask, &[]);
-    assert!(response.is_ok());
-
-    let ask: Ask = app
-        .wrap()
-        .query_wasm_smart(&marketplace, &QueryMsg::Ask(ask_id))
-        .unwrap();
-
-    assert_eq!(ask.details.price, new_price);
-    assert_eq!(ask.details.actor, None);
-    assert_eq!(ask.details.finder, None);
 }
 
 #[test]
@@ -234,7 +148,7 @@ pub fn try_remove_ask() {
             &[],
             OrderDetails {
                 price: coin(1000000 + idx as u128, NATIVE_DENOM),
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         );

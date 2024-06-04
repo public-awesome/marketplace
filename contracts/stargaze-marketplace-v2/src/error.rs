@@ -17,6 +17,10 @@ pub enum ContractError {
     #[error("{0}")]
     MarketplaceStdError(#[from] MarketplaceStdError),
 
+    // no match found error
+    #[error("No match found")]
+    NoMatchFound,
+
     #[error("InvalidInput: {0}")]
     InvalidInput(String),
 

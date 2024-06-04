@@ -30,19 +30,20 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         details: OrderDetails<String>,
     },
+    SellNft {
+        collection: String,
+        token_id: TokenId,
+        details: OrderDetails<String>,
+    },
     RemoveAsk {
         id: OrderId,
     },
-    UpdateAsk {
-        id: OrderId,
+    SetOffer {
+        collection: String,
+        token_id: TokenId,
         details: OrderDetails<String>,
     },
-    AcceptAsk {
-        id: OrderId,
-        actor: Option<String>,
-        finder: Option<String>,
-    },
-    SetOffer {
+    BuySpecificNft {
         collection: String,
         token_id: TokenId,
         details: OrderDetails<String>,
@@ -50,31 +51,16 @@ pub enum ExecuteMsg {
     RemoveOffer {
         id: OrderId,
     },
-    UpdateOffer {
-        id: OrderId,
+    SetCollectionOffer {
+        collection: String,
         details: OrderDetails<String>,
     },
-    AcceptOffer {
-        id: OrderId,
-        actor: Option<String>,
-        finder: Option<String>,
-    },
-    SetCollectionOffer {
+    BuyCollectionNft {
         collection: String,
         details: OrderDetails<String>,
     },
     RemoveCollectionOffer {
         id: OrderId,
-    },
-    UpdateCollectionOffer {
-        id: OrderId,
-        details: OrderDetails<String>,
-    },
-    AcceptCollectionOffer {
-        id: OrderId,
-        token_id: TokenId,
-        actor: Option<String>,
-        finder: Option<String>,
     },
 }
 

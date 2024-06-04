@@ -39,7 +39,7 @@ fn try_query_offers() {
             token_id: token_id.to_string(),
             details: OrderDetails {
                 price: offer_price.clone(),
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         };
@@ -91,7 +91,7 @@ fn try_query_offers_by_token_price() {
             token_id: token_id.to_string(),
             details: OrderDetails {
                 price: offer_price.clone(),
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         };
@@ -230,7 +230,7 @@ fn try_query_offers_by_creator() {
             token_id: token_id.to_string(),
             details: OrderDetails {
                 price: offer_price.clone(),
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         };
