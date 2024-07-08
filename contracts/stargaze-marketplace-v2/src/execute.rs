@@ -10,8 +10,10 @@ use crate::{
     },
 };
 
-use cosmwasm_std::{ensure, ensure_eq, Addr, DepsMut, Env, Event, MessageInfo, Response};
-use cw_utils::{nonpayable, NativeBalance};
+use cosmwasm_std::{
+    ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Response,
+};
+use cw_utils::{maybe_addr, nonpayable, NativeBalance};
 use sg_marketplace_common::{
     coin::{transfer_coin, transfer_coins},
     nft::{only_owner, only_tradable, transfer_nft},
@@ -51,18 +53,23 @@ pub fn execute(
             details.str_to_addr(api)?,
             false,
         ),
-        ExecuteMsg::SellNft {
-            collection,
-            token_id,
-            details,
-        } => execute_set_ask(
+        ExecuteMsg::UpdateAsk { id, details } => {
+            execute_update_ask(deps, env, info, id, details.str_to_addr(api)?)
+        }
+        ExecuteMsg::RemoveAsk { id } => execute_remove_ask(deps, env, info, id),
+        ExecuteMsg::AcceptAsk {
+            id,
+            max_input,
+            recipient,
+            finder,
+        } => execute_accept_ask(
             deps,
             env,
             info,
-            api.addr_validate(&collection)?,
-            token_id,
-            details.str_to_addr(api)?,
-            true,
+            id,
+            max_input,
+            maybe_addr(api, recipient)?,
+            maybe_addr(api, finder)?,
         ),
         ExecuteMsg::RemoveAsk { id } => execute_remove_ask(deps, env, info, id),
         ExecuteMsg::SetOffer {
@@ -78,18 +85,23 @@ pub fn execute(
             details.str_to_addr(api)?,
             false,
         ),
-        ExecuteMsg::BuySpecificNft {
-            collection,
-            token_id,
-            details,
-        } => execute_set_offer(
+        ExecuteMsg::UpdateOffer { id, details } => {
+            execute_update_offer(deps, env, info, id, details.str_to_addr(api)?)
+        }
+        ExecuteMsg::RemoveOffer { id } => execute_remove_offer(deps, env, info, id),
+        ExecuteMsg::AcceptOffer {
+            id,
+            min_output,
+            recipient,
+            finder,
+        } => execute_accept_offer(
             deps,
             env,
             info,
-            api.addr_validate(&collection)?,
-            token_id,
-            details.str_to_addr(api)?,
-            true,
+            id,
+            min_output,
+            maybe_addr(api, recipient)?,
+            maybe_addr(api, finder)?,
         ),
         ExecuteMsg::RemoveOffer { id } => execute_remove_offer(deps, env, info, id),
         ExecuteMsg::SetCollectionOffer {
@@ -103,20 +115,83 @@ pub fn execute(
             details.str_to_addr(api)?,
             false,
         ),
+        ExecuteMsg::UpdateCollectionOffer { id, details } => {
+            execute_update_collection_offer(deps, env, info, id, details.str_to_addr(api)?)
+        }
+        ExecuteMsg::RemoveCollectionOffer { id } => {
+            execute_remove_collection_offer(deps, env, info, id)
+        }
+        ExecuteMsg::AcceptCollectionOffer {
+            id,
+            token_id,
+            min_output,
+            recipient,
+            finder,
+        } => execute_accept_collection_offer(
+            deps,
+            env,
+            info,
+            id,
+            token_id,
+            min_output,
+            maybe_addr(api, recipient)?,
+            maybe_addr(api, finder)?,
+        ),
+        ExecuteMsg::SellNft {
+            collection,
+            token_id,
+            min_output,
+            recipient,
+            finder,
+        } => execute_set_ask(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            OrderDetails {
+                price: min_output,
+                recipient: maybe_addr(api, recipient)?,
+                finder: maybe_addr(api, finder)?,
+            },
+            true,
+        ),
+        ExecuteMsg::BuySpecificNft {
+            collection,
+            token_id,
+            max_input,
+            recipient,
+            finder,
+        } => execute_set_offer(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            OrderDetails {
+                price: max_input,
+                recipient: maybe_addr(api, recipient)?,
+                finder: maybe_addr(api, finder)?,
+            },
+            true,
+        ),
         ExecuteMsg::BuyCollectionNft {
             collection,
-            details,
+            max_input,
+            recipient,
+            finder,
         } => execute_set_collection_offer(
             deps,
             env,
             info,
             api.addr_validate(&collection)?,
-            details.str_to_addr(api)?,
+            OrderDetails {
+                price: max_input,
+                recipient: maybe_addr(api, recipient)?,
+                finder: maybe_addr(api, finder)?,
+            },
             true,
         ),
-        ExecuteMsg::RemoveCollectionOffer { id } => {
-            execute_remove_collection_offer(deps, env, info, id)
-        }
     }
 }
 
@@ -234,6 +309,61 @@ pub fn execute_set_ask(
     Ok(response)
 }
 
+pub fn execute_update_ask(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    id: OrderId,
+    details: OrderDetails<Addr>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
+    let allow_denoms = ALLOW_DENOMS.load(deps.storage)?;
+    ensure!(
+        allow_denoms.contains(&details.price.denom),
+        ContractError::InvalidInput("invalid denom".to_string())
+    );
+
+    let config = CONFIG.load(deps.storage)?;
+
+    let mut ask = asks()
+        .load(deps.storage, id.clone())
+        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+
+    ensure_eq!(
+        info.sender,
+        ask.creator,
+        MarketplaceStdError::Unauthorized(
+            "only the creator of ask can perform this action".to_string()
+        )
+    );
+
+    ask.details = details;
+
+    let mut response = Response::new();
+
+    let match_result = ask.match_with_offer(deps.as_ref())?;
+
+    if let Some(matching_offer) = match_result {
+        // If a match is found finalize the sale
+        response = finalize_sale(deps, &env, &ask, &config, &matching_offer, false, response)?;
+    } else {
+        // If no match is found continue updating the ask
+        ask.save(deps.storage)?;
+
+        response = response.add_event(
+            AskEvent {
+                ty: "update-ask",
+                ask: &ask,
+                attr_keys: vec!["id", "price", "recipient", "finder"],
+            }
+            .into(),
+        );
+    };
+
+    Ok(response)
+}
+
 pub fn execute_remove_ask(
     deps: DepsMut,
     _env: Env,
@@ -264,6 +394,66 @@ pub fn execute_remove_ask(
     ask.remove(deps.storage)?;
 
     response = response.add_event(Event::new("remove-ask".to_string()).add_attribute("id", id));
+
+    Ok(response)
+}
+
+pub fn execute_accept_ask(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    id: OrderId,
+    max_input: Coin,
+    recipient: Option<Addr>,
+    finder: Option<Addr>,
+) -> Result<Response, ContractError> {
+    let mut funds = NativeBalance(info.funds.clone());
+    funds.normalize();
+
+    let ask = asks()
+        .load(deps.storage, id.clone())
+        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+
+    ensure!(
+        has_coins(&[max_input], &ask.details.price),
+        ContractError::InvalidInput("ask price is greater than max input".to_string())
+    );
+
+    funds = funds
+        .sub(ask.details.price.clone())
+        .map_err(|_| ContractError::InsufficientFunds)?;
+
+    let nonce = NONCE.load(deps.storage)?.wrapping_add(1);
+    NONCE.save(deps.storage, &nonce)?;
+
+    let offer = Offer::new(
+        info.sender.clone(),
+        ask.collection.clone(),
+        ask.token_id.clone(),
+        OrderDetails {
+            price: ask.details.price.clone(),
+            recipient: recipient.clone(),
+            finder: finder.clone(),
+        },
+        env.block.height,
+        nonce,
+    );
+
+    let config = CONFIG.load(deps.storage)?;
+    let mut response = finalize_sale(
+        deps,
+        &env,
+        &ask,
+        &config,
+        &MatchingOffer::Offer(offer),
+        true,
+        Response::new(),
+    )?;
+
+    // Transfer remaining funds back to user
+    if !funds.is_empty() {
+        response = transfer_coins(funds.into_vec(), &info.sender, response);
+    }
 
     Ok(response)
 }
@@ -365,6 +555,85 @@ pub fn execute_set_offer(
     Ok(response)
 }
 
+pub fn execute_update_offer(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    id: OrderId,
+    details: OrderDetails<Addr>,
+) -> Result<Response, ContractError> {
+    let allow_denoms = ALLOW_DENOMS.load(deps.storage)?;
+    ensure!(
+        allow_denoms.contains(&details.price.denom),
+        ContractError::InvalidInput("invalid denom".to_string())
+    );
+
+    let mut offer = offers()
+        .load(deps.storage, id.clone())
+        .map_err(|_| ContractError::InvalidInput(format!("offer not found [{}]", id)))?;
+
+    ensure_eq!(
+        info.sender,
+        offer.creator,
+        MarketplaceStdError::Unauthorized(
+            "only the creator of offer can perform this action".to_string()
+        )
+    );
+
+    let mut funds = NativeBalance(info.funds.clone());
+    funds.normalize();
+
+    // Add the previous price to the funds in context
+    funds = funds.add(offer.details.price.clone());
+
+    offer.details = details;
+
+    let mut response = Response::new();
+
+    let match_result = offer.match_with_ask(deps.as_ref())?;
+
+    if let Some(ask) = match_result {
+        // If a match is found finalize the sale
+        funds = funds
+            .sub(ask.details.price.clone())
+            .map_err(|_| ContractError::InsufficientFunds)?;
+
+        let config: Config<Addr> = CONFIG.load(deps.storage)?;
+        response = finalize_sale(
+            deps,
+            &env,
+            &ask,
+            &config,
+            &MatchingOffer::Offer(offer),
+            true,
+            response,
+        )?;
+    } else {
+        // If no match is found update the offer
+        funds = funds
+            .sub(offer.details.price.clone())
+            .map_err(|_| ContractError::InsufficientFunds)?;
+
+        offer.save(deps.storage)?;
+
+        response = response.add_event(
+            OfferEvent {
+                ty: "update-offer",
+                offer: &offer,
+                attr_keys: vec!["id", "price", "recipient", "finder"],
+            }
+            .into(),
+        );
+    };
+
+    // Transfer remaining funds back to user
+    if !funds.is_empty() {
+        response = transfer_coins(funds.into_vec(), &info.sender, response);
+    }
+
+    Ok(response)
+}
+
 pub fn execute_remove_offer(
     deps: DepsMut,
     _env: Env,
@@ -392,6 +661,63 @@ pub fn execute_remove_offer(
     let mut response = transfer_coin(refund, &info.sender, Response::new());
 
     response = response.add_event(Event::new("remove-offer".to_string()).add_attribute("id", id));
+
+    Ok(response)
+}
+
+pub fn execute_accept_offer(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    id: OrderId,
+    min_output: Coin,
+    recipient: Option<Addr>,
+    finder: Option<Addr>,
+) -> Result<Response, ContractError> {
+    let offer: Offer = offers()
+        .load(deps.storage, id.clone())
+        .map_err(|_| ContractError::InvalidInput(format!("offer not found [{}]", id)))?;
+
+    ensure!(
+        has_coins(&[offer.details.price.clone()], &min_output),
+        ContractError::InvalidInput("min output is greater than offer price".to_string())
+    );
+
+    let ask_id = generate_id(vec![offer.collection.as_bytes(), offer.token_id.as_bytes()]);
+    let ask_option = asks().may_load(deps.storage, ask_id.clone())?;
+
+    // Check if the sender is the owner of the NFT, or if the creator of a valid ask
+    let ask = if let Some(ask) = ask_option {
+        if info.sender != ask.creator {
+            Err(MarketplaceStdError::Unauthorized(
+                "sender is not creator of ask".to_string(),
+            ))?;
+        }
+        ask
+    } else {
+        only_owner(&deps.querier, &info, &offer.collection, &offer.token_id)?;
+        Ask::new(
+            info.sender.clone(),
+            offer.collection.clone(),
+            offer.token_id.clone(),
+            OrderDetails {
+                price: offer.details.price.clone(),
+                recipient: recipient.clone(),
+                finder: finder.clone(),
+            },
+        )
+    };
+
+    let config: Config<Addr> = CONFIG.load(deps.storage)?;
+    let response = finalize_sale(
+        deps,
+        &env,
+        &ask,
+        &config,
+        &MatchingOffer::Offer(offer),
+        false,
+        Response::new(),
+    )?;
 
     Ok(response)
 }
@@ -489,6 +815,85 @@ pub fn execute_set_collection_offer(
     Ok(response)
 }
 
+pub fn execute_update_collection_offer(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    id: OrderId,
+    details: OrderDetails<Addr>,
+) -> Result<Response, ContractError> {
+    let allow_denoms = ALLOW_DENOMS.load(deps.storage)?;
+    ensure!(
+        allow_denoms.contains(&details.price.denom),
+        ContractError::InvalidInput("invalid denom".to_string())
+    );
+
+    let mut collection_offer = collection_offers()
+        .load(deps.storage, id.clone())
+        .map_err(|_| ContractError::InvalidInput(format!("collection offer not found [{}]", id)))?;
+
+    ensure_eq!(
+        info.sender,
+        collection_offer.creator,
+        MarketplaceStdError::Unauthorized(
+            "only the creator of collection offer can perform this action".to_string()
+        )
+    );
+
+    let mut funds = NativeBalance(info.funds.clone());
+    funds.normalize();
+
+    // Add the previous price to the funds in context
+    funds = funds.add(collection_offer.details.price.clone());
+
+    collection_offer.details = details;
+
+    let mut response = Response::new();
+
+    let match_result = collection_offer.match_with_ask(deps.as_ref())?;
+
+    if let Some(ask) = match_result {
+        // If a match is found finalize the sale
+        funds = funds
+            .sub(ask.details.price.clone())
+            .map_err(|_| ContractError::InsufficientFunds)?;
+
+        let config: Config<Addr> = CONFIG.load(deps.storage)?;
+        response = finalize_sale(
+            deps,
+            &env,
+            &ask,
+            &config,
+            &MatchingOffer::CollectionOffer(collection_offer),
+            true,
+            response,
+        )?;
+    } else {
+        // If no match is found update the offer
+        funds = funds
+            .sub(collection_offer.details.price.clone())
+            .map_err(|_| ContractError::InsufficientFunds)?;
+
+        collection_offer.save(deps.storage)?;
+
+        response = response.add_event(
+            CollectionOfferEvent {
+                ty: "update-collection-offer",
+                collection_offer: &collection_offer,
+                attr_keys: vec!["id", "price", "recipient", "finder"],
+            }
+            .into(),
+        );
+    };
+
+    // Transfer remaining funds back to user
+    if !funds.is_empty() {
+        response = transfer_coins(funds.into_vec(), &info.sender, response);
+    }
+
+    Ok(response)
+}
+
 pub fn execute_remove_collection_offer(
     deps: DepsMut,
     _env: Env,
@@ -517,6 +922,74 @@ pub fn execute_remove_collection_offer(
 
     response = response
         .add_event(Event::new("remove-collection-offer".to_string()).add_attribute("id", id));
+
+    Ok(response)
+}
+
+pub fn execute_accept_collection_offer(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    id: OrderId,
+    token_id: TokenId,
+    min_output: Coin,
+    recipient: Option<Addr>,
+    finder: Option<Addr>,
+) -> Result<Response, ContractError> {
+    let collection_offer = collection_offers()
+        .load(deps.storage, id.clone())
+        .map_err(|_| ContractError::InvalidInput(format!("collection offer not found [{}]", id)))?;
+
+    ensure!(
+        has_coins(&[collection_offer.details.price.clone()], &min_output),
+        ContractError::InvalidInput(
+            "min output is greater than collection offer price".to_string()
+        )
+    );
+
+    let ask_id = generate_id(vec![
+        collection_offer.collection.as_bytes(),
+        token_id.as_bytes(),
+    ]);
+    let ask_option = asks().may_load(deps.storage, ask_id.clone())?;
+
+    // Check if the sender is the owner of the NFT, or if the creator of a valid ask
+    let ask = if let Some(ask) = ask_option {
+        if info.sender != ask.creator {
+            Err(MarketplaceStdError::Unauthorized(
+                "sender is not creator of ask".to_string(),
+            ))?;
+        }
+        ask
+    } else {
+        only_owner(
+            &deps.querier,
+            &info,
+            &collection_offer.collection,
+            &token_id,
+        )?;
+        Ask::new(
+            info.sender.clone(),
+            collection_offer.collection.clone(),
+            token_id.clone(),
+            OrderDetails {
+                price: collection_offer.details.price.clone(),
+                recipient: recipient.clone(),
+                finder: finder.clone(),
+            },
+        )
+    };
+
+    let config: Config<Addr> = CONFIG.load(deps.storage)?;
+    let response = finalize_sale(
+        deps,
+        &env,
+        &ask,
+        &config,
+        &MatchingOffer::CollectionOffer(collection_offer),
+        false,
+        Response::new(),
+    )?;
 
     Ok(response)
 }

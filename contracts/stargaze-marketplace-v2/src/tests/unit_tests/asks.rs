@@ -116,6 +116,92 @@ fn try_set_ask() {
 }
 
 #[test]
+pub fn try_update_ask() {
+    let TestContext {
+        mut app,
+        contracts:
+            TestContracts {
+                marketplace,
+                collection,
+                ..
+            },
+        accounts:
+            TestAccounts {
+                creator,
+                owner,
+                bidder,
+                ..
+            },
+    } = test_context();
+
+    let recipient = setup_additional_account(&mut app, "recipient").unwrap();
+    let finder = setup_additional_account(&mut app, "finder").unwrap();
+
+    let num_nfts: u8 = 4;
+    let mut token_ids: Vec<String> = vec![];
+    for idx in 1..(num_nfts + 1) {
+        let token_id = idx.to_string();
+        mint_and_set_ask(
+            &mut app,
+            &creator,
+            &owner,
+            &marketplace,
+            &collection,
+            &token_id,
+            &[],
+            OrderDetails {
+                price: coin(1000000 + idx as u128, NATIVE_DENOM),
+                recipient: Some(recipient.to_string()),
+                finder: Some(finder.to_string()),
+            },
+        );
+        token_ids.push(token_id.clone());
+    }
+
+    // Non creator updating ask fails
+    let ask_id = generate_id(vec![collection.as_bytes(), token_ids[0_usize].as_bytes()]);
+    let update_ask = ExecuteMsg::UpdateAsk {
+        id: ask_id.clone(),
+        details: OrderDetails {
+            price: coin(1000000, NATIVE_DENOM).clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(bidder.clone(), marketplace.clone(), &update_ask, &[]);
+    assert_error(
+        response,
+        MarketplaceStdError::Unauthorized(
+            "only the creator of ask can perform this action".to_string(),
+        )
+        .to_string(),
+    );
+
+    // Setting recipient and finder to None succeeds
+    let new_price = coin(1000001u128, NATIVE_DENOM);
+    let ask_id = generate_id(vec![collection.as_bytes(), token_ids[0_usize].as_bytes()]);
+    let update_ask = ExecuteMsg::UpdateAsk {
+        id: ask_id.clone(),
+        details: OrderDetails {
+            price: new_price.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(owner.clone(), marketplace.clone(), &update_ask, &[]);
+    assert!(response.is_ok());
+
+    let ask: Ask = app
+        .wrap()
+        .query_wasm_smart(&marketplace, &QueryMsg::Ask(ask_id))
+        .unwrap();
+
+    assert_eq!(ask.details.price, new_price);
+    assert_eq!(ask.details.recipient, None);
+    assert_eq!(ask.details.finder, None);
+}
+
+#[test]
 pub fn try_remove_ask() {
     let TestContext {
         mut app,

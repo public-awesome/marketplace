@@ -4,7 +4,7 @@ use crate::{
 };
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Coin};
 use sg_index_query::QueryOptions;
 
 #[cw_serde]
@@ -43,7 +43,13 @@ pub enum ExecuteMsg {
         token_id: TokenId,
         details: OrderDetails<String>,
     },
-    BuySpecificNft {
+    AcceptAsk {
+        id: OrderId,
+        max_input: Coin,
+        recipient: Option<String>,
+        finder: Option<String>,
+    },
+    SetOffer {
         collection: String,
         token_id: TokenId,
         details: OrderDetails<String>,
@@ -55,12 +61,49 @@ pub enum ExecuteMsg {
         collection: String,
         details: OrderDetails<String>,
     },
-    BuyCollectionNft {
+    AcceptOffer {
+        id: OrderId,
+        min_output: Coin,
+        recipient: Option<String>,
+        finder: Option<String>,
+    },
+    SetCollectionOffer {
         collection: String,
         details: OrderDetails<String>,
     },
     RemoveCollectionOffer {
         id: OrderId,
+    },
+    UpdateCollectionOffer {
+        id: OrderId,
+        details: OrderDetails<String>,
+    },
+    AcceptCollectionOffer {
+        id: OrderId,
+        token_id: TokenId,
+        min_output: Coin,
+        recipient: Option<String>,
+        finder: Option<String>,
+    },
+    SellNft {
+        collection: String,
+        token_id: TokenId,
+        min_output: Coin,
+        recipient: Option<String>,
+        finder: Option<String>,
+    },
+    BuySpecificNft {
+        collection: String,
+        token_id: TokenId,
+        max_input: Coin,
+        recipient: Option<String>,
+        finder: Option<String>,
+    },
+    BuyCollectionNft {
+        collection: String,
+        max_input: Coin,
+        recipient: Option<String>,
+        finder: Option<String>,
     },
 }
 
