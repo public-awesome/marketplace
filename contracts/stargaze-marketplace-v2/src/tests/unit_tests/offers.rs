@@ -41,7 +41,7 @@ fn try_set_offer() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: offer_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -60,7 +60,7 @@ fn try_set_offer() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: offer_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -76,7 +76,7 @@ fn try_set_offer() {
     );
 
     // Create offer succeeds, even when overpaid
-    let actor = Addr::unchecked("actor".to_string());
+    let recipient = Addr::unchecked("recipient".to_string());
     let finder = Addr::unchecked("finder".to_string());
     let offer_price = coin(1_000_000, NATIVE_DENOM);
     let set_offer = ExecuteMsg::SetOffer {
@@ -84,7 +84,7 @@ fn try_set_offer() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: offer_price.clone(),
-            actor: Some(actor.to_string()),
+            recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
         },
     };
@@ -122,7 +122,7 @@ fn try_set_offer() {
     assert_eq!(offer.collection, collection);
     assert_eq!(offer.token_id, token_id);
     assert_eq!(offer.details.price, offer_price);
-    assert_eq!(offer.details.actor, Some(actor));
+    assert_eq!(offer.details.recipient, Some(recipient));
     assert_eq!(offer.details.finder, Some(finder));
 }
 
@@ -139,7 +139,7 @@ pub fn try_update_offer() {
         accounts: TestAccounts { owner, bidder, .. },
     } = test_context();
 
-    let actor = setup_additional_account(&mut app, "actor").unwrap();
+    let recipient = setup_additional_account(&mut app, "recipient").unwrap();
     let finder = setup_additional_account(&mut app, "finder").unwrap();
 
     let num_offers: u8 = 4;
@@ -152,7 +152,7 @@ pub fn try_update_offer() {
             token_id: token_id.to_string(),
             details: OrderDetails {
                 price: offer_price.clone(),
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         };
@@ -175,7 +175,7 @@ pub fn try_update_offer() {
         id: offer_ids[0].clone(),
         details: OrderDetails {
             price: coin(1000000u128, NATIVE_DENOM),
-            actor: Some(actor.to_string()),
+            recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
         },
     };
@@ -194,7 +194,7 @@ pub fn try_update_offer() {
         id: offer_ids[0].clone(),
         details: OrderDetails {
             price: new_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -242,7 +242,7 @@ pub fn try_remove_offer() {
             token_id: token_id.to_string(),
             details: OrderDetails {
                 price: price.clone(),
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         },

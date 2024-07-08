@@ -42,7 +42,7 @@ fn try_query_asks_by_collection() {
             &[],
             OrderDetails {
                 price,
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         );
@@ -132,7 +132,7 @@ fn try_query_asks_by_creator() {
             &[],
             OrderDetails {
                 price,
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         );

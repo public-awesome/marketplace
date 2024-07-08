@@ -62,7 +62,7 @@ fn try_set_ask_sale() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: offer_price_1.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -76,7 +76,7 @@ fn try_set_ask_sale() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: offer_price_2.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -96,7 +96,7 @@ fn try_set_ask_sale() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: coin(5_000_000, NATIVE_DENOM),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -162,7 +162,7 @@ fn try_accept_ask_sale() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: ask_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -175,7 +175,8 @@ fn try_accept_ask_sale() {
     // Accept ask directly
     let accept_ask = ExecuteMsg::AcceptAsk {
         id: ask_id,
-        actor: None,
+        max_input: ask_price.clone(),
+        recipient: None,
         finder: None,
     };
     let response = app.execute_contract(
@@ -245,7 +246,7 @@ fn try_set_offer_sale() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: ask_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -259,7 +260,7 @@ fn try_set_offer_sale() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: offer_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -328,7 +329,7 @@ fn try_accept_offer_sale() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: offer_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -348,7 +349,8 @@ fn try_accept_offer_sale() {
 
     let accept_offer = ExecuteMsg::AcceptOffer {
         id: offer_id,
-        actor: None,
+        min_output: offer_price.clone(),
+        recipient: None,
         finder: None,
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &accept_offer, &[]);
@@ -413,7 +415,7 @@ fn try_set_collection_offer_sale() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: ask_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -426,7 +428,7 @@ fn try_set_collection_offer_sale() {
         collection: collection.to_string(),
         details: OrderDetails {
             price: ask_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -494,7 +496,7 @@ fn try_accept_collection_offer_sale() {
         collection: collection.to_string(),
         details: OrderDetails {
             price: offer_price.clone(),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -518,7 +520,7 @@ fn try_accept_collection_offer_sale() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: coin(20_000_000, NATIVE_DENOM),
-            actor: None,
+            recipient: None,
             finder: None,
         },
     };
@@ -528,7 +530,8 @@ fn try_accept_collection_offer_sale() {
     let accept_collection_offer = ExecuteMsg::AcceptCollectionOffer {
         id: collection_offer_id,
         token_id: token_id.to_string(),
-        actor: None,
+        min_output: offer_price.clone(),
+        recipient: None,
         finder: None,
     };
     let response = app.execute_contract(
@@ -599,7 +602,7 @@ fn try_sale_fee_breakdown() {
         token_id: token_id.to_string(),
         details: OrderDetails {
             price: ask_price.clone(),
-            actor: Some(tokens_recipient.to_string()),
+            recipient: Some(tokens_recipient.to_string()),
             finder: Some(maker.to_string()),
         },
     };
@@ -614,7 +617,8 @@ fn try_sale_fee_breakdown() {
     let nft_recipient: Addr = Addr::unchecked("nft_recipient".to_string());
     let accept_ask = ExecuteMsg::AcceptAsk {
         id: ask_id,
-        actor: Some(nft_recipient.to_string()),
+        max_input: ask_price.clone(),
+        recipient: Some(nft_recipient.to_string()),
         finder: Some(taker.to_string()),
     };
     let response = app.execute_contract(

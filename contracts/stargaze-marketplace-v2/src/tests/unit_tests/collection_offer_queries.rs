@@ -40,7 +40,7 @@ fn try_query_collection_offers_by_collection() {
             collection: collection.to_string(),
             details: OrderDetails {
                 price: collection_offer_price.clone(),
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         };
@@ -93,7 +93,7 @@ fn try_query_collection_offers_by_token_price() {
             collection: collection.to_string(),
             details: OrderDetails {
                 price: collection_offer_price.clone(),
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         };
@@ -205,7 +205,7 @@ fn try_query_collection_offers_by_creator() {
             collection: collection.to_string(),
             details: OrderDetails {
                 price: collection_offer_price.clone(),
-                actor: None,
+                recipient: None,
                 finder: None,
             },
         };

@@ -10,7 +10,9 @@ use crate::{
     },
 };
 
-use cosmwasm_std::{ensure, ensure_eq, Addr, DepsMut, Env, Event, MessageInfo, Response};
+use cosmwasm_std::{
+    ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Response,
+};
 use cw_utils::{maybe_addr, nonpayable, NativeBalance};
 use sg_marketplace_common::{
     coin::{transfer_coin, transfer_coins},
@@ -49,17 +51,24 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             details.str_to_addr(api)?,
+            false,
         ),
         ExecuteMsg::UpdateAsk { id, details } => {
             execute_update_ask(deps, env, info, id, details.str_to_addr(api)?)
         }
         ExecuteMsg::RemoveAsk { id } => execute_remove_ask(deps, env, info, id),
-        ExecuteMsg::AcceptAsk { id, actor, finder } => execute_accept_ask(
+        ExecuteMsg::AcceptAsk {
+            id,
+            max_input,
+            recipient,
+            finder,
+        } => execute_accept_ask(
             deps,
             env,
             info,
             id,
-            maybe_addr(api, actor)?,
+            max_input,
+            maybe_addr(api, recipient)?,
             maybe_addr(api, finder)?,
         ),
         ExecuteMsg::SetOffer {
@@ -73,17 +82,24 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_id,
             details.str_to_addr(api)?,
+            false,
         ),
         ExecuteMsg::UpdateOffer { id, details } => {
             execute_update_offer(deps, env, info, id, details.str_to_addr(api)?)
         }
         ExecuteMsg::RemoveOffer { id } => execute_remove_offer(deps, env, info, id),
-        ExecuteMsg::AcceptOffer { id, actor, finder } => execute_accept_offer(
+        ExecuteMsg::AcceptOffer {
+            id,
+            min_output,
+            recipient,
+            finder,
+        } => execute_accept_offer(
             deps,
             env,
             info,
             id,
-            maybe_addr(api, actor)?,
+            min_output,
+            maybe_addr(api, recipient)?,
             maybe_addr(api, finder)?,
         ),
         ExecuteMsg::SetCollectionOffer {
@@ -95,6 +111,7 @@ pub fn execute(
             info,
             api.addr_validate(&collection)?,
             details.str_to_addr(api)?,
+            false,
         ),
         ExecuteMsg::UpdateCollectionOffer { id, details } => {
             execute_update_collection_offer(deps, env, info, id, details.str_to_addr(api)?)
@@ -105,7 +122,8 @@ pub fn execute(
         ExecuteMsg::AcceptCollectionOffer {
             id,
             token_id,
-            actor,
+            min_output,
+            recipient,
             finder,
         } => execute_accept_collection_offer(
             deps,
@@ -113,8 +131,64 @@ pub fn execute(
             info,
             id,
             token_id,
-            maybe_addr(api, actor)?,
+            min_output,
+            maybe_addr(api, recipient)?,
             maybe_addr(api, finder)?,
+        ),
+        ExecuteMsg::SellNft {
+            collection,
+            token_id,
+            min_output,
+            recipient,
+            finder,
+        } => execute_set_ask(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            OrderDetails {
+                price: min_output,
+                recipient: maybe_addr(api, recipient)?,
+                finder: maybe_addr(api, finder)?,
+            },
+            true,
+        ),
+        ExecuteMsg::BuySpecificNft {
+            collection,
+            token_id,
+            max_input,
+            recipient,
+            finder,
+        } => execute_set_offer(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            token_id,
+            OrderDetails {
+                price: max_input,
+                recipient: maybe_addr(api, recipient)?,
+                finder: maybe_addr(api, finder)?,
+            },
+            true,
+        ),
+        ExecuteMsg::BuyCollectionNft {
+            collection,
+            max_input,
+            recipient,
+            finder,
+        } => execute_set_collection_offer(
+            deps,
+            env,
+            info,
+            api.addr_validate(&collection)?,
+            OrderDetails {
+                price: max_input,
+                recipient: maybe_addr(api, recipient)?,
+                finder: maybe_addr(api, finder)?,
+            },
+            true,
         ),
     }
 }
@@ -168,6 +242,7 @@ pub fn execute_set_ask(
     collection: Addr,
     token_id: TokenId,
     details: OrderDetails<Addr>,
+    sell_now: bool,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
     only_owner(&deps.querier, &info, &collection, &token_id)?;
@@ -190,6 +265,9 @@ pub fn execute_set_ask(
     if let Some(matching_offer) = match_result {
         // If a match is found finalize the sale
         response = finalize_sale(deps, &env, &ask, &config, &matching_offer, false, response)?;
+    } else if sell_now {
+        // If no match is found and sell_now is true, abort transaction
+        Err(ContractError::NoMatchFound)?;
     } else {
         // If no match is found continue creating the ask.
         // Ask creation should:
@@ -213,7 +291,7 @@ pub fn execute_set_ask(
                     "collection",
                     "token_id",
                     "price",
-                    "actor",
+                    "recipient",
                     "finder",
                 ],
             }
@@ -275,7 +353,7 @@ pub fn execute_update_ask(
             AskEvent {
                 ty: "update-ask",
                 ask: &ask,
-                attr_keys: vec!["id", "price", "actor", "finder"],
+                attr_keys: vec!["id", "price", "recipient", "finder"],
             }
             .into(),
         );
@@ -323,7 +401,8 @@ pub fn execute_accept_ask(
     env: Env,
     info: MessageInfo,
     id: OrderId,
-    actor: Option<Addr>,
+    max_input: Coin,
+    recipient: Option<Addr>,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let mut funds = NativeBalance(info.funds.clone());
@@ -332,6 +411,11 @@ pub fn execute_accept_ask(
     let ask = asks()
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+
+    ensure!(
+        has_coins(&[max_input], &ask.details.price),
+        ContractError::InvalidInput("ask price is greater than max input".to_string())
+    );
 
     funds = funds
         .sub(ask.details.price.clone())
@@ -346,7 +430,7 @@ pub fn execute_accept_ask(
         ask.token_id.clone(),
         OrderDetails {
             price: ask.details.price.clone(),
-            actor: actor.clone(),
+            recipient: recipient.clone(),
             finder: finder.clone(),
         },
         env.block.height,
@@ -379,6 +463,7 @@ pub fn execute_set_offer(
     collection: Addr,
     token_id: TokenId,
     details: OrderDetails<Addr>,
+    buy_now: bool,
 ) -> Result<Response, ContractError> {
     only_tradable(&deps.querier, &env.block, &collection)?;
 
@@ -423,6 +508,9 @@ pub fn execute_set_offer(
             true,
             response,
         )?;
+    } else if buy_now {
+        // If no match is found and buy_now is true, abort transaction
+        Err(ContractError::NoMatchFound)?;
     } else {
         // If no match is found. Offer creation should:
         // * store the offer
@@ -442,7 +530,7 @@ pub fn execute_set_offer(
                     "collection",
                     "token_id",
                     "price",
-                    "actor",
+                    "recipient",
                     "finder",
                 ],
             }
@@ -530,7 +618,7 @@ pub fn execute_update_offer(
             OfferEvent {
                 ty: "update-offer",
                 offer: &offer,
-                attr_keys: vec!["id", "price", "actor", "finder"],
+                attr_keys: vec!["id", "price", "recipient", "finder"],
             }
             .into(),
         );
@@ -580,12 +668,18 @@ pub fn execute_accept_offer(
     env: Env,
     info: MessageInfo,
     id: OrderId,
-    actor: Option<Addr>,
+    min_output: Coin,
+    recipient: Option<Addr>,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let offer: Offer = offers()
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("offer not found [{}]", id)))?;
+
+    ensure!(
+        has_coins(&[offer.details.price.clone()], &min_output),
+        ContractError::InvalidInput("min output is greater than offer price".to_string())
+    );
 
     let ask_id = generate_id(vec![offer.collection.as_bytes(), offer.token_id.as_bytes()]);
     let ask_option = asks().may_load(deps.storage, ask_id.clone())?;
@@ -606,7 +700,7 @@ pub fn execute_accept_offer(
             offer.token_id.clone(),
             OrderDetails {
                 price: offer.details.price.clone(),
-                actor: actor.clone(),
+                recipient: recipient.clone(),
                 finder: finder.clone(),
             },
         )
@@ -632,6 +726,7 @@ pub fn execute_set_collection_offer(
     info: MessageInfo,
     collection: Addr,
     details: OrderDetails<Addr>,
+    buy_now: bool,
 ) -> Result<Response, ContractError> {
     only_tradable(&deps.querier, &env.block, &collection)?;
 
@@ -675,6 +770,9 @@ pub fn execute_set_collection_offer(
             true,
             response,
         )?;
+    } else if buy_now {
+        // If no match is found and buy_now is true, abort transaction
+        Err(ContractError::NoMatchFound)?;
     } else {
         // If no match is found. Offer creation should store the offer
         funds = funds
@@ -685,7 +783,14 @@ pub fn execute_set_collection_offer(
             CollectionOfferEvent {
                 ty: "set-collection-offer",
                 collection_offer: &collection_offer,
-                attr_keys: vec!["id", "creator", "collection", "price", "actor", "finder"],
+                attr_keys: vec![
+                    "id",
+                    "creator",
+                    "collection",
+                    "price",
+                    "recipient",
+                    "finder",
+                ],
             }
             .into(),
         );
@@ -773,7 +878,7 @@ pub fn execute_update_collection_offer(
             CollectionOfferEvent {
                 ty: "update-collection-offer",
                 collection_offer: &collection_offer,
-                attr_keys: vec!["id", "price", "actor", "finder"],
+                attr_keys: vec!["id", "price", "recipient", "finder"],
             }
             .into(),
         );
@@ -825,12 +930,20 @@ pub fn execute_accept_collection_offer(
     info: MessageInfo,
     id: OrderId,
     token_id: TokenId,
-    actor: Option<Addr>,
+    min_output: Coin,
+    recipient: Option<Addr>,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
     let collection_offer = collection_offers()
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("collection offer not found [{}]", id)))?;
+
+    ensure!(
+        has_coins(&[collection_offer.details.price.clone()], &min_output),
+        ContractError::InvalidInput(
+            "min output is greater than collection offer price".to_string()
+        )
+    );
 
     let ask_id = generate_id(vec![
         collection_offer.collection.as_bytes(),
@@ -859,7 +972,7 @@ pub fn execute_accept_collection_offer(
             token_id.clone(),
             OrderDetails {
                 price: collection_offer.details.price.clone(),
-                actor: actor.clone(),
+                recipient: recipient.clone(),
                 finder: finder.clone(),
             },
         )
