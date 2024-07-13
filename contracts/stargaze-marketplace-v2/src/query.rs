@@ -1,9 +1,9 @@
 use crate::{
     helpers::build_collection_token_index_str,
     msg::{PriceOffset, QueryMsg},
-    orders::{Ask, CollectionOffer, Offer},
+    orders::{Ask, CollectionBid, Bid},
     state::{
-        asks, collection_offers, offers, AllowDenoms, Config, Denom, OrderId, ALLOW_DENOMS, CONFIG,
+        asks, bids, collection_bids, AllowDenoms, Config, Denom, OrderId, ALLOW_DENOMS, CONFIG,
     },
 };
 
@@ -42,49 +42,49 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&collection)?,
             query_options.unwrap_or(QueryOptions::default()),
         )?),
-        QueryMsg::Offer(id) => to_json_binary(&query_offers(deps, vec![id])?.pop()),
-        QueryMsg::Offers(ids) => to_json_binary(&query_offers(deps, ids)?),
-        QueryMsg::OffersByTokenPrice {
+        QueryMsg::Bid(id) => to_json_binary(&query_bids(deps, vec![id])?.pop()),
+        QueryMsg::Bids(ids) => to_json_binary(&query_bids(deps, ids)?),
+        QueryMsg::BidsByTokenPrice {
             collection,
             token_id,
             denom,
             query_options,
-        } => to_json_binary(&query_offers_by_token_price(
+        } => to_json_binary(&query_bids_by_token_price(
             deps,
             api.addr_validate(&collection)?,
             token_id,
             denom,
             query_options.unwrap_or(QueryOptions::default()),
         )?),
-        QueryMsg::OffersByCreatorCollection {
+        QueryMsg::BidsByCreatorCollection {
             creator,
             collection,
             query_options,
-        } => to_json_binary(&query_offers_by_creator_collection(
+        } => to_json_binary(&query_bids_by_creator_collection(
             deps,
             api.addr_validate(&creator)?,
             api.addr_validate(&collection)?,
             query_options.unwrap_or(QueryOptions::default()),
         )?),
-        QueryMsg::CollectionOffer(id) => {
-            to_json_binary(&query_collection_offers(deps, vec![id])?.pop())
+        QueryMsg::CollectionBid(id) => {
+            to_json_binary(&query_collection_bids(deps, vec![id])?.pop())
         }
-        QueryMsg::CollectionOffers(ids) => to_json_binary(&query_collection_offers(deps, ids)?),
-        QueryMsg::CollectionOffersByPrice {
+        QueryMsg::CollectionBids(ids) => to_json_binary(&query_collection_bids(deps, ids)?),
+        QueryMsg::CollectionBidsByPrice {
             collection,
             denom,
             query_options,
-        } => to_json_binary(&query_collection_offers_by_price(
+        } => to_json_binary(&query_collection_bids_by_price(
             deps,
             api.addr_validate(&collection)?,
             denom,
             query_options.unwrap_or(QueryOptions::default()),
         )?),
-        QueryMsg::CollectionOffersByCreatorCollection {
+        QueryMsg::CollectionBidsByCreatorCollection {
             creator,
             collection,
             query_options,
-        } => to_json_binary(&query_collection_offers_by_creator_collection(
+        } => to_json_binary(&query_collection_bids_by_creator_collection(
             deps,
             api.addr_validate(&creator)?,
             api.addr_validate(&collection)?,
@@ -164,26 +164,26 @@ pub fn query_asks_by_creator_collection(
     Ok(results)
 }
 
-pub fn query_offers(deps: Deps, ids: Vec<OrderId>) -> StdResult<Vec<Offer>> {
+pub fn query_bids(deps: Deps, ids: Vec<OrderId>) -> StdResult<Vec<Bid>> {
     let mut retval = vec![];
 
     for id in ids {
-        let offer = offers().may_load(deps.storage, id)?;
-        if let Some(offer) = offer {
-            retval.push(offer);
+        let bid = bids().may_load(deps.storage, id)?;
+        if let Some(bid) = bid {
+            retval.push(bid);
         }
     }
 
     Ok(retval)
 }
 
-pub fn query_offers_by_token_price(
+pub fn query_bids_by_token_price(
     deps: Deps,
     collection: Addr,
     token_id: String,
     denom: Denom,
     query_options: QueryOptions<PriceOffset>,
-) -> StdResult<Vec<Offer>> {
+) -> StdResult<Vec<Bid>> {
     let QueryOptionsInternal {
         limit,
         order,
@@ -191,7 +191,7 @@ pub fn query_offers_by_token_price(
         max,
     } = query_options.unpack(&(|offset| (offset.amount, offset.id.clone())), None, None);
 
-    let results = offers()
+    let results = bids()
         .idx
         .token_denom_price
         .sub_prefix((
@@ -200,18 +200,18 @@ pub fn query_offers_by_token_price(
         ))
         .range(deps.storage, min, max, order)
         .take(limit)
-        .map(|res| res.map(|(_, offer)| offer))
+        .map(|res| res.map(|(_, bid)| bid))
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(results)
 }
 
-pub fn query_offers_by_creator_collection(
+pub fn query_bids_by_creator_collection(
     deps: Deps,
     creator: Addr,
     collection: Addr,
     query_options: QueryOptions<OrderId>,
-) -> StdResult<Vec<Offer>> {
+) -> StdResult<Vec<Bid>> {
     let QueryOptionsInternal {
         limit,
         order,
@@ -219,37 +219,37 @@ pub fn query_offers_by_creator_collection(
         max,
     } = query_options.unpack(&(|offset| offset.clone()), None, None);
 
-    let results = offers()
+    let results = bids()
         .idx
         .creator_collection
         .prefix((creator, collection))
         .range(deps.storage, min, max, order)
         .take(limit)
-        .map(|res| res.map(|(_, offer)| offer))
+        .map(|res| res.map(|(_, bid)| bid))
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(results)
 }
 
-pub fn query_collection_offers(deps: Deps, ids: Vec<OrderId>) -> StdResult<Vec<CollectionOffer>> {
+pub fn query_collection_bids(deps: Deps, ids: Vec<OrderId>) -> StdResult<Vec<CollectionBid>> {
     let mut retval = vec![];
 
     for id in ids {
-        let collection_offer = collection_offers().may_load(deps.storage, id)?;
-        if let Some(collection_offer) = collection_offer {
-            retval.push(collection_offer);
+        let collection_bid = collection_bids().may_load(deps.storage, id)?;
+        if let Some(collection_bid) = collection_bid {
+            retval.push(collection_bid);
         }
     }
 
     Ok(retval)
 }
 
-pub fn query_collection_offers_by_price(
+pub fn query_collection_bids_by_price(
     deps: Deps,
     collection: Addr,
     denom: Denom,
     query_options: QueryOptions<PriceOffset>,
-) -> StdResult<Vec<CollectionOffer>> {
+) -> StdResult<Vec<CollectionBid>> {
     let QueryOptionsInternal {
         limit,
         order,
@@ -257,24 +257,24 @@ pub fn query_collection_offers_by_price(
         max,
     } = query_options.unpack(&(|offset| (offset.amount, offset.id.clone())), None, None);
 
-    let results = collection_offers()
+    let results = collection_bids()
         .idx
         .collection_denom_price
         .sub_prefix((collection, denom))
         .range(deps.storage, min, max, order)
         .take(limit)
-        .map(|res| res.map(|(_, collection_offer)| collection_offer))
+        .map(|res| res.map(|(_, collection_bid)| collection_bid))
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(results)
 }
 
-pub fn query_collection_offers_by_creator_collection(
+pub fn query_collection_bids_by_creator_collection(
     deps: Deps,
     creator: Addr,
     collection: Addr,
     query_options: QueryOptions<OrderId>,
-) -> StdResult<Vec<CollectionOffer>> {
+) -> StdResult<Vec<CollectionBid>> {
     let QueryOptionsInternal {
         limit,
         order,
@@ -282,13 +282,13 @@ pub fn query_collection_offers_by_creator_collection(
         max,
     } = query_options.unpack(&(|offset| offset.clone()), None, None);
 
-    let results = collection_offers()
+    let results = collection_bids()
         .idx
         .creator_collection
         .prefix((creator, collection))
         .range(deps.storage, min, max, order)
         .take(limit)
-        .map(|res| res.map(|(_, collection_offer)| collection_offer))
+        .map(|res| res.map(|(_, collection_bid)| collection_bid))
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(results)

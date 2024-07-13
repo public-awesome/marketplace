@@ -1,5 +1,5 @@
 use crate::helpers::build_collection_token_index_str;
-use crate::orders::{CollectionOffer, Offer};
+use crate::orders::{Bid, CollectionBid};
 use crate::ContractError;
 use crate::{constants::MAX_BASIS_POINTS, orders::Ask};
 
@@ -118,25 +118,25 @@ pub fn asks<'a>() -> IndexedMap<'a, OrderId, Ask, AskIndices<'a>> {
     IndexedMap::new("a", indexes)
 }
 
-/// Defines incides for accessing offers
-pub struct OfferIndices<'a> {
-    // Index offers for a token id, sorted by denom price (infinity router dependency)
-    pub token_denom_price: MultiIndex<'a, (TokenId, Denom, u128), Offer, OrderId>,
-    // Index offers by creator and collection
-    pub creator_collection: MultiIndex<'a, (Addr, Addr), Offer, OrderId>,
+/// Defines incides for accessing bids
+pub struct BidIndices<'a> {
+    // Index bids for a token id, sorted by denom price (infinity router dependency)
+    pub token_denom_price: MultiIndex<'a, (TokenId, Denom, u128), Bid, OrderId>,
+    // Index bids by creator and collection
+    pub creator_collection: MultiIndex<'a, (Addr, Addr), Bid, OrderId>,
 }
 
-impl<'a> IndexList<Offer> for OfferIndices<'a> {
-    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Offer>> + '_> {
-        let v: Vec<&dyn Index<Offer>> = vec![&self.token_denom_price, &self.creator_collection];
+impl<'a> IndexList<Bid> for BidIndices<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Bid>> + '_> {
+        let v: Vec<&dyn Index<Bid>> = vec![&self.token_denom_price, &self.creator_collection];
         Box::new(v.into_iter())
     }
 }
 
-pub fn offers<'a>() -> IndexedMap<'a, OrderId, Offer, OfferIndices<'a>> {
-    let indexes = OfferIndices {
+pub fn bids<'a>() -> IndexedMap<'a, OrderId, Bid, BidIndices<'a>> {
+    let indexes = BidIndices {
         token_denom_price: MultiIndex::new(
-            |_pk: &[u8], o: &Offer| {
+            |_pk: &[u8], o: &Bid| {
                 (
                     build_collection_token_index_str(o.collection.as_ref(), &o.token_id),
                     o.details.price.denom.clone(),
@@ -147,7 +147,7 @@ pub fn offers<'a>() -> IndexedMap<'a, OrderId, Offer, OfferIndices<'a>> {
             "o_p",
         ),
         creator_collection: MultiIndex::new(
-            |_pk: &[u8], o: &Offer| (o.creator.clone(), o.collection.clone()),
+            |_pk: &[u8], o: &Bid| (o.creator.clone(), o.collection.clone()),
             "o",
             "o_c",
         ),
@@ -155,27 +155,26 @@ pub fn offers<'a>() -> IndexedMap<'a, OrderId, Offer, OfferIndices<'a>> {
     IndexedMap::new("o", indexes)
 }
 
-/// Defines incides for accessing collection offers
-pub struct CollectionOfferIndices<'a> {
-    // Index collection offers by collection and price
-    pub collection_denom_price: MultiIndex<'a, (Addr, Denom, u128), CollectionOffer, OrderId>,
-    // Index collection offers by creator
-    pub creator_collection: MultiIndex<'a, (Addr, Addr), CollectionOffer, OrderId>,
+/// Defines incides for accessing collection bids
+pub struct CollectionBidIndices<'a> {
+    // Index collection bids by collection and price
+    pub collection_denom_price: MultiIndex<'a, (Addr, Denom, u128), CollectionBid, OrderId>,
+    // Index collection bids by creator
+    pub creator_collection: MultiIndex<'a, (Addr, Addr), CollectionBid, OrderId>,
 }
 
-impl<'a> IndexList<CollectionOffer> for CollectionOfferIndices<'a> {
-    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<CollectionOffer>> + '_> {
-        let v: Vec<&dyn Index<CollectionOffer>> =
+impl<'a> IndexList<CollectionBid> for CollectionBidIndices<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<CollectionBid>> + '_> {
+        let v: Vec<&dyn Index<CollectionBid>> =
             vec![&self.collection_denom_price, &self.creator_collection];
         Box::new(v.into_iter())
     }
 }
 
-pub fn collection_offers<'a>(
-) -> IndexedMap<'a, OrderId, CollectionOffer, CollectionOfferIndices<'a>> {
-    let indexes = CollectionOfferIndices {
+pub fn collection_bids<'a>() -> IndexedMap<'a, OrderId, CollectionBid, CollectionBidIndices<'a>> {
+    let indexes = CollectionBidIndices {
         collection_denom_price: MultiIndex::new(
-            |_pk: &[u8], co: &CollectionOffer| {
+            |_pk: &[u8], co: &CollectionBid| {
                 (
                     co.collection.clone(),
                     co.details.price.denom.clone(),
@@ -186,7 +185,7 @@ pub fn collection_offers<'a>(
             "c_p",
         ),
         creator_collection: MultiIndex::new(
-            |_pk: &[u8], co: &CollectionOffer| (co.creator.clone(), co.collection.clone()),
+            |_pk: &[u8], co: &CollectionBid| (co.creator.clone(), co.collection.clone()),
             "c",
             "c_c",
         ),

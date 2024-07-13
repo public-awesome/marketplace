@@ -53,29 +53,29 @@ fn try_set_ask_sale() {
 
     let token_id = "1";
 
-    // Create ask with matching offer produces a valid sale
+    // Create ask with matching bid produces a valid sale
 
-    // * Offer 1 - 10_000_000 native denom (should not match)
-    let offer_price_1 = coin(10_000_000, NATIVE_DENOM);
-    let set_offer = ExecuteMsg::SetOffer {
+    // * Bid 1 - 10_000_000 native denom (should not match)
+    let bid_price_1 = coin(10_000_000, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
         details: OrderDetails {
-            price: offer_price_1.clone(),
+            price: bid_price_1.clone(),
             recipient: None,
             finder: None,
         },
     };
-    let response = app.execute_contract(bidder, marketplace.clone(), &set_offer, &[offer_price_1]);
+    let response = app.execute_contract(bidder, marketplace.clone(), &set_bid, &[bid_price_1]);
     assert!(response.is_ok());
 
-    // * Offer 2 - 15_000_000 native denom (should_match)
-    let offer_price_2 = coin(15_000_000, NATIVE_DENOM);
-    let set_offer = ExecuteMsg::SetOffer {
+    // * Bid 2 - 15_000_000 native denom (should_match)
+    let bid_price_2 = coin(15_000_000, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
         details: OrderDetails {
-            price: offer_price_2.clone(),
+            price: bid_price_2.clone(),
             recipient: None,
             finder: None,
         },
@@ -83,8 +83,8 @@ fn try_set_ask_sale() {
     let response = app.execute_contract(
         bidder2.clone(),
         marketplace.clone(),
-        &set_offer,
-        &[offer_price_2.clone()],
+        &set_bid,
+        &[bid_price_2.clone()],
     );
     assert!(response.is_ok());
 
@@ -106,7 +106,7 @@ fn try_set_ask_sale() {
     let owner_balances_after = NativeBalance(app.wrap().query_all_balances(owner.clone()).unwrap());
     let bidder2_balances_after = NativeBalance(app.wrap().query_all_balances(bidder2).unwrap());
 
-    let sale_coin = offer_price_2;
+    let sale_coin = bid_price_2;
     let fair_burn_amount = sale_coin
         .amount
         .mul_ceil(Decimal::bps(config.protocol_fee_bps));
@@ -151,7 +151,7 @@ fn try_accept_ask_sale() {
     let bidder_balances_before =
         NativeBalance(app.wrap().query_all_balances(bidder.clone()).unwrap());
 
-    // Create ask with no matching offer
+    // Create ask with no matching bid
     let token_id = "1";
     mint(&mut app, &creator, &owner, &collection, token_id);
     approve(&mut app, &owner, &collection, &marketplace, token_id);
@@ -207,7 +207,7 @@ fn try_accept_ask_sale() {
 }
 
 #[test]
-fn try_set_offer_sale() {
+fn try_set_bid_sale() {
     let TestContext {
         mut app,
         contracts:
@@ -235,7 +235,7 @@ fn try_set_offer_sale() {
     let bidder_balances_before =
         NativeBalance(app.wrap().query_all_balances(bidder.clone()).unwrap());
 
-    // Create ask with no matching offer
+    // Create ask with no matching bid
     let token_id = "1";
     mint(&mut app, &creator, &owner, &collection, token_id);
     approve(&mut app, &owner, &collection, &marketplace, token_id);
@@ -253,13 +253,13 @@ fn try_set_offer_sale() {
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
     assert!(response.is_ok());
 
-    // Create offer that matches ask
-    let offer_price = coin(10_000_000, NATIVE_DENOM);
-    let set_offer = ExecuteMsg::SetOffer {
+    // Create bid that matches ask
+    let bid_price = coin(10_000_000, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
         details: OrderDetails {
-            price: offer_price.clone(),
+            price: bid_price.clone(),
             recipient: None,
             finder: None,
         },
@@ -267,8 +267,8 @@ fn try_set_offer_sale() {
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &set_offer,
-        &[offer_price],
+        &set_bid,
+        &[bid_price],
     );
     assert!(response.is_ok());
 
@@ -292,7 +292,7 @@ fn try_set_offer_sale() {
 }
 
 #[test]
-fn try_accept_offer_sale() {
+fn try_accept_bid_sale() {
     let TestContext {
         mut app,
         contracts:
@@ -322,13 +322,13 @@ fn try_accept_offer_sale() {
 
     let token_id = "1";
 
-    // Create ask with matching offer produces a valid sale
-    let offer_price = coin(10_000_000, NATIVE_DENOM);
-    let set_offer = ExecuteMsg::SetOffer {
+    // Create ask with matching bid produces a valid sale
+    let bid_price = coin(10_000_000, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
         details: OrderDetails {
-            price: offer_price.clone(),
+            price: bid_price.clone(),
             recipient: None,
             finder: None,
         },
@@ -336,30 +336,30 @@ fn try_accept_offer_sale() {
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &set_offer,
-        &[offer_price.clone()],
+        &set_bid,
+        &[bid_price.clone()],
     );
     assert!(response.is_ok());
-    let offer_id = find_attrs(response.unwrap(), "wasm-set-offer", "id")
+    let bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")
         .pop()
         .unwrap();
 
     mint(&mut app, &creator, &owner, &collection, token_id);
     approve(&mut app, &owner, &collection, &marketplace, token_id);
 
-    let accept_offer = ExecuteMsg::AcceptOffer {
-        id: offer_id,
-        min_output: offer_price.clone(),
+    let accept_bid = ExecuteMsg::AcceptBid {
+        id: bid_id,
+        min_output: bid_price.clone(),
         recipient: None,
         finder: None,
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &accept_offer, &[]);
+    let response = app.execute_contract(owner.clone(), marketplace.clone(), &accept_bid, &[]);
     assert!(response.is_ok());
 
     let owner_balances_after = NativeBalance(app.wrap().query_all_balances(owner.clone()).unwrap());
     let bidder_balances_after = NativeBalance(app.wrap().query_all_balances(bidder).unwrap());
 
-    let sale_coin = offer_price;
+    let sale_coin = bid_price;
     let fair_burn_amount = sale_coin
         .amount
         .mul_ceil(Decimal::bps(config.protocol_fee_bps));
@@ -376,7 +376,7 @@ fn try_accept_offer_sale() {
 }
 
 #[test]
-fn try_set_collection_offer_sale() {
+fn try_set_collection_bid_sale() {
     let TestContext {
         mut app,
         contracts:
@@ -404,7 +404,7 @@ fn try_set_collection_offer_sale() {
     let bidder_balances_before =
         NativeBalance(app.wrap().query_all_balances(bidder.clone()).unwrap());
 
-    // Create ask with no matching offer
+    // Create ask with no matching bid
     let token_id = "1";
     mint(&mut app, &creator, &owner, &collection, token_id);
     approve(&mut app, &owner, &collection, &marketplace, token_id);
@@ -422,9 +422,9 @@ fn try_set_collection_offer_sale() {
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
     assert!(response.is_ok());
 
-    // Create offer that matches ask
-    let offer_price = coin(10_000_000, NATIVE_DENOM);
-    let set_offer = ExecuteMsg::SetCollectionOffer {
+    // Create bid that matches ask
+    let bid_price = coin(10_000_000, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
         details: OrderDetails {
             price: ask_price.clone(),
@@ -435,8 +435,8 @@ fn try_set_collection_offer_sale() {
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &set_offer,
-        &[offer_price],
+        &set_bid,
+        &[bid_price],
     );
     assert!(response.is_ok());
 
@@ -460,7 +460,7 @@ fn try_set_collection_offer_sale() {
 }
 
 #[test]
-fn try_accept_collection_offer_sale() {
+fn try_accept_collection_bid_sale() {
     let TestContext {
         mut app,
         contracts:
@@ -490,12 +490,12 @@ fn try_accept_collection_offer_sale() {
 
     let token_id = "1";
 
-    // Create ask with matching offer produces a valid sale
-    let offer_price = coin(10_000_000, NATIVE_DENOM);
-    let set_offer = ExecuteMsg::SetCollectionOffer {
+    // Create ask with matching bid produces a valid sale
+    let bid_price = coin(10_000_000, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
         details: OrderDetails {
-            price: offer_price.clone(),
+            price: bid_price.clone(),
             recipient: None,
             finder: None,
         },
@@ -503,18 +503,18 @@ fn try_accept_collection_offer_sale() {
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &set_offer,
-        &[offer_price.clone()],
+        &set_bid,
+        &[bid_price.clone()],
     );
     assert!(response.is_ok());
-    let collection_offer_id = find_attrs(response.unwrap(), "wasm-set-collection-offer", "id")
+    let collection_bid_id = find_attrs(response.unwrap(), "wasm-set-collection-bid", "id")
         .pop()
         .unwrap();
 
     mint(&mut app, &creator, &owner, &collection, token_id);
     approve(&mut app, &owner, &collection, &marketplace, token_id);
 
-    // Create an Ask to test accepting an offer while the NFT is escrowed
+    // Create an Ask to test accepting an bid while the NFT is escrowed
     let set_ask = ExecuteMsg::SetAsk {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
@@ -527,17 +527,17 @@ fn try_accept_collection_offer_sale() {
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
     assert!(response.is_ok());
 
-    let accept_collection_offer = ExecuteMsg::AcceptCollectionOffer {
-        id: collection_offer_id,
+    let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
+        id: collection_bid_id,
         token_id: token_id.to_string(),
-        min_output: offer_price.clone(),
+        min_output: bid_price.clone(),
         recipient: None,
         finder: None,
     };
     let response = app.execute_contract(
         owner.clone(),
         marketplace.clone(),
-        &accept_collection_offer,
+        &accept_collection_bid,
         &[],
     );
     assert!(response.is_ok());
@@ -545,7 +545,7 @@ fn try_accept_collection_offer_sale() {
     let owner_balances_after = NativeBalance(app.wrap().query_all_balances(owner.clone()).unwrap());
     let bidder_balances_after = NativeBalance(app.wrap().query_all_balances(bidder).unwrap());
 
-    let sale_coin = offer_price;
+    let sale_coin = bid_price;
     let fair_burn_amount = sale_coin
         .amount
         .mul_ceil(Decimal::bps(config.protocol_fee_bps));

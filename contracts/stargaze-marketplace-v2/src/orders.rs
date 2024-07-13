@@ -2,10 +2,9 @@ use crate::{
     helpers::generate_id,
     msg::PriceOffset,
     query::{
-        query_asks_by_collection_denom, query_collection_offers_by_price,
-        query_offers_by_token_price,
+        query_asks_by_collection_denom, query_bids_by_token_price, query_collection_bids_by_price,
     },
-    state::{asks, collection_offers, offers, TokenId},
+    state::{asks, bids, collection_bids, TokenId},
     ContractError,
 };
 
@@ -33,9 +32,9 @@ impl OrderDetails<String> {
     }
 }
 
-pub enum MatchingOffer {
-    Offer(Offer),
-    CollectionOffer(CollectionOffer),
+pub enum MatchingBid {
+    Bid(Bid),
+    CollectionBid(CollectionBid),
 }
 
 #[cw_serde]
@@ -77,8 +76,8 @@ impl Ask {
         Ok(())
     }
 
-    pub fn match_with_offer(&self, deps: Deps) -> Result<Option<MatchingOffer>, ContractError> {
-        let top_offer = query_offers_by_token_price(
+    pub fn match_with_bid(&self, deps: Deps) -> Result<Option<MatchingBid>, ContractError> {
+        let top_bid = query_bids_by_token_price(
             deps,
             self.collection.clone(),
             self.token_id.clone(),
@@ -95,7 +94,7 @@ impl Ask {
         )?
         .pop();
 
-        let top_collection_offer = query_collection_offers_by_price(
+        let top_collection_bid = query_collection_bids_by_price(
             deps,
             self.collection.clone(),
             self.details.price.denom.clone(),
@@ -111,18 +110,16 @@ impl Ask {
         )?
         .pop();
 
-        let result = match (top_offer, top_collection_offer) {
-            (Some(offer), Some(collection_offer)) => {
-                if offer.details.price.amount >= collection_offer.details.price.amount {
-                    Some(MatchingOffer::Offer(offer))
+        let result = match (top_bid, top_collection_bid) {
+            (Some(bid), Some(collection_bid)) => {
+                if bid.details.price.amount >= collection_bid.details.price.amount {
+                    Some(MatchingBid::Bid(bid))
                 } else {
-                    Some(MatchingOffer::CollectionOffer(collection_offer))
+                    Some(MatchingBid::CollectionBid(collection_bid))
                 }
             }
-            (Some(offer), None) => Some(MatchingOffer::Offer(offer)),
-            (None, Some(collection_offer)) => {
-                Some(MatchingOffer::CollectionOffer(collection_offer))
-            }
+            (Some(bid), None) => Some(MatchingBid::Bid(bid)),
+            (None, Some(collection_bid)) => Some(MatchingBid::CollectionBid(collection_bid)),
             (None, None) => None,
         };
 
@@ -161,7 +158,7 @@ impl Ask {
 }
 
 #[cw_serde]
-pub struct Offer {
+pub struct Bid {
     pub id: String,
     pub creator: Addr,
     pub collection: Addr,
@@ -169,7 +166,7 @@ pub struct Offer {
     pub details: OrderDetails<Addr>,
 }
 
-impl Offer {
+impl Bid {
     pub fn new(
         creator: Addr,
         collection: Addr,
@@ -197,12 +194,12 @@ impl Offer {
     }
 
     pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
-        offers().save(storage, self.id.clone(), self)?;
+        bids().save(storage, self.id.clone(), self)?;
         Ok(())
     }
 
     pub fn remove(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
-        offers().remove(storage, self.id.clone())?;
+        bids().remove(storage, self.id.clone())?;
         Ok(())
     }
 
@@ -252,14 +249,14 @@ impl Offer {
 }
 
 #[cw_serde]
-pub struct CollectionOffer {
+pub struct CollectionBid {
     pub id: String,
     pub creator: Addr,
     pub collection: Addr,
     pub details: OrderDetails<Addr>,
 }
 
-impl CollectionOffer {
+impl CollectionBid {
     pub fn new(
         creator: Addr,
         collection: Addr,
@@ -284,12 +281,12 @@ impl CollectionOffer {
     }
 
     pub fn save(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
-        collection_offers().save(storage, self.id.clone(), self)?;
+        collection_bids().save(storage, self.id.clone(), self)?;
         Ok(())
     }
 
     pub fn remove(&self, storage: &mut dyn Storage) -> Result<(), ContractError> {
-        collection_offers().remove(storage, self.id.clone())?;
+        collection_bids().remove(storage, self.id.clone())?;
         Ok(())
     }
 

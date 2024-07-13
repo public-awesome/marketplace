@@ -5,12 +5,12 @@ mod ask_queries;
 #[cfg(test)]
 mod asks;
 #[cfg(test)]
-mod collection_offer_queries;
+mod bid_queries;
 #[cfg(test)]
-mod collection_offers;
+mod bids;
 #[cfg(test)]
-mod offer_queries;
+mod collection_bid_queries;
 #[cfg(test)]
-mod offers;
+mod collection_bids;
 #[cfg(test)]
 mod sales;

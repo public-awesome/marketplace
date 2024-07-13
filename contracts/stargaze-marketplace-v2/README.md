@@ -2,7 +2,7 @@
 
 The Stargaze NFT auction happens as a perpetual auction. Asks and bids have time limits set by governance.
 
-Anyone can call the `SetBid` method and make an offer on any listed NFT. The funds are sent to the marketplace contract which serves as an escrow.
+Anyone can call the `SetBid` method and make an bid on any listed NFT. The funds are sent to the marketplace contract which serves as an escrow.
 
 Bidders can remove their bids and reclaim their funds with `RemoveBid`. When a bid is removed, its deposit is refunded. New bids automatically remove and refund previous bids.
 

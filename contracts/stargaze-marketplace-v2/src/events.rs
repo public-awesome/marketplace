@@ -1,5 +1,5 @@
 use crate::{
-    orders::{Ask, CollectionOffer, Offer},
+    orders::{Ask, CollectionBid, Bid},
     state::{AllowDenoms, Config},
 };
 
@@ -71,27 +71,27 @@ impl<'a> From<AskEvent<'a>> for Event {
     }
 }
 
-pub struct OfferEvent<'a> {
+pub struct BidEvent<'a> {
     pub ty: &'a str,
-    pub offer: &'a Offer,
+    pub bid: &'a Bid,
     pub attr_keys: Vec<&'a str>,
 }
 
-impl<'a> From<OfferEvent<'a>> for Event {
-    fn from(oe: OfferEvent) -> Self {
-        Event::new(oe.ty.to_string()).add_attributes(oe.offer.get_event_attrs(oe.attr_keys))
+impl<'a> From<BidEvent<'a>> for Event {
+    fn from(oe: BidEvent) -> Self {
+        Event::new(oe.ty.to_string()).add_attributes(oe.bid.get_event_attrs(oe.attr_keys))
     }
 }
 
-pub struct CollectionOfferEvent<'a> {
+pub struct CollectionBidEvent<'a> {
     pub ty: &'a str,
-    pub collection_offer: &'a CollectionOffer,
+    pub collection_bid: &'a CollectionBid,
     pub attr_keys: Vec<&'a str>,
 }
 
-impl<'a> From<CollectionOfferEvent<'a>> for Event {
-    fn from(coe: CollectionOfferEvent) -> Self {
+impl<'a> From<CollectionBidEvent<'a>> for Event {
+    fn from(coe: CollectionBidEvent) -> Self {
         Event::new(coe.ty.to_string())
-            .add_attributes(coe.collection_offer.get_event_attrs(coe.attr_keys))
+            .add_attributes(coe.collection_bid.get_event_attrs(coe.attr_keys))
     }
 }

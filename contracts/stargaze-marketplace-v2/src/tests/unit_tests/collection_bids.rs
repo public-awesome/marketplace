@@ -1,6 +1,6 @@
 use crate::{
     msg::{ExecuteMsg, QueryMsg},
-    orders::{Offer, OrderDetails},
+    orders::{CollectionBid, OrderDetails},
     tests::{
         helpers::utils::{assert_error, find_attrs},
         setup::{
@@ -20,7 +20,7 @@ use sg_marketplace_common::MarketplaceStdError;
 use std::ops::{Add, Sub};
 
 #[test]
-fn try_set_offer() {
+fn try_set_collection_bid() {
     let TestContext {
         mut app,
         contracts:
@@ -32,15 +32,12 @@ fn try_set_offer() {
         accounts: TestAccounts { bidder, .. },
     } = test_context();
 
-    let token_id = "1";
-
-    // Create offer without sufficient offer funds fails
-    let offer_price = coin(1_000_000, NATIVE_DENOM);
-    let set_offer = ExecuteMsg::SetOffer {
+    // Create bid without sufficient bid funds fails
+    let collection_bid_price = coin(1_000_000, NATIVE_DENOM);
+    let set_collection_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
-        token_id: token_id.to_string(),
         details: OrderDetails {
-            price: offer_price.clone(),
+            price: collection_bid_price.clone(),
             recipient: None,
             finder: None,
         },
@@ -48,18 +45,20 @@ fn try_set_offer() {
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &set_offer,
-        &[coin(offer_price.amount.u128() - 1u128, NATIVE_DENOM)],
+        &set_collection_bid,
+        &[coin(
+            collection_bid_price.amount.u128() - 1u128,
+            NATIVE_DENOM,
+        )],
     );
     assert_error(response, ContractError::InsufficientFunds.to_string());
 
-    // Create offer with invalid denom fails
-    let offer_price = coin(1_000_000, JUNO_DENOM);
-    let set_offer = ExecuteMsg::SetOffer {
+    // Create collection_bid with invalid denom fails
+    let collection_bid_price = coin(1_000_000, JUNO_DENOM);
+    let set_collection_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
-        token_id: token_id.to_string(),
         details: OrderDetails {
-            price: offer_price.clone(),
+            price: collection_bid_price.clone(),
             recipient: None,
             finder: None,
         },
@@ -67,23 +66,25 @@ fn try_set_offer() {
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &set_offer,
-        &[coin(offer_price.amount.u128() - 1u128, JUNO_DENOM)],
+        &set_collection_bid,
+        &[coin(
+            collection_bid_price.amount.u128() - 1u128,
+            JUNO_DENOM,
+        )],
     );
     assert_error(
         response,
         ContractError::InvalidInput("invalid denom".to_string()).to_string(),
     );
 
-    // Create offer succeeds, even when overpaid
+    // Create collection_bid succeeds, even when overpaid
     let recipient = Addr::unchecked("recipient".to_string());
     let finder = Addr::unchecked("finder".to_string());
-    let offer_price = coin(1_000_000, NATIVE_DENOM);
-    let set_offer = ExecuteMsg::SetOffer {
+    let collection_bid_price = coin(1_000_000, NATIVE_DENOM);
+    let set_collection_bid = ExecuteMsg::SetCollectionBid {
         collection: collection.to_string(),
-        token_id: token_id.to_string(),
         details: OrderDetails {
-            price: offer_price.clone(),
+            price: collection_bid_price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
         },
@@ -93,8 +94,11 @@ fn try_set_offer() {
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &set_offer,
-        &[coin(offer_price.amount.u128() * 2u128, NATIVE_DENOM)],
+        &set_collection_bid,
+        &[coin(
+            collection_bid_price.amount.u128() * 2u128,
+            NATIVE_DENOM,
+        )],
     );
     assert!(response.is_ok());
 
@@ -102,32 +106,34 @@ fn try_set_offer() {
         NativeBalance(app.wrap().query_all_balances(bidder.clone()).unwrap());
     assert_eq!(
         bidder_native_balances_before
-            .sub(offer_price.clone())
+            .sub(collection_bid_price.clone())
             .unwrap(),
         bidder_native_balances_after
     );
 
-    let offer_id = find_attrs(response.unwrap(), "wasm-set-offer", "id")
+    let collection_bid_id = find_attrs(response.unwrap(), "wasm-set-collection-bid", "id")
         .pop()
         .unwrap();
 
-    let offer = app
+    let collection_bid = app
         .wrap()
-        .query_wasm_smart::<Option<Offer>>(&marketplace, &QueryMsg::Offer(offer_id.clone()))
+        .query_wasm_smart::<Option<CollectionBid>>(
+            &marketplace,
+            &QueryMsg::CollectionBid(collection_bid_id.clone()),
+        )
         .unwrap()
         .unwrap();
 
-    assert_eq!(offer.id, offer_id);
-    assert_eq!(offer.creator, bidder);
-    assert_eq!(offer.collection, collection);
-    assert_eq!(offer.token_id, token_id);
-    assert_eq!(offer.details.price, offer_price);
-    assert_eq!(offer.details.recipient, Some(recipient));
-    assert_eq!(offer.details.finder, Some(finder));
+    assert_eq!(collection_bid.id, collection_bid_id);
+    assert_eq!(collection_bid.creator, bidder);
+    assert_eq!(collection_bid.collection, collection);
+    assert_eq!(collection_bid.details.price, collection_bid_price);
+    assert_eq!(collection_bid.details.recipient, Some(recipient));
+    assert_eq!(collection_bid.details.finder, Some(finder));
 }
 
 #[test]
-pub fn try_update_offer() {
+pub fn try_update_collection_bid() {
     let TestContext {
         mut app,
         contracts:
@@ -142,16 +148,14 @@ pub fn try_update_offer() {
     let recipient = setup_additional_account(&mut app, "recipient").unwrap();
     let finder = setup_additional_account(&mut app, "finder").unwrap();
 
-    let num_offers: u8 = 4;
-    let token_id = "1".to_string();
-    let mut offer_ids: Vec<String> = vec![];
-    for idx in 1..(num_offers + 1) {
-        let offer_price = coin(1000000u128 + idx as u128, NATIVE_DENOM);
-        let set_offer = ExecuteMsg::SetOffer {
+    let num_collection_bids: u8 = 4;
+    let mut collection_bid_ids: Vec<String> = vec![];
+    for idx in 1..(num_collection_bids + 1) {
+        let collection_bid_price = coin(1000000u128 + idx as u128, NATIVE_DENOM);
+        let set_collection_bid = ExecuteMsg::SetCollectionBid {
             collection: collection.to_string(),
-            token_id: token_id.to_string(),
             details: OrderDetails {
-                price: offer_price.clone(),
+                price: collection_bid_price.clone(),
                 recipient: None,
                 finder: None,
             },
@@ -159,39 +163,44 @@ pub fn try_update_offer() {
         let response = app.execute_contract(
             bidder.clone(),
             marketplace.clone(),
-            &set_offer,
-            &[offer_price],
+            &set_collection_bid,
+            &[collection_bid_price],
         );
         assert!(response.is_ok());
 
-        let offer_id = find_attrs(response.unwrap(), "wasm-set-offer", "id")
+        let collection_bid_id = find_attrs(response.unwrap(), "wasm-set-collection-bid", "id")
             .pop()
             .unwrap();
-        offer_ids.push(offer_id);
+        collection_bid_ids.push(collection_bid_id);
     }
 
-    // Non creator updating offer fails
-    let update_offer = ExecuteMsg::UpdateOffer {
-        id: offer_ids[0].clone(),
+    // Non creator updating collection_bid fails
+    let update_collection_bid = ExecuteMsg::UpdateCollectionBid {
+        id: collection_bid_ids[0].clone(),
         details: OrderDetails {
             price: coin(1000000u128, NATIVE_DENOM),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &update_offer, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &update_collection_bid,
+        &[],
+    );
     assert_error(
         response,
         MarketplaceStdError::Unauthorized(
-            "only the creator of offer can perform this action".to_string(),
+            "only the creator of collection bid can perform this action".to_string(),
         )
         .to_string(),
     );
 
-    // Updating offer succeeds, wallet is refunded
+    // Updating collection_bid succeeds, wallet is refunded
     let new_price = coin(1000000u128, NATIVE_DENOM);
-    let update_offer = ExecuteMsg::UpdateOffer {
-        id: offer_ids[0].clone(),
+    let update_collection_bid = ExecuteMsg::UpdateCollectionBid {
+        id: collection_bid_ids[0].clone(),
         details: OrderDetails {
             price: new_price.clone(),
             recipient: None,
@@ -204,7 +213,7 @@ pub fn try_update_offer() {
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &update_offer,
+        &update_collection_bid,
         &[new_price],
     );
     assert!(response.is_ok());
@@ -218,7 +227,7 @@ pub fn try_update_offer() {
 }
 
 #[test]
-pub fn try_remove_offer() {
+pub fn try_remove_bid() {
     let TestContext {
         mut app,
         contracts:
@@ -227,19 +236,15 @@ pub fn try_remove_offer() {
                 collection,
                 ..
             },
-        accounts: TestAccounts { bidder, .. },
+        accounts: TestAccounts { owner, bidder, .. },
     } = test_context();
 
-    let bidder2 = setup_additional_account(&mut app, "bidder2").unwrap();
-
-    let token_id = "1";
     let price = coin(1000000u128, NATIVE_DENOM);
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &ExecuteMsg::SetOffer {
+        &ExecuteMsg::SetCollectionBid {
             collection: collection.to_string(),
-            token_id: token_id.to_string(),
             details: OrderDetails {
                 price: price.clone(),
                 recipient: None,
@@ -249,30 +254,43 @@ pub fn try_remove_offer() {
         &[price],
     );
 
-    let offer_id = find_attrs(response.unwrap(), "wasm-set-offer", "id")
+    let collection_bid_id = find_attrs(response.unwrap(), "wasm-set-collection-bid", "id")
         .pop()
         .unwrap();
 
-    // Removing offer as non creator fails
-    let remove_offer = ExecuteMsg::RemoveOffer {
-        id: offer_id.clone(),
+    // Removing collection_bid as non creator fails
+    let remove_collection_bid = ExecuteMsg::RemoveCollectionBid {
+        id: collection_bid_id.clone(),
     };
-    let response = app.execute_contract(bidder2.clone(), marketplace.clone(), &remove_offer, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &remove_collection_bid,
+        &[],
+    );
     assert_error(
         response,
         MarketplaceStdError::Unauthorized(
-            "only the creator of offer can perform this action".to_string(),
+            "only the creator of collection bid can perform this action".to_string(),
         )
         .to_string(),
     );
 
-    // Removing offer as creator succeeds
-    let response = app.execute_contract(bidder.clone(), marketplace.clone(), &remove_offer, &[]);
+    // Removing collection_bid as creator succeeds
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &remove_collection_bid,
+        &[],
+    );
     assert!(response.is_ok());
 
-    let offer = app
+    let collection_bid = app
         .wrap()
-        .query_wasm_smart::<Option<Offer>>(&marketplace, &QueryMsg::Offer(offer_id))
+        .query_wasm_smart::<Option<CollectionBid>>(
+            &marketplace,
+            &QueryMsg::CollectionBid(collection_bid_id),
+        )
         .unwrap();
-    assert!(offer.is_none());
+    assert!(collection_bid.is_none());
 }

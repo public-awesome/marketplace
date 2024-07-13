@@ -1,5 +1,5 @@
 use crate::{
-    orders::{Ask, MatchingOffer},
+    orders::{Ask, MatchingBid},
     state::{Config, TokenId},
     ContractError,
 };
@@ -93,30 +93,21 @@ pub fn finalize_sale(
     env: &Env,
     ask: &Ask,
     config: &Config<Addr>,
-    matching_offer: &MatchingOffer,
-    ask_before_offer: bool,
+    matching_bid: &MatchingBid,
+    ask_before_bid: bool,
     response: Response,
 ) -> Result<Response, ContractError> {
-    let (nft_recipient, offer_details) = match &matching_offer {
-        MatchingOffer::Offer(offer) => (offer.asset_recipient(), &offer.details),
-        MatchingOffer::CollectionOffer(collection_offer) => (
-            collection_offer.asset_recipient(),
-            &collection_offer.details,
-        ),
+    let (nft_recipient, bid_details) = match &matching_bid {
+        MatchingBid::Bid(bid) => (bid.asset_recipient(), &bid.details),
+        MatchingBid::CollectionBid(collection_bid) => {
+            (collection_bid.asset_recipient(), &collection_bid.details)
+        }
     };
 
-    let (sale_price, maker, taker) = if ask_before_offer {
-        (
-            &ask.details.price,
-            &ask.details.finder,
-            &offer_details.finder,
-        )
+    let (sale_price, maker, taker) = if ask_before_bid {
+        (&ask.details.price, &ask.details.finder, &bid_details.finder)
     } else {
-        (
-            &offer_details.price,
-            &offer_details.finder,
-            &ask.details.finder,
-        )
+        (&bid_details.price, &bid_details.finder, &ask.details.finder)
     };
 
     let seller_recipient = ask.asset_recipient();
@@ -174,12 +165,12 @@ pub fn finalize_sale(
 
     // Remove orders
     ask.remove(deps.storage)?;
-    match &matching_offer {
-        MatchingOffer::Offer(offer) => {
-            offer.remove(deps.storage)?;
+    match &matching_bid {
+        MatchingBid::Bid(bid) => {
+            bid.remove(deps.storage)?;
         }
-        MatchingOffer::CollectionOffer(collection_offer) => {
-            collection_offer.remove(deps.storage)?;
+        MatchingBid::CollectionBid(collection_bid) => {
+            collection_bid.remove(deps.storage)?;
         }
     }
 
@@ -192,13 +183,12 @@ pub fn finalize_sale(
         .add_attribute("nft_recipient", nft_recipient.to_string())
         .add_attribute("ask", ask.id.to_string());
 
-    match &matching_offer {
-        MatchingOffer::Offer(offer) => {
-            sale_event = sale_event.add_attribute("offer", offer.id.to_string());
+    match &matching_bid {
+        MatchingBid::Bid(bid) => {
+            sale_event = sale_event.add_attribute("bid", bid.id.to_string());
         }
-        MatchingOffer::CollectionOffer(collection_offer) => {
-            sale_event =
-                sale_event.add_attribute("collection_offer", collection_offer.id.to_string());
+        MatchingBid::CollectionBid(collection_bid) => {
+            sale_event = sale_event.add_attribute("collection_bid", collection_bid.id.to_string());
         }
     }
 

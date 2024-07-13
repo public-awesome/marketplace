@@ -1,5 +1,5 @@
 use crate::{
-    orders::{Ask, CollectionOffer, Offer, OrderDetails},
+    orders::{Ask, Bid, CollectionBid, OrderDetails},
     state::{AllowDenoms, Config, Denom, OrderId, TokenId},
 };
 
@@ -43,36 +43,36 @@ pub enum ExecuteMsg {
         recipient: Option<String>,
         finder: Option<String>,
     },
-    SetOffer {
+    SetBid {
         collection: String,
         token_id: TokenId,
         details: OrderDetails<String>,
     },
-    RemoveOffer {
+    RemoveBid {
         id: OrderId,
     },
-    UpdateOffer {
+    UpdateBid {
         id: OrderId,
         details: OrderDetails<String>,
     },
-    AcceptOffer {
+    AcceptBid {
         id: OrderId,
         min_output: Coin,
         recipient: Option<String>,
         finder: Option<String>,
     },
-    SetCollectionOffer {
+    SetCollectionBid {
         collection: String,
         details: OrderDetails<String>,
     },
-    RemoveCollectionOffer {
+    RemoveCollectionBid {
         id: OrderId,
     },
-    UpdateCollectionOffer {
+    UpdateCollectionBid {
         id: OrderId,
         details: OrderDetails<String>,
     },
-    AcceptCollectionOffer {
+    AcceptCollectionBid {
         id: OrderId,
         token_id: TokenId,
         min_output: Coin,
@@ -124,35 +124,35 @@ pub enum QueryMsg {
         collection: String,
         query_options: Option<QueryOptions<String>>,
     },
-    #[returns(Option<Offer>)]
-    Offer(String),
-    #[returns(Vec<Offer>)]
-    Offers(Vec<String>),
-    #[returns(Vec<Offer>)]
-    OffersByTokenPrice {
+    #[returns(Option<Bid>)]
+    Bid(String),
+    #[returns(Vec<Bid>)]
+    Bids(Vec<String>),
+    #[returns(Vec<Bid>)]
+    BidsByTokenPrice {
         collection: String,
         token_id: TokenId,
         denom: Denom,
         query_options: Option<QueryOptions<PriceOffset>>,
     },
-    #[returns(Vec<Offer>)]
-    OffersByCreatorCollection {
+    #[returns(Vec<Bid>)]
+    BidsByCreatorCollection {
         creator: String,
         collection: String,
         query_options: Option<QueryOptions<String>>,
     },
-    #[returns(Option<CollectionOffer>)]
-    CollectionOffer(String),
-    #[returns(Vec<CollectionOffer>)]
-    CollectionOffers(Vec<String>),
-    #[returns(Vec<CollectionOffer>)]
-    CollectionOffersByPrice {
+    #[returns(Option<CollectionBid>)]
+    CollectionBid(String),
+    #[returns(Vec<CollectionBid>)]
+    CollectionBids(Vec<String>),
+    #[returns(Vec<CollectionBid>)]
+    CollectionBidsByPrice {
         collection: String,
         denom: Denom,
         query_options: Option<QueryOptions<PriceOffset>>,
     },
-    #[returns(Vec<CollectionOffer>)]
-    CollectionOffersByCreatorCollection {
+    #[returns(Vec<CollectionBid>)]
+    CollectionBidsByCreatorCollection {
         creator: String,
         collection: String,
         query_options: Option<QueryOptions<String>>,

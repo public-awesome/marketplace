@@ -1,12 +1,12 @@
 use crate::{
     error::ContractError,
-    events::{AllowDenomsEvent, AskEvent, CollectionOfferEvent, ConfigEvent, OfferEvent},
+    events::{AllowDenomsEvent, AskEvent, BidEvent, CollectionBidEvent, ConfigEvent},
     helpers::{finalize_sale, generate_id, only_contract_admin},
     msg::ExecuteMsg,
-    orders::{Ask, CollectionOffer, MatchingOffer, Offer, OrderDetails},
+    orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
-        asks, collection_offers, offers, AllowDenoms, Config, OrderId, TokenId, ALLOW_DENOMS,
-        CONFIG, NONCE,
+        asks, bids, collection_bids, AllowDenoms, Config, OrderId, TokenId, ALLOW_DENOMS, CONFIG,
+        NONCE,
     },
 };
 
@@ -71,11 +71,11 @@ pub fn execute(
             maybe_addr(api, recipient)?,
             maybe_addr(api, finder)?,
         ),
-        ExecuteMsg::SetOffer {
+        ExecuteMsg::SetBid {
             collection,
             token_id,
             details,
-        } => execute_set_offer(
+        } => execute_set_bid(
             deps,
             env,
             info,
@@ -84,16 +84,16 @@ pub fn execute(
             details.str_to_addr(api)?,
             false,
         ),
-        ExecuteMsg::UpdateOffer { id, details } => {
-            execute_update_offer(deps, env, info, id, details.str_to_addr(api)?)
+        ExecuteMsg::UpdateBid { id, details } => {
+            execute_update_bid(deps, env, info, id, details.str_to_addr(api)?)
         }
-        ExecuteMsg::RemoveOffer { id } => execute_remove_offer(deps, env, info, id),
-        ExecuteMsg::AcceptOffer {
+        ExecuteMsg::RemoveBid { id } => execute_remove_bid(deps, env, info, id),
+        ExecuteMsg::AcceptBid {
             id,
             min_output,
             recipient,
             finder,
-        } => execute_accept_offer(
+        } => execute_accept_bid(
             deps,
             env,
             info,
@@ -102,10 +102,10 @@ pub fn execute(
             maybe_addr(api, recipient)?,
             maybe_addr(api, finder)?,
         ),
-        ExecuteMsg::SetCollectionOffer {
+        ExecuteMsg::SetCollectionBid {
             collection,
             details,
-        } => execute_set_collection_offer(
+        } => execute_set_collection_bid(
             deps,
             env,
             info,
@@ -113,19 +113,19 @@ pub fn execute(
             details.str_to_addr(api)?,
             false,
         ),
-        ExecuteMsg::UpdateCollectionOffer { id, details } => {
-            execute_update_collection_offer(deps, env, info, id, details.str_to_addr(api)?)
+        ExecuteMsg::UpdateCollectionBid { id, details } => {
+            execute_update_collection_bid(deps, env, info, id, details.str_to_addr(api)?)
         }
-        ExecuteMsg::RemoveCollectionOffer { id } => {
-            execute_remove_collection_offer(deps, env, info, id)
+        ExecuteMsg::RemoveCollectionBid { id } => {
+            execute_remove_collection_bid(deps, env, info, id)
         }
-        ExecuteMsg::AcceptCollectionOffer {
+        ExecuteMsg::AcceptCollectionBid {
             id,
             token_id,
             min_output,
             recipient,
             finder,
-        } => execute_accept_collection_offer(
+        } => execute_accept_collection_bid(
             deps,
             env,
             info,
@@ -160,7 +160,7 @@ pub fn execute(
             max_input,
             recipient,
             finder,
-        } => execute_set_offer(
+        } => execute_set_bid(
             deps,
             env,
             info,
@@ -178,7 +178,7 @@ pub fn execute(
             max_input,
             recipient,
             finder,
-        } => execute_set_collection_offer(
+        } => execute_set_collection_bid(
             deps,
             env,
             info,
@@ -260,11 +260,11 @@ pub fn execute_set_ask(
 
     let mut response = Response::new();
 
-    let match_result = ask.match_with_offer(deps.as_ref())?;
+    let match_result = ask.match_with_bid(deps.as_ref())?;
 
-    if let Some(matching_offer) = match_result {
+    if let Some(matching_bid) = match_result {
         // If a match is found finalize the sale
-        response = finalize_sale(deps, &env, &ask, &config, &matching_offer, false, response)?;
+        response = finalize_sale(deps, &env, &ask, &config, &matching_bid, false, response)?;
     } else if sell_now {
         // If no match is found and sell_now is true, abort transaction
         Err(ContractError::NoMatchFound)?;
@@ -340,11 +340,11 @@ pub fn execute_update_ask(
 
     let mut response = Response::new();
 
-    let match_result = ask.match_with_offer(deps.as_ref())?;
+    let match_result = ask.match_with_bid(deps.as_ref())?;
 
-    if let Some(matching_offer) = match_result {
+    if let Some(matching_bid) = match_result {
         // If a match is found finalize the sale
-        response = finalize_sale(deps, &env, &ask, &config, &matching_offer, false, response)?;
+        response = finalize_sale(deps, &env, &ask, &config, &matching_bid, false, response)?;
     } else {
         // If no match is found continue updating the ask
         ask.save(deps.storage)?;
@@ -353,7 +353,14 @@ pub fn execute_update_ask(
             AskEvent {
                 ty: "update-ask",
                 ask: &ask,
-                attr_keys: vec!["id", "price", "recipient", "finder"],
+                attr_keys: vec![
+                    "id",
+                    "collection",
+                    "token_id",
+                    "price",
+                    "recipient",
+                    "finder",
+                ],
             }
             .into(),
         );
@@ -391,7 +398,14 @@ pub fn execute_remove_ask(
 
     ask.remove(deps.storage)?;
 
-    response = response.add_event(Event::new("remove-ask".to_string()).add_attribute("id", id));
+    response = response.add_event(
+        AskEvent {
+            ty: "remove-ask",
+            ask: &ask,
+            attr_keys: vec!["id", "collection", "token_id"],
+        }
+        .into(),
+    );
 
     Ok(response)
 }
@@ -424,7 +438,7 @@ pub fn execute_accept_ask(
     let nonce = NONCE.load(deps.storage)?.wrapping_add(1);
     NONCE.save(deps.storage, &nonce)?;
 
-    let offer = Offer::new(
+    let bid = Bid::new(
         info.sender.clone(),
         ask.collection.clone(),
         ask.token_id.clone(),
@@ -443,7 +457,7 @@ pub fn execute_accept_ask(
         &env,
         &ask,
         &config,
-        &MatchingOffer::Offer(offer),
+        &MatchingBid::Bid(bid),
         true,
         Response::new(),
     )?;
@@ -456,7 +470,7 @@ pub fn execute_accept_ask(
     Ok(response)
 }
 
-pub fn execute_set_offer(
+pub fn execute_set_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -479,7 +493,7 @@ pub fn execute_set_offer(
     let nonce = NONCE.load(deps.storage)?.wrapping_add(1);
     NONCE.save(deps.storage, &nonce)?;
 
-    let offer = Offer::new(
+    let bid = Bid::new(
         info.sender.clone(),
         collection,
         token_id,
@@ -488,7 +502,7 @@ pub fn execute_set_offer(
         nonce,
     );
 
-    let matching_ask = offer.match_with_ask(deps.as_ref())?;
+    let matching_ask = bid.match_with_ask(deps.as_ref())?;
 
     let mut response = Response::new();
 
@@ -504,7 +518,7 @@ pub fn execute_set_offer(
             &env,
             &ask,
             &config,
-            &MatchingOffer::Offer(offer),
+            &MatchingBid::Bid(bid),
             true,
             response,
         )?;
@@ -512,18 +526,18 @@ pub fn execute_set_offer(
         // If no match is found and buy_now is true, abort transaction
         Err(ContractError::NoMatchFound)?;
     } else {
-        // If no match is found. Offer creation should:
-        // * store the offer
+        // If no match is found. Bid creation should:
+        // * store the bid
         // * emit event
 
         funds = funds
-            .sub(offer.details.price.clone())
+            .sub(bid.details.price.clone())
             .map_err(|_| ContractError::InsufficientFunds)?;
 
         response = response.add_event(
-            OfferEvent {
-                ty: "set-offer",
-                offer: &offer,
+            BidEvent {
+                ty: "set-bid",
+                bid: &bid,
                 attr_keys: vec![
                     "id",
                     "creator",
@@ -537,11 +551,9 @@ pub fn execute_set_offer(
             .into(),
         );
 
-        offers().update(deps.storage, offer.id.clone(), |existing| match existing {
-            Some(_) => Err(ContractError::InternalError(
-                "offer id collision".to_string(),
-            )),
-            None => Ok(offer),
+        bids().update(deps.storage, bid.id.clone(), |existing| match existing {
+            Some(_) => Err(ContractError::InternalError("bid id collision".to_string())),
+            None => Ok(bid),
         })?;
     }
 
@@ -553,7 +565,7 @@ pub fn execute_set_offer(
     Ok(response)
 }
 
-pub fn execute_update_offer(
+pub fn execute_update_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -566,15 +578,15 @@ pub fn execute_update_offer(
         ContractError::InvalidInput("invalid denom".to_string())
     );
 
-    let mut offer = offers()
+    let mut bid = bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("offer not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
 
     ensure_eq!(
         info.sender,
-        offer.creator,
+        bid.creator,
         MarketplaceStdError::Unauthorized(
-            "only the creator of offer can perform this action".to_string()
+            "only the creator of bid can perform this action".to_string()
         )
     );
 
@@ -582,13 +594,13 @@ pub fn execute_update_offer(
     funds.normalize();
 
     // Add the previous price to the funds in context
-    funds = funds.add(offer.details.price.clone());
+    funds = funds.add(bid.details.price.clone());
 
-    offer.details = details;
+    bid.details = details;
 
     let mut response = Response::new();
 
-    let match_result = offer.match_with_ask(deps.as_ref())?;
+    let match_result = bid.match_with_ask(deps.as_ref())?;
 
     if let Some(ask) = match_result {
         // If a match is found finalize the sale
@@ -602,23 +614,30 @@ pub fn execute_update_offer(
             &env,
             &ask,
             &config,
-            &MatchingOffer::Offer(offer),
+            &MatchingBid::Bid(bid),
             true,
             response,
         )?;
     } else {
-        // If no match is found update the offer
+        // If no match is found update the bid
         funds = funds
-            .sub(offer.details.price.clone())
+            .sub(bid.details.price.clone())
             .map_err(|_| ContractError::InsufficientFunds)?;
 
-        offer.save(deps.storage)?;
+        bid.save(deps.storage)?;
 
         response = response.add_event(
-            OfferEvent {
-                ty: "update-offer",
-                offer: &offer,
-                attr_keys: vec!["id", "price", "recipient", "finder"],
+            BidEvent {
+                ty: "update-bid",
+                bid: &bid,
+                attr_keys: vec![
+                    "id",
+                    "collection",
+                    "token_id",
+                    "price",
+                    "recipient",
+                    "finder",
+                ],
             }
             .into(),
         );
@@ -632,7 +651,7 @@ pub fn execute_update_offer(
     Ok(response)
 }
 
-pub fn execute_remove_offer(
+pub fn execute_remove_bid(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -640,30 +659,37 @@ pub fn execute_remove_offer(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let offer = offers()
+    let bid = bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("offer not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
 
     ensure_eq!(
         info.sender,
-        offer.creator,
+        bid.creator,
         MarketplaceStdError::Unauthorized(
-            "only the creator of offer can perform this action".to_string()
+            "only the creator of bid can perform this action".to_string()
         )
     );
 
-    let refund = offer.details.price.clone();
+    let refund = bid.details.price.clone();
 
-    offer.remove(deps.storage)?;
+    bid.remove(deps.storage)?;
 
     let mut response = transfer_coin(refund, &info.sender, Response::new());
 
-    response = response.add_event(Event::new("remove-offer".to_string()).add_attribute("id", id));
+    response = response.add_event(
+        BidEvent {
+            ty: "remove-bid",
+            bid: &bid,
+            attr_keys: vec!["id", "collection", "token_id"],
+        }
+        .into(),
+    );
 
     Ok(response)
 }
 
-pub fn execute_accept_offer(
+pub fn execute_accept_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -672,16 +698,16 @@ pub fn execute_accept_offer(
     recipient: Option<Addr>,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
-    let offer: Offer = offers()
+    let bid: Bid = bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("offer not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
 
     ensure!(
-        has_coins(&[offer.details.price.clone()], &min_output),
-        ContractError::InvalidInput("min output is greater than offer price".to_string())
+        has_coins(&[bid.details.price.clone()], &min_output),
+        ContractError::InvalidInput("min output is greater than bid price".to_string())
     );
 
-    let ask_id = generate_id(vec![offer.collection.as_bytes(), offer.token_id.as_bytes()]);
+    let ask_id = generate_id(vec![bid.collection.as_bytes(), bid.token_id.as_bytes()]);
     let ask_option = asks().may_load(deps.storage, ask_id.clone())?;
 
     // Check if the sender is the owner of the NFT, or if the creator of a valid ask
@@ -693,13 +719,13 @@ pub fn execute_accept_offer(
         }
         ask
     } else {
-        only_owner(&deps.querier, &info, &offer.collection, &offer.token_id)?;
+        only_owner(&deps.querier, &info, &bid.collection, &bid.token_id)?;
         Ask::new(
             info.sender.clone(),
-            offer.collection.clone(),
-            offer.token_id.clone(),
+            bid.collection.clone(),
+            bid.token_id.clone(),
             OrderDetails {
-                price: offer.details.price.clone(),
+                price: bid.details.price.clone(),
                 recipient: recipient.clone(),
                 finder: finder.clone(),
             },
@@ -712,7 +738,7 @@ pub fn execute_accept_offer(
         &env,
         &ask,
         &config,
-        &MatchingOffer::Offer(offer),
+        &MatchingBid::Bid(bid),
         false,
         Response::new(),
     )?;
@@ -720,7 +746,7 @@ pub fn execute_accept_offer(
     Ok(response)
 }
 
-pub fn execute_set_collection_offer(
+pub fn execute_set_collection_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -742,7 +768,7 @@ pub fn execute_set_collection_offer(
     let nonce = NONCE.load(deps.storage)?.wrapping_add(1);
     NONCE.save(deps.storage, &nonce)?;
 
-    let collection_offer = CollectionOffer::new(
+    let collection_bid = CollectionBid::new(
         info.sender.clone(),
         collection,
         details,
@@ -750,7 +776,7 @@ pub fn execute_set_collection_offer(
         nonce,
     );
 
-    let matching_ask = collection_offer.match_with_ask(deps.as_ref())?;
+    let matching_ask = collection_bid.match_with_ask(deps.as_ref())?;
 
     let mut response = Response::new();
 
@@ -766,7 +792,7 @@ pub fn execute_set_collection_offer(
             &env,
             &ask,
             &config,
-            &MatchingOffer::CollectionOffer(collection_offer),
+            &MatchingBid::CollectionBid(collection_bid),
             true,
             response,
         )?;
@@ -774,15 +800,15 @@ pub fn execute_set_collection_offer(
         // If no match is found and buy_now is true, abort transaction
         Err(ContractError::NoMatchFound)?;
     } else {
-        // If no match is found. Offer creation should store the offer
+        // If no match is found. Bid creation should store the bid
         funds = funds
-            .sub(collection_offer.details.price.clone())
+            .sub(collection_bid.details.price.clone())
             .map_err(|_| ContractError::InsufficientFunds)?;
 
         response = response.add_event(
-            CollectionOfferEvent {
-                ty: "set-collection-offer",
-                collection_offer: &collection_offer,
+            CollectionBidEvent {
+                ty: "set-collection-bid",
+                collection_bid: &collection_bid,
                 attr_keys: vec![
                     "id",
                     "creator",
@@ -795,14 +821,16 @@ pub fn execute_set_collection_offer(
             .into(),
         );
 
-        collection_offers().update(deps.storage, collection_offer.id.clone(), |existing| {
-            match existing {
+        collection_bids().update(
+            deps.storage,
+            collection_bid.id.clone(),
+            |existing| match existing {
                 Some(_) => Err(ContractError::InternalError(
-                    "collection offer id collision".to_string(),
+                    "collection bid id collision".to_string(),
                 )),
-                None => Ok(collection_offer),
-            }
-        })?;
+                None => Ok(collection_bid),
+            },
+        )?;
     }
 
     // Transfer remaining funds back to user
@@ -813,7 +841,7 @@ pub fn execute_set_collection_offer(
     Ok(response)
 }
 
-pub fn execute_update_collection_offer(
+pub fn execute_update_collection_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -826,15 +854,15 @@ pub fn execute_update_collection_offer(
         ContractError::InvalidInput("invalid denom".to_string())
     );
 
-    let mut collection_offer = collection_offers()
+    let mut collection_bid = collection_bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("collection offer not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
 
     ensure_eq!(
         info.sender,
-        collection_offer.creator,
+        collection_bid.creator,
         MarketplaceStdError::Unauthorized(
-            "only the creator of collection offer can perform this action".to_string()
+            "only the creator of collection bid can perform this action".to_string()
         )
     );
 
@@ -842,13 +870,13 @@ pub fn execute_update_collection_offer(
     funds.normalize();
 
     // Add the previous price to the funds in context
-    funds = funds.add(collection_offer.details.price.clone());
+    funds = funds.add(collection_bid.details.price.clone());
 
-    collection_offer.details = details;
+    collection_bid.details = details;
 
     let mut response = Response::new();
 
-    let match_result = collection_offer.match_with_ask(deps.as_ref())?;
+    let match_result = collection_bid.match_with_ask(deps.as_ref())?;
 
     if let Some(ask) = match_result {
         // If a match is found finalize the sale
@@ -862,23 +890,23 @@ pub fn execute_update_collection_offer(
             &env,
             &ask,
             &config,
-            &MatchingOffer::CollectionOffer(collection_offer),
+            &MatchingBid::CollectionBid(collection_bid),
             true,
             response,
         )?;
     } else {
-        // If no match is found update the offer
+        // If no match is found update the bid
         funds = funds
-            .sub(collection_offer.details.price.clone())
+            .sub(collection_bid.details.price.clone())
             .map_err(|_| ContractError::InsufficientFunds)?;
 
-        collection_offer.save(deps.storage)?;
+        collection_bid.save(deps.storage)?;
 
         response = response.add_event(
-            CollectionOfferEvent {
-                ty: "update-collection-offer",
-                collection_offer: &collection_offer,
-                attr_keys: vec!["id", "price", "recipient", "finder"],
+            CollectionBidEvent {
+                ty: "update-collection-bid",
+                collection_bid: &collection_bid,
+                attr_keys: vec!["id", "collection", "price", "recipient", "finder"],
             }
             .into(),
         );
@@ -892,7 +920,7 @@ pub fn execute_update_collection_offer(
     Ok(response)
 }
 
-pub fn execute_remove_collection_offer(
+pub fn execute_remove_collection_bid(
     deps: DepsMut,
     _env: Env,
     info: MessageInfo,
@@ -900,31 +928,37 @@ pub fn execute_remove_collection_offer(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let collection_offer = collection_offers()
+    let collection_bid = collection_bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("collection offer not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
 
     ensure_eq!(
         info.sender,
-        collection_offer.creator,
+        collection_bid.creator,
         MarketplaceStdError::Unauthorized(
-            "only the creator of collection offer can perform this action".to_string()
+            "only the creator of collection bid can perform this action".to_string()
         )
     );
 
-    let refund = collection_offer.details.price.clone();
+    let refund = collection_bid.details.price.clone();
 
-    collection_offer.remove(deps.storage)?;
+    collection_bid.remove(deps.storage)?;
 
     let mut response = transfer_coin(refund, &info.sender, Response::new());
 
-    response = response
-        .add_event(Event::new("remove-collection-offer".to_string()).add_attribute("id", id));
+    response = response.add_event(
+        CollectionBidEvent {
+            ty: "remove-collection-bid",
+            collection_bid: &collection_bid,
+            attr_keys: vec!["id", "collection"],
+        }
+        .into(),
+    );
 
     Ok(response)
 }
 
-pub fn execute_accept_collection_offer(
+pub fn execute_accept_collection_bid(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -934,19 +968,17 @@ pub fn execute_accept_collection_offer(
     recipient: Option<Addr>,
     finder: Option<Addr>,
 ) -> Result<Response, ContractError> {
-    let collection_offer = collection_offers()
+    let collection_bid = collection_bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("collection offer not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
 
     ensure!(
-        has_coins(&[collection_offer.details.price.clone()], &min_output),
-        ContractError::InvalidInput(
-            "min output is greater than collection offer price".to_string()
-        )
+        has_coins(&[collection_bid.details.price.clone()], &min_output),
+        ContractError::InvalidInput("min output is greater than collection bid price".to_string())
     );
 
     let ask_id = generate_id(vec![
-        collection_offer.collection.as_bytes(),
+        collection_bid.collection.as_bytes(),
         token_id.as_bytes(),
     ]);
     let ask_option = asks().may_load(deps.storage, ask_id.clone())?;
@@ -960,18 +992,13 @@ pub fn execute_accept_collection_offer(
         }
         ask
     } else {
-        only_owner(
-            &deps.querier,
-            &info,
-            &collection_offer.collection,
-            &token_id,
-        )?;
+        only_owner(&deps.querier, &info, &collection_bid.collection, &token_id)?;
         Ask::new(
             info.sender.clone(),
-            collection_offer.collection.clone(),
+            collection_bid.collection.clone(),
             token_id.clone(),
             OrderDetails {
-                price: collection_offer.details.price.clone(),
+                price: collection_bid.details.price.clone(),
                 recipient: recipient.clone(),
                 finder: finder.clone(),
             },
@@ -984,7 +1011,7 @@ pub fn execute_accept_collection_offer(
         &env,
         &ask,
         &config,
-        &MatchingOffer::CollectionOffer(collection_offer),
+        &MatchingBid::CollectionBid(collection_bid),
         false,
         Response::new(),
     )?;
