@@ -175,9 +175,11 @@ fn try_accept_ask_sale() {
     // Accept ask directly
     let accept_ask = ExecuteMsg::AcceptAsk {
         id: ask_id,
-        max_input: ask_price.clone(),
-        recipient: None,
-        finder: None,
+        details: OrderDetails {
+            price: ask_price.clone(),
+            recipient: None,
+            finder: None,
+        },
     };
     let response = app.execute_contract(
         bidder.clone(),
@@ -264,12 +266,8 @@ fn try_set_bid_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(
-        bidder.clone(),
-        marketplace.clone(),
-        &set_bid,
-        &[bid_price],
-    );
+    let response =
+        app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
     assert!(response.is_ok());
 
     let owner_balances_after = NativeBalance(app.wrap().query_all_balances(owner.clone()).unwrap());
@@ -349,9 +347,11 @@ fn try_accept_bid_sale() {
 
     let accept_bid = ExecuteMsg::AcceptBid {
         id: bid_id,
-        min_output: bid_price.clone(),
-        recipient: None,
-        finder: None,
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+        },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &accept_bid, &[]);
     assert!(response.is_ok());
@@ -432,12 +432,8 @@ fn try_set_collection_bid_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(
-        bidder.clone(),
-        marketplace.clone(),
-        &set_bid,
-        &[bid_price],
-    );
+    let response =
+        app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
     assert!(response.is_ok());
 
     let owner_balances_after = NativeBalance(app.wrap().query_all_balances(owner.clone()).unwrap());
@@ -530,9 +526,11 @@ fn try_accept_collection_bid_sale() {
     let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
         id: collection_bid_id,
         token_id: token_id.to_string(),
-        min_output: bid_price.clone(),
-        recipient: None,
-        finder: None,
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+        },
     };
     let response = app.execute_contract(
         owner.clone(),
@@ -617,9 +615,11 @@ fn try_sale_fee_breakdown() {
     let nft_recipient: Addr = Addr::unchecked("nft_recipient".to_string());
     let accept_ask = ExecuteMsg::AcceptAsk {
         id: ask_id,
-        max_input: ask_price.clone(),
-        recipient: Some(nft_recipient.to_string()),
-        finder: Some(taker.to_string()),
+        details: OrderDetails {
+            price: ask_price.clone(),
+            recipient: Some(nft_recipient.to_string()),
+            finder: Some(taker.to_string()),
+        },
     };
     let response = app.execute_contract(
         bidder.clone(),

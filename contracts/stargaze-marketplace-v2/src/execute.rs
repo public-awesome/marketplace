@@ -10,10 +10,8 @@ use crate::{
     },
 };
 
-use cosmwasm_std::{
-    ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Response,
-};
-use cw_utils::{maybe_addr, nonpayable, NativeBalance};
+use cosmwasm_std::{ensure, ensure_eq, has_coins, Addr, DepsMut, Env, MessageInfo, Response};
+use cw_utils::{nonpayable, NativeBalance};
 use sg_marketplace_common::{
     coin::{transfer_coin, transfer_coins},
     nft::{only_owner, only_tradable, transfer_nft},
@@ -57,20 +55,9 @@ pub fn execute(
             execute_update_ask(deps, env, info, id, details.str_to_addr(api)?)
         }
         ExecuteMsg::RemoveAsk { id } => execute_remove_ask(deps, env, info, id),
-        ExecuteMsg::AcceptAsk {
-            id,
-            max_input,
-            recipient,
-            finder,
-        } => execute_accept_ask(
-            deps,
-            env,
-            info,
-            id,
-            max_input,
-            maybe_addr(api, recipient)?,
-            maybe_addr(api, finder)?,
-        ),
+        ExecuteMsg::AcceptAsk { id, details } => {
+            execute_accept_ask(deps, env, info, id, details.str_to_addr(api)?)
+        }
         ExecuteMsg::SetBid {
             collection,
             token_id,
@@ -88,20 +75,9 @@ pub fn execute(
             execute_update_bid(deps, env, info, id, details.str_to_addr(api)?)
         }
         ExecuteMsg::RemoveBid { id } => execute_remove_bid(deps, env, info, id),
-        ExecuteMsg::AcceptBid {
-            id,
-            min_output,
-            recipient,
-            finder,
-        } => execute_accept_bid(
-            deps,
-            env,
-            info,
-            id,
-            min_output,
-            maybe_addr(api, recipient)?,
-            maybe_addr(api, finder)?,
-        ),
+        ExecuteMsg::AcceptBid { id, details } => {
+            execute_accept_bid(deps, env, info, id, details.str_to_addr(api)?)
+        }
         ExecuteMsg::SetCollectionBid {
             collection,
             details,
@@ -122,72 +98,45 @@ pub fn execute(
         ExecuteMsg::AcceptCollectionBid {
             id,
             token_id,
-            min_output,
-            recipient,
-            finder,
-        } => execute_accept_collection_bid(
-            deps,
-            env,
-            info,
-            id,
-            token_id,
-            min_output,
-            maybe_addr(api, recipient)?,
-            maybe_addr(api, finder)?,
-        ),
+            details,
+        } => {
+            execute_accept_collection_bid(deps, env, info, id, token_id, details.str_to_addr(api)?)
+        }
         ExecuteMsg::SellNft {
             collection,
             token_id,
-            min_output,
-            recipient,
-            finder,
+            details,
         } => execute_set_ask(
             deps,
             env,
             info,
             api.addr_validate(&collection)?,
             token_id,
-            OrderDetails {
-                price: min_output,
-                recipient: maybe_addr(api, recipient)?,
-                finder: maybe_addr(api, finder)?,
-            },
+            details.str_to_addr(api)?,
             true,
         ),
         ExecuteMsg::BuySpecificNft {
             collection,
             token_id,
-            max_input,
-            recipient,
-            finder,
+            details,
         } => execute_set_bid(
             deps,
             env,
             info,
             api.addr_validate(&collection)?,
             token_id,
-            OrderDetails {
-                price: max_input,
-                recipient: maybe_addr(api, recipient)?,
-                finder: maybe_addr(api, finder)?,
-            },
+            details.str_to_addr(api)?,
             true,
         ),
         ExecuteMsg::BuyCollectionNft {
             collection,
-            max_input,
-            recipient,
-            finder,
+            details,
         } => execute_set_collection_bid(
             deps,
             env,
             info,
             api.addr_validate(&collection)?,
-            OrderDetails {
-                price: max_input,
-                recipient: maybe_addr(api, recipient)?,
-                finder: maybe_addr(api, finder)?,
-            },
+            details.str_to_addr(api)?,
             true,
         ),
     }
@@ -415,9 +364,7 @@ pub fn execute_accept_ask(
     env: Env,
     info: MessageInfo,
     id: OrderId,
-    max_input: Coin,
-    recipient: Option<Addr>,
-    finder: Option<Addr>,
+    details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -427,7 +374,7 @@ pub fn execute_accept_ask(
         .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
 
     ensure!(
-        has_coins(&[max_input], &ask.details.price),
+        has_coins(&[details.price.clone()], &ask.details.price),
         ContractError::InvalidInput("ask price is greater than max input".to_string())
     );
 
@@ -442,11 +389,7 @@ pub fn execute_accept_ask(
         info.sender.clone(),
         ask.collection.clone(),
         ask.token_id.clone(),
-        OrderDetails {
-            price: ask.details.price.clone(),
-            recipient: recipient.clone(),
-            finder: finder.clone(),
-        },
+        details,
         env.block.height,
         nonce,
     );
@@ -694,16 +637,14 @@ pub fn execute_accept_bid(
     env: Env,
     info: MessageInfo,
     id: OrderId,
-    min_output: Coin,
-    recipient: Option<Addr>,
-    finder: Option<Addr>,
+    details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
     let bid: Bid = bids()
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
 
     ensure!(
-        has_coins(&[bid.details.price.clone()], &min_output),
+        has_coins(&[bid.details.price.clone()], &details.price),
         ContractError::InvalidInput("min output is greater than bid price".to_string())
     );
 
@@ -724,11 +665,7 @@ pub fn execute_accept_bid(
             info.sender.clone(),
             bid.collection.clone(),
             bid.token_id.clone(),
-            OrderDetails {
-                price: bid.details.price.clone(),
-                recipient: recipient.clone(),
-                finder: finder.clone(),
-            },
+            details,
         )
     };
 
@@ -964,16 +901,14 @@ pub fn execute_accept_collection_bid(
     info: MessageInfo,
     id: OrderId,
     token_id: TokenId,
-    min_output: Coin,
-    recipient: Option<Addr>,
-    finder: Option<Addr>,
+    details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
     let collection_bid = collection_bids()
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
 
     ensure!(
-        has_coins(&[collection_bid.details.price.clone()], &min_output),
+        has_coins(&[collection_bid.details.price.clone()], &details.price),
         ContractError::InvalidInput("min output is greater than collection bid price".to_string())
     );
 
@@ -997,11 +932,7 @@ pub fn execute_accept_collection_bid(
             info.sender.clone(),
             collection_bid.collection.clone(),
             token_id.clone(),
-            OrderDetails {
-                price: collection_bid.details.price.clone(),
-                recipient: recipient.clone(),
-                finder: finder.clone(),
-            },
+            details,
         )
     };
 
