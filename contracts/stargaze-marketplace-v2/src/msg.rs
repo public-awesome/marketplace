@@ -1,6 +1,6 @@
 use crate::{
     orders::{Ask, Bid, CollectionBid, OrderDetails},
-    state::{AllowDenoms, Config, Denom, OrderId, TokenId},
+    state::{Config, Denom, OrderId, TokenId},
 };
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
@@ -11,8 +11,6 @@ use sg_index_query::QueryOptions;
 pub struct InstantiateMsg {
     /// The initial configuration for the contract
     pub config: Config<String>,
-    /// The initial allowed denoms for the contract
-    pub allow_denoms: AllowDenoms,
 }
 
 #[cw_serde]
@@ -21,8 +19,9 @@ pub enum ExecuteMsg {
     UpdateConfig {
         config: Config<String>,
     },
-    UpdateAllowDenoms {
-        allow_denoms: AllowDenoms,
+    UpdateCollectionDenom {
+        collection: String,
+        denom: Denom,
     },
     // Marketplace messages
     SetAsk {
@@ -94,8 +93,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(Config<Addr>)]
     Config {},
-    #[returns(AllowDenoms)]
-    AllowDenoms {},
+    #[returns(Option<Denom>)]
+    CollectionDenom { collection: String },
     #[returns(Option<Ask>)]
     Ask(String),
     #[returns(Vec<Ask>)]

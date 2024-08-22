@@ -1,11 +1,11 @@
 use crate::{
     error::ContractError,
-    events::{AllowDenomsEvent, AskEvent, BidEvent, CollectionBidEvent, ConfigEvent},
-    helpers::{finalize_sale, generate_id, only_contract_admin},
+    events::{AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent},
+    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_denom},
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
-        asks, bids, collection_bids, AllowDenoms, Config, OrderId, TokenId, ALLOW_DENOMS, CONFIG,
+        asks, bids, collection_bids, Config, Denom, OrderId, TokenId, COLLECTION_DENOMS, CONFIG,
         NONCE,
     },
 };
@@ -35,8 +35,8 @@ pub fn execute(
         ExecuteMsg::UpdateConfig { config } => {
             execute_update_config(deps, env, info, config.str_to_addr(api)?)
         }
-        ExecuteMsg::UpdateAllowDenoms { allow_denoms } => {
-            execute_update_allow_denoms(deps, env, info, allow_denoms)
+        ExecuteMsg::UpdateCollectionDenom { collection, denom } => {
+            execute_update_collection_denom(deps, env, info, api.addr_validate(&collection)?, denom)
         }
         ExecuteMsg::SetAsk {
             collection,
@@ -163,20 +163,22 @@ pub fn execute_update_config(
     Ok(response)
 }
 
-pub fn execute_update_allow_denoms(
+pub fn execute_update_collection_denom(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    allow_denoms: AllowDenoms,
+    collection: Addr,
+    denom: Denom,
 ) -> Result<Response, ContractError> {
     only_contract_admin(&deps.querier, &env, &info)?;
 
-    ALLOW_DENOMS.save(deps.storage, &allow_denoms)?;
+    COLLECTION_DENOMS.save(deps.storage, collection.clone(), &denom)?;
 
     let response = Response::new().add_event(
-        AllowDenomsEvent {
-            ty: "set-allow-denoms",
-            allow_denoms: &allow_denoms,
+        CollectionDenomEvent {
+            ty: "set-collection-denom",
+            collection: &collection.to_string(),
+            denom: &denom,
         }
         .into(),
     );
@@ -197,15 +199,10 @@ pub fn execute_set_ask(
     only_owner(&deps.querier, &info, &collection, &token_id)?;
     only_tradable(&deps.querier, &env.block, &collection)?;
 
-    let allow_denoms = ALLOW_DENOMS.load(deps.storage)?;
-    ensure!(
-        allow_denoms.contains(&details.price.denom),
-        ContractError::InvalidInput("invalid denom".to_string())
-    );
+    let config = CONFIG.load(deps.storage)?;
+    only_valid_denom(deps.storage, &config, &collection, &details.price.denom)?;
 
     let ask = Ask::new(info.sender.clone(), collection, token_id, details);
-
-    let config = CONFIG.load(deps.storage)?;
 
     let mut response = Response::new();
 
@@ -265,12 +262,6 @@ pub fn execute_update_ask(
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
-    let allow_denoms = ALLOW_DENOMS.load(deps.storage)?;
-    ensure!(
-        allow_denoms.contains(&details.price.denom),
-        ContractError::InvalidInput("invalid denom".to_string())
-    );
-
     let config = CONFIG.load(deps.storage)?;
 
     let mut ask = asks()
@@ -284,6 +275,8 @@ pub fn execute_update_ask(
             "only the creator of ask can perform this action".to_string()
         )
     );
+
+    only_valid_denom(deps.storage, &config, &ask.collection, &details.price.denom)?;
 
     ask.details = details;
 
@@ -424,11 +417,8 @@ pub fn execute_set_bid(
 ) -> Result<Response, ContractError> {
     only_tradable(&deps.querier, &env.block, &collection)?;
 
-    let allow_denoms = ALLOW_DENOMS.load(deps.storage)?;
-    ensure!(
-        allow_denoms.contains(&details.price.denom),
-        ContractError::InvalidInput("invalid denom".to_string())
-    );
+    let config = CONFIG.load(deps.storage)?;
+    only_valid_denom(deps.storage, &config, &collection, &details.price.denom)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -515,11 +505,7 @@ pub fn execute_update_bid(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
-    let allow_denoms = ALLOW_DENOMS.load(deps.storage)?;
-    ensure!(
-        allow_denoms.contains(&details.price.denom),
-        ContractError::InvalidInput("invalid denom".to_string())
-    );
+    let config = CONFIG.load(deps.storage)?;
 
     let mut bid = bids()
         .load(deps.storage, id.clone())
@@ -532,6 +518,8 @@ pub fn execute_update_bid(
             "only the creator of bid can perform this action".to_string()
         )
     );
+
+    only_valid_denom(deps.storage, &config, &bid.collection, &details.price.denom)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -693,11 +681,8 @@ pub fn execute_set_collection_bid(
 ) -> Result<Response, ContractError> {
     only_tradable(&deps.querier, &env.block, &collection)?;
 
-    let allow_denoms = ALLOW_DENOMS.load(deps.storage)?;
-    ensure!(
-        allow_denoms.contains(&details.price.denom),
-        ContractError::InvalidInput("invalid denom".to_string())
-    );
+    let config = CONFIG.load(deps.storage)?;
+    only_valid_denom(deps.storage, &config, &collection, &details.price.denom)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -785,11 +770,7 @@ pub fn execute_update_collection_bid(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
-    let allow_denoms = ALLOW_DENOMS.load(deps.storage)?;
-    ensure!(
-        allow_denoms.contains(&details.price.denom),
-        ContractError::InvalidInput("invalid denom".to_string())
-    );
+    let config = CONFIG.load(deps.storage)?;
 
     let mut collection_bid = collection_bids()
         .load(deps.storage, id.clone())
@@ -802,6 +783,13 @@ pub fn execute_update_collection_bid(
             "only the creator of collection bid can perform this action".to_string()
         )
     );
+
+    only_valid_denom(
+        deps.storage,
+        &config,
+        &collection_bid.collection,
+        &details.price.denom,
+    )?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();

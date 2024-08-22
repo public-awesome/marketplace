@@ -1,10 +1,8 @@
 use crate::{
     helpers::build_collection_token_index_str,
     msg::{PriceOffset, QueryMsg},
-    orders::{Ask, CollectionBid, Bid},
-    state::{
-        asks, bids, collection_bids, AllowDenoms, Config, Denom, OrderId, ALLOW_DENOMS, CONFIG,
-    },
+    orders::{Ask, Bid, CollectionBid},
+    state::{asks, bids, collection_bids, Config, Denom, OrderId, COLLECTION_DENOMS, CONFIG},
 };
 
 use cosmwasm_std::{to_json_binary, Addr, Binary, Deps, Env, StdResult};
@@ -19,7 +17,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
     match msg {
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
-        QueryMsg::AllowDenoms {} => to_json_binary(&query_allow_denoms(deps)?),
+        QueryMsg::CollectionDenom { collection } => to_json_binary(&query_collection_denom(
+            deps,
+            api.addr_validate(&collection)?,
+        )?),
         QueryMsg::Ask(id) => to_json_binary(&query_asks(deps, vec![id])?.pop()),
         QueryMsg::Asks(ids) => to_json_binary(&query_asks(deps, ids)?),
         QueryMsg::AsksByCollectionDenom {
@@ -97,8 +98,8 @@ pub fn query_config(deps: Deps) -> StdResult<Config<Addr>> {
     CONFIG.load(deps.storage)
 }
 
-pub fn query_allow_denoms(deps: Deps) -> StdResult<AllowDenoms> {
-    ALLOW_DENOMS.load(deps.storage)
+pub fn query_collection_denom(deps: Deps, collection: Addr) -> StdResult<Option<Denom>> {
+    COLLECTION_DENOMS.may_load(deps.storage, collection)
 }
 
 pub fn query_asks(deps: Deps, ids: Vec<OrderId>) -> StdResult<Vec<Ask>> {

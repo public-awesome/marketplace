@@ -1,6 +1,6 @@
 use crate::{
-    orders::{Ask, CollectionBid, Bid},
-    state::{AllowDenoms, Config},
+    orders::{Ask, Bid, CollectionBid},
+    state::Config,
 };
 
 use cosmwasm_std::{attr, Addr, Event};
@@ -23,39 +23,23 @@ impl<'a> From<ConfigEvent<'a>> for Event {
             ),
             attr("maker_reward_bps", ce.config.maker_reward_bps.to_string()),
             attr("taker_reward_bps", ce.config.taker_reward_bps.to_string()),
+            attr("default_denom", ce.config.default_denom.to_string()),
         ])
     }
 }
 
-pub struct AllowDenomsEvent<'a> {
+pub struct CollectionDenomEvent<'a> {
     pub ty: &'a str,
-    pub allow_denoms: &'a AllowDenoms,
+    pub collection: &'a str,
+    pub denom: &'a str,
 }
 
-impl<'a> From<AllowDenomsEvent<'a>> for Event {
-    fn from(ade: AllowDenomsEvent) -> Self {
-        let mut event = Event::new(ade.ty.to_string());
-
-        let enum_type = match &ade.allow_denoms {
-            AllowDenoms::Includes(_) => "includes",
-            AllowDenoms::Excludes(_) => "excludes",
-        };
-        event = event.add_attribute("type", enum_type);
-
-        match &ade.allow_denoms {
-            AllowDenoms::Includes(denoms) => {
-                for denom in denoms {
-                    event = event.add_attribute("denom", denom);
-                }
-            }
-            AllowDenoms::Excludes(denoms) => {
-                for denom in denoms {
-                    event = event.add_attribute("denom", denom);
-                }
-            }
-        }
-
-        event
+impl<'a> From<CollectionDenomEvent<'a>> for Event {
+    fn from(cde: CollectionDenomEvent) -> Self {
+        Event::new(cde.ty.to_string()).add_attributes(vec![
+            attr("collection", cde.collection.to_string()),
+            attr("denom", cde.denom.to_string()),
+        ])
     }
 }
 

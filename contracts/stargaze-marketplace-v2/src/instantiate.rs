@@ -1,9 +1,9 @@
 use crate::{
     constants::{CONTRACT_NAME, CONTRACT_VERSION},
     error::ContractError,
-    events::{AllowDenomsEvent, ConfigEvent},
+    events::ConfigEvent,
     msg::InstantiateMsg,
-    state::{ALLOW_DENOMS, NONCE},
+    state::NONCE,
 };
 
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
@@ -25,7 +25,6 @@ pub fn instantiate(
     let config = msg.config.str_to_addr(deps.api)?;
     config.save(deps.storage)?;
 
-    ALLOW_DENOMS.save(deps.storage, &msg.allow_denoms)?;
     NONCE.save(deps.storage, &0)?;
 
     let response = Response::new()
@@ -38,13 +37,6 @@ pub fn instantiate(
             ConfigEvent {
                 ty: "set-config",
                 config: &config,
-            }
-            .into(),
-        )
-        .add_event(
-            AllowDenomsEvent {
-                ty: "set-allow-denoms",
-                allow_denoms: &msg.allow_denoms,
             }
             .into(),
         );

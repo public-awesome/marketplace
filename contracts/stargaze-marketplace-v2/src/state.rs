@@ -6,7 +6,7 @@ use crate::{constants::MAX_BASIS_POINTS, orders::Ask};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{ensure, Addr, Api, Storage};
 use cw_address_like::AddressLike;
-use cw_storage_plus::{Index, IndexList, IndexedMap, Item, MultiIndex};
+use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 
 pub type OrderId = String;
 pub type TokenId = String;
@@ -26,6 +26,8 @@ pub struct Config<T: AddressLike> {
     pub maker_reward_bps: u64,
     /// The reward paid out to the market taker. Reward is a percentage of the protocol fee
     pub taker_reward_bps: u64,
+    /// The default denom for all collections on the marketplace
+    pub default_denom: Denom,
 }
 
 impl Config<String> {
@@ -37,6 +39,7 @@ impl Config<String> {
             max_royalty_fee_bps: self.max_royalty_fee_bps,
             maker_reward_bps: self.maker_reward_bps,
             taker_reward_bps: self.taker_reward_bps,
+            default_denom: self.default_denom,
         })
     }
 }
@@ -62,22 +65,7 @@ impl Config<Addr> {
 
 pub const CONFIG: Item<Config<Addr>> = Item::new("C");
 
-#[cw_serde]
-pub enum AllowDenoms {
-    Includes(Vec<Denom>),
-    Excludes(Vec<Denom>),
-}
-
-impl AllowDenoms {
-    pub fn contains(&self, denom: &Denom) -> bool {
-        match self {
-            AllowDenoms::Includes(denoms) => denoms.contains(denom),
-            AllowDenoms::Excludes(denoms) => !denoms.contains(denom),
-        }
-    }
-}
-
-pub const ALLOW_DENOMS: Item<AllowDenoms> = Item::new("D");
+pub const COLLECTION_DENOMS: Map<Addr, Denom> = Map::new("D");
 
 pub const NONCE: Item<u64> = Item::new("N");
 

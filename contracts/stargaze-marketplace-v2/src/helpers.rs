@@ -1,11 +1,11 @@
 use crate::{
     orders::{Ask, MatchingBid},
-    state::{Config, TokenId},
+    state::{Config, TokenId, COLLECTION_DENOMS},
     ContractError,
 };
 
 use cosmwasm_std::{
-    ensure_eq, Addr, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper, Response,
+    ensure_eq, Addr, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper, Response, Storage,
 };
 use sg_marketplace_common::{
     nft::transfer_nft, royalties::fetch_or_set_royalties, sale::NftSaleProcessor,
@@ -48,6 +48,22 @@ pub fn only_contract_admin(
         )
     );
 
+    Ok(())
+}
+
+pub fn only_valid_denom(
+    storage: &dyn Storage,
+    config: &Config<Addr>,
+    collection: &Addr,
+    denom: &str,
+) -> Result<(), ContractError> {
+    let query_result = COLLECTION_DENOMS.may_load(storage, collection.clone())?;
+    let collection_denom = query_result.unwrap_or(config.default_denom.clone());
+    ensure_eq!(
+        collection_denom,
+        denom,
+        ContractError::InvalidInput("invalid denom".to_string())
+    );
     Ok(())
 }
 
@@ -216,6 +232,7 @@ mod tests {
             max_royalty_fee_bps: 500,
             maker_reward_bps: 4000,
             taker_reward_bps: 1000,
+            default_denom: "ustars".to_string(),
         };
 
         let result = divide_protocol_fees(&config, true, true).unwrap();

@@ -1,19 +1,21 @@
 use crate::{
     msg::{ExecuteMsg, QueryMsg},
-    state::{AllowDenoms, Config},
+    orders::OrderDetails,
+    state::Config,
     tests::{
         helpers::utils::assert_error,
         setup::{
             setup_accounts::TestAccounts,
+            setup_contracts::{ATOM_DENOM, NATIVE_DENOM},
             templates::{test_context, TestContext, TestContracts},
         },
     },
+    ContractError,
 };
 
-use cosmwasm_std::Addr;
+use cosmwasm_std::{coin, Addr};
 use cw_multi_test::Executor;
 use sg_marketplace_common::MarketplaceStdError;
-use std::vec;
 
 #[test]
 fn try_admin_update_config() {
@@ -44,6 +46,7 @@ fn try_admin_update_config() {
             max_royalty_fee_bps,
             maker_reward_bps,
             taker_reward_bps,
+            default_denom: NATIVE_DENOM.to_string(),
         },
     };
 
@@ -73,20 +76,53 @@ fn try_admin_update_config() {
 }
 
 #[test]
-fn try_admin_update_allow_denoms() {
+fn try_admin_update_collection_denom() {
     let TestContext {
         mut app,
-        contracts: TestContracts { marketplace, .. },
-        accounts: TestAccounts { creator, owner, .. },
+        contracts:
+            TestContracts {
+                marketplace,
+                collection,
+                ..
+            },
+        accounts:
+            TestAccounts {
+                creator,
+                owner,
+                bidder,
+                ..
+            },
     } = test_context();
 
-    let new_denom_setting = AllowDenoms::Excludes(vec!["ujuno".to_string()]);
-    let update_allow_denoms = ExecuteMsg::UpdateAllowDenoms {
-        allow_denoms: new_denom_setting.clone(),
+    // Create bid succeeds
+    let recipient = Addr::unchecked("recipient".to_string());
+    let finder = Addr::unchecked("finder".to_string());
+    let token_id = "1";
+    let bid_price = coin(1_000_000, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: Some(recipient.to_string()),
+            finder: Some(finder.to_string()),
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid,
+        &[bid_price.clone()],
+    );
+    assert!(response.is_ok());
+
+    let update_collection_denom = ExecuteMsg::UpdateCollectionDenom {
+        collection: collection.to_string(),
+        denom: ATOM_DENOM.to_string(),
     };
 
     // None admin cannot update config
-    let response = app.execute_contract(owner, marketplace.clone(), &update_allow_denoms, &[]);
+    let response = app.execute_contract(owner, marketplace.clone(), &update_collection_denom, &[]);
     assert_error(
         response,
         MarketplaceStdError::Unauthorized(
@@ -95,12 +131,41 @@ fn try_admin_update_allow_denoms() {
         .to_string(),
     );
 
-    let response = app.execute_contract(creator, marketplace.clone(), &update_allow_denoms, &[]);
+    // Creator can update collection denom
+    let response =
+        app.execute_contract(creator, marketplace.clone(), &update_collection_denom, &[]);
     assert!(response.is_ok());
-    let allow_denoms: AllowDenoms = app
-        .wrap()
-        .query_wasm_smart(&marketplace, &QueryMsg::AllowDenoms {})
-        .unwrap();
 
-    assert_eq!(allow_denoms, new_denom_setting);
+    // Create bid fails with old denom fails
+    let token_id = "2";
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: Some(recipient.to_string()),
+            finder: Some(finder.to_string()),
+        },
+    };
+    let response =
+        app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
+    assert_error(
+        response,
+        ContractError::InvalidInput("invalid denom".to_string()).to_string(),
+    );
+
+    // Create bid succeeds with new denom
+    let bid_price = coin(1_000_000, ATOM_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: Some(recipient.to_string()),
+            finder: Some(finder.to_string()),
+        },
+    };
+    let response =
+        app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
+    assert!(response.is_ok());
 }

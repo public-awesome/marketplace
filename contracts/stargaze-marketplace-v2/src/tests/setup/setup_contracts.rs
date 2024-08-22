@@ -93,11 +93,8 @@ pub fn setup_marketplace(
             max_royalty_fee_bps: 1000,
             maker_reward_bps: 4000,
             taker_reward_bps: 1000,
+            default_denom: NATIVE_DENOM.to_string(),
         },
-        allow_denoms: crate::state::AllowDenoms::Includes(vec![
-            NATIVE_DENOM.to_string(),
-            ATOM_DENOM.to_string(),
-        ]),
     };
     let marketplace = app
         .instantiate_contract(
