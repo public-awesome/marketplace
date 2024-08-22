@@ -3,7 +3,10 @@ use crate::{
     orders::OrderDetails,
     state::Config,
     tests::{
-        helpers::utils::assert_error,
+        helpers::{
+            marketplace::{approve, mint},
+            utils::{assert_error, find_attrs},
+        },
         setup::{
             setup_accounts::TestAccounts,
             setup_contracts::{ATOM_DENOM, NATIVE_DENOM},
@@ -115,6 +118,9 @@ fn try_admin_update_collection_denom() {
         &[bid_price.clone()],
     );
     assert!(response.is_ok());
+    let bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")
+        .pop()
+        .unwrap();
 
     let update_collection_denom = ExecuteMsg::UpdateCollectionDenom {
         collection: collection.to_string(),
@@ -122,7 +128,12 @@ fn try_admin_update_collection_denom() {
     };
 
     // None admin cannot update config
-    let response = app.execute_contract(owner, marketplace.clone(), &update_collection_denom, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &update_collection_denom,
+        &[],
+    );
     assert_error(
         response,
         MarketplaceStdError::Unauthorized(
@@ -131,9 +142,27 @@ fn try_admin_update_collection_denom() {
         .to_string(),
     );
 
-    // Creator can update collection denom
-    let response =
-        app.execute_contract(creator, marketplace.clone(), &update_collection_denom, &[]);
+    // Admin can update collection denom
+    let response = app.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &update_collection_denom,
+        &[],
+    );
+    assert!(response.is_ok());
+
+    // Accept invalid denom bid succeeds
+    mint(&mut app, &creator, &owner, &collection, &token_id);
+    approve(&mut app, &owner, &collection, &marketplace, &token_id);
+    let accept_bid = ExecuteMsg::AcceptBid {
+        id: bid_id,
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(owner.clone(), marketplace.clone(), &accept_bid, &[]);
     assert!(response.is_ok());
 
     // Create bid fails with old denom fails
@@ -156,7 +185,7 @@ fn try_admin_update_collection_denom() {
 
     // Create bid succeeds with new denom
     let bid_price = coin(1_000_000, ATOM_DENOM);
-    let set_bid = ExecuteMsg::SetBid {
+    let set_bid: ExecuteMsg = ExecuteMsg::SetBid {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
         details: OrderDetails {
@@ -165,7 +194,11 @@ fn try_admin_update_collection_denom() {
             finder: Some(finder.to_string()),
         },
     };
-    let response =
-        app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid,
+        &[bid_price.clone()],
+    );
     assert!(response.is_ok());
 }
