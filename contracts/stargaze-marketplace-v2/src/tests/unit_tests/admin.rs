@@ -74,7 +74,7 @@ fn try_admin_update_config() {
             default_denom: NATIVE_DENOM.to_string(),
         },
     };
-    // None admin cannot update config
+    // config must be checked on update
     let response = app.execute_contract(
         creator.clone(),
         marketplace.clone(),
