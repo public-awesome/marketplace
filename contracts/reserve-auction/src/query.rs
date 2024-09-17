@@ -2,7 +2,7 @@ use crate::msg::{AuctionKeyOffset, MinReservePriceOffset, QueryMsg};
 use crate::state::{auctions, Auction, Config, HaltManager, HALT_MANAGER};
 use crate::state::{CONFIG, MIN_RESERVE_PRICES};
 
-use cosmwasm_std::{coin, to_binary, Addr, Binary, Coin, Deps, Env, StdResult};
+use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Coin, Deps, Env, StdResult};
 use cw_storage_plus::Bound;
 use sg_marketplace_common::query::{unpack_query_options, QueryOptions};
 
@@ -16,20 +16,20 @@ use cosmwasm_std::entry_point;
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::HaltManager {} => to_binary(&query_halt_manager(deps)?),
-        QueryMsg::MinReservePrices { query_options } => to_binary(&query_min_reserve_prices(
+        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+        QueryMsg::HaltManager {} => to_json_binary(&query_halt_manager(deps)?),
+        QueryMsg::MinReservePrices { query_options } => to_json_binary(&query_min_reserve_prices(
             deps,
             query_options.unwrap_or_default(),
         )?),
         QueryMsg::Auction {
             collection,
             token_id,
-        } => to_binary(&query_auction(deps, collection, token_id)?),
+        } => to_json_binary(&query_auction(deps, collection, token_id)?),
         QueryMsg::AuctionsBySeller {
             seller,
             query_options,
-        } => to_binary(&query_auctions_by_seller(
+        } => to_json_binary(&query_auctions_by_seller(
             deps,
             seller,
             query_options.unwrap_or_default(),
@@ -37,7 +37,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
         QueryMsg::AuctionsByEndTime {
             end_time,
             query_options,
-        } => to_binary(&query_auctions_by_end_time(
+        } => to_json_binary(&query_auctions_by_end_time(
             deps,
             end_time,
             query_options.unwrap_or_default(),

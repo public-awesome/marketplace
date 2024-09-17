@@ -1,16 +1,17 @@
-use cosmwasm_std::{testing::mock_dependencies, Addr};
-
 use crate::address::{address_or, map_validate};
+
+use cosmwasm_std::{testing::mock_dependencies, Addr};
 
 #[test]
 fn try_map_validate() {
-    let deps = mock_dependencies();
+    let mut deps = mock_dependencies();
+    deps.api = deps.api.with_prefix("stars");
 
     let addresses = vec![
-        String::from("addr1"),
-        String::from("addr2"),
-        String::from("addr3"),
-        String::from("addr1"),
+        String::from("stars18c6cw8k8k5wxdd6ksmkyc2yjeceth93lczmrqz"),
+        String::from("stars15gp36gk6jvfupy8rc4segppa38lhm3helm5f8k"),
+        String::from("stars10xwvl28g90ahdu2fm66ccy3ep2cmzgk946klls"),
+        String::from("stars18c6cw8k8k5wxdd6ksmkyc2yjeceth93lczmrqz"),
     ];
 
     let result = map_validate(&deps.api, &addresses);
@@ -18,9 +19,9 @@ fn try_map_validate() {
     assert_eq!(
         result,
         Ok(vec![
-            Addr::unchecked("addr1"),
-            Addr::unchecked("addr2"),
-            Addr::unchecked("addr3"),
+            Addr::unchecked("stars10xwvl28g90ahdu2fm66ccy3ep2cmzgk946klls"),
+            Addr::unchecked("stars15gp36gk6jvfupy8rc4segppa38lhm3helm5f8k"),
+            Addr::unchecked("stars18c6cw8k8k5wxdd6ksmkyc2yjeceth93lczmrqz"),
         ])
     )
 }

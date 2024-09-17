@@ -137,7 +137,7 @@ pub fn sudo_update_params(
 
 pub fn sudo_add_operator(deps: DepsMut, operator: Addr) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
-    if !params.operators.iter().any(|o| o == &operator) {
+    if !params.operators.iter().any(|o| o == operator) {
         params.operators.push(operator.clone());
     } else {
         return Err(ContractError::OperatorAlreadyRegistered {});
@@ -151,7 +151,7 @@ pub fn sudo_add_operator(deps: DepsMut, operator: Addr) -> Result<Response, Cont
 
 pub fn sudo_remove_operator(deps: DepsMut, operator: Addr) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
-    if let Some(i) = params.operators.iter().position(|o| o == &operator) {
+    if let Some(i) = params.operators.iter().position(|o| o == operator) {
         params.operators.remove(i);
     } else {
         return Err(ContractError::OperatorNotRegistered {});

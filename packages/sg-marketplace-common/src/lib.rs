@@ -10,10 +10,12 @@
 
 pub mod address;
 pub mod coin;
+pub mod constants;
 mod errors;
 pub mod nft;
-pub mod query;
+pub mod royalties;
 pub mod sale;
 mod tests;
+mod types;
 
 pub use crate::errors::MarketplaceStdError;
