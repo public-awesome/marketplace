@@ -63,6 +63,31 @@ fn try_admin_update_config() {
         .to_string(),
     );
 
+    let invalid_update_config_msg = ExecuteMsg::UpdateConfig {
+        config: Config {
+            fee_manager: fee_manager.clone(),
+            royalty_registry: royalty_registry.clone(),
+            protocol_fee_bps,
+            max_royalty_fee_bps,
+            maker_reward_bps: 5000,
+            taker_reward_bps: 6000,
+            default_denom: NATIVE_DENOM.to_string(),
+        },
+    };
+    // None admin cannot update config
+    let response = app.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &invalid_update_config_msg,
+        &[],
+    );
+    assert_error(
+        response,
+        ContractError::InvalidInput(
+            "taker and maker reward bps must be less than 1 combined".to_string(),
+        )
+        .to_string(),
+    );
     let response = app.execute_contract(creator, marketplace.clone(), &update_config_msg, &[]);
     assert!(response.is_ok());
     let config: Config<Addr> = app

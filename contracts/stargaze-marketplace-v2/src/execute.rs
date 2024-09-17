@@ -149,8 +149,7 @@ pub fn execute_update_config(
     config: Config<Addr>,
 ) -> Result<Response, ContractError> {
     only_contract_admin(&deps.querier, &env, &info)?;
-
-    CONFIG.save(deps.storage, &config)?;
+    config.save(deps.storage)?;
 
     let response = Response::new().add_event(
         ConfigEvent {

@@ -3,7 +3,7 @@ members  = ["contracts/*", "packages/*"]
 resolver = "2"
 
 [workspace.package]
-rust-version = "1.74.0"
+rust-version = "1.81.0"
 edition      = "2021"
 homepage     = "https://stargaze.zone"
 repository   = "https://github.com/public-awesome/marketplace"

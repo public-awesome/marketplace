@@ -6,7 +6,7 @@ TITLE="Stargaze Live Auction v1.0.1"
 MARKDOWN="scripts/markdown/storeWasmCodeReserveAuctionv1.0.1.md"
 DESCRIPTION=$(cat "$MARKDOWN" | base64 | tr -d '\n')
 SOURCE="https://github.com/public-awesome/marketplace/releases/tag/stargaze_reserve_auction-v1.0.1"
-BUILDER="cosmwasm/workspace-optimizer:0.12.13"
+BUILDER="cosmwasm/workspace-optimizer:0.15.1"
 HASH="4e77dfe1830d5a33058502d19ef990773f45acfee7862ebb5355626c75bd0eb1"
 
 FROM="hot-wallet"
