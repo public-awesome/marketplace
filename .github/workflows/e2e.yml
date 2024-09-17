@@ -13,7 +13,7 @@ jobs:
     env:
       GAS_OUT_DIR: gas_reports
       ENABLE_MAX_COLLECTION: true
-      GAS_LIMIT: 75000000
+      GAS_LIMIT: 150000000
       MAINNET_GAS_LIMIT: 0
     steps:
       - name: Checkout sources
