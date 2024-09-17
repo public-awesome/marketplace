@@ -177,8 +177,8 @@ fn try_admin_update_collection_denom() {
     assert!(response.is_ok());
 
     // Accept invalid denom bid succeeds
-    mint(&mut app, &creator, &owner, &collection, &token_id);
-    approve(&mut app, &owner, &collection, &marketplace, &token_id);
+    mint(&mut app, &creator, &owner, &collection, token_id);
+    approve(&mut app, &owner, &collection, &marketplace, token_id);
     let accept_bid = ExecuteMsg::AcceptBid {
         id: bid_id,
         details: OrderDetails {

@@ -67,10 +67,7 @@ fn try_set_collection_bid() {
         bidder.clone(),
         marketplace.clone(),
         &set_collection_bid,
-        &[coin(
-            collection_bid_price.amount.u128() - 1u128,
-            JUNO_DENOM,
-        )],
+        &[coin(collection_bid_price.amount.u128() - 1u128, JUNO_DENOM)],
     );
     assert_error(
         response,

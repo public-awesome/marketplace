@@ -43,12 +43,8 @@ fn try_query_bids() {
                 finder: None,
             },
         };
-        let response = app.execute_contract(
-            bidder.clone(),
-            marketplace.clone(),
-            &set_bid,
-            &[bid_price],
-        );
+        let response =
+            app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
         assert!(response.is_ok());
 
         let bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")
@@ -95,12 +91,8 @@ fn try_query_bids_by_token_price() {
                 finder: None,
             },
         };
-        let response = app.execute_contract(
-            bidder.clone(),
-            marketplace.clone(),
-            &set_bid,
-            &[bid_price],
-        );
+        let response =
+            app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
         assert!(response.is_ok());
 
         let bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")
@@ -234,12 +226,8 @@ fn try_query_bids_by_creator() {
                 finder: None,
             },
         };
-        let response = app.execute_contract(
-            bidder.clone(),
-            marketplace.clone(),
-            &set_bid,
-            &[bid_price],
-        );
+        let response =
+            app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
         assert!(response.is_ok());
 
         let bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")

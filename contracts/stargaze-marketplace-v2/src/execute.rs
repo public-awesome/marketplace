@@ -176,7 +176,7 @@ pub fn execute_update_collection_denom(
     let response = Response::new().add_event(
         CollectionDenomEvent {
             ty: "set-collection-denom",
-            collection: &collection.to_string(),
+            collection: &collection.as_ref(),
             denom: &denom,
         }
         .into(),
