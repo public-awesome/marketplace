@@ -156,12 +156,8 @@ pub fn try_update_bid() {
                 finder: None,
             },
         };
-        let response = app.execute_contract(
-            bidder.clone(),
-            marketplace.clone(),
-            &set_bid,
-            &[bid_price],
-        );
+        let response =
+            app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
         assert!(response.is_ok());
 
         let bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")
@@ -254,9 +250,7 @@ pub fn try_remove_bid() {
         .unwrap();
 
     // Removing bid as non creator fails
-    let remove_bid = ExecuteMsg::RemoveBid {
-        id: bid_id.clone(),
-    };
+    let remove_bid = ExecuteMsg::RemoveBid { id: bid_id.clone() };
     let response = app.execute_contract(bidder2.clone(), marketplace.clone(), &remove_bid, &[]);
     assert_error(
         response,

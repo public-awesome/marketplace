@@ -11,6 +11,7 @@ use super::setup_accounts::TestAccounts;
 pub struct TestContracts {
     pub collection: Addr,
     pub marketplace: Addr,
+    #[allow(dead_code)]
     pub royalty_registry: Addr,
 }
 

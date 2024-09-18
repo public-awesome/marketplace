@@ -51,13 +51,12 @@ impl Config<Addr> {
             ContractError::InvalidInput("trade_fee_bps must be less than 1".to_string())
         );
         ensure!(
-            self.maker_reward_bps < MAX_BASIS_POINTS,
-            ContractError::InvalidInput("maker_reward_bps must be less than 1".to_string())
+            (self.maker_reward_bps + self.taker_reward_bps) < MAX_BASIS_POINTS,
+            ContractError::InvalidInput(
+                "taker and maker reward bps must be less than 1 combined".to_string()
+            )
         );
-        ensure!(
-            self.taker_reward_bps < MAX_BASIS_POINTS,
-            ContractError::InvalidInput("taker_reward_bps must be less than 1".to_string())
-        );
+
         CONFIG.save(storage, self)?;
         Ok(())
     }
