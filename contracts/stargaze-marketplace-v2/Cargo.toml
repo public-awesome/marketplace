@@ -29,7 +29,7 @@ library    = []
 
 [dependencies]
 cosmwasm-schema = "1.5.3"
-cosmwasm-std    = { version = "1.5.3" }
+cosmwasm-std    = { version = "1.5.4" }
 cw-address-like = "1.0.4"
 cw-storage-plus = "1.2.0"
 cw-utils        = "1.0.3"
