@@ -36,7 +36,7 @@ library = []
 [dependencies]
 sg-marketplace-common = { version = "= 1.1.0" }
 stargaze-fair-burn    = { version = "1.0.2", features = ["library"] }
-cosmwasm-std          = "1.5.3"
+cosmwasm-std          = "1.5.4"
 cosmwasm-schema       = "1.5.3"
 cw-storage-macro      = "0.16.0"
 cw-storage-plus       = "0.16.0"
