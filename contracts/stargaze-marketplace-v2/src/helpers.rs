@@ -5,7 +5,8 @@ use crate::{
 };
 
 use cosmwasm_std::{
-    ensure_eq, Addr, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper, Response, Storage,
+    ensure, ensure_eq, Addr, Coin, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper,
+    Response, Storage, Uint128,
 };
 use sg_marketplace_common::{
     nft::transfer_nft, royalties::fetch_or_set_royalties, sale::NftSaleProcessor,
@@ -51,19 +52,25 @@ pub fn only_contract_admin(
     Ok(())
 }
 
-pub fn only_valid_denom(
+pub fn only_valid_price(
     storage: &dyn Storage,
     config: &Config<Addr>,
     collection: &Addr,
-    denom: &str,
+    price: &Coin,
 ) -> Result<(), ContractError> {
+    ensure!(
+        price.amount > Uint128::zero(),
+        ContractError::InvalidInput("order price must be greater than 0".to_string())
+    );
+
     let query_result = COLLECTION_DENOMS.may_load(storage, collection.clone())?;
     let collection_denom = query_result.unwrap_or(config.default_denom.clone());
     ensure_eq!(
         collection_denom,
-        denom,
+        price.denom,
         ContractError::InvalidInput("invalid denom".to_string())
     );
+
     Ok(())
 }
 

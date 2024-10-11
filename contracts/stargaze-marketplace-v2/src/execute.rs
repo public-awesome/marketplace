@@ -1,7 +1,7 @@
 use crate::{
     error::ContractError,
     events::{AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent},
-    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_denom},
+    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_price},
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
@@ -199,7 +199,7 @@ pub fn execute_set_ask(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
-    only_valid_denom(deps.storage, &config, &collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &collection, &details.price)?;
 
     let ask = Ask::new(info.sender.clone(), collection, token_id, details);
 
@@ -275,7 +275,7 @@ pub fn execute_update_ask(
         )
     );
 
-    only_valid_denom(deps.storage, &config, &ask.collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &ask.collection, &details.price)?;
 
     ask.details = details;
 
@@ -417,7 +417,7 @@ pub fn execute_set_bid(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
-    only_valid_denom(deps.storage, &config, &collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &collection, &details.price)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -518,7 +518,7 @@ pub fn execute_update_bid(
         )
     );
 
-    only_valid_denom(deps.storage, &config, &bid.collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &bid.collection, &details.price)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -681,7 +681,7 @@ pub fn execute_set_collection_bid(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
-    only_valid_denom(deps.storage, &config, &collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &collection, &details.price)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -783,11 +783,11 @@ pub fn execute_update_collection_bid(
         )
     );
 
-    only_valid_denom(
+    only_valid_price(
         deps.storage,
         &config,
         &collection_bid.collection,
-        &details.price.denom,
+        &details.price,
     )?;
 
     let mut funds = NativeBalance(info.funds.clone());
