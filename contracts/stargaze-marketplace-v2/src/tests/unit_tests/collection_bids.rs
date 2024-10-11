@@ -88,11 +88,11 @@ fn try_set_collection_bid() {
         bidder.clone(),
         marketplace.clone(),
         &set_collection_bid,
-        &[collection_bid_price],
+        &[coin(1, NATIVE_DENOM)],
     );
     assert_error(
         response,
-        ContractError::InvalidInput("invalid denom".to_string()).to_string(),
+        ContractError::InvalidInput("order price must be greater than 0".to_string()).to_string(),
     );
 
     // Create collection_bid succeeds, even when overpaid

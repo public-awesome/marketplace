@@ -86,8 +86,12 @@ fn try_set_bid() {
             finder: None,
         },
     };
-    let response =
-        app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[bid_price]);
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid,
+        &[coin(1, NATIVE_DENOM)],
+    );
     assert_error(
         response,
         ContractError::InvalidInput("order price must be greater than 0".to_string()).to_string(),
