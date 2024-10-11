@@ -82,6 +82,23 @@ fn try_set_ask() {
         ContractError::InvalidInput("invalid denom".to_string()).to_string(),
     );
 
+    // Create ask with invalid price fails
+    approve(&mut app, &owner, &collection, &marketplace, &token_ids[0]);
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_ids[0].clone(),
+        details: OrderDetails {
+            price: coin(0, NATIVE_DENOM),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    assert_error(
+        response,
+        ContractError::InvalidInput("order price must be greater than 0".to_string()).to_string(),
+    );
+
     // Create ask succeeds
     let recipient = Addr::unchecked("recipient".to_string());
     let finder = Addr::unchecked("finder".to_string());
