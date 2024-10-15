@@ -4,7 +4,7 @@ use crate::{
     tests::setup::setup_contracts::{LISTING_FEE, NATIVE_DENOM},
 };
 
-use cosmwasm_std::{coin, Addr, Coin, Empty};
+use cosmwasm_std::{coin, Addr, Empty};
 use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 use cw_multi_test::{App, Executor};
 
