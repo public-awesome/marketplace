@@ -4,7 +4,7 @@ use crate::{
 };
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Coin};
 use sg_index_query::QueryOptions;
 
 #[cw_serde]
@@ -21,6 +21,12 @@ pub enum ExecuteMsg {
     },
     UpdateCollectionDenom {
         collection: String,
+        denom: Denom,
+    },
+    SetListingFee {
+        fee: Coin,
+    },
+    RemoveListingFee {
         denom: Denom,
     },
     // Marketplace messages

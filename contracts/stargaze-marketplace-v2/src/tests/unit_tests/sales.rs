@@ -9,7 +9,7 @@ use crate::{
         },
         setup::{
             setup_accounts::{setup_additional_account, TestAccounts},
-            setup_contracts::NATIVE_DENOM,
+            setup_contracts::{LISTING_FEE, NATIVE_DENOM},
             templates::{test_context, TestContext, TestContracts},
         },
     },
@@ -100,7 +100,12 @@ fn try_set_ask_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
 
     let owner_balances_after = NativeBalance(app.wrap().query_all_balances(owner.clone()).unwrap());
@@ -113,7 +118,10 @@ fn try_set_ask_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -166,7 +174,12 @@ fn try_accept_ask_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
     let ask_id = find_attrs(response.unwrap(), "wasm-set-ask", "id")
         .pop()
@@ -199,7 +212,10 @@ fn try_accept_ask_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -252,7 +268,12 @@ fn try_set_bid_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
 
     // Create bid that matches ask
@@ -280,7 +301,10 @@ fn try_set_bid_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -419,7 +443,12 @@ fn try_set_collection_bid_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
 
     // Create bid that matches ask
@@ -446,7 +475,10 @@ fn try_set_collection_bid_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -520,7 +552,12 @@ fn try_accept_collection_bid_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
 
     let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
@@ -550,7 +587,10 @@ fn try_accept_collection_bid_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -604,7 +644,12 @@ fn try_sale_fee_breakdown() {
             finder: Some(maker.to_string()),
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
     let ask_id = find_attrs(response.unwrap(), "wasm-set-ask", "id")
         .pop()
@@ -658,7 +703,10 @@ fn try_sale_fee_breakdown() {
     let protocol_reward_coin = coin(protocol_reward_final.u128(), NATIVE_DENOM);
     assert_eq!(
         fee_manager_balances_after,
-        NativeBalance(vec![protocol_reward_coin.clone()])
+        NativeBalance(vec![coin(
+            protocol_reward_coin.amount.u128() + LISTING_FEE,
+            NATIVE_DENOM
+        )])
     );
     let protocol_reward_event = find_attrs(app_response.clone(), "wasm-finalize-sale", "protocol")
         .pop()

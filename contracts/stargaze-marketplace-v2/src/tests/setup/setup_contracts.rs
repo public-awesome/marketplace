@@ -1,7 +1,10 @@
-use crate::ContractError;
-use crate::{msg::InstantiateMsg, state::Config};
+use crate::{
+    msg::{ExecuteMsg, InstantiateMsg},
+    state::Config,
+    ContractError,
+};
 
-use cosmwasm_std::{Addr, Decimal, Empty};
+use cosmwasm_std::{Addr, Coin, Decimal, Empty, Uint128};
 use cw721_base::InstantiateMsg as Cw721InstantiateMsg;
 use cw_multi_test::{App, Contract, ContractWrapper, Executor};
 use stargaze_royalty_registry::msg::InstantiateMsg as RoyaltyRegistryInstantiateMsg;
@@ -10,6 +13,7 @@ use stargaze_royalty_registry::state::Config as RoyaltyRegistryConfig;
 pub const NATIVE_DENOM: &str = "ustars";
 pub const ATOM_DENOM: &str = "uatom";
 pub const JUNO_DENOM: &str = "ujuno";
+pub const LISTING_FEE: u128 = 1000000u128;
 
 pub fn contract_cw721() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -106,5 +110,32 @@ pub fn setup_marketplace(
             Some(marketplace_admin.to_string()),
         )
         .unwrap();
+
+    app.execute_contract(
+        marketplace_admin.clone(),
+        marketplace.clone(),
+        &ExecuteMsg::SetListingFee {
+            fee: Coin {
+                denom: NATIVE_DENOM.to_string(),
+                amount: Uint128::from(LISTING_FEE),
+            },
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        marketplace_admin.clone(),
+        marketplace.clone(),
+        &ExecuteMsg::SetListingFee {
+            fee: Coin {
+                denom: ATOM_DENOM.to_string(),
+                amount: Uint128::from(LISTING_FEE),
+            },
+        },
+        &[],
+    )
+    .unwrap();
+
     Ok(marketplace)
 }

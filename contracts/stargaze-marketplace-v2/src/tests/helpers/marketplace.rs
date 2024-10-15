@@ -1,6 +1,10 @@
-use crate::{msg::ExecuteMsg, orders::OrderDetails};
+use crate::{
+    msg::ExecuteMsg,
+    orders::OrderDetails,
+    tests::setup::setup_contracts::{LISTING_FEE, NATIVE_DENOM},
+};
 
-use cosmwasm_std::{Addr, Coin, Empty};
+use cosmwasm_std::{coin, Addr, Coin, Empty};
 use cw721_base::msg::ExecuteMsg as Cw721ExecuteMsg;
 use cw_multi_test::{App, Executor};
 
@@ -33,7 +37,6 @@ pub fn mint_and_set_ask(
     marketplace: &Addr,
     collection: &Addr,
     token_id: &str,
-    send_funds: &[Coin],
     details: OrderDetails<String>,
 ) {
     mint(app, creator, owner, collection, token_id);
@@ -45,7 +48,12 @@ pub fn mint_and_set_ask(
         details,
     };
 
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, send_funds);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
 
     assert!(response.is_ok());
 }
