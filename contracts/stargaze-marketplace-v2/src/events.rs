@@ -3,7 +3,7 @@ use crate::{
     state::Config,
 };
 
-use cosmwasm_std::{attr, Addr, Event};
+use cosmwasm_std::{attr, Addr, Event, Uint128};
 use std::vec;
 
 pub struct ConfigEvent<'a> {
@@ -40,6 +40,23 @@ impl<'a> From<CollectionDenomEvent<'a>> for Event {
             attr("collection", cde.collection.to_string()),
             attr("denom", cde.denom.to_string()),
         ])
+    }
+}
+
+pub struct ListingFeeEvent<'a> {
+    pub ty: &'a str,
+    pub denom: &'a str,
+    pub amount: &'a Option<Uint128>,
+}
+
+impl<'a> From<ListingFeeEvent<'a>> for Event {
+    fn from(lfe: ListingFeeEvent) -> Self {
+        let mut event = Event::new(lfe.ty.to_string());
+        event = event.add_attribute("denom", lfe.denom.to_string());
+        if let Some(amount) = lfe.amount {
+            event = event.add_attribute("fee", amount.to_string());
+        }
+        event
     }
 }
 

@@ -39,7 +39,6 @@ fn try_query_asks_by_collection() {
             &marketplace,
             &collection,
             &token_id.to_string(),
-            &[],
             OrderDetails {
                 price,
                 recipient: None,
@@ -129,7 +128,6 @@ fn try_query_asks_by_creator() {
             &marketplace,
             &collection,
             &token_id.to_string(),
-            &[],
             OrderDetails {
                 price,
                 recipient: None,

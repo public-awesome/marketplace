@@ -4,7 +4,7 @@ use crate::ContractError;
 use crate::{constants::MAX_BASIS_POINTS, orders::Ask};
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{ensure, Addr, Api, Storage};
+use cosmwasm_std::{ensure, Addr, Api, Storage, Uint128};
 use cw_address_like::AddressLike;
 use cw_storage_plus::{Index, IndexList, IndexedMap, Item, Map, MultiIndex};
 
@@ -65,6 +65,8 @@ impl Config<Addr> {
 pub const CONFIG: Item<Config<Addr>> = Item::new("C");
 
 pub const COLLECTION_DENOMS: Map<Addr, Denom> = Map::new("D");
+
+pub const LISTING_FEES: Map<Denom, Uint128> = Map::new("L");
 
 pub const NONCE: Item<u64> = Item::new("N");
 
