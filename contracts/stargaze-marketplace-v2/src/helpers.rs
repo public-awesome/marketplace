@@ -4,6 +4,7 @@ use crate::{
     ContractError,
 };
 
+use blake2::{Blake2b512, Digest};
 use cosmwasm_std::{
     ensure, ensure_eq, Addr, Coin, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper,
     Response, Storage, Uint128,
@@ -12,7 +13,6 @@ use sg_marketplace_common::{
     nft::transfer_nft, royalties::fetch_or_set_royalties, sale::NftSaleProcessor,
     MarketplaceStdError,
 };
-use sha3::{Digest, Keccak256};
 use std::{cmp::min, ops::Sub};
 
 pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) -> String {
@@ -21,7 +21,7 @@ pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) ->
 }
 
 pub fn generate_id(components: Vec<&[u8]>) -> String {
-    let mut hasher = Keccak256::new();
+    let mut hasher = Blake2b512::new();
     for component in components {
         hasher.update(component);
     }

@@ -28,6 +28,7 @@ backtraces = ["cosmwasm-std/backtraces"]
 library    = []
 
 [dependencies]
+blake2          = "0.10.6"
 cosmwasm-schema = "1.5.3"
 cosmwasm-std    = { version = "1.5.4" }
 cw-address-like = "1.0.4"
@@ -42,7 +43,6 @@ sg-index-query        = "0.1.1"
 serde     = "1.0.196"
 semver    = "1.0.21"
 thiserror = "1.0.56"
-sha3      = "0.10"
 
 [dev-dependencies]
 cw-multi-test = "0.20.0"
