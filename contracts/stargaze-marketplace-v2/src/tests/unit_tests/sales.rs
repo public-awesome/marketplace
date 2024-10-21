@@ -5,14 +5,15 @@ use crate::{
     tests::{
         helpers::{
             marketplace::{approve, mint},
-            utils::find_attrs,
+            utils::{assert_error, find_attrs},
         },
         setup::{
             setup_accounts::{setup_additional_account, TestAccounts},
-            setup_contracts::NATIVE_DENOM,
+            setup_contracts::{ATOM_DENOM, LISTING_FEE, NATIVE_DENOM},
             templates::{test_context, TestContext, TestContracts},
         },
     },
+    ContractError,
 };
 
 use cosmwasm_std::{coin, Addr, Decimal};
@@ -100,7 +101,12 @@ fn try_set_ask_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
 
     let owner_balances_after = NativeBalance(app.wrap().query_all_balances(owner.clone()).unwrap());
@@ -113,7 +119,10 @@ fn try_set_ask_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -166,7 +175,12 @@ fn try_accept_ask_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
     let ask_id = find_attrs(response.unwrap(), "wasm-set-ask", "id")
         .pop()
@@ -199,7 +213,10 @@ fn try_accept_ask_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -252,7 +269,12 @@ fn try_set_bid_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
 
     // Create bid that matches ask
@@ -280,7 +302,10 @@ fn try_set_bid_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -419,7 +444,12 @@ fn try_set_collection_bid_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
 
     // Create bid that matches ask
@@ -446,7 +476,10 @@ fn try_set_collection_bid_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -520,7 +553,12 @@ fn try_accept_collection_bid_sale() {
             finder: None,
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
 
     let accept_collection_bid = ExecuteMsg::AcceptCollectionBid {
@@ -550,7 +588,10 @@ fn try_accept_collection_bid_sale() {
     let seller_amount = sale_coin.amount.sub(fair_burn_amount);
 
     assert_eq!(
-        owner_balances_before.add(coin(seller_amount.u128(), NATIVE_DENOM)),
+        owner_balances_before
+            .sub(coin(LISTING_FEE, NATIVE_DENOM))
+            .unwrap()
+            .add(coin(seller_amount.u128(), NATIVE_DENOM)),
         owner_balances_after
     );
     assert_eq!(
@@ -604,7 +645,12 @@ fn try_sale_fee_breakdown() {
             finder: Some(maker.to_string()),
         },
     };
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
     let ask_id = find_attrs(response.unwrap(), "wasm-set-ask", "id")
         .pop()
@@ -658,7 +704,10 @@ fn try_sale_fee_breakdown() {
     let protocol_reward_coin = coin(protocol_reward_final.u128(), NATIVE_DENOM);
     assert_eq!(
         fee_manager_balances_after,
-        NativeBalance(vec![protocol_reward_coin.clone()])
+        NativeBalance(vec![coin(
+            protocol_reward_coin.amount.u128() + LISTING_FEE,
+            NATIVE_DENOM
+        )])
     );
     let protocol_reward_event = find_attrs(app_response.clone(), "wasm-finalize-sale", "protocol")
         .pop()
@@ -705,5 +754,94 @@ fn try_sale_fee_breakdown() {
     assert_eq!(
         bidder_balances_before.sub(sale_coin.clone()).unwrap(),
         bidder_balances_after
+    );
+}
+
+#[test]
+fn try_accept_ask_invalid_inputs() {
+    let TestContext {
+        mut app,
+        contracts:
+            TestContracts {
+                marketplace,
+                collection,
+                ..
+            },
+        accounts:
+            TestAccounts {
+                creator,
+                owner,
+                bidder,
+                ..
+            },
+    } = test_context();
+
+    // Create ask with no matching bid
+    let token_id = "1";
+    mint(&mut app, &creator, &owner, &collection, token_id);
+    approve(&mut app, &owner, &collection, &marketplace, token_id);
+    let ask_price = coin(5_000_000, NATIVE_DENOM);
+
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: ask_price.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
+    assert!(response.is_ok());
+    let ask_id = find_attrs(response.unwrap(), "wasm-set-ask", "id")
+        .pop()
+        .unwrap();
+
+    // Accept ask directly
+    let accept_ask = ExecuteMsg::AcceptAsk {
+        id: ask_id.clone(),
+        details: OrderDetails {
+            price: ask_price.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+
+    let buy_price = coin(5_000_000, ATOM_DENOM);
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &accept_ask,
+        &[buy_price],
+    );
+    assert!(response.is_err());
+
+    assert_error(response, ContractError::InsufficientFunds.to_string());
+
+    let buy_price = coin(4_000_000, ATOM_DENOM);
+    let accept_ask = ExecuteMsg::AcceptAsk {
+        id: ask_id,
+        details: OrderDetails {
+            price: buy_price.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &accept_ask,
+        &[buy_price],
+    );
+    assert!(response.is_err());
+
+    assert_error(
+        response,
+        ContractError::InvalidInput("ask price is greater than max input".to_string()).to_string(),
     );
 }

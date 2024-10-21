@@ -75,6 +75,28 @@ fn try_set_bid() {
         ContractError::InvalidInput("invalid denom".to_string()).to_string(),
     );
 
+    // Create bid with invalid price fails
+    let bid_price = coin(0, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid,
+        &[coin(1, NATIVE_DENOM)],
+    );
+    assert_error(
+        response,
+        ContractError::InvalidInput("order price must be greater than 0".to_string()).to_string(),
+    );
+
     // Create bid succeeds, even when overpaid
     let recipient = Addr::unchecked("recipient".to_string());
     let finder = Addr::unchecked("finder".to_string());

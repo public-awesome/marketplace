@@ -1,23 +1,25 @@
-use crate::{
-    error::ContractError,
-    events::{AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent},
-    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_denom},
-    msg::ExecuteMsg,
-    orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
-    state::{
-        asks, bids, collection_bids, Config, Denom, OrderId, TokenId, COLLECTION_DENOMS, CONFIG,
-        NONCE,
-    },
-};
-
-use cosmwasm_std::{ensure, ensure_eq, has_coins, Addr, DepsMut, Env, MessageInfo, Response};
-use cw_utils::{nonpayable, NativeBalance};
+use cosmwasm_std::{ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, MessageInfo, Response};
+use cw_utils::{nonpayable, one_coin, NativeBalance};
 use sg_marketplace_common::{
     coin::{transfer_coin, transfer_coins},
     nft::{only_owner, only_tradable, transfer_nft},
     MarketplaceStdError,
 };
 use std::ops::{Add, Sub};
+
+use crate::{
+    error::ContractError,
+    events::{
+        AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent, ListingFeeEvent,
+    },
+    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_price},
+    msg::ExecuteMsg,
+    orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
+    state::{
+        asks, bids, collection_bids, Config, Denom, OrderId, TokenId, COLLECTION_DENOMS, CONFIG,
+        LISTING_FEES, NONCE,
+    },
+};
 
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -37,6 +39,10 @@ pub fn execute(
         }
         ExecuteMsg::UpdateCollectionDenom { collection, denom } => {
             execute_update_collection_denom(deps, env, info, api.addr_validate(&collection)?, denom)
+        }
+        ExecuteMsg::SetListingFee { fee } => execute_set_listing_fee(deps, env, info, fee),
+        ExecuteMsg::RemoveListingFee { denom } => {
+            execute_remove_listing_fee(deps, env, info, denom)
         }
         ExecuteMsg::SetAsk {
             collection,
@@ -185,6 +191,50 @@ pub fn execute_update_collection_denom(
     Ok(response)
 }
 
+pub fn execute_set_listing_fee(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    fee: Coin,
+) -> Result<Response, ContractError> {
+    only_contract_admin(&deps.querier, &env, &info)?;
+
+    LISTING_FEES.save(deps.storage, fee.denom.clone(), &fee.amount)?;
+
+    let response = Response::new().add_event(
+        ListingFeeEvent {
+            ty: "set-listing-fee",
+            denom: &fee.denom,
+            amount: &Some(fee.amount),
+        }
+        .into(),
+    );
+
+    Ok(response)
+}
+
+pub fn execute_remove_listing_fee(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    denom: Denom,
+) -> Result<Response, ContractError> {
+    only_contract_admin(&deps.querier, &env, &info)?;
+
+    LISTING_FEES.remove(deps.storage, denom.clone());
+
+    let response = Response::new().add_event(
+        ListingFeeEvent {
+            ty: "remove-listing-fee",
+            denom: &denom,
+            amount: &None,
+        }
+        .into(),
+    );
+
+    Ok(response)
+}
+
 pub fn execute_set_ask(
     deps: DepsMut,
     env: Env,
@@ -194,16 +244,31 @@ pub fn execute_set_ask(
     details: OrderDetails<Addr>,
     sell_now: bool,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
     only_owner(&deps.querier, &info, &collection, &token_id)?;
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
-    only_valid_denom(deps.storage, &config, &collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &collection, &details.price)?;
+
+    // Check and collect listing fee
+    let listing_payment = one_coin(&info)?;
+    let listing_fee = LISTING_FEES.may_load(deps.storage, listing_payment.denom.clone())?;
+    if let Some(_listing_fee) = listing_fee {
+        ensure_eq!(
+            listing_payment.amount,
+            _listing_fee,
+            ContractError::InvalidInput("payment amount does not match listing fee".to_string())
+        );
+    } else {
+        Err(ContractError::InvalidInput(format!(
+            "listing fee for {} not found",
+            listing_payment.denom
+        )))?;
+    }
+
+    let mut response = transfer_coin(listing_payment, &config.fee_manager, Response::new());
 
     let ask = Ask::new(info.sender.clone(), collection, token_id, details);
-
-    let mut response = Response::new();
 
     let match_result = ask.match_with_bid(deps.as_ref())?;
 
@@ -275,7 +340,7 @@ pub fn execute_update_ask(
         )
     );
 
-    only_valid_denom(deps.storage, &config, &ask.collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &ask.collection, &details.price)?;
 
     ask.details = details;
 
@@ -417,7 +482,7 @@ pub fn execute_set_bid(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
-    only_valid_denom(deps.storage, &config, &collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &collection, &details.price)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -518,7 +583,7 @@ pub fn execute_update_bid(
         )
     );
 
-    only_valid_denom(deps.storage, &config, &bid.collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &bid.collection, &details.price)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -565,6 +630,7 @@ pub fn execute_update_bid(
                     "collection",
                     "token_id",
                     "price",
+                    "creator",
                     "recipient",
                     "finder",
                 ],
@@ -681,7 +747,7 @@ pub fn execute_set_collection_bid(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
-    only_valid_denom(deps.storage, &config, &collection, &details.price.denom)?;
+    only_valid_price(deps.storage, &config, &collection, &details.price)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -783,11 +849,11 @@ pub fn execute_update_collection_bid(
         )
     );
 
-    only_valid_denom(
+    only_valid_price(
         deps.storage,
         &config,
         &collection_bid.collection,
-        &details.price.denom,
+        &details.price,
     )?;
 
     let mut funds = NativeBalance(info.funds.clone());
@@ -830,7 +896,14 @@ pub fn execute_update_collection_bid(
             CollectionBidEvent {
                 ty: "update-collection-bid",
                 collection_bid: &collection_bid,
-                attr_keys: vec!["id", "collection", "price", "recipient", "finder"],
+                attr_keys: vec![
+                    "id",
+                    "collection",
+                    "price",
+                    "creator",
+                    "recipient",
+                    "finder",
+                ],
             }
             .into(),
         );

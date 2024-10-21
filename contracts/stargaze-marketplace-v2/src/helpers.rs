@@ -4,14 +4,15 @@ use crate::{
     ContractError,
 };
 
+use blake2::{Blake2b512, Digest};
 use cosmwasm_std::{
-    ensure_eq, Addr, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper, Response, Storage,
+    ensure, ensure_eq, Addr, Coin, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper,
+    Response, Storage, Uint128,
 };
 use sg_marketplace_common::{
     nft::transfer_nft, royalties::fetch_or_set_royalties, sale::NftSaleProcessor,
     MarketplaceStdError,
 };
-use sha3::{Digest, Keccak256};
 use std::{cmp::min, ops::Sub};
 
 pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) -> String {
@@ -20,7 +21,7 @@ pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) ->
 }
 
 pub fn generate_id(components: Vec<&[u8]>) -> String {
-    let mut hasher = Keccak256::new();
+    let mut hasher = Blake2b512::new();
     for component in components {
         hasher.update(component);
     }
@@ -51,19 +52,25 @@ pub fn only_contract_admin(
     Ok(())
 }
 
-pub fn only_valid_denom(
+pub fn only_valid_price(
     storage: &dyn Storage,
     config: &Config<Addr>,
     collection: &Addr,
-    denom: &str,
+    price: &Coin,
 ) -> Result<(), ContractError> {
+    ensure!(
+        price.amount > Uint128::zero(),
+        ContractError::InvalidInput("order price must be greater than 0".to_string())
+    );
+
     let query_result = COLLECTION_DENOMS.may_load(storage, collection.clone())?;
     let collection_denom = query_result.unwrap_or(config.default_denom.clone());
     ensure_eq!(
         collection_denom,
-        denom,
+        price.denom,
         ContractError::InvalidInput("invalid denom".to_string())
     );
+
     Ok(())
 }
 

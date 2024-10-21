@@ -9,15 +9,14 @@ use crate::{
         },
         setup::{
             setup_accounts::{setup_additional_account, TestAccounts},
-            setup_contracts::{JUNO_DENOM, NATIVE_DENOM},
+            setup_contracts::{JUNO_DENOM, LISTING_FEE, NATIVE_DENOM},
             templates::{test_context, TestContext, TestContracts},
         },
     },
     ContractError,
 };
 
-use cosmwasm_std::coin;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{coin, Addr};
 use cw_multi_test::Executor;
 use sg_marketplace_common::MarketplaceStdError;
 
@@ -82,7 +81,24 @@ fn try_set_ask() {
         ContractError::InvalidInput("invalid denom".to_string()).to_string(),
     );
 
-    // Create ask succeeds
+    // Create ask with invalid price fails
+    approve(&mut app, &owner, &collection, &marketplace, &token_ids[0]);
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_ids[0].clone(),
+        details: OrderDetails {
+            price: coin(0, NATIVE_DENOM),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    assert_error(
+        response,
+        ContractError::InvalidInput("order price must be greater than 0".to_string()).to_string(),
+    );
+
+    // Create ask without paying listing fee fails
     let recipient = Addr::unchecked("recipient".to_string());
     let finder = Addr::unchecked("finder".to_string());
     let price = coin(1_000_000, NATIVE_DENOM);
@@ -96,6 +112,76 @@ fn try_set_ask() {
         },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
+    assert_error(response, "No funds sent".to_string());
+
+    // Create ask with invalid listing fee denom fails
+    let recipient = Addr::unchecked("recipient".to_string());
+    let finder = Addr::unchecked("finder".to_string());
+    let price = coin(1_000_000, NATIVE_DENOM);
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_ids[0].clone(),
+        details: OrderDetails {
+            price: price.clone(),
+            recipient: Some(recipient.to_string()),
+            finder: Some(finder.to_string()),
+        },
+    };
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, JUNO_DENOM)],
+    );
+    assert_error(
+        response,
+        ContractError::InvalidInput("listing fee for ujuno not found".to_string()).to_string(),
+    );
+
+    // Create ask with invalid listing fee amount fails
+    let recipient = Addr::unchecked("recipient".to_string());
+    let finder = Addr::unchecked("finder".to_string());
+    let price = coin(1_000_000, NATIVE_DENOM);
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_ids[0].clone(),
+        details: OrderDetails {
+            price: price.clone(),
+            recipient: Some(recipient.to_string()),
+            finder: Some(finder.to_string()),
+        },
+    };
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE + 1u128, NATIVE_DENOM)],
+    );
+    assert_error(
+        response,
+        ContractError::InvalidInput("payment amount does not match listing fee".to_string())
+            .to_string(),
+    );
+
+    // Create ask succeeds
+    let recipient = Addr::unchecked("recipient".to_string());
+    let finder = Addr::unchecked("finder".to_string());
+    let price = coin(1_000_000, NATIVE_DENOM);
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_ids[0].clone(),
+        details: OrderDetails {
+            price: price.clone(),
+            recipient: Some(recipient.to_string()),
+            finder: Some(finder.to_string()),
+        },
+    };
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
     assert!(response.is_ok());
 
     let ask_id = generate_id(vec![collection.as_bytes(), token_ids[0].as_bytes()]);
@@ -148,7 +234,6 @@ pub fn try_update_ask() {
             &marketplace,
             &collection,
             &token_id,
-            &[],
             OrderDetails {
                 price: coin(1000000 + idx as u128, NATIVE_DENOM),
                 recipient: Some(recipient.to_string()),
@@ -231,7 +316,6 @@ pub fn try_remove_ask() {
             &marketplace,
             &collection,
             &token_id,
-            &[],
             OrderDetails {
                 price: coin(1000000 + idx as u128, NATIVE_DENOM),
                 recipient: None,
