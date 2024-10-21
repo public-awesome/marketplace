@@ -630,6 +630,7 @@ pub fn execute_update_bid(
                     "collection",
                     "token_id",
                     "price",
+                    "creator",
                     "recipient",
                     "finder",
                 ],
@@ -895,7 +896,14 @@ pub fn execute_update_collection_bid(
             CollectionBidEvent {
                 ty: "update-collection-bid",
                 collection_bid: &collection_bid,
-                attr_keys: vec!["id", "collection", "price", "recipient", "finder"],
+                attr_keys: vec![
+                    "id",
+                    "collection",
+                    "price",
+                    "creator",
+                    "recipient",
+                    "finder",
+                ],
             }
             .into(),
         );
