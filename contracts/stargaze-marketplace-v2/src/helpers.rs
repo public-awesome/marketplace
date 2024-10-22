@@ -4,7 +4,7 @@ use crate::{
     ContractError,
 };
 
-use blake2::{Blake2b512, Digest};
+use blake2::{Blake2s256, Digest};
 use cosmwasm_std::{
     ensure, ensure_eq, Addr, Coin, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper,
     Response, Storage, Uint128,
@@ -21,7 +21,7 @@ pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) ->
 }
 
 pub fn generate_id(components: Vec<&[u8]>) -> String {
-    let mut hasher = Blake2b512::new();
+    let mut hasher = Blake2s256::new();
     for component in components {
         hasher.update(component);
     }
