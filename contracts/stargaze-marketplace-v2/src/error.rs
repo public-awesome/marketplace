@@ -17,14 +17,14 @@ pub enum ContractError {
     #[error("{0}")]
     MarketplaceStdError(#[from] MarketplaceStdError),
 
-    #[error("No match found")]
+    #[error("NoMatchFound")]
     NoMatchFound,
 
     #[error("InvalidInput: {0}")]
     InvalidInput(String),
 
-    #[error("InsufficientFunds")]
-    InsufficientFunds,
+    #[error("InsufficientFunds: {0}")]
+    InsufficientFunds(String),
 
     #[error("InternalError: {0}")]
     InternalError(String),

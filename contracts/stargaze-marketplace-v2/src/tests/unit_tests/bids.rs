@@ -43,6 +43,7 @@ fn try_set_bid() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -51,7 +52,10 @@ fn try_set_bid() {
         &set_bid,
         &[coin(bid_price.amount.u128() - 1u128, NATIVE_DENOM)],
     );
-    assert_error(response, ContractError::InsufficientFunds.to_string());
+    assert_error(
+        response,
+        ContractError::InsufficientFunds("bid price".to_string()).to_string(),
+    );
 
     // Create bid with invalid denom fails
     let bid_price = coin(1_000_000, JUNO_DENOM);
@@ -62,6 +66,7 @@ fn try_set_bid() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -84,6 +89,7 @@ fn try_set_bid() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -108,6 +114,7 @@ fn try_set_bid() {
             price: bid_price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let bidder_native_balances_before =
@@ -176,6 +183,7 @@ pub fn try_update_bid() {
                 price: bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response =
@@ -195,6 +203,7 @@ pub fn try_update_bid() {
             price: coin(1000000u128, NATIVE_DENOM),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &update_bid, &[]);
@@ -214,6 +223,7 @@ pub fn try_update_bid() {
             price: new_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
 
@@ -262,6 +272,7 @@ pub fn try_remove_bid() {
                 price: price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         },
         &[price],

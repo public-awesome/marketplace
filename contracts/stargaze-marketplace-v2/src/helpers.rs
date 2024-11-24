@@ -1,6 +1,6 @@
 use crate::{
-    orders::{Ask, MatchingBid},
-    state::{Config, TokenId, COLLECTION_DENOMS},
+    orders::{Ask, Expiry, MatchingBid},
+    state::{Config, TokenId, COLLECTION_DENOMS, MIN_EXPIRY_FEES},
     ContractError,
 };
 
@@ -10,8 +10,8 @@ use cosmwasm_std::{
     Response, Storage, Uint128,
 };
 use sg_marketplace_common::{
-    nft::transfer_nft, royalties::fetch_or_set_royalties, sale::NftSaleProcessor,
-    MarketplaceStdError,
+    coin::transfer_coin, nft::transfer_nft, royalties::fetch_or_set_royalties,
+    sale::NftSaleProcessor, MarketplaceStdError,
 };
 use std::{cmp::min, ops::Sub};
 
@@ -72,6 +72,35 @@ pub fn only_valid_price(
     );
 
     Ok(())
+}
+
+pub fn validate_expiry(
+    storage: &dyn Storage,
+    expiry: Option<&Expiry>,
+) -> Result<Option<Coin>, ContractError> {
+    if expiry.is_none() {
+        return Ok(None);
+    }
+
+    let reward = expiry.unwrap().reward.clone();
+
+    let min_expiry_fee = MIN_EXPIRY_FEES
+        .load(storage, reward.denom.clone())
+        .map_err(|_| {
+            ContractError::InvalidInput(format!(
+                "min expiry fee not found for denom {}",
+                reward.denom
+            ))
+        })?;
+
+    ensure!(
+        reward.amount >= min_expiry_fee,
+        ContractError::InvalidInput(format!(
+            "expiry reward must be greater than or equal to min expiry fee"
+        ))
+    );
+
+    Ok(Some(reward))
 }
 
 #[derive(Debug)]
@@ -186,14 +215,31 @@ pub fn finalize_sale(
     // Transfer NFT to buyer
     response = transfer_nft(&ask.collection, &ask.token_id, &nft_recipient, response);
 
-    // Remove orders
+    // Remove ask
     ask.remove(deps.storage)?;
+
+    // Remove bid
     match &matching_bid {
         MatchingBid::Bid(bid) => {
             bid.remove(deps.storage)?;
         }
         MatchingBid::CollectionBid(collection_bid) => {
             collection_bid.remove(deps.storage)?;
+        }
+    }
+
+    // Refund existing order expiry reward
+    if ask_before_bid {
+        if let Some(reward) = ask.details.expiry_reward() {
+            response = transfer_coin(reward.clone(), &seller_recipient, response);
+        }
+    } else {
+        let reward = match &matching_bid {
+            MatchingBid::Bid(bid) => bid.details.expiry_reward(),
+            MatchingBid::CollectionBid(collection_bid) => collection_bid.details.expiry_reward(),
+        };
+        if let Some(reward) = reward {
+            response = transfer_coin(reward.clone(), &nft_recipient, response);
         }
     }
 

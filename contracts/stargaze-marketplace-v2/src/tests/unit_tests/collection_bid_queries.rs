@@ -42,6 +42,7 @@ fn try_query_collection_bids_by_collection() {
                 price: collection_bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response = app.execute_contract(
@@ -95,6 +96,7 @@ fn try_query_collection_bids_by_token_price() {
                 price: collection_bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response = app.execute_contract(
@@ -207,6 +209,7 @@ fn try_query_collection_bids_by_creator() {
                 price: collection_bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response = app.execute_contract(

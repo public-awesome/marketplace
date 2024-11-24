@@ -9,17 +9,26 @@ use crate::{
 };
 
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{attr, has_coins, Addr, Api, Attribute, Coin, Deps, StdResult, Storage};
+use cosmwasm_std::{
+    attr, has_coins, Addr, Api, Attribute, Coin, Deps, StdResult, Storage, Timestamp,
+};
 use cw_address_like::AddressLike;
 use cw_utils::maybe_addr;
 use sg_index_query::{QueryBound, QueryOptions};
 use sg_marketplace_common::address::address_or;
 
 #[cw_serde]
+pub struct Expiry {
+    pub timestamp: Timestamp,
+    pub reward: Coin,
+}
+
+#[cw_serde]
 pub struct OrderDetails<T: AddressLike> {
     pub price: Coin,
     pub recipient: Option<T>,
     pub finder: Option<T>,
+    pub expiry: Option<Expiry>,
 }
 
 impl OrderDetails<String> {
@@ -28,7 +37,14 @@ impl OrderDetails<String> {
             price: self.price,
             recipient: maybe_addr(api, self.recipient)?,
             finder: maybe_addr(api, self.finder)?,
+            expiry: self.expiry,
         })
+    }
+}
+
+impl OrderDetails<Addr> {
+    pub fn expiry_reward(&self) -> Option<&Coin> {
+        self.expiry.as_ref().and_then(|e| Some(&e.reward))
     }
 }
 
@@ -145,6 +161,16 @@ impl Ask {
                     .finder
                     .as_ref()
                     .map(|finder| attr("finder", finder.to_string())),
+                "expiry_timestamp" => self
+                    .details
+                    .expiry
+                    .as_ref()
+                    .map(|expiry| attr("expiry_timestamp", expiry.timestamp.to_string())),
+                "expiry_reward" => self
+                    .details
+                    .expiry
+                    .as_ref()
+                    .map(|expiry| attr("expiry_reward", expiry.reward.to_string())),
                 &_ => {
                     unreachable!("Invalid attr_key: {}", attr_key)
                 }
@@ -236,6 +262,16 @@ impl Bid {
                     .finder
                     .as_ref()
                     .map(|finder| attr("finder", finder.to_string())),
+                "expiry_timestamp" => self
+                    .details
+                    .expiry
+                    .as_ref()
+                    .map(|expiry| attr("expiry_timestamp", expiry.timestamp.to_string())),
+                "expiry_reward" => self
+                    .details
+                    .expiry
+                    .as_ref()
+                    .map(|expiry| attr("expiry_reward", expiry.reward.to_string())),
                 &_ => {
                     unreachable!("Invalid attr_key: {}", attr_key)
                 }
@@ -328,6 +364,16 @@ impl CollectionBid {
                     .finder
                     .as_ref()
                     .map(|finder| attr("finder", finder.to_string())),
+                "expiry_timestamp" => self
+                    .details
+                    .expiry
+                    .as_ref()
+                    .map(|expiry| attr("expiry_timestamp", expiry.timestamp.to_string())),
+                "expiry_reward" => self
+                    .details
+                    .expiry
+                    .as_ref()
+                    .map(|expiry| attr("expiry_reward", expiry.reward.to_string())),
                 &_ => {
                     unreachable!("Invalid attr_key: {}", attr_key)
                 }

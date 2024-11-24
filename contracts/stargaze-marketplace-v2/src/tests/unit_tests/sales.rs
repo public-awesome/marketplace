@@ -65,6 +65,7 @@ fn try_set_ask_sale() {
             price: bid_price_1.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(bidder, marketplace.clone(), &set_bid, &[bid_price_1]);
@@ -79,6 +80,7 @@ fn try_set_ask_sale() {
             price: bid_price_2.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -99,6 +101,7 @@ fn try_set_ask_sale() {
             price: coin(5_000_000, NATIVE_DENOM),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -173,6 +176,7 @@ fn try_accept_ask_sale() {
             price: ask_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -193,6 +197,7 @@ fn try_accept_ask_sale() {
             price: ask_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -267,6 +272,7 @@ fn try_set_bid_sale() {
             price: ask_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -286,6 +292,7 @@ fn try_set_bid_sale() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response =
@@ -354,6 +361,7 @@ fn try_accept_bid_sale() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -376,6 +384,7 @@ fn try_accept_bid_sale() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &accept_bid, &[]);
@@ -442,6 +451,7 @@ fn try_set_collection_bid_sale() {
             price: ask_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -460,6 +470,7 @@ fn try_set_collection_bid_sale() {
             price: ask_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response =
@@ -527,6 +538,7 @@ fn try_accept_collection_bid_sale() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -551,6 +563,7 @@ fn try_accept_collection_bid_sale() {
             price: coin(20_000_000, NATIVE_DENOM),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -568,6 +581,7 @@ fn try_accept_collection_bid_sale() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -643,6 +657,7 @@ fn try_sale_fee_breakdown() {
             price: ask_price.clone(),
             recipient: Some(tokens_recipient.to_string()),
             finder: Some(maker.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -665,6 +680,7 @@ fn try_sale_fee_breakdown() {
             price: ask_price.clone(),
             recipient: Some(nft_recipient.to_string()),
             finder: Some(taker.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -789,6 +805,7 @@ fn try_accept_ask_invalid_inputs() {
             price: ask_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -809,6 +826,7 @@ fn try_accept_ask_invalid_inputs() {
             price: ask_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
 
@@ -821,7 +839,10 @@ fn try_accept_ask_invalid_inputs() {
     );
     assert!(response.is_err());
 
-    assert_error(response, ContractError::InsufficientFunds.to_string());
+    assert_error(
+        response,
+        ContractError::InsufficientFunds("ask price".to_string()).to_string(),
+    );
 
     let buy_price = coin(4_000_000, ATOM_DENOM);
     let accept_ask = ExecuteMsg::AcceptAsk {
@@ -830,6 +851,7 @@ fn try_accept_ask_invalid_inputs() {
             price: buy_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(

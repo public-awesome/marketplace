@@ -55,6 +55,7 @@ fn try_set_ask() {
             price: coin(1_000_000, NATIVE_DENOM),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(bidder, marketplace.clone(), &set_ask, &[]);
@@ -73,6 +74,7 @@ fn try_set_ask() {
             price: coin(1_000_000, JUNO_DENOM),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
@@ -90,6 +92,7 @@ fn try_set_ask() {
             price: coin(0, NATIVE_DENOM),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
@@ -109,10 +112,14 @@ fn try_set_ask() {
             price: price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &[]);
-    assert_error(response, "No funds sent".to_string());
+    assert_error(
+        response,
+        ContractError::InsufficientFunds("listing fee".to_string()).to_string(),
+    );
 
     // Create ask with invalid listing fee denom fails
     let recipient = Addr::unchecked("recipient".to_string());
@@ -125,6 +132,7 @@ fn try_set_ask() {
             price: price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -135,7 +143,7 @@ fn try_set_ask() {
     );
     assert_error(
         response,
-        ContractError::InvalidInput("listing fee for ujuno not found".to_string()).to_string(),
+        ContractError::InsufficientFunds("listing fee".to_string()).to_string(),
     );
 
     // Create ask with invalid listing fee amount fails
@@ -149,18 +157,18 @@ fn try_set_ask() {
             price: price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
         owner.clone(),
         marketplace.clone(),
         &set_ask,
-        &[coin(LISTING_FEE + 1u128, NATIVE_DENOM)],
+        &[coin(LISTING_FEE - 1u128, NATIVE_DENOM)],
     );
     assert_error(
         response,
-        ContractError::InvalidInput("payment amount does not match listing fee".to_string())
-            .to_string(),
+        ContractError::InsufficientFunds("listing fee".to_string()).to_string(),
     );
 
     // Create ask succeeds
@@ -174,6 +182,7 @@ fn try_set_ask() {
             price: price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -238,6 +247,7 @@ pub fn try_update_ask() {
                 price: coin(1000000 + idx as u128, NATIVE_DENOM),
                 recipient: Some(recipient.to_string()),
                 finder: Some(finder.to_string()),
+                expiry: None,
             },
         );
         token_ids.push(token_id.clone());
@@ -251,6 +261,7 @@ pub fn try_update_ask() {
             price: coin(1000000, NATIVE_DENOM).clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(bidder.clone(), marketplace.clone(), &update_ask, &[]);
@@ -271,6 +282,7 @@ pub fn try_update_ask() {
             price: new_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &update_ask, &[]);
@@ -320,6 +332,7 @@ pub fn try_remove_ask() {
                 price: coin(1000000 + idx as u128, NATIVE_DENOM),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         );
         token_ids.push(token_id.clone());

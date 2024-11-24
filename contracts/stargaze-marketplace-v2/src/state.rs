@@ -1,3 +1,5 @@
+use std::u64;
+
 use crate::helpers::build_collection_token_index_str;
 use crate::orders::{Bid, CollectionBid};
 use crate::ContractError;
@@ -68,6 +70,8 @@ pub const COLLECTION_DENOMS: Map<Addr, Denom> = Map::new("D");
 
 pub const LISTING_FEES: Map<Denom, Uint128> = Map::new("L");
 
+pub const MIN_EXPIRY_FEES: Map<Denom, Uint128> = Map::new("E");
+
 pub const NONCE: Item<u64> = Item::new("N");
 
 /// Defines indices for accessing Asks
@@ -76,11 +80,17 @@ pub struct AskIndices<'a> {
     pub collection_denom_price: MultiIndex<'a, (Addr, Denom, u128), Ask, OrderId>,
     // Index Asks by creator and collection
     pub creator_collection: MultiIndex<'a, (Addr, Addr), Ask, OrderId>,
+    // Index Asks by expiry timestamp
+    pub expiry_timestamp: MultiIndex<'a, u64, Ask, OrderId>,
 }
 
 impl<'a> IndexList<Ask> for AskIndices<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Ask>> + '_> {
-        let v: Vec<&dyn Index<Ask>> = vec![&self.collection_denom_price, &self.creator_collection];
+        let v: Vec<&dyn Index<Ask>> = vec![
+            &self.collection_denom_price,
+            &self.creator_collection,
+            &self.expiry_timestamp,
+        ];
         Box::new(v.into_iter())
     }
 }
@@ -102,6 +112,17 @@ pub fn asks<'a>() -> IndexedMap<'a, OrderId, Ask, AskIndices<'a>> {
             |_pk: &[u8], a: &Ask| (a.creator.clone(), a.collection.clone()),
             "a",
             "a_c",
+        ),
+        expiry_timestamp: MultiIndex::new(
+            |_pk: &[u8], a: &Ask| {
+                a.details
+                    .expiry
+                    .as_ref()
+                    .map(|expiry| expiry.timestamp.seconds())
+                    .unwrap_or(u64::MAX)
+            },
+            "a",
+            "a_e",
         ),
     };
     IndexedMap::new("a", indexes)

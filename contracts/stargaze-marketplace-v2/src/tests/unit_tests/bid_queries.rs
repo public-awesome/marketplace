@@ -41,6 +41,7 @@ fn try_query_bids() {
                 price: bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response =
@@ -89,6 +90,7 @@ fn try_query_bids_by_token_price() {
                 price: bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response =
@@ -224,6 +226,7 @@ fn try_query_bids_by_creator() {
                 price: bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response =

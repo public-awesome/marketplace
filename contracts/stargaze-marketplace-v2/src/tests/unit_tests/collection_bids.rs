@@ -40,6 +40,7 @@ fn try_set_collection_bid() {
             price: collection_bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -51,7 +52,10 @@ fn try_set_collection_bid() {
             NATIVE_DENOM,
         )],
     );
-    assert_error(response, ContractError::InsufficientFunds.to_string());
+    assert_error(
+        response,
+        ContractError::InsufficientFunds("collection bid price".to_string()).to_string(),
+    );
 
     // Create collection_bid with invalid denom fails
     let collection_bid_price = coin(1_000_000, JUNO_DENOM);
@@ -61,6 +65,7 @@ fn try_set_collection_bid() {
             price: collection_bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -82,6 +87,7 @@ fn try_set_collection_bid() {
             price: collection_bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -105,6 +111,7 @@ fn try_set_collection_bid() {
             price: collection_bid_price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let bidder_native_balances_before =
@@ -176,6 +183,7 @@ pub fn try_update_collection_bid() {
                 price: collection_bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response = app.execute_contract(
@@ -199,6 +207,7 @@ pub fn try_update_collection_bid() {
             price: coin(1000000u128, NATIVE_DENOM),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -223,6 +232,7 @@ pub fn try_update_collection_bid() {
             price: new_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
 
@@ -267,6 +277,7 @@ pub fn try_remove_bid() {
                 price: price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         },
         &[price],

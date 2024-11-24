@@ -1,5 +1,7 @@
-use cosmwasm_std::{ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, MessageInfo, Response};
-use cw_utils::{nonpayable, one_coin, NativeBalance};
+use cosmwasm_std::{
+    coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, MessageInfo, Response,
+};
+use cw_utils::{nonpayable, NativeBalance};
 use sg_marketplace_common::{
     coin::{transfer_coin, transfer_coins},
     nft::{only_owner, only_tradable, transfer_nft},
@@ -12,7 +14,7 @@ use crate::{
     events::{
         AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent, ListingFeeEvent,
     },
-    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_price},
+    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_price, validate_expiry},
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
@@ -250,22 +252,32 @@ pub fn execute_set_ask(
     let config = CONFIG.load(deps.storage)?;
     only_valid_price(deps.storage, &config, &collection, &details.price)?;
 
-    // Check and collect listing fee
-    let listing_payment = one_coin(&info)?;
-    let listing_fee = LISTING_FEES.may_load(deps.storage, listing_payment.denom.clone())?;
-    if let Some(_listing_fee) = listing_fee {
-        ensure_eq!(
-            listing_payment.amount,
-            _listing_fee,
-            ContractError::InvalidInput("payment amount does not match listing fee".to_string())
-        );
-    } else {
-        Err(ContractError::InvalidInput(format!(
-            "listing fee for {} not found",
-            listing_payment.denom
-        )))?;
+    let mut funds = NativeBalance(info.funds.clone());
+    funds.normalize();
+
+    // Remove expiry reward from funds
+    let expiry_reward = validate_expiry(deps.storage, details.expiry.as_ref())?;
+    if let Some(reward) = &expiry_reward {
+        funds = funds
+            .sub(reward.clone())
+            .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
     }
 
+    // Check and collect listing fee
+    let mut listing_payment_option: Option<Coin> = None;
+    for user_coin in funds.clone().into_vec() {
+        if let Some(listing_fee) = LISTING_FEES.may_load(deps.storage, user_coin.denom.clone())? {
+            listing_payment_option = Some(coin(listing_fee.u128(), user_coin.denom));
+            break;
+        }
+    }
+    let listing_payment = listing_payment_option
+        .ok_or(ContractError::InsufficientFunds("listing fee".to_string()))?;
+    funds = funds
+        .sub(listing_payment.clone())
+        .map_err(|_| ContractError::InsufficientFunds("listing fee".to_string()))?;
+
+    // Transfer listing fee to fee manager
     let mut response = transfer_coin(listing_payment, &config.fee_manager, Response::new());
 
     let ask = Ask::new(info.sender.clone(), collection, token_id, details);
@@ -273,8 +285,14 @@ pub fn execute_set_ask(
     let match_result = ask.match_with_bid(deps.as_ref())?;
 
     if let Some(matching_bid) = match_result {
-        // If a match is found finalize the sale
+        // If a match is found:
+        // * finalize the sale
+        // * re-add expiry reward to funds so it can be refunded to the seller
         response = finalize_sale(deps, &env, &ask, &config, &matching_bid, false, response)?;
+
+        if let Some(reward) = &expiry_reward {
+            funds = funds.add(reward.clone());
+        }
     } else if sell_now {
         // If no match is found and sell_now is true, abort transaction
         Err(ContractError::NoMatchFound)?;
@@ -283,7 +301,6 @@ pub fn execute_set_ask(
         // Ask creation should:
         // * escrow the nft
         // * store the ask
-
         response = transfer_nft(
             &ask.collection,
             &ask.token_id,
@@ -303,6 +320,8 @@ pub fn execute_set_ask(
                     "price",
                     "recipient",
                     "finder",
+                    "expiry_timestamp",
+                    "expiry_reward",
                 ],
             }
             .into(),
@@ -310,9 +329,14 @@ pub fn execute_set_ask(
 
         asks().update(deps.storage, ask.id.clone(), |existing| match existing {
             Some(_) => Err(ContractError::InternalError("ask id collision".to_string())),
-            None => Ok(ask),
+            None => Ok(ask.clone()),
         })?;
     };
+
+    // Transfer remaining funds back to user
+    if !funds.is_empty() {
+        response = transfer_coins(funds.into_vec(), &ask.asset_recipient(), response);
+    }
 
     Ok(response)
 }
@@ -324,8 +348,6 @@ pub fn execute_update_ask(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
-    nonpayable(&info)?;
-
     let config = CONFIG.load(deps.storage)?;
 
     let mut ask = asks()
@@ -342,6 +364,22 @@ pub fn execute_update_ask(
 
     only_valid_price(deps.storage, &config, &ask.collection, &details.price)?;
 
+    let mut funds = NativeBalance(info.funds.clone());
+    funds.normalize();
+
+    // Add previous expiry reward to message funds
+    if let Some(reward) = ask.details.expiry_reward() {
+        funds = funds.add(reward.clone());
+    }
+
+    // Remove next expiry reward from message funds
+    let expiry_reward = validate_expiry(deps.storage, details.expiry.as_ref())?;
+    if let Some(reward) = &expiry_reward {
+        funds = funds
+            .sub(reward.clone())
+            .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
+    }
+
     ask.details = details;
 
     let mut response = Response::new();
@@ -349,8 +387,14 @@ pub fn execute_update_ask(
     let match_result = ask.match_with_bid(deps.as_ref())?;
 
     if let Some(matching_bid) = match_result {
-        // If a match is found finalize the sale
+        // If a match is found:
+        // * finalize the sale
+        // * re-add expiry reward to funds so it can be refunded to the seller
         response = finalize_sale(deps, &env, &ask, &config, &matching_bid, false, response)?;
+
+        if let Some(reward) = &expiry_reward {
+            funds = funds.add(reward.clone());
+        }
     } else {
         // If no match is found continue updating the ask
         ask.save(deps.storage)?;
@@ -366,11 +410,18 @@ pub fn execute_update_ask(
                     "price",
                     "recipient",
                     "finder",
+                    "expiry_timestamp",
+                    "expiry_reward",
                 ],
             }
             .into(),
         );
     };
+
+    // Transfer remaining funds back to user
+    if !funds.is_empty() {
+        response = transfer_coins(funds.into_vec(), &ask.asset_recipient(), response);
+    }
 
     Ok(response)
 }
@@ -413,6 +464,10 @@ pub fn execute_remove_ask(
         .into(),
     );
 
+    if let Some(reward) = ask.details.expiry_reward() {
+        response = transfer_coin(reward.clone(), &ask.asset_recipient(), response);
+    }
+
     Ok(response)
 }
 
@@ -437,7 +492,7 @@ pub fn execute_accept_ask(
 
     funds = funds
         .sub(ask.details.price.clone())
-        .map_err(|_| ContractError::InsufficientFunds)?;
+        .map_err(|_| ContractError::InsufficientFunds("ask price".to_string()))?;
 
     let nonce = NONCE.load(deps.storage)?.wrapping_add(1);
     NONCE.save(deps.storage, &nonce)?;
@@ -507,7 +562,7 @@ pub fn execute_set_bid(
         // If a matching ask is found perform the sale
         funds = funds
             .sub(ask.details.price.clone())
-            .map_err(|_| ContractError::InsufficientFunds)?;
+            .map_err(|_| ContractError::InsufficientFunds("ask price".to_string()))?;
 
         let config: Config<Addr> = CONFIG.load(deps.storage)?;
         response = finalize_sale(
@@ -524,12 +579,20 @@ pub fn execute_set_bid(
         Err(ContractError::NoMatchFound)?;
     } else {
         // If no match is found. Bid creation should:
+        // * remove bid price from funds
+        // * remove expiry reward from funds if any
         // * store the bid
         // * emit event
-
         funds = funds
             .sub(bid.details.price.clone())
-            .map_err(|_| ContractError::InsufficientFunds)?;
+            .map_err(|_| ContractError::InsufficientFunds("bid price".to_string()))?;
+
+        let expiry_reward = validate_expiry(deps.storage, bid.details.expiry.as_ref())?;
+        if let Some(reward) = &expiry_reward {
+            funds = funds
+                .sub(reward.clone())
+                .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
+        }
 
         response = response.add_event(
             BidEvent {
@@ -543,6 +606,8 @@ pub fn execute_set_bid(
                     "price",
                     "recipient",
                     "finder",
+                    "expiry_timestamp",
+                    "expiry_reward",
                 ],
             }
             .into(),
@@ -591,6 +656,19 @@ pub fn execute_update_bid(
     // Add the previous price to the funds in context
     funds = funds.add(bid.details.price.clone());
 
+    // Add previous expiry reward to message funds
+    if let Some(reward) = bid.details.expiry_reward() {
+        funds = funds.add(reward.clone());
+    }
+
+    // Remove next expiry reward from message funds
+    let expiry_reward = validate_expiry(deps.storage, details.expiry.as_ref())?;
+    if let Some(reward) = &expiry_reward {
+        funds = funds
+            .sub(reward.clone())
+            .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
+    }
+
     bid.details = details;
 
     let mut response = Response::new();
@@ -598,12 +676,20 @@ pub fn execute_update_bid(
     let match_result = bid.match_with_ask(deps.as_ref())?;
 
     if let Some(ask) = match_result {
-        // If a match is found finalize the sale
+        // If a match is found:
+        // * re-add expiry reward to funds so it can be refunded to the bidder
+        // * deduct ask price from funds
+        // * finalize the sale
+        if let Some(reward) = bid.details.expiry_reward() {
+            funds = funds.add(reward.clone());
+        }
+
         funds = funds
             .sub(ask.details.price.clone())
-            .map_err(|_| ContractError::InsufficientFunds)?;
+            .map_err(|_| ContractError::InsufficientFunds("ask price".to_string()))?;
 
         let config: Config<Addr> = CONFIG.load(deps.storage)?;
+
         response = finalize_sale(
             deps,
             &env,
@@ -617,7 +703,7 @@ pub fn execute_update_bid(
         // If no match is found update the bid
         funds = funds
             .sub(bid.details.price.clone())
-            .map_err(|_| ContractError::InsufficientFunds)?;
+            .map_err(|_| ContractError::InsufficientFunds("bid price".to_string()))?;
 
         bid.save(deps.storage)?;
 
@@ -633,6 +719,8 @@ pub fn execute_update_bid(
                     "creator",
                     "recipient",
                     "finder",
+                    "expiry_timestamp",
+                    "expiry_reward",
                 ],
             }
             .into(),
@@ -682,6 +770,10 @@ pub fn execute_remove_bid(
         .into(),
     );
 
+    if let Some(reward) = bid.details.expiry_reward() {
+        response = transfer_coin(reward.clone(), &bid.asset_recipient(), response);
+    }
+
     Ok(response)
 }
 
@@ -692,6 +784,8 @@ pub fn execute_accept_bid(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let bid: Bid = bids()
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
@@ -704,16 +798,25 @@ pub fn execute_accept_bid(
     let ask_id = generate_id(vec![bid.collection.as_bytes(), bid.token_id.as_bytes()]);
     let ask_option = asks().may_load(deps.storage, ask_id.clone())?;
 
+    let mut response = Response::new();
+
     // Check if the sender is the owner of the NFT, or if the creator of a valid ask
     let ask = if let Some(ask) = ask_option {
-        if info.sender != ask.creator {
-            Err(MarketplaceStdError::Unauthorized(
-                "sender is not creator of ask".to_string(),
-            ))?;
+        ensure_eq!(
+            info.sender,
+            ask.creator,
+            MarketplaceStdError::Unauthorized("sender is not creator of ask".to_string())
+        );
+
+        // For pre-existing asks, refund the expiry reward to the seller if any
+        if let Some(reward) = ask.details.expiry_reward() {
+            response = transfer_coin(reward.clone(), &ask.asset_recipient(), response);
         }
+
         ask
     } else {
         only_owner(&deps.querier, &info, &bid.collection, &bid.token_id)?;
+
         Ask::new(
             info.sender.clone(),
             bid.collection.clone(),
@@ -723,6 +826,7 @@ pub fn execute_accept_bid(
     };
 
     let config: Config<Addr> = CONFIG.load(deps.storage)?;
+
     let response = finalize_sale(
         deps,
         &env,
@@ -730,7 +834,7 @@ pub fn execute_accept_bid(
         &config,
         &MatchingBid::Bid(bid),
         false,
-        Response::new(),
+        response,
     )?;
 
     Ok(response)
@@ -771,7 +875,7 @@ pub fn execute_set_collection_bid(
         // If a matching ask is found perform the sale
         funds = funds
             .sub(ask.details.price.clone())
-            .map_err(|_| ContractError::InsufficientFunds)?;
+            .map_err(|_| ContractError::InsufficientFunds("ask price".to_string()))?;
 
         let config: Config<Addr> = CONFIG.load(deps.storage)?;
         response = finalize_sale(
@@ -787,10 +891,20 @@ pub fn execute_set_collection_bid(
         // If no match is found and buy_now is true, abort transaction
         Err(ContractError::NoMatchFound)?;
     } else {
-        // If no match is found. Bid creation should store the bid
+        // If no match is found. Bid creation should:
+        // * deduct the bid price from funds
+        // * deduct the expiry reward from funds if any
+        // * emit event
+        // * store the bid
         funds = funds
             .sub(collection_bid.details.price.clone())
-            .map_err(|_| ContractError::InsufficientFunds)?;
+            .map_err(|_| ContractError::InsufficientFunds("collection bid price".to_string()))?;
+
+        if let Some(reward) = collection_bid.details.expiry_reward() {
+            funds = funds
+                .sub(reward.clone())
+                .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
+        }
 
         response = response.add_event(
             CollectionBidEvent {
@@ -803,6 +917,8 @@ pub fn execute_set_collection_bid(
                     "price",
                     "recipient",
                     "finder",
+                    "expiry_timestamp",
+                    "expiry_reward",
                 ],
             }
             .into(),
@@ -862,6 +978,19 @@ pub fn execute_update_collection_bid(
     // Add the previous price to the funds in context
     funds = funds.add(collection_bid.details.price.clone());
 
+    // Add previous expiry reward to message funds
+    if let Some(reward) = collection_bid.details.expiry_reward() {
+        funds = funds.add(reward.clone());
+    }
+
+    // Remove next expiry reward from message funds
+    let expiry_reward = validate_expiry(deps.storage, details.expiry.as_ref())?;
+    if let Some(reward) = &expiry_reward {
+        funds = funds
+            .sub(reward.clone())
+            .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
+    }
+
     collection_bid.details = details;
 
     let mut response = Response::new();
@@ -869,12 +998,20 @@ pub fn execute_update_collection_bid(
     let match_result = collection_bid.match_with_ask(deps.as_ref())?;
 
     if let Some(ask) = match_result {
-        // If a match is found finalize the sale
+        // If a match is found:
+        // * re-add expiry reward to funds so it can be refunded to the bidder
+        // * deduct ask price from funds
+        // * finalize the sale
+        if let Some(reward) = collection_bid.details.expiry_reward() {
+            funds = funds.add(reward.clone());
+        }
+
         funds = funds
             .sub(ask.details.price.clone())
-            .map_err(|_| ContractError::InsufficientFunds)?;
+            .map_err(|_| ContractError::InsufficientFunds("ask price".to_string()))?;
 
         let config: Config<Addr> = CONFIG.load(deps.storage)?;
+
         response = finalize_sale(
             deps,
             &env,
@@ -888,7 +1025,7 @@ pub fn execute_update_collection_bid(
         // If no match is found update the bid
         funds = funds
             .sub(collection_bid.details.price.clone())
-            .map_err(|_| ContractError::InsufficientFunds)?;
+            .map_err(|_| ContractError::InsufficientFunds("collection bid price".to_string()))?;
 
         collection_bid.save(deps.storage)?;
 
@@ -903,6 +1040,8 @@ pub fn execute_update_collection_bid(
                     "creator",
                     "recipient",
                     "finder",
+                    "expiry_timestamp",
+                    "expiry_reward",
                 ],
             }
             .into(),
@@ -952,6 +1091,11 @@ pub fn execute_remove_collection_bid(
         .into(),
     );
 
+    // Refund the expiry reward to the bidder if any
+    if let Some(reward) = collection_bid.details.expiry_reward() {
+        response = transfer_coin(reward.clone(), &collection_bid.asset_recipient(), response);
+    }
+
     Ok(response)
 }
 
@@ -963,6 +1107,8 @@ pub fn execute_accept_collection_bid(
     token_id: TokenId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+
     let collection_bid = collection_bids()
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
@@ -978,13 +1124,21 @@ pub fn execute_accept_collection_bid(
     ]);
     let ask_option = asks().may_load(deps.storage, ask_id.clone())?;
 
+    let mut response = Response::new();
+
     // Check if the sender is the owner of the NFT, or if the creator of a valid ask
     let ask = if let Some(ask) = ask_option {
-        if info.sender != ask.creator {
-            Err(MarketplaceStdError::Unauthorized(
-                "sender is not creator of ask".to_string(),
-            ))?;
+        ensure_eq!(
+            info.sender,
+            ask.creator,
+            MarketplaceStdError::Unauthorized("sender is not creator of ask".to_string())
+        );
+
+        // For pre-existing asks, refund the expiry reward to the seller if any
+        if let Some(reward) = ask.details.expiry_reward() {
+            response = transfer_coin(reward.clone(), &ask.asset_recipient(), response);
         }
+
         ask
     } else {
         only_owner(&deps.querier, &info, &collection_bid.collection, &token_id)?;
@@ -997,6 +1151,7 @@ pub fn execute_accept_collection_bid(
     };
 
     let config: Config<Addr> = CONFIG.load(deps.storage)?;
+
     let response = finalize_sale(
         deps,
         &env,
@@ -1004,7 +1159,7 @@ pub fn execute_accept_collection_bid(
         &config,
         &MatchingBid::CollectionBid(collection_bid),
         false,
-        Response::new(),
+        response,
     )?;
 
     Ok(response)

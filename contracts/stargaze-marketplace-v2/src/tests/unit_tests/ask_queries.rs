@@ -43,6 +43,7 @@ fn try_query_asks_by_collection() {
                 price,
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         );
     }
@@ -132,6 +133,7 @@ fn try_query_asks_by_creator() {
                 price,
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         );
     }

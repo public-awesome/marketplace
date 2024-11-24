@@ -134,6 +134,7 @@ fn try_admin_update_collection_denom() {
             price: bid_price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -185,6 +186,7 @@ fn try_admin_update_collection_denom() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &accept_bid, &[]);
@@ -199,6 +201,7 @@ fn try_admin_update_collection_denom() {
             price: bid_price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response =
@@ -217,6 +220,7 @@ fn try_admin_update_collection_denom() {
             price: bid_price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
