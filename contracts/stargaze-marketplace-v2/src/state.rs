@@ -30,6 +30,12 @@ pub struct Config<T: AddressLike> {
     pub taker_reward_bps: u64,
     /// The default denom for all collections on the marketplace
     pub default_denom: Denom,
+    /// The maximum number of asks that can be removed per block
+    pub max_asks_removed_per_block: u32,
+    /// The maximum number of bids that can be removed per block
+    pub max_bids_removed_per_block: u32,
+    /// The maximum number of collection bids that can be removed per block
+    pub max_collection_bids_removed_per_block: u32,
 }
 
 impl Config<String> {
@@ -42,6 +48,9 @@ impl Config<String> {
             maker_reward_bps: self.maker_reward_bps,
             taker_reward_bps: self.taker_reward_bps,
             default_denom: self.default_denom,
+            max_asks_removed_per_block: self.max_asks_removed_per_block,
+            max_bids_removed_per_block: self.max_bids_removed_per_block,
+            max_collection_bids_removed_per_block: self.max_collection_bids_removed_per_block,
         })
     }
 }
@@ -134,6 +143,8 @@ pub struct BidIndices<'a> {
     pub token_denom_price: MultiIndex<'a, (TokenId, Denom, u128), Bid, OrderId>,
     // Index bids by creator and collection
     pub creator_collection: MultiIndex<'a, (Addr, Addr), Bid, OrderId>,
+    // Index bids by expiry timestamp
+    pub expiry_timestamp: MultiIndex<'a, u64, Bid, OrderId>,
 }
 
 impl<'a> IndexList<Bid> for BidIndices<'a> {
@@ -161,6 +172,17 @@ pub fn bids<'a>() -> IndexedMap<'a, OrderId, Bid, BidIndices<'a>> {
             "o",
             "o_c",
         ),
+        expiry_timestamp: MultiIndex::new(
+            |_pk: &[u8], o: &Bid| {
+                o.details
+                    .expiry
+                    .as_ref()
+                    .map(|expiry| expiry.timestamp.seconds())
+                    .unwrap_or(u64::MAX)
+            },
+            "o",
+            "o_e",
+        ),
     };
     IndexedMap::new("o", indexes)
 }
@@ -171,6 +193,8 @@ pub struct CollectionBidIndices<'a> {
     pub collection_denom_price: MultiIndex<'a, (Addr, Denom, u128), CollectionBid, OrderId>,
     // Index collection bids by creator
     pub creator_collection: MultiIndex<'a, (Addr, Addr), CollectionBid, OrderId>,
+    // Index collection bids by expiry timestamp
+    pub expiry_timestamp: MultiIndex<'a, u64, CollectionBid, OrderId>,
 }
 
 impl<'a> IndexList<CollectionBid> for CollectionBidIndices<'a> {
@@ -198,6 +222,17 @@ pub fn collection_bids<'a>() -> IndexedMap<'a, OrderId, CollectionBid, Collectio
             |_pk: &[u8], co: &CollectionBid| (co.creator.clone(), co.collection.clone()),
             "c",
             "c_c",
+        ),
+        expiry_timestamp: MultiIndex::new(
+            |_pk: &[u8], co: &CollectionBid| {
+                co.details
+                    .expiry
+                    .as_ref()
+                    .map(|expiry| expiry.timestamp.seconds())
+                    .unwrap_or(u64::MAX)
+            },
+            "c",
+            "c_e",
         ),
     };
     IndexedMap::new("c", indexes)

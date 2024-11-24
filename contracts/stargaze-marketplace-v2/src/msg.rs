@@ -123,6 +123,10 @@ pub enum QueryMsg {
         collection: String,
         query_options: Option<QueryOptions<String>>,
     },
+    #[returns(Vec<Ask>)]
+    AsksByExpiryTimestamp {
+        query_options: Option<QueryOptions<(u64, String)>>,
+    },
     #[returns(Option<Bid>)]
     Bid(String),
     #[returns(Vec<Bid>)]
@@ -140,6 +144,10 @@ pub enum QueryMsg {
         collection: String,
         query_options: Option<QueryOptions<String>>,
     },
+    #[returns(Vec<Bid>)]
+    BidsByExpiryTimestamp {
+        query_options: Option<QueryOptions<(u64, String)>>,
+    },
     #[returns(Option<CollectionBid>)]
     CollectionBid(String),
     #[returns(Vec<CollectionBid>)]
@@ -156,10 +164,22 @@ pub enum QueryMsg {
         collection: String,
         query_options: Option<QueryOptions<String>>,
     },
+    #[returns(Vec<CollectionBid>)]
+    CollectionBidsByExpiryTimestamp {
+        query_options: Option<QueryOptions<(u64, String)>>,
+    },
 }
 
 #[cw_serde]
 pub struct PriceOffset {
     pub id: OrderId,
     pub amount: u128,
+}
+
+#[cw_serde]
+pub enum SudoMsg {
+    /// BeginBlock Is called by x/cron module BeginBlocker
+    BeginBlock {},
+    /// EndBlock Is called by x/cron module EndBlocker
+    EndBlock {},
 }

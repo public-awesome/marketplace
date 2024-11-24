@@ -50,6 +50,9 @@ fn try_admin_update_config() {
             maker_reward_bps,
             taker_reward_bps,
             default_denom: NATIVE_DENOM.to_string(),
+            max_asks_removed_per_block: 20,
+            max_bids_removed_per_block: 20,
+            max_collection_bids_removed_per_block: 20,
         },
     };
 
@@ -72,6 +75,9 @@ fn try_admin_update_config() {
             maker_reward_bps: 5000,
             taker_reward_bps: 6000,
             default_denom: NATIVE_DENOM.to_string(),
+            max_asks_removed_per_block: 20,
+            max_bids_removed_per_block: 20,
+            max_collection_bids_removed_per_block: 20,
         },
     };
     // config must be checked on update

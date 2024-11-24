@@ -286,6 +286,9 @@ mod tests {
             maker_reward_bps: 4000,
             taker_reward_bps: 1000,
             default_denom: "ustars".to_string(),
+            max_asks_removed_per_block: 10,
+            max_bids_removed_per_block: 10,
+            max_collection_bids_removed_per_block: 10,
         };
 
         let result = divide_protocol_fees(&config, true, true).unwrap();

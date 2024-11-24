@@ -98,6 +98,9 @@ pub fn setup_marketplace(
             maker_reward_bps: 4000,
             taker_reward_bps: 1000,
             default_denom: NATIVE_DENOM.to_string(),
+            max_asks_removed_per_block: 20,
+            max_bids_removed_per_block: 20,
+            max_collection_bids_removed_per_block: 20,
         },
     };
     let marketplace = app

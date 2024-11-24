@@ -11,4 +11,5 @@ pub mod helpers;
 pub mod instantiate;
 pub mod migrate;
 pub mod orders;
+pub mod sudo;
 mod tests;
