@@ -29,6 +29,12 @@ pub enum ExecuteMsg {
     RemoveListingFee {
         denom: Denom,
     },
+    SetMinExpiryFee {
+        fee: Coin,
+    },
+    RemoveMinExpiryFee {
+        denom: Denom,
+    },
     // Marketplace messages
     SetAsk {
         collection: String,

@@ -13,13 +13,14 @@ use crate::{
     error::ContractError,
     events::{
         AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent, ListingFeeEvent,
+        MinExpiryFeeEvent,
     },
     helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_price, validate_expiry},
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
         asks, bids, collection_bids, Config, Denom, OrderId, TokenId, COLLECTION_DENOMS, CONFIG,
-        LISTING_FEES, NONCE,
+        LISTING_FEES, MIN_EXPIRY_FEES, NONCE,
     },
 };
 
@@ -45,6 +46,10 @@ pub fn execute(
         ExecuteMsg::SetListingFee { fee } => execute_set_listing_fee(deps, env, info, fee),
         ExecuteMsg::RemoveListingFee { denom } => {
             execute_remove_listing_fee(deps, env, info, denom)
+        }
+        ExecuteMsg::SetMinExpiryFee { fee } => execute_set_min_expiry_fee(deps, env, info, fee),
+        ExecuteMsg::RemoveMinExpiryFee { denom } => {
+            execute_remove_min_expiry_fee(deps, env, info, denom)
         }
         ExecuteMsg::SetAsk {
             collection,
@@ -228,6 +233,50 @@ pub fn execute_remove_listing_fee(
     let response = Response::new().add_event(
         ListingFeeEvent {
             ty: "remove-listing-fee",
+            denom: &denom,
+            amount: &None,
+        }
+        .into(),
+    );
+
+    Ok(response)
+}
+
+pub fn execute_set_min_expiry_fee(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    fee: Coin,
+) -> Result<Response, ContractError> {
+    only_contract_admin(&deps.querier, &env, &info)?;
+
+    MIN_EXPIRY_FEES.save(deps.storage, fee.denom.clone(), &fee.amount)?;
+
+    let response = Response::new().add_event(
+        MinExpiryFeeEvent {
+            ty: "set-min-expiry-fee",
+            denom: &fee.denom,
+            amount: &Some(fee.amount),
+        }
+        .into(),
+    );
+
+    Ok(response)
+}
+
+pub fn execute_remove_min_expiry_fee(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    denom: Denom,
+) -> Result<Response, ContractError> {
+    only_contract_admin(&deps.querier, &env, &info)?;
+
+    MIN_EXPIRY_FEES.remove(deps.storage, denom.clone());
+
+    let response = Response::new().add_event(
+        MinExpiryFeeEvent {
+            ty: "remove-min-expiry-fee",
             denom: &denom,
             amount: &None,
         }

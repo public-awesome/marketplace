@@ -60,6 +60,23 @@ impl<'a> From<ListingFeeEvent<'a>> for Event {
     }
 }
 
+pub struct MinExpiryFeeEvent<'a> {
+    pub ty: &'a str,
+    pub denom: &'a str,
+    pub amount: &'a Option<Uint128>,
+}
+
+impl<'a> From<MinExpiryFeeEvent<'a>> for Event {
+    fn from(lfe: MinExpiryFeeEvent) -> Self {
+        let mut event = Event::new(lfe.ty.to_string());
+        event = event.add_attribute("denom", lfe.denom.to_string());
+        if let Some(amount) = lfe.amount {
+            event = event.add_attribute("fee", amount.to_string());
+        }
+        event
+    }
+}
+
 pub struct AskEvent<'a> {
     pub ty: &'a str,
     pub ask: &'a Ask,
