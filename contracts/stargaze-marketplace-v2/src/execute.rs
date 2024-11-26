@@ -1,8 +1,9 @@
 use cosmwasm_std::{
     coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, MessageInfo, Response,
 };
-use cw_utils::{nonpayable, NativeBalance};
+use cw_utils::{maybe_addr, nonpayable, NativeBalance};
 use sg_marketplace_common::{
+    address::address_or,
     coin::{transfer_coin, transfer_coins},
     nft::{only_owner, only_tradable, transfer_nft},
     MarketplaceStdError,
@@ -13,14 +14,14 @@ use crate::{
     error::ContractError,
     events::{
         AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent, ListingFeeEvent,
-        MinExpiryFeeEvent,
+        MinExpiryRewardEvent,
     },
     helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_price, validate_expiry},
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
         asks, bids, collection_bids, Config, Denom, OrderId, TokenId, COLLECTION_DENOMS, CONFIG,
-        LISTING_FEES, MIN_EXPIRY_FEES, NONCE,
+        LISTING_FEES, MIN_EXPIRY_REWARDS, NONCE,
     },
 };
 
@@ -47,9 +48,11 @@ pub fn execute(
         ExecuteMsg::RemoveListingFee { denom } => {
             execute_remove_listing_fee(deps, env, info, denom)
         }
-        ExecuteMsg::SetMinExpiryFee { fee } => execute_set_min_expiry_fee(deps, env, info, fee),
-        ExecuteMsg::RemoveMinExpiryFee { denom } => {
-            execute_remove_min_expiry_fee(deps, env, info, denom)
+        ExecuteMsg::SetMinExpiryReward { min_reward } => {
+            execute_set_min_expiry_reward(deps, env, info, min_reward)
+        }
+        ExecuteMsg::RemoveMinExpiryReward { denom } => {
+            execute_remove_min_expiry_reward(deps, env, info, denom)
         }
         ExecuteMsg::SetAsk {
             collection,
@@ -67,7 +70,10 @@ pub fn execute(
         ExecuteMsg::UpdateAsk { id, details } => {
             execute_update_ask(deps, env, info, id, details.str_to_addr(api)?)
         }
-        ExecuteMsg::RemoveAsk { id } => execute_remove_ask(deps, env, info, id),
+        ExecuteMsg::RemoveAsk {
+            id,
+            reward_recipient,
+        } => execute_remove_ask(deps, env, info, id, reward_recipient),
         ExecuteMsg::AcceptAsk { id, details } => {
             execute_accept_ask(deps, env, info, id, details.str_to_addr(api)?)
         }
@@ -87,7 +93,10 @@ pub fn execute(
         ExecuteMsg::UpdateBid { id, details } => {
             execute_update_bid(deps, env, info, id, details.str_to_addr(api)?)
         }
-        ExecuteMsg::RemoveBid { id } => execute_remove_bid(deps, env, info, id),
+        ExecuteMsg::RemoveBid {
+            id,
+            reward_recipient,
+        } => execute_remove_bid(deps, env, info, id, reward_recipient),
         ExecuteMsg::AcceptBid { id, details } => {
             execute_accept_bid(deps, env, info, id, details.str_to_addr(api)?)
         }
@@ -105,9 +114,10 @@ pub fn execute(
         ExecuteMsg::UpdateCollectionBid { id, details } => {
             execute_update_collection_bid(deps, env, info, id, details.str_to_addr(api)?)
         }
-        ExecuteMsg::RemoveCollectionBid { id } => {
-            execute_remove_collection_bid(deps, env, info, id)
-        }
+        ExecuteMsg::RemoveCollectionBid {
+            id,
+            reward_recipient,
+        } => execute_remove_collection_bid(deps, env, info, id, reward_recipient),
         ExecuteMsg::AcceptCollectionBid {
             id,
             token_id,
@@ -161,6 +171,7 @@ pub fn execute_update_config(
     info: MessageInfo,
     config: Config<Addr>,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     only_contract_admin(&deps.querier, &env, &info)?;
     config.save(deps.storage)?;
 
@@ -182,6 +193,7 @@ pub fn execute_update_collection_denom(
     collection: Addr,
     denom: Denom,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     only_contract_admin(&deps.querier, &env, &info)?;
 
     COLLECTION_DENOMS.save(deps.storage, collection.clone(), &denom)?;
@@ -204,6 +216,7 @@ pub fn execute_set_listing_fee(
     info: MessageInfo,
     fee: Coin,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     only_contract_admin(&deps.querier, &env, &info)?;
 
     LISTING_FEES.save(deps.storage, fee.denom.clone(), &fee.amount)?;
@@ -226,6 +239,7 @@ pub fn execute_remove_listing_fee(
     info: MessageInfo,
     denom: Denom,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     only_contract_admin(&deps.querier, &env, &info)?;
 
     LISTING_FEES.remove(deps.storage, denom.clone());
@@ -242,21 +256,22 @@ pub fn execute_remove_listing_fee(
     Ok(response)
 }
 
-pub fn execute_set_min_expiry_fee(
+pub fn execute_set_min_expiry_reward(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    fee: Coin,
+    min_reward: Coin,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     only_contract_admin(&deps.querier, &env, &info)?;
 
-    MIN_EXPIRY_FEES.save(deps.storage, fee.denom.clone(), &fee.amount)?;
+    MIN_EXPIRY_REWARDS.save(deps.storage, min_reward.denom.clone(), &min_reward.amount)?;
 
     let response = Response::new().add_event(
-        MinExpiryFeeEvent {
-            ty: "set-min-expiry-fee",
-            denom: &fee.denom,
-            amount: &Some(fee.amount),
+        MinExpiryRewardEvent {
+            ty: "set-min-expiry-reward",
+            denom: &min_reward.denom,
+            amount: &Some(min_reward.amount),
         }
         .into(),
     );
@@ -264,19 +279,20 @@ pub fn execute_set_min_expiry_fee(
     Ok(response)
 }
 
-pub fn execute_remove_min_expiry_fee(
+pub fn execute_remove_min_expiry_reward(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
     denom: Denom,
 ) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
     only_contract_admin(&deps.querier, &env, &info)?;
 
-    MIN_EXPIRY_FEES.remove(deps.storage, denom.clone());
+    MIN_EXPIRY_REWARDS.remove(deps.storage, denom.clone());
 
     let response = Response::new().add_event(
-        MinExpiryFeeEvent {
-            ty: "remove-min-expiry-fee",
+        MinExpiryRewardEvent {
+            ty: "remove-min-expiry-reward",
             denom: &denom,
             amount: &None,
         }
@@ -477,9 +493,10 @@ pub fn execute_update_ask(
 
 pub fn execute_remove_ask(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     id: OrderId,
+    reward_recipient: Option<String>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -487,13 +504,15 @@ pub fn execute_remove_ask(
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
 
-    ensure_eq!(
-        info.sender,
-        ask.creator,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of ask can perform this action".to_string()
-        )
-    );
+    if !ask.details.is_expired(&env) {
+        ensure_eq!(
+            info.sender,
+            ask.creator,
+            MarketplaceStdError::Unauthorized(
+                "only the creator of ask can perform this action".to_string()
+            )
+        );
+    }
 
     let mut response = transfer_nft(
         &ask.collection,
@@ -514,7 +533,12 @@ pub fn execute_remove_ask(
     );
 
     if let Some(reward) = ask.details.expiry_reward() {
-        response = transfer_coin(reward.clone(), &ask.asset_recipient(), response);
+        let reward_recipient_addr = address_or(
+            maybe_addr(deps.api, reward_recipient)?.as_ref(),
+            &ask.asset_recipient(),
+        );
+
+        response = transfer_coin(reward.clone(), &reward_recipient_addr, response);
     }
 
     Ok(response)
@@ -786,9 +810,10 @@ pub fn execute_update_bid(
 
 pub fn execute_remove_bid(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     id: OrderId,
+    reward_recipient: Option<String>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -796,13 +821,15 @@ pub fn execute_remove_bid(
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
 
-    ensure_eq!(
-        info.sender,
-        bid.creator,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of bid can perform this action".to_string()
+    if !bid.details.is_expired(&env) {
+        ensure_eq!(
+            info.sender,
+            bid.creator,
+            MarketplaceStdError::Unauthorized(
+                "only the creator of bid can perform this action".to_string()
+            )
         )
-    );
+    }
 
     let refund = bid.details.price.clone();
 
@@ -820,7 +847,12 @@ pub fn execute_remove_bid(
     );
 
     if let Some(reward) = bid.details.expiry_reward() {
-        response = transfer_coin(reward.clone(), &bid.asset_recipient(), response);
+        let reward_recipient_addr = address_or(
+            maybe_addr(deps.api, reward_recipient)?.as_ref(),
+            &bid.asset_recipient(),
+        );
+
+        response = transfer_coin(reward.clone(), &reward_recipient_addr, response);
     }
 
     Ok(response)
@@ -1107,9 +1139,10 @@ pub fn execute_update_collection_bid(
 
 pub fn execute_remove_collection_bid(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     id: OrderId,
+    reward_recipient: Option<String>,
 ) -> Result<Response, ContractError> {
     nonpayable(&info)?;
 
@@ -1117,13 +1150,15 @@ pub fn execute_remove_collection_bid(
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
 
-    ensure_eq!(
-        info.sender,
-        collection_bid.creator,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of collection bid can perform this action".to_string()
-        )
-    );
+    if !collection_bid.details.is_expired(&env) {
+        ensure_eq!(
+            info.sender,
+            collection_bid.creator,
+            MarketplaceStdError::Unauthorized(
+                "only the creator of collection bid can perform this action".to_string()
+            )
+        );
+    }
 
     let refund = collection_bid.details.price.clone();
 
@@ -1142,7 +1177,12 @@ pub fn execute_remove_collection_bid(
 
     // Refund the expiry reward to the bidder if any
     if let Some(reward) = collection_bid.details.expiry_reward() {
-        response = transfer_coin(reward.clone(), &collection_bid.asset_recipient(), response);
+        let reward_recipient_addr = address_or(
+            maybe_addr(deps.api, reward_recipient)?.as_ref(),
+            &collection_bid.asset_recipient(),
+        );
+
+        response = transfer_coin(reward.clone(), &reward_recipient_addr, response);
     }
 
     Ok(response)

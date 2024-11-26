@@ -1,6 +1,6 @@
 use crate::{
     orders::{Ask, Expiry, MatchingBid},
-    state::{Config, TokenId, COLLECTION_DENOMS, MIN_EXPIRY_FEES},
+    state::{Config, TokenId, COLLECTION_DENOMS, MIN_EXPIRY_REWARDS},
     ContractError,
 };
 
@@ -84,7 +84,7 @@ pub fn validate_expiry(
 
     let reward = expiry.unwrap().reward.clone();
 
-    let min_expiry_fee = MIN_EXPIRY_FEES
+    let min_expiry_reward = MIN_EXPIRY_REWARDS
         .load(storage, reward.denom.clone())
         .map_err(|_| {
             ContractError::InvalidInput(format!(
@@ -94,9 +94,9 @@ pub fn validate_expiry(
         })?;
 
     ensure!(
-        reward.amount >= min_expiry_fee,
+        reward.amount >= min_expiry_reward,
         ContractError::InvalidInput(format!(
-            "expiry reward must be greater than or equal to min expiry fee"
+            "expiry reward must be greater than or equal to min expiry reward"
         ))
     );
 

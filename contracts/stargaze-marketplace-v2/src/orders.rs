@@ -10,7 +10,7 @@ use crate::{
 
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    attr, has_coins, Addr, Api, Attribute, Coin, Deps, StdResult, Storage, Timestamp,
+    attr, has_coins, Addr, Api, Attribute, Coin, Deps, Env, StdResult, Storage, Timestamp,
 };
 use cw_address_like::AddressLike;
 use cw_utils::maybe_addr;
@@ -45,6 +45,14 @@ impl OrderDetails<String> {
 impl OrderDetails<Addr> {
     pub fn expiry_reward(&self) -> Option<&Coin> {
         self.expiry.as_ref().and_then(|e| Some(&e.reward))
+    }
+
+    pub fn is_expired(&self, env: &Env) -> bool {
+        if let Some(expiry) = &self.expiry {
+            expiry.timestamp <= env.block.time
+        } else {
+            false
+        }
     }
 }
 

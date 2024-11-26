@@ -45,15 +45,15 @@ pub fn mint_and_set_ask(
     let set_ask = ExecuteMsg::SetAsk {
         collection: collection.to_string(),
         token_id: token_id.to_string(),
-        details,
+        details: details.clone(),
     };
 
-    let response = app.execute_contract(
-        owner.clone(),
-        marketplace.clone(),
-        &set_ask,
-        &[coin(LISTING_FEE, NATIVE_DENOM)],
-    );
+    let mut funds = vec![coin(LISTING_FEE, NATIVE_DENOM)];
+    if let Some(expiry) = details.expiry {
+        funds.push(expiry.reward);
+    }
+
+    let response = app.execute_contract(owner.clone(), marketplace.clone(), &set_ask, &funds);
 
     assert!(response.is_ok());
 }

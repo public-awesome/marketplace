@@ -79,7 +79,7 @@ pub const COLLECTION_DENOMS: Map<Addr, Denom> = Map::new("D");
 
 pub const LISTING_FEES: Map<Denom, Uint128> = Map::new("L");
 
-pub const MIN_EXPIRY_FEES: Map<Denom, Uint128> = Map::new("E");
+pub const MIN_EXPIRY_REWARDS: Map<Denom, Uint128> = Map::new("E");
 
 pub const NONCE: Item<u64> = Item::new("N");
 
@@ -149,7 +149,11 @@ pub struct BidIndices<'a> {
 
 impl<'a> IndexList<Bid> for BidIndices<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<Bid>> + '_> {
-        let v: Vec<&dyn Index<Bid>> = vec![&self.token_denom_price, &self.creator_collection];
+        let v: Vec<&dyn Index<Bid>> = vec![
+            &self.token_denom_price,
+            &self.creator_collection,
+            &self.expiry_timestamp,
+        ];
         Box::new(v.into_iter())
     }
 }
@@ -199,8 +203,11 @@ pub struct CollectionBidIndices<'a> {
 
 impl<'a> IndexList<CollectionBid> for CollectionBidIndices<'a> {
     fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<CollectionBid>> + '_> {
-        let v: Vec<&dyn Index<CollectionBid>> =
-            vec![&self.collection_denom_price, &self.creator_collection];
+        let v: Vec<&dyn Index<CollectionBid>> = vec![
+            &self.collection_denom_price,
+            &self.creator_collection,
+            &self.expiry_timestamp,
+        ];
         Box::new(v.into_iter())
     }
 }

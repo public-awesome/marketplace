@@ -13,7 +13,8 @@ use stargaze_royalty_registry::state::Config as RoyaltyRegistryConfig;
 pub const NATIVE_DENOM: &str = "ustars";
 pub const ATOM_DENOM: &str = "uatom";
 pub const JUNO_DENOM: &str = "ujuno";
-pub const LISTING_FEE: u128 = 1000000u128;
+pub const LISTING_FEE: u128 = 1_000_000u128;
+pub const MIN_EXPIRY_REWARD: u128 = 100_000u128;
 
 pub fn contract_cw721() -> Box<dyn Contract<Empty>> {
     let contract = ContractWrapper::new(
@@ -134,6 +135,19 @@ pub fn setup_marketplace(
             fee: Coin {
                 denom: ATOM_DENOM.to_string(),
                 amount: Uint128::from(LISTING_FEE),
+            },
+        },
+        &[],
+    )
+    .unwrap();
+
+    app.execute_contract(
+        marketplace_admin.clone(),
+        marketplace.clone(),
+        &ExecuteMsg::SetMinExpiryReward {
+            min_reward: Coin {
+                denom: NATIVE_DENOM.to_string(),
+                amount: Uint128::from(MIN_EXPIRY_REWARD),
             },
         },
         &[],

@@ -290,6 +290,7 @@ pub fn try_remove_bid() {
     // Removing collection_bid as non creator fails
     let remove_collection_bid = ExecuteMsg::RemoveCollectionBid {
         id: collection_bid_id.clone(),
+        reward_recipient: None,
     };
     let response = app.execute_contract(
         owner.clone(),

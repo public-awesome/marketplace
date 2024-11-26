@@ -1,7 +1,7 @@
 use crate::{
     helpers::generate_id,
     orders::Expiry,
-    state::{asks, Denom, OrderId, TokenId},
+    state::{asks, bids, collection_bids, Denom, OrderId, TokenId},
     tests::setup::{
         setup_accounts::TestAccounts,
         templates::{test_context, TestContext, TestContracts},
@@ -160,4 +160,300 @@ fn try_handle_v0_7_asks() {
 
     assert_eq!(results.len(), 1);
     assert_eq!(results[0].id, ask.id);
+}
+
+#[cw_serde]
+pub struct V0_7Bid {
+    pub id: String,
+    pub creator: Addr,
+    pub collection: Addr,
+    pub token_id: TokenId,
+    pub details: OrderDetails<Addr>,
+}
+
+/// Defines indices for accessing Bids
+pub struct V0_7BidIndices<'a> {
+    // Index Bids by collection and denom price
+    pub collection_denom_price: MultiIndex<'a, (Addr, Denom, u128), V0_7Bid, OrderId>,
+    // Index Bids by creator and collection
+    pub creator_collection: MultiIndex<'a, (Addr, Addr), V0_7Bid, OrderId>,
+}
+
+impl<'a> IndexList<V0_7Bid> for V0_7BidIndices<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<V0_7Bid>> + '_> {
+        let v: Vec<&dyn Index<V0_7Bid>> =
+            vec![&self.collection_denom_price, &self.creator_collection];
+        Box::new(v.into_iter())
+    }
+}
+
+pub fn v0_7_bids<'a>() -> IndexedMap<'a, OrderId, V0_7Bid, V0_7BidIndices<'a>> {
+    let indexes: V0_7BidIndices = V0_7BidIndices {
+        collection_denom_price: MultiIndex::new(
+            |_pk: &[u8], o: &V0_7Bid| {
+                (
+                    o.collection.clone(),
+                    o.details.price.denom.clone(),
+                    o.details.price.amount.u128(),
+                )
+            },
+            "o",
+            "o_p",
+        ),
+        creator_collection: MultiIndex::new(
+            |_pk: &[u8], o: &V0_7Bid| (o.creator.clone(), o.collection.clone()),
+            "o",
+            "o_c",
+        ),
+    };
+    IndexedMap::new("o", indexes)
+}
+
+#[test]
+fn try_handle_v0_7_bids() {
+    let TestContext {
+        contracts: TestContracts { .. },
+        accounts: TestAccounts { creator, .. },
+        ..
+    } = test_context();
+
+    let collection = Addr::unchecked("collection");
+    let token_id = "1".to_string();
+
+    let v0_7_bid = V0_7Bid {
+        id: generate_id(vec![collection.as_bytes(), token_id.as_bytes()]),
+        creator,
+        collection,
+        token_id,
+        details: OrderDetails::<Addr> {
+            price: Coin::new(100, NATIVE_DENOM),
+            recipient: None,
+            finder: None,
+        },
+    };
+
+    let mut deps = mock_dependencies();
+
+    // Store legacy v0_7 bid
+    v0_7_bids()
+        .save(&mut deps.storage, v0_7_bid.id.clone(), &v0_7_bid)
+        .unwrap();
+
+    let bid = v0_7_bids()
+        .load(&deps.storage, v0_7_bid.id.clone())
+        .unwrap();
+
+    assert_eq!(bid.id, v0_7_bid.id);
+    assert_eq!(bid.creator, v0_7_bid.creator);
+    assert_eq!(bid.collection, v0_7_bid.collection);
+    assert_eq!(bid.token_id, v0_7_bid.token_id);
+    assert_eq!(bid.details.price, v0_7_bid.details.price);
+
+    // Load v0_7 bid in v0_8 format
+    let mut bid = bids().load(&deps.storage, v0_7_bid.id.clone()).unwrap();
+    assert_eq!(bid.id, v0_7_bid.id);
+    assert_eq!(bid.creator, v0_7_bid.creator);
+    assert_eq!(bid.collection, v0_7_bid.collection);
+    assert_eq!(bid.token_id, v0_7_bid.token_id);
+    assert_eq!(bid.details.price, v0_7_bid.details.price);
+    assert_eq!(bid.details.expiry, None);
+
+    // Ensure the expiry index is empty
+    let results = bids()
+        .idx
+        .expiry_timestamp
+        .range(&deps.storage, None, None, Order::Ascending)
+        .take(1)
+        .map(|res| res.map(|(_, ask)| ask))
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
+    assert_eq!(results.len(), 0);
+
+    // Update v0_8 bid with expiry
+    bid.details.expiry = Some(Expiry {
+        timestamp: Timestamp::from_seconds(100),
+        reward: Coin::new(30, NATIVE_DENOM),
+    });
+    bids()
+        .save(&mut deps.storage, bid.id.clone(), &bid)
+        .unwrap();
+
+    // Load updated v0_8 bid
+    let bid = bids().load(&deps.storage, v0_7_bid.id.clone()).unwrap();
+    assert_eq!(
+        bid.details.expiry,
+        Some(Expiry {
+            timestamp: Timestamp::from_seconds(100),
+            reward: Coin::new(30, NATIVE_DENOM),
+        })
+    );
+
+    // Check the expiry index for the bid
+    let results = bids()
+        .idx
+        .expiry_timestamp
+        .range(&deps.storage, None, None, Order::Ascending)
+        .take(1)
+        .map(|res| res.map(|(_, ask)| ask))
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].id, bid.id);
+}
+
+#[cw_serde]
+pub struct V0_7CollectionBid {
+    pub id: String,
+    pub creator: Addr,
+    pub collection: Addr,
+    pub details: OrderDetails<Addr>,
+}
+
+/// Defines indices for accessing Bids
+pub struct V0_7CollectionBidIndices<'a> {
+    // Index Bids by collection and denom price
+    pub collection_denom_price: MultiIndex<'a, (Addr, Denom, u128), V0_7CollectionBid, OrderId>,
+    // Index Bids by creator and collection
+    pub creator_collection: MultiIndex<'a, (Addr, Addr), V0_7CollectionBid, OrderId>,
+}
+
+impl<'a> IndexList<V0_7CollectionBid> for V0_7CollectionBidIndices<'a> {
+    fn get_indexes(&'_ self) -> Box<dyn Iterator<Item = &'_ dyn Index<V0_7CollectionBid>> + '_> {
+        let v: Vec<&dyn Index<V0_7CollectionBid>> =
+            vec![&self.collection_denom_price, &self.creator_collection];
+        Box::new(v.into_iter())
+    }
+}
+
+pub fn v0_7_collection_bids<'a>(
+) -> IndexedMap<'a, OrderId, V0_7CollectionBid, V0_7CollectionBidIndices<'a>> {
+    let indexes: V0_7CollectionBidIndices = V0_7CollectionBidIndices {
+        collection_denom_price: MultiIndex::new(
+            |_pk: &[u8], co: &V0_7CollectionBid| {
+                (
+                    co.collection.clone(),
+                    co.details.price.denom.clone(),
+                    co.details.price.amount.u128(),
+                )
+            },
+            "c",
+            "c_p",
+        ),
+        creator_collection: MultiIndex::new(
+            |_pk: &[u8], co: &V0_7CollectionBid| (co.creator.clone(), co.collection.clone()),
+            "c",
+            "c_c",
+        ),
+    };
+    IndexedMap::new("c", indexes)
+}
+
+#[test]
+fn try_handle_v0_7_collection_bids() {
+    let TestContext {
+        contracts: TestContracts { .. },
+        accounts: TestAccounts { creator, .. },
+        ..
+    } = test_context();
+
+    let collection = Addr::unchecked("collection");
+
+    let v0_7_collection_bid = V0_7CollectionBid {
+        id: generate_id(vec![collection.as_bytes()]),
+        creator,
+        collection,
+        details: OrderDetails::<Addr> {
+            price: Coin::new(100, NATIVE_DENOM),
+            recipient: None,
+            finder: None,
+        },
+    };
+
+    let mut deps = mock_dependencies();
+
+    // Store legacy v0_7 collection_bid
+    v0_7_collection_bids()
+        .save(
+            &mut deps.storage,
+            v0_7_collection_bid.id.clone(),
+            &v0_7_collection_bid,
+        )
+        .unwrap();
+
+    let collection_bid = v0_7_collection_bids()
+        .load(&deps.storage, v0_7_collection_bid.id.clone())
+        .unwrap();
+
+    assert_eq!(collection_bid.id, v0_7_collection_bid.id);
+    assert_eq!(collection_bid.creator, v0_7_collection_bid.creator);
+    assert_eq!(collection_bid.collection, v0_7_collection_bid.collection);
+    assert_eq!(
+        collection_bid.details.price,
+        v0_7_collection_bid.details.price
+    );
+
+    // Load v0_7 collection_bid in v0_8 format
+    let mut collection_bid = collection_bids()
+        .load(&deps.storage, v0_7_collection_bid.id.clone())
+        .unwrap();
+    assert_eq!(collection_bid.id, v0_7_collection_bid.id);
+    assert_eq!(collection_bid.creator, v0_7_collection_bid.creator);
+    assert_eq!(collection_bid.collection, v0_7_collection_bid.collection);
+    assert_eq!(
+        collection_bid.details.price,
+        v0_7_collection_bid.details.price
+    );
+    assert_eq!(collection_bid.details.expiry, None);
+
+    // Ensure the expiry index is empty
+    let results = collection_bids()
+        .idx
+        .expiry_timestamp
+        .range(&deps.storage, None, None, Order::Ascending)
+        .take(1)
+        .map(|res| res.map(|(_, ask)| ask))
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
+    assert_eq!(results.len(), 0);
+
+    // Update v0_8 collection_bid with expiry
+    collection_bid.details.expiry = Some(Expiry {
+        timestamp: Timestamp::from_seconds(100),
+        reward: Coin::new(30, NATIVE_DENOM),
+    });
+    collection_bids()
+        .save(
+            &mut deps.storage,
+            collection_bid.id.clone(),
+            &collection_bid,
+        )
+        .unwrap();
+
+    // Load updated v0_8 collection_bid
+    let collection_bid = collection_bids()
+        .load(&deps.storage, v0_7_collection_bid.id.clone())
+        .unwrap();
+    assert_eq!(
+        collection_bid.details.expiry,
+        Some(Expiry {
+            timestamp: Timestamp::from_seconds(100),
+            reward: Coin::new(30, NATIVE_DENOM),
+        })
+    );
+
+    // Check the expiry index for the collection_bid
+    let results = collection_bids()
+        .idx
+        .expiry_timestamp
+        .range(&deps.storage, None, None, Order::Ascending)
+        .take(1)
+        .map(|res| res.map(|(_, ask)| ask))
+        .collect::<StdResult<Vec<_>>>()
+        .unwrap();
+
+    assert_eq!(results.len(), 1);
+    assert_eq!(results[0].id, collection_bid.id);
 }

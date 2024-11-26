@@ -29,10 +29,10 @@ pub enum ExecuteMsg {
     RemoveListingFee {
         denom: Denom,
     },
-    SetMinExpiryFee {
-        fee: Coin,
+    SetMinExpiryReward {
+        min_reward: Coin,
     },
-    RemoveMinExpiryFee {
+    RemoveMinExpiryReward {
         denom: Denom,
     },
     // Marketplace messages
@@ -43,6 +43,7 @@ pub enum ExecuteMsg {
     },
     RemoveAsk {
         id: OrderId,
+        reward_recipient: Option<String>,
     },
     UpdateAsk {
         id: OrderId,
@@ -59,6 +60,7 @@ pub enum ExecuteMsg {
     },
     RemoveBid {
         id: OrderId,
+        reward_recipient: Option<String>,
     },
     UpdateBid {
         id: OrderId,
@@ -74,6 +76,7 @@ pub enum ExecuteMsg {
     },
     RemoveCollectionBid {
         id: OrderId,
+        reward_recipient: Option<String>,
     },
     UpdateCollectionBid {
         id: OrderId,

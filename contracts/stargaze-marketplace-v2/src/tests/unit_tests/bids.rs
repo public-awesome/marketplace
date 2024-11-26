@@ -283,7 +283,10 @@ pub fn try_remove_bid() {
         .unwrap();
 
     // Removing bid as non creator fails
-    let remove_bid = ExecuteMsg::RemoveBid { id: bid_id.clone() };
+    let remove_bid = ExecuteMsg::RemoveBid {
+        id: bid_id.clone(),
+        reward_recipient: None,
+    };
     let response = app.execute_contract(bidder2.clone(), marketplace.clone(), &remove_bid, &[]);
     assert_error(
         response,
