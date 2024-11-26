@@ -29,6 +29,12 @@ pub enum ExecuteMsg {
     RemoveListingFee {
         denom: Denom,
     },
+    SetMinExpiryReward {
+        min_reward: Coin,
+    },
+    RemoveMinExpiryReward {
+        denom: Denom,
+    },
     // Marketplace messages
     SetAsk {
         collection: String,
@@ -37,6 +43,7 @@ pub enum ExecuteMsg {
     },
     RemoveAsk {
         id: OrderId,
+        reward_recipient: Option<String>,
     },
     UpdateAsk {
         id: OrderId,
@@ -53,6 +60,7 @@ pub enum ExecuteMsg {
     },
     RemoveBid {
         id: OrderId,
+        reward_recipient: Option<String>,
     },
     UpdateBid {
         id: OrderId,
@@ -68,6 +76,7 @@ pub enum ExecuteMsg {
     },
     RemoveCollectionBid {
         id: OrderId,
+        reward_recipient: Option<String>,
     },
     UpdateCollectionBid {
         id: OrderId,
@@ -99,6 +108,10 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(Config<Addr>)]
     Config {},
+    #[returns(Option<Coin>)]
+    ListingFee { denom: Denom },
+    #[returns(Option<Coin>)]
+    MinExpiryReward { denom: Denom },
     #[returns(Option<Denom>)]
     CollectionDenom { collection: String },
     #[returns(Option<Ask>)]
@@ -117,6 +130,10 @@ pub enum QueryMsg {
         collection: String,
         query_options: Option<QueryOptions<String>>,
     },
+    #[returns(Vec<Ask>)]
+    AsksByExpiryTimestamp {
+        query_options: Option<QueryOptions<(u64, String)>>,
+    },
     #[returns(Option<Bid>)]
     Bid(String),
     #[returns(Vec<Bid>)]
@@ -134,6 +151,10 @@ pub enum QueryMsg {
         collection: String,
         query_options: Option<QueryOptions<String>>,
     },
+    #[returns(Vec<Bid>)]
+    BidsByExpiryTimestamp {
+        query_options: Option<QueryOptions<(u64, String)>>,
+    },
     #[returns(Option<CollectionBid>)]
     CollectionBid(String),
     #[returns(Vec<CollectionBid>)]
@@ -150,10 +171,22 @@ pub enum QueryMsg {
         collection: String,
         query_options: Option<QueryOptions<String>>,
     },
+    #[returns(Vec<CollectionBid>)]
+    CollectionBidsByExpiryTimestamp {
+        query_options: Option<QueryOptions<(u64, String)>>,
+    },
 }
 
 #[cw_serde]
 pub struct PriceOffset {
     pub id: OrderId,
     pub amount: u128,
+}
+
+#[cw_serde]
+pub enum SudoMsg {
+    /// BeginBlock Is called by x/cron module BeginBlocker
+    BeginBlock {},
+    /// EndBlock Is called by x/cron module EndBlocker
+    EndBlock {},
 }

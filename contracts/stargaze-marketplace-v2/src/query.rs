@@ -2,10 +2,14 @@ use crate::{
     helpers::build_collection_token_index_str,
     msg::{PriceOffset, QueryMsg},
     orders::{Ask, Bid, CollectionBid},
-    state::{asks, bids, collection_bids, Config, Denom, OrderId, COLLECTION_DENOMS, CONFIG},
+    state::{
+        asks, bids, collection_bids, Config, Denom, OrderId, COLLECTION_DENOMS, CONFIG,
+        LISTING_FEES, MIN_EXPIRY_REWARDS,
+    },
 };
 
-use cosmwasm_std::{to_json_binary, Addr, Binary, Deps, Env, StdResult};
+use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Coin, Deps, Env, StdResult};
+use cw_storage_plus::Bound;
 use sg_index_query::{QueryOptions, QueryOptionsInternal};
 
 #[cfg(not(feature = "library"))]
@@ -17,6 +21,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
     match msg {
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+        QueryMsg::ListingFee { denom } => to_json_binary(&query_listing_fee(deps, denom)?),
+        QueryMsg::MinExpiryReward { denom } => {
+            to_json_binary(&query_min_expiry_reward(deps, denom)?)
+        }
         QueryMsg::CollectionDenom { collection } => to_json_binary(&query_collection_denom(
             deps,
             api.addr_validate(&collection)?,
@@ -31,7 +39,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps,
             api.addr_validate(&collection)?,
             denom,
-            query_options.unwrap_or(QueryOptions::default()),
+            query_options.unwrap_or_default(),
         )?),
         QueryMsg::AsksByCreatorCollection {
             creator,
@@ -41,8 +49,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps,
             api.addr_validate(&creator)?,
             api.addr_validate(&collection)?,
-            query_options.unwrap_or(QueryOptions::default()),
+            query_options.unwrap_or_default(),
         )?),
+        QueryMsg::AsksByExpiryTimestamp { query_options } => to_json_binary(
+            &query_asks_by_expiry_timestamp(deps, query_options.unwrap_or_default())?,
+        ),
         QueryMsg::Bid(id) => to_json_binary(&query_bids(deps, vec![id])?.pop()),
         QueryMsg::Bids(ids) => to_json_binary(&query_bids(deps, ids)?),
         QueryMsg::BidsByTokenPrice {
@@ -55,7 +66,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&collection)?,
             token_id,
             denom,
-            query_options.unwrap_or(QueryOptions::default()),
+            query_options.unwrap_or_default(),
         )?),
         QueryMsg::BidsByCreatorCollection {
             creator,
@@ -65,8 +76,11 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps,
             api.addr_validate(&creator)?,
             api.addr_validate(&collection)?,
-            query_options.unwrap_or(QueryOptions::default()),
+            query_options.unwrap_or_default(),
         )?),
+        QueryMsg::BidsByExpiryTimestamp { query_options } => to_json_binary(
+            &query_bids_by_expiry_timestamp(deps, query_options.unwrap_or_default())?,
+        ),
         QueryMsg::CollectionBid(id) => {
             to_json_binary(&query_collection_bids(deps, vec![id])?.pop())
         }
@@ -79,7 +93,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps,
             api.addr_validate(&collection)?,
             denom,
-            query_options.unwrap_or(QueryOptions::default()),
+            query_options.unwrap_or_default(),
         )?),
         QueryMsg::CollectionBidsByCreatorCollection {
             creator,
@@ -89,13 +103,26 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps,
             api.addr_validate(&creator)?,
             api.addr_validate(&collection)?,
-            query_options.unwrap_or(QueryOptions::default()),
+            query_options.unwrap_or_default(),
         )?),
+        QueryMsg::CollectionBidsByExpiryTimestamp { query_options } => to_json_binary(
+            &query_collection_bids_by_expiry_timestamp(deps, query_options.unwrap_or_default())?,
+        ),
     }
 }
 
 pub fn query_config(deps: Deps) -> StdResult<Config<Addr>> {
     CONFIG.load(deps.storage)
+}
+
+pub fn query_listing_fee(deps: Deps, denom: Denom) -> StdResult<Option<Coin>> {
+    let result = LISTING_FEES.may_load(deps.storage, denom.clone())?;
+    Ok(result.map(|amount| coin(amount.u128(), denom)))
+}
+
+pub fn query_min_expiry_reward(deps: Deps, denom: Denom) -> StdResult<Option<Coin>> {
+    let result = MIN_EXPIRY_REWARDS.may_load(deps.storage, denom.clone())?;
+    Ok(result.map(|amount| coin(amount.u128(), denom)))
 }
 
 pub fn query_collection_denom(deps: Deps, collection: Addr) -> StdResult<Option<Denom>> {
@@ -157,6 +184,30 @@ pub fn query_asks_by_creator_collection(
         .idx
         .creator_collection
         .prefix((creator, collection))
+        .range(deps.storage, min, max, order)
+        .take(limit)
+        .map(|res| res.map(|(_, ask)| ask))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(results)
+}
+
+pub fn query_asks_by_expiry_timestamp(
+    deps: Deps,
+    query_options: QueryOptions<(u64, String)>,
+) -> StdResult<Vec<Ask>> {
+    let QueryOptionsInternal {
+        limit,
+        order,
+        min,
+        max,
+    } = query_options.unpack(&(|offset| (offset.0, offset.1.clone())), None, None);
+
+    let max = Some(max.unwrap_or(Bound::exclusive((u64::MAX, "".to_string()))));
+
+    let results = asks()
+        .idx
+        .expiry_timestamp
         .range(deps.storage, min, max, order)
         .take(limit)
         .map(|res| res.map(|(_, ask)| ask))
@@ -232,6 +283,30 @@ pub fn query_bids_by_creator_collection(
     Ok(results)
 }
 
+pub fn query_bids_by_expiry_timestamp(
+    deps: Deps,
+    query_options: QueryOptions<(u64, String)>,
+) -> StdResult<Vec<Bid>> {
+    let QueryOptionsInternal {
+        limit,
+        order,
+        min,
+        max,
+    } = query_options.unpack(&(|offset| (offset.0, offset.1.clone())), None, None);
+
+    let max = Some(max.unwrap_or(Bound::exclusive((u64::MAX, "".to_string()))));
+
+    let results = bids()
+        .idx
+        .expiry_timestamp
+        .range(deps.storage, min, max, order)
+        .take(limit)
+        .map(|res| res.map(|(_, bid)| bid))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(results)
+}
+
 pub fn query_collection_bids(deps: Deps, ids: Vec<OrderId>) -> StdResult<Vec<CollectionBid>> {
     let mut retval = vec![];
 
@@ -287,6 +362,30 @@ pub fn query_collection_bids_by_creator_collection(
         .idx
         .creator_collection
         .prefix((creator, collection))
+        .range(deps.storage, min, max, order)
+        .take(limit)
+        .map(|res| res.map(|(_, collection_bid)| collection_bid))
+        .collect::<StdResult<Vec<_>>>()?;
+
+    Ok(results)
+}
+
+pub fn query_collection_bids_by_expiry_timestamp(
+    deps: Deps,
+    query_options: QueryOptions<(u64, String)>,
+) -> StdResult<Vec<CollectionBid>> {
+    let QueryOptionsInternal {
+        limit,
+        order,
+        min,
+        max,
+    } = query_options.unpack(&(|offset| (offset.0, offset.1.clone())), None, None);
+
+    let max = Some(max.unwrap_or(Bound::exclusive((u64::MAX, "".to_string()))));
+
+    let results = collection_bids()
+        .idx
+        .expiry_timestamp
         .range(deps.storage, min, max, order)
         .take(limit)
         .map(|res| res.map(|(_, collection_bid)| collection_bid))

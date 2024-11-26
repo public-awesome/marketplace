@@ -14,3 +14,5 @@ mod collection_bid_queries;
 mod collection_bids;
 #[cfg(test)]
 mod sales;
+#[cfg(test)]
+mod sudo;

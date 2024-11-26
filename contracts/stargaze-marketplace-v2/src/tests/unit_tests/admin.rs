@@ -16,7 +16,7 @@ use crate::{
     ContractError,
 };
 
-use cosmwasm_std::{coin, Addr};
+use cosmwasm_std::{coin, Addr, Coin};
 use cw_multi_test::Executor;
 use sg_marketplace_common::MarketplaceStdError;
 
@@ -50,6 +50,9 @@ fn try_admin_update_config() {
             maker_reward_bps,
             taker_reward_bps,
             default_denom: NATIVE_DENOM.to_string(),
+            max_asks_removed_per_block: 20,
+            max_bids_removed_per_block: 20,
+            max_collection_bids_removed_per_block: 20,
         },
     };
 
@@ -72,6 +75,9 @@ fn try_admin_update_config() {
             maker_reward_bps: 5000,
             taker_reward_bps: 6000,
             default_denom: NATIVE_DENOM.to_string(),
+            max_asks_removed_per_block: 20,
+            max_bids_removed_per_block: 20,
+            max_collection_bids_removed_per_block: 20,
         },
     };
     // config must be checked on update
@@ -134,6 +140,7 @@ fn try_admin_update_collection_denom() {
             price: bid_price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -185,6 +192,7 @@ fn try_admin_update_collection_denom() {
             price: bid_price.clone(),
             recipient: None,
             finder: None,
+            expiry: None,
         },
     };
     let response = app.execute_contract(owner.clone(), marketplace.clone(), &accept_bid, &[]);
@@ -199,6 +207,7 @@ fn try_admin_update_collection_denom() {
             price: bid_price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response =
@@ -217,6 +226,7 @@ fn try_admin_update_collection_denom() {
             price: bid_price.clone(),
             recipient: Some(recipient.to_string()),
             finder: Some(finder.to_string()),
+            expiry: None,
         },
     };
     let response = app.execute_contract(
@@ -226,4 +236,110 @@ fn try_admin_update_collection_denom() {
         &[bid_price.clone()],
     );
     assert!(response.is_ok());
+}
+
+#[test]
+fn try_admin_set_and_remove_listing_fee() {
+    let TestContext {
+        mut app,
+        contracts: TestContracts { marketplace, .. },
+        accounts: TestAccounts { creator, .. },
+    } = test_context();
+
+    // Set listing fee succeeds
+    let set_listing_fee = ExecuteMsg::SetListingFee {
+        fee: coin(12345, NATIVE_DENOM),
+    };
+    let response =
+        app.execute_contract(creator.clone(), marketplace.clone(), &set_listing_fee, &[]);
+    assert!(response.is_ok());
+
+    let listing_fee = app
+        .wrap()
+        .query_wasm_smart::<Option<Coin>>(
+            &marketplace,
+            &QueryMsg::ListingFee {
+                denom: NATIVE_DENOM.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(listing_fee, Some(coin(12345, NATIVE_DENOM)));
+
+    // Remove listing fee succeeds
+    let remove_listing_fee = ExecuteMsg::RemoveListingFee {
+        denom: NATIVE_DENOM.to_string(),
+    };
+    let response = app.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &remove_listing_fee,
+        &[],
+    );
+    assert!(response.is_ok());
+
+    let listing_fee = app
+        .wrap()
+        .query_wasm_smart::<Option<Coin>>(
+            &marketplace,
+            &QueryMsg::ListingFee {
+                denom: NATIVE_DENOM.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(listing_fee, None);
+}
+
+#[test]
+fn try_admin_set_and_remove_min_expiry_reward() {
+    let TestContext {
+        mut app,
+        contracts: TestContracts { marketplace, .. },
+        accounts: TestAccounts { creator, .. },
+    } = test_context();
+
+    // Set min expiry reward succeeds
+    let set_min_expiry_reward = ExecuteMsg::SetMinExpiryReward {
+        min_reward: coin(12345, NATIVE_DENOM),
+    };
+    let response = app.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &set_min_expiry_reward,
+        &[],
+    );
+    assert!(response.is_ok());
+
+    let min_expiry_reward = app
+        .wrap()
+        .query_wasm_smart::<Option<Coin>>(
+            &marketplace,
+            &QueryMsg::MinExpiryReward {
+                denom: NATIVE_DENOM.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(min_expiry_reward, Some(coin(12345, NATIVE_DENOM)));
+
+    // Remove min expiry reward succeeds
+    let remove_min_expiry_reward = ExecuteMsg::RemoveMinExpiryReward {
+        denom: NATIVE_DENOM.to_string(),
+    };
+    let response = app.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &remove_min_expiry_reward,
+        &[],
+    );
+    assert!(response.is_ok());
+
+    let min_expiry_reward = app
+        .wrap()
+        .query_wasm_smart::<Option<Coin>>(
+            &marketplace,
+            &QueryMsg::MinExpiryReward {
+                denom: NATIVE_DENOM.to_string(),
+            },
+        )
+        .unwrap();
+    assert_eq!(min_expiry_reward, None);
 }

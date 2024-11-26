@@ -1,11 +1,11 @@
 use crate::{
     msg::{ExecuteMsg, PriceOffset, QueryMsg},
-    orders::{Bid, OrderDetails},
+    orders::{Bid, Expiry, OrderDetails},
     tests::{
         helpers::utils::find_attrs,
         setup::{
             setup_accounts::TestAccounts,
-            setup_contracts::{JUNO_DENOM, NATIVE_DENOM},
+            setup_contracts::{JUNO_DENOM, MIN_EXPIRY_REWARD, NATIVE_DENOM},
             templates::{test_context, TestContext, TestContracts},
         },
     },
@@ -41,6 +41,7 @@ fn try_query_bids() {
                 price: bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response =
@@ -89,6 +90,7 @@ fn try_query_bids_by_token_price() {
                 price: bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response =
@@ -224,6 +226,7 @@ fn try_query_bids_by_creator() {
                 price: bid_price.clone(),
                 recipient: None,
                 finder: None,
+                expiry: None,
             },
         };
         let response =
@@ -292,4 +295,83 @@ fn try_query_bids_by_creator() {
             bids[bid_idx].details.price.amount.u128()
         );
     }
+}
+
+#[test]
+fn try_query_bids_by_expiration_timestamp() {
+    let TestContext {
+        mut app,
+        contracts:
+            TestContracts {
+                marketplace,
+                collection,
+                ..
+            },
+        accounts: TestAccounts { bidder, .. },
+    } = test_context();
+
+    let price = coin(1000000u128, NATIVE_DENOM);
+    let expiry_reward = coin(MIN_EXPIRY_REWARD, NATIVE_DENOM);
+
+    let num_bids: u8 = 4;
+    let token_id = "1".to_string();
+    let mut bid_ids: Vec<String> = vec![];
+    for idx in 1..(num_bids + 1) {
+        let expiry_timestamp = app.block_info().time.plus_seconds(100 + idx as u64);
+        let set_bid = ExecuteMsg::SetBid {
+            collection: collection.to_string(),
+            token_id: token_id.to_string(),
+            details: OrderDetails {
+                price: price.clone(),
+                recipient: None,
+                finder: None,
+                expiry: Some(Expiry {
+                    timestamp: expiry_timestamp,
+                    reward: expiry_reward.clone(),
+                }),
+            },
+        };
+        let response = app.execute_contract(
+            bidder.clone(),
+            marketplace.clone(),
+            &set_bid,
+            &[price.clone(), expiry_reward.clone()],
+        );
+        assert!(response.is_ok());
+
+        let bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")
+            .pop()
+            .unwrap();
+        bid_ids.push(bid_id);
+    }
+
+    // Correct number of bids returned
+    let bids = app
+        .wrap()
+        .query_wasm_smart::<Vec<Bid>>(
+            &marketplace,
+            &QueryMsg::BidsByExpiryTimestamp {
+                query_options: None,
+            },
+        )
+        .unwrap();
+    assert_eq!(bids.len(), num_bids as usize);
+
+    // Query Options work
+    let bids = app
+        .wrap()
+        .query_wasm_smart::<Vec<Bid>>(
+            &marketplace,
+            &QueryMsg::BidsByExpiryTimestamp {
+                query_options: Some(QueryOptions {
+                    descending: Some(true),
+                    limit: Some(2),
+                    min: None,
+                    max: None,
+                }),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(bids.len(), 2);
 }
