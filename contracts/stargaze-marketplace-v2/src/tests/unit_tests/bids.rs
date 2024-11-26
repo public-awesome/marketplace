@@ -1,11 +1,11 @@
 use crate::{
     msg::{ExecuteMsg, QueryMsg},
-    orders::{Bid, OrderDetails},
+    orders::{Bid, Expiry, OrderDetails},
     tests::{
         helpers::utils::{assert_error, find_attrs},
         setup::{
             setup_accounts::{setup_additional_account, TestAccounts},
-            setup_contracts::{JUNO_DENOM, NATIVE_DENOM},
+            setup_contracts::{JUNO_DENOM, MIN_EXPIRY_REWARD, NATIVE_DENOM},
             templates::{test_context, TestContext, TestContracts},
         },
     },
@@ -153,6 +153,90 @@ fn try_set_bid() {
     assert_eq!(bid.details.price, bid_price);
     assert_eq!(bid.details.recipient, Some(recipient));
     assert_eq!(bid.details.finder, Some(finder));
+
+    // Create expiring bid with reward below min fails
+    let expiry_reward = coin(MIN_EXPIRY_REWARD - 1u128, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+            expiry: Some(Expiry {
+                timestamp: app.block_info().time.plus_seconds(100),
+                reward: expiry_reward.clone(),
+            }),
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid,
+        &[
+            coin(MIN_EXPIRY_REWARD - 1u128, NATIVE_DENOM),
+            bid_price.clone(),
+        ],
+    );
+    assert_error(
+        response,
+        ContractError::InvalidInput(
+            "expiry reward must be greater than or equal to min expiry reward".to_string(),
+        )
+        .to_string(),
+    );
+
+    // Create expiring bid with insufficient funds fails
+    let expiry_reward = coin(MIN_EXPIRY_REWARD, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+            expiry: Some(Expiry {
+                timestamp: app.block_info().time.plus_seconds(100),
+                reward: expiry_reward.clone(),
+            }),
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid,
+        &[
+            coin(MIN_EXPIRY_REWARD - 1u128, NATIVE_DENOM),
+            bid_price.clone(),
+        ],
+    );
+    assert_error(
+        response,
+        ContractError::InsufficientFunds("expiry reward".to_string()).to_string(),
+    );
+
+    // Create expiring bid with enough funds succeeds
+    let expiry_reward = coin(MIN_EXPIRY_REWARD, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+            expiry: Some(Expiry {
+                timestamp: app.block_info().time.plus_seconds(100),
+                reward: expiry_reward.clone(),
+            }),
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid,
+        &[coin(MIN_EXPIRY_REWARD, NATIVE_DENOM), bid_price.clone()],
+    );
+    assert!(response.is_ok());
 }
 
 #[test]
@@ -233,7 +317,7 @@ pub fn try_update_bid() {
         bidder.clone(),
         marketplace.clone(),
         &update_bid,
-        &[new_price],
+        &[new_price.clone()],
     );
     assert!(response.is_ok());
     let bidder_native_balances_after =
@@ -242,6 +326,146 @@ pub fn try_update_bid() {
     assert_eq!(
         bidder_native_balances_before.add(coin(1u128, NATIVE_DENOM).clone()),
         bidder_native_balances_after
+    );
+
+    // Setting expiry with reward below min fails
+    let bid = app
+        .wrap()
+        .query_wasm_smart::<Option<Bid>>(&marketplace, &QueryMsg::Bid(bid_ids[1].clone()))
+        .unwrap()
+        .unwrap();
+    let bid_price = bid.details.price.clone();
+
+    let expiry_reward = coin(MIN_EXPIRY_REWARD - 1u128, NATIVE_DENOM);
+    let update_bid = ExecuteMsg::UpdateBid {
+        id: bid_ids[1].clone(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+            expiry: Some(Expiry {
+                timestamp: app.block_info().time.plus_seconds(100),
+                reward: expiry_reward.clone(),
+            }),
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &update_bid,
+        &[coin(MIN_EXPIRY_REWARD - 1u128, NATIVE_DENOM)],
+    );
+    assert_error(
+        response,
+        ContractError::InvalidInput(
+            "expiry reward must be greater than or equal to min expiry reward".to_string(),
+        )
+        .to_string(),
+    );
+
+    // Setting expiry with insufficient funds fails
+    let expiry_reward = coin(MIN_EXPIRY_REWARD, NATIVE_DENOM);
+    let update_bid = ExecuteMsg::UpdateBid {
+        id: bid_ids[1].clone(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+            expiry: Some(Expiry {
+                timestamp: app.block_info().time.plus_seconds(100),
+                reward: expiry_reward.clone(),
+            }),
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &update_bid,
+        &[coin(MIN_EXPIRY_REWARD - 1u128, NATIVE_DENOM)],
+    );
+    assert_error(
+        response,
+        ContractError::InsufficientFunds("expiry reward".to_string()).to_string(),
+    );
+
+    // Setting expiry with sufficient funds succeeds
+    let bidder_balances_0 = NativeBalance(app.wrap().query_all_balances(bidder.clone()).unwrap());
+    let expiry_reward = coin(MIN_EXPIRY_REWARD, NATIVE_DENOM);
+    let update_bid = ExecuteMsg::UpdateBid {
+        id: bid_ids[1].clone(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+            expiry: Some(Expiry {
+                timestamp: app.block_info().time.plus_seconds(100),
+                reward: expiry_reward.clone(),
+            }),
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &update_bid,
+        &[expiry_reward.clone()],
+    );
+    assert!(response.is_ok());
+
+    let bidder_balances_1 = NativeBalance(app.wrap().query_all_balances(bidder.clone()).unwrap());
+    assert_eq!(
+        bidder_balances_0.sub(expiry_reward).unwrap(),
+        bidder_balances_1
+    );
+
+    // Increasing expiry reward succeeds
+    let expiry_reward = coin(MIN_EXPIRY_REWARD + 1_000, NATIVE_DENOM);
+    let update_bid = ExecuteMsg::UpdateBid {
+        id: bid_ids[1].clone(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+            expiry: Some(Expiry {
+                timestamp: app.block_info().time.plus_seconds(100),
+                reward: expiry_reward.clone(),
+            }),
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &update_bid,
+        &[coin(1_000, NATIVE_DENOM).clone()],
+    );
+    assert!(response.is_ok());
+
+    let bidder_balances_2 = NativeBalance(app.wrap().query_all_balances(bidder.clone()).unwrap());
+    assert_eq!(
+        bidder_balances_1.sub(coin(1_000, NATIVE_DENOM)).unwrap(),
+        bidder_balances_2
+    );
+
+    // Lowering expiry reward succeeds
+    let expiry_reward = coin(MIN_EXPIRY_REWARD, NATIVE_DENOM);
+    let update_bid = ExecuteMsg::UpdateBid {
+        id: bid_ids[1].clone(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+            expiry: Some(Expiry {
+                timestamp: app.block_info().time.plus_seconds(100),
+                reward: expiry_reward.clone(),
+            }),
+        },
+    };
+    let response = app.execute_contract(bidder.clone(), marketplace.clone(), &update_bid, &[]);
+    assert!(response.is_ok());
+
+    let bidder_balances_3 = NativeBalance(app.wrap().query_all_balances(bidder.clone()).unwrap());
+    assert_eq!(
+        bidder_balances_2.add(coin(1_000, NATIVE_DENOM)),
+        bidder_balances_3
     );
 }
 
@@ -305,4 +529,73 @@ pub fn try_remove_bid() {
         .query_wasm_smart::<Option<Bid>>(&marketplace, &QueryMsg::Bid(bid_id))
         .unwrap();
     assert!(bid.is_none());
+}
+
+#[test]
+pub fn try_remove_expired_bid() {
+    let TestContext {
+        mut app,
+        contracts:
+            TestContracts {
+                marketplace,
+                collection,
+                ..
+            },
+        accounts: TestAccounts { bidder, .. },
+    } = test_context();
+
+    let bidder_2 = setup_additional_account(&mut app, "bidder2").unwrap();
+
+    let expiry_timestamp = app.block_info().time.plus_seconds(100);
+    let token_id = "1".to_string();
+    let bid_price = coin(1000000u128, NATIVE_DENOM);
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: bid_price.clone(),
+            recipient: None,
+            finder: None,
+            expiry: Some(Expiry {
+                timestamp: expiry_timestamp,
+                reward: coin(MIN_EXPIRY_REWARD, NATIVE_DENOM),
+            }),
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid,
+        &[bid_price, coin(MIN_EXPIRY_REWARD, NATIVE_DENOM)],
+    );
+    assert!(response.is_ok());
+
+    let bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")
+        .pop()
+        .unwrap();
+
+    // Removing bid before expiry fails
+    let reward_recipient = Addr::unchecked("reward_recipient");
+    let remove_bid = ExecuteMsg::RemoveBid {
+        id: bid_id.clone(),
+        reward_recipient: Some(reward_recipient.to_string()),
+    };
+    let response = app.execute_contract(bidder_2.clone(), marketplace.clone(), &remove_bid, &[]);
+    assert_error(
+        response,
+        MarketplaceStdError::Unauthorized(
+            "only the creator of bid can perform this action".to_string(),
+        )
+        .to_string(),
+    );
+
+    // Removing bid after expiry succeeds, and reward is sent to reward recipient
+    app.update_block(|block| {
+        block.time = expiry_timestamp.plus_seconds(100);
+    });
+    let response = app.execute_contract(bidder_2.clone(), marketplace.clone(), &remove_bid, &[]);
+    assert!(response.is_ok());
+
+    let reward_balance = app.wrap().query_all_balances(reward_recipient).unwrap();
+    assert_eq!(reward_balance, vec![coin(MIN_EXPIRY_REWARD, NATIVE_DENOM)]);
 }

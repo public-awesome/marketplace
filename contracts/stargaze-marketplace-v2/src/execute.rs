@@ -734,14 +734,6 @@ pub fn execute_update_bid(
         funds = funds.add(reward.clone());
     }
 
-    // Remove next expiry reward from message funds
-    let expiry_reward = validate_expiry(deps.storage, details.expiry.as_ref())?;
-    if let Some(reward) = &expiry_reward {
-        funds = funds
-            .sub(reward.clone())
-            .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
-    }
-
     bid.details = details;
 
     let mut response = Response::new();
@@ -773,10 +765,22 @@ pub fn execute_update_bid(
             response,
         )?;
     } else {
-        // If no match is found update the bid
+        // If no match is found:
+        // * deduct bid price from funds
+        // * deduct expiry reward from funds if any
+        // * store the bid
+        // * emit event
         funds = funds
             .sub(bid.details.price.clone())
             .map_err(|_| ContractError::InsufficientFunds("bid price".to_string()))?;
+
+        // Remove next expiry reward from message funds
+        let expiry_reward = validate_expiry(deps.storage, bid.details.expiry.as_ref())?;
+        if let Some(reward) = &expiry_reward {
+            funds = funds
+                .sub(reward.clone())
+                .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
+        }
 
         bid.save(deps.storage)?;
 
@@ -981,7 +985,8 @@ pub fn execute_set_collection_bid(
             .sub(collection_bid.details.price.clone())
             .map_err(|_| ContractError::InsufficientFunds("collection bid price".to_string()))?;
 
-        if let Some(reward) = collection_bid.details.expiry_reward() {
+        let expiry_reward = validate_expiry(deps.storage, collection_bid.details.expiry.as_ref())?;
+        if let Some(reward) = &expiry_reward {
             funds = funds
                 .sub(reward.clone())
                 .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
@@ -1064,14 +1069,6 @@ pub fn execute_update_collection_bid(
         funds = funds.add(reward.clone());
     }
 
-    // Remove next expiry reward from message funds
-    let expiry_reward = validate_expiry(deps.storage, details.expiry.as_ref())?;
-    if let Some(reward) = &expiry_reward {
-        funds = funds
-            .sub(reward.clone())
-            .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
-    }
-
     collection_bid.details = details;
 
     let mut response = Response::new();
@@ -1103,10 +1100,22 @@ pub fn execute_update_collection_bid(
             response,
         )?;
     } else {
-        // If no match is found update the bid
+        // If no match is found:
+        // * deduct collection bid price from funds
+        // * deduct expiry reward from funds if any
+        // * store the collection bid
+        // * emit event
         funds = funds
             .sub(collection_bid.details.price.clone())
             .map_err(|_| ContractError::InsufficientFunds("collection bid price".to_string()))?;
+
+        // Remove next expiry reward from message funds
+        let expiry_reward = validate_expiry(deps.storage, collection_bid.details.expiry.as_ref())?;
+        if let Some(reward) = &expiry_reward {
+            funds = funds
+                .sub(reward.clone())
+                .map_err(|_| ContractError::InsufficientFunds("expiry reward".to_string()))?;
+        }
 
         collection_bid.save(deps.storage)?;
 
