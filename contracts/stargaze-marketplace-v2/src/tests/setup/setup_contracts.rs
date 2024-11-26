@@ -59,7 +59,8 @@ pub fn contract_marketplace() -> Box<dyn Contract<Empty>> {
         crate::instantiate::instantiate,
         crate::query::query,
     )
-    .with_migrate(crate::migrate::migrate);
+    .with_migrate(crate::migrate::migrate)
+    .with_sudo(crate::sudo::sudo);
     Box::new(contract)
 }
 
@@ -99,9 +100,9 @@ pub fn setup_marketplace(
             maker_reward_bps: 4000,
             taker_reward_bps: 1000,
             default_denom: NATIVE_DENOM.to_string(),
-            max_asks_removed_per_block: 20,
-            max_bids_removed_per_block: 20,
-            max_collection_bids_removed_per_block: 20,
+            max_asks_removed_per_block: 10,
+            max_bids_removed_per_block: 10,
+            max_collection_bids_removed_per_block: 10,
         },
     };
     let marketplace = app

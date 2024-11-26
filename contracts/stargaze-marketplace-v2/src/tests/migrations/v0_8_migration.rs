@@ -1,18 +1,69 @@
 use crate::{
     helpers::generate_id,
+    migrate::{migrate, MigrateMsg, V0_7Config, V0_7CONFIG},
     orders::Expiry,
-    state::{asks, bids, collection_bids, Denom, OrderId, TokenId},
+    state::{asks, bids, collection_bids, Denom, OrderId, TokenId, CONFIG},
     tests::setup::{
         setup_accounts::TestAccounts,
         templates::{test_context, TestContext, TestContracts},
     },
 };
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{testing::mock_dependencies, Order, StdResult, Timestamp};
+use cosmwasm_std::{
+    testing::{mock_dependencies, mock_env},
+    Order, StdResult, Timestamp,
+};
 use cosmwasm_std::{Addr, Coin};
 use cw_address_like::AddressLike;
 use cw_storage_plus::{Index, IndexList, IndexedMap, MultiIndex};
 use sg_marketplace_common::constants::NATIVE_DENOM;
+
+#[test]
+fn try_handle_v0_8_migration() {
+    let mut deps = mock_dependencies();
+    let env = mock_env();
+
+    let fee_manager = Addr::unchecked("fee_manager");
+    let royalty_registry = Addr::unchecked("royalty_registry");
+
+    V0_7CONFIG
+        .save(
+            &mut deps.storage,
+            &V0_7Config {
+                fee_manager: fee_manager.clone(),
+                royalty_registry: royalty_registry.clone(),
+                protocol_fee_bps: 200,
+                max_royalty_fee_bps: 1000,
+                maker_reward_bps: 4000,
+                taker_reward_bps: 1000,
+                default_denom: NATIVE_DENOM.to_string(),
+            },
+        )
+        .unwrap();
+
+    let response = migrate(
+        deps.as_mut(),
+        env,
+        MigrateMsg {
+            max_asks_removed_per_block: 10,
+            max_bids_removed_per_block: 10,
+            max_collection_bids_removed_per_block: 10,
+        },
+    );
+    assert!(response.is_ok());
+
+    let config = CONFIG.load(&deps.storage).unwrap();
+    assert_eq!(config.fee_manager, fee_manager);
+    assert_eq!(config.royalty_registry, royalty_registry);
+    assert_eq!(config.protocol_fee_bps, 200);
+    assert_eq!(config.max_royalty_fee_bps, 1000);
+    assert_eq!(config.maker_reward_bps, 4000);
+    assert_eq!(config.taker_reward_bps, 1000);
+    assert_eq!(config.default_denom, NATIVE_DENOM.to_string());
+    assert_eq!(config.max_asks_removed_per_block, 10);
+    assert_eq!(config.max_bids_removed_per_block, 10);
+    assert_eq!(config.max_collection_bids_removed_per_block, 10);
+}
 
 #[cw_serde]
 pub struct OrderDetails<T: AddressLike> {

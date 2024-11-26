@@ -291,9 +291,9 @@ fn try_query_collection_bids_by_expiration_timestamp() {
     let price = coin(1000000u128, NATIVE_DENOM);
     let expiry_reward = coin(MIN_EXPIRY_REWARD, NATIVE_DENOM);
 
-    let num_bids: u8 = 4;
+    let num_collection_bids: u8 = 4;
     let mut collection_bid_ids: Vec<String> = vec![];
-    for idx in 1..(num_bids + 1) {
+    for idx in 1..(num_collection_bids + 1) {
         let expiry_timestamp = app.block_info().time.plus_seconds(100 + idx as u64);
         let set_collection_bid = ExecuteMsg::SetCollectionBid {
             collection: collection.to_string(),
@@ -331,7 +331,7 @@ fn try_query_collection_bids_by_expiration_timestamp() {
             },
         )
         .unwrap();
-    assert_eq!(collection_bids.len(), num_bids as usize);
+    assert_eq!(collection_bids.len(), num_collection_bids as usize);
 
     // Query Options work
     let collection_bids = app
