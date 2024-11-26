@@ -1,5 +1,3 @@
-use std::u64;
-
 use crate::helpers::build_collection_token_index_str;
 use crate::orders::{Bid, CollectionBid};
 use crate::ContractError;

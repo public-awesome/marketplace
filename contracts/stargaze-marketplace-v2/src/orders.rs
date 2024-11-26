@@ -44,7 +44,7 @@ impl OrderDetails<String> {
 
 impl OrderDetails<Addr> {
     pub fn expiry_reward(&self) -> Option<&Coin> {
-        self.expiry.as_ref().and_then(|e| Some(&e.reward))
+        self.expiry.as_ref().map(|e| &e.reward)
     }
 
     pub fn is_expired(&self, env: &Env) -> bool {

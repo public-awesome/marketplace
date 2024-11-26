@@ -242,12 +242,7 @@ fn try_admin_update_collection_denom() {
 fn try_admin_set_and_remove_listing_fee() {
     let TestContext {
         mut app,
-        contracts:
-            TestContracts {
-                marketplace,
-                collection,
-                ..
-            },
+        contracts: TestContracts { marketplace, .. },
         accounts: TestAccounts { creator, .. },
     } = test_context();
 

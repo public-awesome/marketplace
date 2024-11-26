@@ -16,7 +16,7 @@ use cosmwasm_std::{coin, to_json_binary, Addr};
 use cw_multi_test::{Executor, SudoMsg as CwSudoMsg, WasmSudo};
 use cw_utils::NativeBalance;
 use sg_index_query::QueryOptions;
-use std::ops::{Add, Sub};
+use std::ops::Add;
 
 #[test]
 fn try_sudo_end_block() {
@@ -37,7 +37,7 @@ fn try_sudo_end_block() {
             },
     } = test_context();
 
-    let bidder_2 = setup_additional_account(&mut app, &"bidder2").unwrap();
+    let bidder_2 = setup_additional_account(&mut app, "bidder2").unwrap();
 
     let price = coin(1000000u128, NATIVE_DENOM);
     let expiry_reward = coin(MIN_EXPIRY_REWARD, NATIVE_DENOM);
@@ -76,7 +76,7 @@ fn try_sudo_end_block() {
             &marketplace,
             &QueryMsg::AsksByExpiryTimestamp {
                 query_options: Some(QueryOptions {
-                    limit: Some(20 as u32),
+                    limit: Some(20_u32),
                     descending: None,
                     min: None,
                     max: None,
@@ -116,7 +116,7 @@ fn try_sudo_end_block() {
             &marketplace,
             &QueryMsg::BidsByExpiryTimestamp {
                 query_options: Some(QueryOptions {
-                    limit: Some(20 as u32),
+                    limit: Some(20_u32),
                     descending: None,
                     min: None,
                     max: None,
@@ -155,7 +155,7 @@ fn try_sudo_end_block() {
             &marketplace,
             &QueryMsg::CollectionBidsByExpiryTimestamp {
                 query_options: Some(QueryOptions {
-                    limit: Some(20 as u32),
+                    limit: Some(20_u32),
                     descending: None,
                     min: None,
                     max: None,

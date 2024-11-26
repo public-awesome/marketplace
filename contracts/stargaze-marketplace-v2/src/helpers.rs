@@ -95,9 +95,9 @@ pub fn validate_expiry(
 
     ensure!(
         reward.amount >= min_expiry_reward,
-        ContractError::InvalidInput(format!(
-            "expiry reward must be greater than or equal to min expiry reward"
-        ))
+        ContractError::InvalidInput(
+            "expiry reward must be greater than or equal to min expiry reward".to_string()
+        )
     );
 
     Ok(Some(reward))
