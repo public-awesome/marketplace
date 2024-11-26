@@ -108,6 +108,10 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(Config<Addr>)]
     Config {},
+    #[returns(Option<Coin>)]
+    ListingFee { denom: Denom },
+    #[returns(Option<Coin>)]
+    MinExpiryReward { denom: Denom },
     #[returns(Option<Denom>)]
     CollectionDenom { collection: String },
     #[returns(Option<Ask>)]

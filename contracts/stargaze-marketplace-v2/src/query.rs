@@ -2,10 +2,13 @@ use crate::{
     helpers::build_collection_token_index_str,
     msg::{PriceOffset, QueryMsg},
     orders::{Ask, Bid, CollectionBid},
-    state::{asks, bids, collection_bids, Config, Denom, OrderId, COLLECTION_DENOMS, CONFIG},
+    state::{
+        asks, bids, collection_bids, Config, Denom, OrderId, COLLECTION_DENOMS, CONFIG,
+        LISTING_FEES, MIN_EXPIRY_REWARDS,
+    },
 };
 
-use cosmwasm_std::{to_json_binary, Addr, Binary, Deps, Env, StdResult};
+use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Coin, Deps, Env, StdResult};
 use cw_storage_plus::Bound;
 use sg_index_query::{QueryOptions, QueryOptionsInternal};
 
@@ -18,6 +21,10 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
     match msg {
         QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
+        QueryMsg::ListingFee { denom } => to_json_binary(&query_listing_fee(deps, denom)?),
+        QueryMsg::MinExpiryReward { denom } => {
+            to_json_binary(&query_min_expiry_reward(deps, denom)?)
+        }
         QueryMsg::CollectionDenom { collection } => to_json_binary(&query_collection_denom(
             deps,
             api.addr_validate(&collection)?,
@@ -106,6 +113,16 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
 
 pub fn query_config(deps: Deps) -> StdResult<Config<Addr>> {
     CONFIG.load(deps.storage)
+}
+
+pub fn query_listing_fee(deps: Deps, denom: Denom) -> StdResult<Option<Coin>> {
+    let result = LISTING_FEES.may_load(deps.storage, denom.clone())?;
+    Ok(result.map(|amount| coin(amount.u128(), denom)))
+}
+
+pub fn query_min_expiry_reward(deps: Deps, denom: Denom) -> StdResult<Option<Coin>> {
+    let result = MIN_EXPIRY_REWARDS.may_load(deps.storage, denom.clone())?;
+    Ok(result.map(|amount| coin(amount.u128(), denom)))
 }
 
 pub fn query_collection_denom(deps: Deps, collection: Addr) -> StdResult<Option<Denom>> {
