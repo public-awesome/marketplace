@@ -111,6 +111,7 @@ pub fn divide_protocol_fees(
     Ok(protocol_fees)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn finalize_sale(
     deps: DepsMut,
     env: &Env,
