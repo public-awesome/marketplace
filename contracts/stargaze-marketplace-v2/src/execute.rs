@@ -274,7 +274,16 @@ pub fn execute_set_ask(
 
     if let Some(matching_bid) = match_result {
         // If a match is found finalize the sale
-        response = finalize_sale(deps, &env, &ask, &config, &matching_bid, false, response)?;
+        response = finalize_sale(
+            deps,
+            &env,
+            &ask,
+            &config,
+            &matching_bid,
+            false,
+            "set-ask",
+            response,
+        )?;
     } else if sell_now {
         // If no match is found and sell_now is true, abort transaction
         Err(ContractError::NoMatchFound)?;
@@ -350,7 +359,16 @@ pub fn execute_update_ask(
 
     if let Some(matching_bid) = match_result {
         // If a match is found finalize the sale
-        response = finalize_sale(deps, &env, &ask, &config, &matching_bid, false, response)?;
+        response = finalize_sale(
+            deps,
+            &env,
+            &ask,
+            &config,
+            &matching_bid,
+            false,
+            "update-ask",
+            response,
+        )?;
     } else {
         // If no match is found continue updating the ask
         ask.save(deps.storage)?;
@@ -459,6 +477,7 @@ pub fn execute_accept_ask(
         &config,
         &MatchingBid::Bid(bid),
         true,
+        "accept-ask",
         Response::new(),
     )?;
 
@@ -517,6 +536,7 @@ pub fn execute_set_bid(
             &config,
             &MatchingBid::Bid(bid),
             true,
+            "set-bid",
             response,
         )?;
     } else if buy_now {
@@ -611,6 +631,7 @@ pub fn execute_update_bid(
             &config,
             &MatchingBid::Bid(bid),
             true,
+            "update-bid",
             response,
         )?;
     } else {
@@ -730,6 +751,7 @@ pub fn execute_accept_bid(
         &config,
         &MatchingBid::Bid(bid),
         false,
+        "accept-bid",
         Response::new(),
     )?;
 
@@ -781,6 +803,7 @@ pub fn execute_set_collection_bid(
             &config,
             &MatchingBid::CollectionBid(collection_bid),
             true,
+            "set-collection-bid",
             response,
         )?;
     } else if buy_now {
@@ -882,6 +905,7 @@ pub fn execute_update_collection_bid(
             &config,
             &MatchingBid::CollectionBid(collection_bid),
             true,
+            "update-collection-bid",
             response,
         )?;
     } else {
@@ -1004,6 +1028,7 @@ pub fn execute_accept_collection_bid(
         &config,
         &MatchingBid::CollectionBid(collection_bid),
         false,
+        "accept-collection-bid",
         Response::new(),
     )?;
 

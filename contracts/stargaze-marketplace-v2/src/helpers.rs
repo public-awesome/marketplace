@@ -111,6 +111,7 @@ pub fn divide_protocol_fees(
     Ok(protocol_fees)
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn finalize_sale(
     deps: DepsMut,
     env: &Env,
@@ -118,6 +119,7 @@ pub fn finalize_sale(
     config: &Config<Addr>,
     matching_bid: &MatchingBid,
     ask_before_bid: bool,
+    action: &str,
     response: Response,
 ) -> Result<Response, ContractError> {
     let (nft_recipient, bid_details) = match &matching_bid {
@@ -204,7 +206,8 @@ pub fn finalize_sale(
         .add_attribute("price", sale_price.amount.to_string())
         .add_attribute("seller_recipient", seller_recipient.to_string())
         .add_attribute("nft_recipient", nft_recipient.to_string())
-        .add_attribute("ask", ask.id.to_string());
+        .add_attribute("ask", ask.id.to_string())
+        .add_attribute("action", action.to_string());
 
     match &matching_bid {
         MatchingBid::Bid(bid) => {
