@@ -207,7 +207,7 @@ pub fn finalize_sale(
         .add_attribute("seller_recipient", seller_recipient.to_string())
         .add_attribute("nft_recipient", nft_recipient.to_string())
         .add_attribute("ask", ask.id.to_string())
-        .add_attribute("action", action.to_string());
+        .add_attribute("marketplace_action", action.to_string());
 
     match &matching_bid {
         MatchingBid::Bid(bid) => {

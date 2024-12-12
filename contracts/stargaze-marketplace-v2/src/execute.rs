@@ -281,7 +281,7 @@ pub fn execute_set_ask(
             &config,
             &matching_bid,
             false,
-            "set-ask",
+            "set-ask-match",
             response,
         )?;
     } else if sell_now {
@@ -522,6 +522,7 @@ pub fn execute_set_bid(
 
     let mut response = Response::new();
 
+    // bid could have a match with an existing ask without the need of buy_now
     if let Some(ask) = matching_ask {
         // If a matching ask is found perform the sale
         funds = funds
@@ -529,6 +530,11 @@ pub fn execute_set_bid(
             .map_err(|_| ContractError::InsufficientFunds)?;
 
         let config: Config<Addr> = CONFIG.load(deps.storage)?;
+
+        let mut action = "set-bid-match";
+        if buy_now {
+            action = "buy-now";
+        }
         response = finalize_sale(
             deps,
             &env,
@@ -536,7 +542,7 @@ pub fn execute_set_bid(
             &config,
             &MatchingBid::Bid(bid),
             true,
-            "set-bid",
+            action,
             response,
         )?;
     } else if buy_now {
