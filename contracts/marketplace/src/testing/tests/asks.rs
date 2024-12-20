@@ -1277,7 +1277,7 @@ fn try_sync_ask() {
         .unwrap();
     assert_eq!(res.asks.len(), 0);
 
-    // Approving again should have a success sync ask after
+    // Approving again should have a successful sync ask after
     approve(&mut router, &creator, &collection, &marketplace, token_id);
 
     // SyncAsk should be ok

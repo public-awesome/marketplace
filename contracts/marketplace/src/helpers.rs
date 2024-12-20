@@ -83,7 +83,7 @@ mod tests {
     #[test]
     fn test_map_validate() {
         let deps = mock_dependencies();
-        let adddreses = map_validate(
+        let addresses = map_validate(
             &deps.api,
             &[
                 "operator1".to_string(),
@@ -94,7 +94,7 @@ mod tests {
         .unwrap();
         assert_eq!(3, adddreses.len());
 
-        let adddreses = map_validate(
+        let addresses = map_validate(
             &deps.api,
             &[
                 "operator1".to_string(),
@@ -107,7 +107,7 @@ mod tests {
         .unwrap();
 
         assert_eq!(
-            adddreses,
+            addresses,
             vec![
                 Addr::unchecked("operator1".to_string()),
                 Addr::unchecked("operator2".to_string()),

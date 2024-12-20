@@ -303,7 +303,7 @@ fn try_start_trading_time() {
         .unwrap();
     assert_eq!(res.owner, bidder.to_string());
 
-    // Creator tries to accept accept bid on collection 2 (should fail)
+    // Creator tries to accept bid on collection 2 (should fail)
     let accept_bid_msg = ExecuteMsg::AcceptCollectionBid {
         collection: collection_2.to_string(),
         token_id: minter_2_token_id_0,
@@ -340,7 +340,7 @@ fn try_start_trading_time() {
     // move time to start trading time
     setup_block_time(&mut router, start_time.plus_seconds(1).nanos(), None);
 
-    // Creator tries to accept accept bid on collection 2  should work now
+    // Creator tries to accept bid on collection 2  should work now
     let accept_bid_msg = ExecuteMsg::AcceptBid {
         collection: collection_2.to_string(),
         token_id: minter_2_token_id_0,
