@@ -125,10 +125,4 @@ pub enum SudoMsg {
         halt_buffer_duration: Option<u64>,
         halt_postpone_duration: Option<u64>,
     },
-    SetMinReservePrices {
-        min_reserve_prices: Vec<Coin>,
-    },
-    UnsetMinReservePrices {
-        denoms: Vec<String>,
-    },
 }
