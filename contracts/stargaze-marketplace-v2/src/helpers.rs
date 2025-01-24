@@ -52,24 +52,34 @@ pub fn only_contract_admin(
     Ok(())
 }
 
+// only_valid_price checks non zero amounts and enforces being in the collection denom or optional denom
 pub fn only_valid_price(
     storage: &dyn Storage,
     config: &Config<Addr>,
     collection: &Addr,
     price: &Coin,
+    denom: Option<&str>,
 ) -> Result<(), ContractError> {
     ensure!(
         price.amount > Uint128::zero(),
         ContractError::InvalidInput("order price must be greater than 0".to_string())
     );
 
-    let query_result = COLLECTION_DENOMS.may_load(storage, collection.clone())?;
-    let collection_denom = query_result.unwrap_or(config.default_denom.clone());
-    ensure_eq!(
-        collection_denom,
-        price.denom,
-        ContractError::InvalidInput("invalid denom".to_string())
-    );
+    if let Some(denom) = denom {
+        ensure_eq!(
+            denom,
+            price.denom,
+            ContractError::InvalidInput("invalid denom".to_string())
+        );
+    } else {
+        let query_result = COLLECTION_DENOMS.may_load(storage, collection.clone())?;
+        let collection_denom = query_result.unwrap_or(config.default_denom.clone());
+        ensure_eq!(
+            collection_denom,
+            price.denom,
+            ContractError::InvalidInput("invalid denom".to_string())
+        );
+    }
 
     Ok(())
 }
