@@ -12,6 +12,7 @@ use crate::tests::{
     setup::{setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template},
 };
 
+use crate::tests::setup::setup_royalty_registry::setup_royalty_registry;
 use cosmwasm_std::coin;
 use sg_marketplace_common::query::QueryOptions;
 use sg_std::{GENESIS_MINT_START_TIME, NATIVE_DENOM};
@@ -22,7 +23,9 @@ fn try_query_auctions_by_seller() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
@@ -114,7 +117,9 @@ fn try_query_auctions_by_end_time() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 

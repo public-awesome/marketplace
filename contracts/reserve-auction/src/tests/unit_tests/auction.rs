@@ -23,6 +23,7 @@ use crate::tests::{
 };
 use crate::ContractError;
 
+use crate::tests::setup::setup_royalty_registry::setup_royalty_registry;
 use cosmwasm_std::{coin, Addr, Decimal, StdError, Uint128};
 use cw_multi_test::Executor;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
@@ -51,6 +52,8 @@ fn try_instantiate() {
         halt_buffer_duration: HALT_BUFFER_DURATION,
         halt_postpone_duration: HALT_POSTPONE_DURATION,
         min_reserve_prices: vec![coin(MIN_RESERVE_PRICE, NATIVE_DENOM)],
+        royalty_registry: "royalty_registry".to_string(),
+        max_royalty_fee_bps: 1000,
     };
     let auction_addr = instantiate_auction(&mut app, auction_id, msg.clone());
 
@@ -74,7 +77,9 @@ fn try_create_auction() {
     let vt = standard_minter_template(1);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -302,7 +307,9 @@ fn try_update_reserve_price() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -405,7 +412,9 @@ fn try_cancel_auction() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -510,7 +519,9 @@ fn try_place_bid() {
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let second_bidder = setup_addtl_account(&mut router, "second_bidder", INITIAL_BALANCE).unwrap();
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -706,7 +717,9 @@ fn try_settle_auction_with_bids() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -892,7 +905,9 @@ fn try_settle_auction_with_no_bids() {
     let vt = standard_minter_template(1);
     let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();

@@ -11,6 +11,15 @@ pub fn contract_fair_burn() -> Box<dyn Contract<StargazeMsgWrapper>> {
     Box::new(contract)
 }
 
+pub fn contract_royalty_registry() -> Box<dyn Contract<StargazeMsgWrapper>> {
+    let contract = ContractWrapper::new(
+        stargaze_royalty_registry::execute::execute,
+        stargaze_royalty_registry::instantiate::instantiate,
+        stargaze_royalty_registry::query::query,
+    );
+    Box::new(contract)
+}
+
 pub fn contract_reserve_auction() -> Box<dyn Contract<StargazeMsgWrapper>> {
     let contract = ContractWrapper::new(
         crate::execute::execute,
