@@ -19,6 +19,8 @@ pub struct Config {
     pub halt_duration_threshold: u64, // in seconds
     pub halt_buffer_duration: u64,    // in seconds
     pub halt_postpone_duration: u64,  // in seconds
+    pub royalty_registry: Addr,
+    pub max_royalty_fee_bps: u64,
 }
 
 impl Config {

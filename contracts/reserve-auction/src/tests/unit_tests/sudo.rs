@@ -18,6 +18,7 @@ use crate::tests::{
     setup::{setup_auctions::setup_reserve_auction, setup_minters::standard_minter_template},
 };
 
+use crate::tests::setup::setup_royalty_registry::setup_royalty_registry;
 use cosmwasm_std::{coin, Coin, Decimal, Uint128};
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
 use sg_marketplace_common::coin::bps_to_decimal;
@@ -30,7 +31,9 @@ fn try_sudo_begin_block() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let reserve_auction = setup_reserve_auction(&mut router, creator, fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator, fair_burn, royalty_registry).unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 
@@ -44,7 +47,9 @@ fn try_sudo_end_block() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
 
@@ -256,7 +261,9 @@ fn try_sudo_update_params() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let reserve_auction = setup_reserve_auction(&mut router, creator, fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator, fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
 
     let delta: u64 = 1;
@@ -277,6 +284,8 @@ fn try_sudo_update_params() {
         halt_duration_threshold: Some(HALT_DURATION_THRESHOLD + delta),
         halt_buffer_duration: Some(HALT_BUFFER_DURATION + delta),
         halt_postpone_duration: Some(HALT_POSTPONE_DURATION + delta),
+        royalty_registry: Some("royalty_registry".to_string()),
+        max_royalty_fee_bps: Some(1000),
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
 
@@ -335,6 +344,8 @@ fn try_sudo_update_params() {
         halt_duration_threshold: None,
         halt_buffer_duration: None,
         halt_postpone_duration: None,
+        royalty_registry: None,
+        max_royalty_fee_bps: None,
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
     assert_eq!(
@@ -353,6 +364,8 @@ fn try_sudo_update_params() {
         halt_duration_threshold: None,
         halt_buffer_duration: None,
         halt_postpone_duration: None,
+        royalty_registry: None,
+        max_royalty_fee_bps: None,
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
     assert_eq!(
@@ -371,6 +384,8 @@ fn try_sudo_update_params() {
         halt_duration_threshold: None,
         halt_buffer_duration: None,
         halt_postpone_duration: None,
+        royalty_registry: None,
+        max_royalty_fee_bps: None,
     };
     let response = router.wasm_sudo(reserve_auction.clone(), &update_params_msg);
     assert_eq!(
@@ -389,6 +404,8 @@ fn try_sudo_update_params() {
         halt_duration_threshold: None,
         halt_buffer_duration: None,
         halt_postpone_duration: None,
+        royalty_registry: None,
+        max_royalty_fee_bps: None,
     };
     let response = router.wasm_sudo(reserve_auction, &update_params_msg);
     assert_eq!(
@@ -402,7 +419,9 @@ fn try_sudo_min_reserve_prices() {
     let vt = standard_minter_template(1000);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let reserve_auction = setup_reserve_auction(&mut router, creator, fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let reserve_auction =
+        setup_reserve_auction(&mut router, creator, fair_burn, royalty_registry).unwrap();
 
     setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
 

@@ -26,6 +26,8 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             halt_duration_threshold,
             halt_buffer_duration,
             halt_postpone_duration,
+            royalty_registry,
+            max_royalty_fee_bps,
         } => sudo_update_params(
             deps,
             env,
@@ -39,6 +41,8 @@ pub fn sudo(deps: DepsMut, env: Env, msg: SudoMsg) -> Result<Response, ContractE
             halt_duration_threshold,
             halt_buffer_duration,
             halt_postpone_duration,
+            royalty_registry,
+            max_royalty_fee_bps,
         ),
         SudoMsg::SetMinReservePrices { min_reserve_prices } => {
             sudo_set_min_reserve_prices(deps, min_reserve_prices)
@@ -106,7 +110,7 @@ pub fn sudo_end_block(mut deps: DepsMut, env: Env) -> Result<Response, ContractE
     for auction in auctions {
         response = settle_auction(
             deps.branch(),
-            env.block.time,
+            env.clone(),
             auction,
             &config,
             &halt_manager,
@@ -137,6 +141,8 @@ pub fn sudo_update_params(
     halt_duration_threshold: Option<u64>,
     halt_buffer_duration: Option<u64>,
     halt_postpone_duration: Option<u64>,
+    royalty_registry: Option<String>,
+    max_royalty_fee_bps: Option<u64>,
 ) -> Result<Response, ContractError> {
     let mut config = CONFIG.load(deps.storage)?;
 
@@ -198,6 +204,17 @@ pub fn sudo_update_params(
         event = event.add_attribute(
             "halt_postpone_duration",
             config.halt_postpone_duration.to_string(),
+        );
+    }
+    if let Some(royalty_registry) = royalty_registry {
+        config.royalty_registry = deps.api.addr_validate(&royalty_registry)?;
+        event = event.add_attribute("royalty_registry", &config.royalty_registry);
+    }
+    if let Some(max_royalty_fee_bps) = max_royalty_fee_bps {
+        config.max_royalty_fee_bps = max_royalty_fee_bps;
+        event = event.add_attribute(
+            "max_royalty_fee_bps",
+            config.max_royalty_fee_bps.to_string(),
         );
     }
 

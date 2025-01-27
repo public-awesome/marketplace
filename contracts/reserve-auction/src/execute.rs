@@ -7,7 +7,6 @@ use crate::state::{auctions, Auction, HighBid};
 use crate::state::{CONFIG, HALT_MANAGER};
 use cosmwasm_std::{
     attr, coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo,
-    Timestamp,
 };
 use cw_utils::{maybe_addr, must_pay, nonpayable};
 use sg_marketplace_common::{
@@ -69,13 +68,7 @@ pub fn execute(
         ExecuteMsg::SettleAuction {
             collection,
             token_id,
-        } => execute_settle_auction(
-            deps,
-            info,
-            env.block.time,
-            api.addr_validate(&collection)?,
-            &token_id,
-        ),
+        } => execute_settle_auction(deps, info, env, api.addr_validate(&collection)?, &token_id),
     }
 }
 
@@ -359,7 +352,7 @@ pub fn execute_place_bid(
 pub fn execute_settle_auction(
     deps: DepsMut,
     info: MessageInfo,
-    block_time: Timestamp,
+    env: Env,
     collection: Addr,
     token_id: &str,
 ) -> Result<Response, ContractError> {
@@ -370,5 +363,5 @@ pub fn execute_settle_auction(
 
     let response = Response::new();
 
-    settle_auction(deps, block_time, auction, &config, &halt_manager, response)
+    settle_auction(deps, env, auction, &config, &halt_manager, response)
 }
