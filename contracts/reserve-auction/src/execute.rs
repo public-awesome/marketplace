@@ -3,7 +3,7 @@ use std::vec;
 use crate::error::ContractError;
 use crate::helpers::{only_no_auction, settle_auction, validate_reserve_price};
 use crate::msg::ExecuteMsg;
-use crate::state::{auctions, Auction, HighBid};
+use crate::state::{auctions, Auction, HighBid, MIN_RESERVE_PRICES, MIN_RESERVE_PRICE_MANAGER};
 use crate::state::{CONFIG, HALT_MANAGER};
 use cosmwasm_std::{
     attr, coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo,
@@ -76,6 +76,15 @@ pub fn execute(
             api.addr_validate(&collection)?,
             &token_id,
         ),
+        ExecuteMsg::SetMinReservePrices { min_reserve_prices } => {
+            execute_set_min_reserve_prices(deps, info, min_reserve_prices)
+        }
+        ExecuteMsg::UnsetMinReservePrices { denoms } => {
+            execute_unset_min_reserve_prices(deps, info, denoms)
+        }
+        ExecuteMsg::UpdateMinReservePriceManager { manager } => {
+            execute_update_min_reserve_price_manager(deps, info, manager)
+        }
     }
 }
 
@@ -371,4 +380,82 @@ pub fn execute_settle_auction(
     let response = Response::new();
 
     settle_auction(deps, block_time, auction, &config, &halt_manager, response)
+}
+
+pub fn execute_set_min_reserve_prices(
+    deps: DepsMut,
+    info: MessageInfo,
+    min_reserve_prices: Vec<Coin>,
+) -> Result<Response, ContractError> {
+    let min_reserve_price_manager = MIN_RESERVE_PRICE_MANAGER.load(deps.storage)?;
+    ensure_eq!(
+        info.sender,
+        min_reserve_price_manager,
+        ContractError::Unauthorized {}
+    );
+
+    let mut response = Response::new();
+
+    for min_reserve_price in min_reserve_prices {
+        ensure!(
+            !MIN_RESERVE_PRICES.has(deps.storage, min_reserve_price.denom.clone()),
+            ContractError::InvalidInput("found duplicate denom".to_string())
+        );
+
+        MIN_RESERVE_PRICES.save(
+            deps.storage,
+            min_reserve_price.denom.clone(),
+            &min_reserve_price.amount,
+        )?;
+        response = response.add_event(
+            Event::new("set-min-reserve-price")
+                .add_attribute("denom", min_reserve_price.denom)
+                .add_attribute("amount", min_reserve_price.amount),
+        );
+    }
+    Ok(response)
+}
+
+pub fn execute_unset_min_reserve_prices(
+    deps: DepsMut,
+    info: MessageInfo,
+    denoms: Vec<String>,
+) -> Result<Response, ContractError> {
+    let min_reserve_price_manager = MIN_RESERVE_PRICE_MANAGER.load(deps.storage)?;
+    ensure_eq!(
+        info.sender,
+        min_reserve_price_manager,
+        ContractError::Unauthorized {}
+    );
+
+    let mut response = Response::new();
+
+    for denom in denoms {
+        ensure!(
+            MIN_RESERVE_PRICES.has(deps.storage, denom.clone()),
+            ContractError::InvalidInput("denom not found".to_string())
+        );
+
+        MIN_RESERVE_PRICES.remove(deps.storage, denom.clone());
+        response =
+            response.add_event(Event::new("unset-min-reserve-price").add_attribute("denom", denom));
+    }
+    Ok(response)
+}
+
+pub fn execute_update_min_reserve_price_manager(
+    deps: DepsMut,
+    info: MessageInfo,
+    manager: String,
+) -> Result<Response, ContractError> {
+    let min_reserve_price_manager = MIN_RESERVE_PRICE_MANAGER.load(deps.storage)?;
+    ensure_eq!(
+        info.sender,
+        min_reserve_price_manager,
+        ContractError::Unauthorized {}
+    );
+
+    MIN_RESERVE_PRICE_MANAGER.save(deps.storage, &deps.api.addr_validate(&manager)?)?;
+
+    Ok(Response::new().add_attribute("action", "update-min-reserve-price-manager"))
 }

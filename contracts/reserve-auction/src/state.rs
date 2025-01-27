@@ -58,6 +58,7 @@ pub const CONFIG: Item<Config> = Item::new("cfg");
 // A map of acceptable denoms to their minimum reserve price.
 // Denoms not found in the Map are not accepted.
 pub const MIN_RESERVE_PRICES: Map<String, Uint128> = Map::new("mrp");
+pub const MIN_RESERVE_PRICE_MANAGER: Item<Addr> = Item::new("mrpm");
 
 #[cw_serde]
 pub struct HighBid {
