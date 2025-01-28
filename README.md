@@ -15,7 +15,7 @@ This will start a new Stargaze chain and upload the configured contracts and run
 
 ## WARNING: NOT FOR COMMERCIAL USE
 
-This repo is under a business source license simliar to Uniswap V3. This means it is **not available** under an open source license for a period of time. Please see [LICENSE](LICENSE) for full details.
+This repo is under a business source license similar to Uniswap V3. This means it is **not available** under an open source license for a period of time. Please see [LICENSE](LICENSE) for full details.
 
 ## DISCLAIMER
 
