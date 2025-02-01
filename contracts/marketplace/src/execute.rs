@@ -1286,7 +1286,7 @@ fn store_ask(store: &mut dyn Storage, ask: &Ask) -> StdResult<()> {
     asks().save(store, ask_key(&ask.collection, ask.token_id), ask)
 }
 
-/// Checks to enfore only NFT owner can call
+/// Checks to enforce only NFT owner can call
 fn only_owner(
     deps: Deps,
     info: &MessageInfo,
