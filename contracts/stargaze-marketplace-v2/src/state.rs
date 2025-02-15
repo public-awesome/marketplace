@@ -107,7 +107,7 @@ pub fn asks<'a>() -> IndexedMap<'a, OrderId, Ask, AskIndices<'a>> {
     IndexedMap::new("a", indexes)
 }
 
-/// Defines incides for accessing bids
+/// Defines indices for accessing bids
 pub struct BidIndices<'a> {
     // Index bids for a token id, sorted by denom price (infinity router dependency)
     pub token_denom_price: MultiIndex<'a, (TokenId, Denom, u128), Bid, OrderId>,
@@ -144,7 +144,7 @@ pub fn bids<'a>() -> IndexedMap<'a, OrderId, Bid, BidIndices<'a>> {
     IndexedMap::new("o", indexes)
 }
 
-/// Defines incides for accessing collection bids
+/// Defines indices for accessing collection bids
 pub struct CollectionBidIndices<'a> {
     // Index collection bids by collection and price
     pub collection_denom_price: MultiIndex<'a, (Addr, Denom, u128), CollectionBid, OrderId>,
