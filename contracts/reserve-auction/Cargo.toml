@@ -35,7 +35,7 @@ library = []
 
 [dependencies]
 sg-marketplace-common = { version = "= 1.1.0" }
-stargaze-royalty-registry = "0.3.0"
+stargaze-royalty-registry = { version = "0.3.0", features = ["library"] }
 stargaze-fair-burn    = { version = "1.0.2", features = ["library"] }
 cosmwasm-std          = "1.5.4"
 cosmwasm-schema       = "1.5.3"
