@@ -1,7 +1,9 @@
 use std::vec;
 
 use crate::error::ContractError;
-use crate::helpers::{only_no_auction, settle_auction, validate_reserve_price};
+use crate::helpers::{
+    only_min_reserve_price_manager, only_no_auction, settle_auction, validate_reserve_price,
+};
 use crate::msg::ExecuteMsg;
 use crate::state::{auctions, Auction, HighBid, MIN_RESERVE_PRICES, MIN_RESERVE_PRICE_MANAGER};
 use crate::state::{CONFIG, HALT_MANAGER};
@@ -387,12 +389,7 @@ pub fn execute_set_min_reserve_prices(
     info: MessageInfo,
     min_reserve_prices: Vec<Coin>,
 ) -> Result<Response, ContractError> {
-    let min_reserve_price_manager = MIN_RESERVE_PRICE_MANAGER.load(deps.storage)?;
-    ensure_eq!(
-        info.sender,
-        min_reserve_price_manager,
-        ContractError::Unauthorized {}
-    );
+    only_min_reserve_price_manager(deps.as_ref(), &info.sender)?;
 
     let mut response = Response::new();
 
@@ -421,12 +418,7 @@ pub fn execute_unset_min_reserve_prices(
     info: MessageInfo,
     denoms: Vec<String>,
 ) -> Result<Response, ContractError> {
-    let min_reserve_price_manager = MIN_RESERVE_PRICE_MANAGER.load(deps.storage)?;
-    ensure_eq!(
-        info.sender,
-        min_reserve_price_manager,
-        ContractError::Unauthorized {}
-    );
+    only_min_reserve_price_manager(deps.as_ref(), &info.sender)?;
 
     let mut response = Response::new();
 
@@ -448,12 +440,7 @@ pub fn execute_update_min_reserve_price_manager(
     info: MessageInfo,
     manager: String,
 ) -> Result<Response, ContractError> {
-    let min_reserve_price_manager = MIN_RESERVE_PRICE_MANAGER.load(deps.storage)?;
-    ensure_eq!(
-        info.sender,
-        min_reserve_price_manager,
-        ContractError::Unauthorized {}
-    );
+    only_min_reserve_price_manager(deps.as_ref(), &info.sender)?;
 
     MIN_RESERVE_PRICE_MANAGER.save(deps.storage, &deps.api.addr_validate(&manager)?)?;
 

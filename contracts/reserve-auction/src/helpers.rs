@@ -1,11 +1,13 @@
-use cosmwasm_std::{coin, ensure, Addr, Coin, Deps, DepsMut, Event, Storage, Timestamp};
+use cosmwasm_std::{coin, ensure, ensure_eq, Addr, Coin, Deps, DepsMut, Event, Storage, Timestamp};
 use sg_marketplace_common::{
     nft::{load_collection_royalties, transfer_nft},
     sale::payout_nft_sale_fees,
 };
 use sg_std::Response;
 
-use crate::state::{auctions, Auction, Config, HaltManager, MIN_RESERVE_PRICES};
+use crate::state::{
+    auctions, Auction, Config, HaltManager, MIN_RESERVE_PRICES, MIN_RESERVE_PRICE_MANAGER,
+};
 use crate::ContractError;
 
 pub fn only_no_auction(deps: Deps, collection: &Addr, token_id: &str) -> Result<(), ContractError> {
@@ -18,6 +20,16 @@ pub fn only_no_auction(deps: Deps, collection: &Addr, token_id: &str) -> Result<
             token_id: token_id.to_string(),
         });
     }
+    Ok(())
+}
+
+pub fn only_min_reserve_price_manager(deps: Deps, sender: &Addr) -> Result<(), ContractError> {
+    let min_reserve_price_manager = MIN_RESERVE_PRICE_MANAGER.load(deps.storage)?;
+    ensure_eq!(
+        sender,
+        min_reserve_price_manager,
+        ContractError::Unauthorized {}
+    );
     Ok(())
 }
 
