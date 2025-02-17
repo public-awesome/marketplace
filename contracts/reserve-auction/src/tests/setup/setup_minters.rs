@@ -1,9 +1,9 @@
 use crate::tests::setup::msg::Accounts;
 use crate::tests::setup::setup_accounts::setup_accounts;
-use cosmwasm_std::{Decimal, Timestamp};
+use cosmwasm_std::Timestamp;
 use sg2::msg::CollectionParams;
 use sg2::tests::mock_collection_params_1;
-use sg721::{CollectionInfo, RoyaltyInfoResponse};
+use sg721::CollectionInfo;
 use sg_std::GENESIS_MINT_START_TIME;
 use test_suite::common_setup::{
     contract_boxes::custom_mock_app,

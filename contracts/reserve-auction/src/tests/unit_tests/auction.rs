@@ -958,6 +958,7 @@ fn try_settle_auction_with_no_bids() {
     assert_error(res, ContractError::AuctionNotEnded {}.to_string());
 }
 
+#[test]
 fn try_settle_auction_with_bids_no_royalties() {
     let vt = minter_template_no_royalties(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
@@ -1085,13 +1086,6 @@ fn try_settle_auction_with_bids_no_royalties() {
     );
 
     // check that no royalty is paid
-    let collection_info: CollectionInfoResponse = router
-        .wrap()
-        .query_wasm_smart(collection.clone(), &Sg721QueryMsg::CollectionInfo {})
-        .unwrap();
-    let royalty_share = collection_info.royalty_info.unwrap().share;
-    let royalty_fee = Uint128::from(high_bid_amount) * royalty_share;
-
     let new_creator_balance = router
         .wrap()
         .query_balance(&creator, NATIVE_DENOM)
@@ -1100,7 +1094,7 @@ fn try_settle_auction_with_bids_no_royalties() {
     assert_eq!(new_creator_balance, Uint128::from(INITIAL_BALANCE));
 
     // check that seller funds recipient was paid
-    let seller_payment = Uint128::from(high_bid_amount) - protocol_fee - royalty_fee;
+    let seller_payment = Uint128::from(high_bid_amount) - protocol_fee;
     let new_auction_creator_balance = router
         .wrap()
         .query_balance(&auction_creator, NATIVE_DENOM)
