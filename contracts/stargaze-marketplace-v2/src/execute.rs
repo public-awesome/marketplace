@@ -248,6 +248,7 @@ pub fn execute_set_ask(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
+    // check agains collection denom
     only_valid_price(deps.storage, &config, &collection, &details.price, None)?;
 
     // Check and collect listing fee
@@ -349,6 +350,7 @@ pub fn execute_update_ask(
         )
     );
 
+    // check agains collection denom
     only_valid_price(deps.storage, &config, &ask.collection, &details.price, None)?;
 
     ask.details = details;
@@ -523,6 +525,7 @@ pub fn execute_set_bid(
 
     // bid could have a match with an existing ask without the need of buy_now
     if let Some(ask) = matching_ask {
+        // check against the original ask price denom
         only_valid_price(
             deps.storage,
             &config,
@@ -558,6 +561,7 @@ pub fn execute_set_bid(
         // If no match is found. Bid creation should:
         // * store the bid
         // * emit event
+        // * check against the collection denom
         only_valid_price(deps.storage, &config, &collection, &details.price, None)?;
         funds = funds
             .sub(bid.details.price.clone())
@@ -615,6 +619,7 @@ pub fn execute_update_bid(
         )
     );
 
+    // check against collection denom
     only_valid_price(deps.storage, &config, &bid.collection, &details.price, None)?;
 
     let mut funds = NativeBalance(info.funds.clone());
@@ -781,6 +786,7 @@ pub fn execute_set_collection_bid(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
+    // check agains collection denom
     only_valid_price(deps.storage, &config, &collection, &details.price, None)?;
 
     let mut funds = NativeBalance(info.funds.clone());
@@ -884,6 +890,7 @@ pub fn execute_update_collection_bid(
         )
     );
 
+    // check agains collection denom
     only_valid_price(
         deps.storage,
         &config,
