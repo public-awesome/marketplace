@@ -845,3 +845,235 @@ fn try_accept_ask_invalid_inputs() {
         ContractError::InvalidInput("ask price is greater than max input".to_string()).to_string(),
     );
 }
+
+#[test]
+fn try_set_ask_with_old_denom() {
+    let TestContext {
+        mut app,
+        contracts:
+            TestContracts {
+                marketplace,
+                collection,
+                ..
+            },
+        accounts:
+            TestAccounts {
+                creator,
+                owner,
+                bidder,
+                ..
+            },
+    } = test_context();
+
+    let token_id = "1";
+    mint(&mut app, &creator, &owner, &collection, token_id);
+    approve(&mut app, &owner, &collection, &marketplace, token_id);
+
+    // Set ask with NATIVE_DENOM
+    let ask_price = coin(5_000_000, NATIVE_DENOM);
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: ask_price.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
+    assert!(response.is_ok());
+
+    // Update collection denom to ATOM_DENOM
+    let update_collection_denom = ExecuteMsg::UpdateCollectionDenom {
+        collection: collection.to_string(),
+        denom: ATOM_DENOM.to_string(),
+    };
+    let response = app.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &update_collection_denom,
+        &[],
+    );
+    assert!(response.is_ok());
+    let atom_bid = coin(5_000_000, ATOM_DENOM);
+
+    // buying now should fail with ATOM_DENOM because listing is in NATIVE_DENOM
+    let buy_now = ExecuteMsg::BuySpecificNft {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: atom_bid.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &buy_now,
+        &[atom_bid.clone()],
+    );
+    assert!(response.is_err());
+
+    // set bid with ATOM_DENOM should succeed
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: atom_bid.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[atom_bid]);
+    assert!(response.is_ok());
+
+    // set bid with NATIVE_DENOM should fail
+    let native_bid = coin(4_20, NATIVE_DENOM);
+    let set_bid_native = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: native_bid.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_native,
+        &[native_bid],
+    );
+    assert!(response.is_err());
+
+    let buy_price = coin(5_000_000, NATIVE_DENOM);
+    let buy_now_asking_price = ExecuteMsg::BuySpecificNft {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: buy_price.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        bidder,
+        marketplace.clone(),
+        &buy_now_asking_price,
+        &[buy_price],
+    );
+    assert!(response.is_ok());
+}
+
+#[test]
+fn try_match_bid_with_old_denom() {
+    let TestContext {
+        mut app,
+        contracts:
+            TestContracts {
+                marketplace,
+                collection,
+                ..
+            },
+        accounts:
+            TestAccounts {
+                creator,
+                owner,
+                bidder,
+                ..
+            },
+    } = test_context();
+
+    let token_id = "1";
+    mint(&mut app, &creator, &owner, &collection, token_id);
+    approve(&mut app, &owner, &collection, &marketplace, token_id);
+
+    // Set ask with NATIVE_DENOM
+    let ask_price = coin(5_000_000, NATIVE_DENOM);
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: ask_price.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
+    assert!(response.is_ok());
+
+    // Update collection denom to ATOM_DENOM
+    let update_collection_denom = ExecuteMsg::UpdateCollectionDenom {
+        collection: collection.to_string(),
+        denom: ATOM_DENOM.to_string(),
+    };
+    let response = app.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &update_collection_denom,
+        &[],
+    );
+    assert!(response.is_ok());
+    let atom_bid = coin(5_000_000, ATOM_DENOM);
+
+    // buying now should fail with ATOM_DENOM because listing is in NATIVE_DENOM
+    let buy_now = ExecuteMsg::BuySpecificNft {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: atom_bid.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &buy_now,
+        &[atom_bid.clone()],
+    );
+    assert!(response.is_err());
+
+    // set bid with ATOM_DENOM should succeed
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: atom_bid.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(bidder.clone(), marketplace.clone(), &set_bid, &[atom_bid]);
+    assert!(response.is_ok());
+
+    // set bid with NATIVE_DENOM suceed if it matches the ask price
+    let native_bid = coin(5_000_000, NATIVE_DENOM);
+    let set_bid_native = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+        details: OrderDetails {
+            price: native_bid.clone(),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid_native,
+        &[native_bid],
+    );
+    assert!(response.is_ok());
+}

@@ -248,7 +248,8 @@ pub fn execute_set_ask(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
-    only_valid_price(deps.storage, &config, &collection, &details.price)?;
+    // check agains collection denom
+    only_valid_price(deps.storage, &config, &collection, &details.price, None)?;
 
     // Check and collect listing fee
     let listing_payment = one_coin(&info)?;
@@ -349,7 +350,8 @@ pub fn execute_update_ask(
         )
     );
 
-    only_valid_price(deps.storage, &config, &ask.collection, &details.price)?;
+    // check agains collection denom
+    only_valid_price(deps.storage, &config, &ask.collection, &details.price, None)?;
 
     ask.details = details;
 
@@ -501,7 +503,6 @@ pub fn execute_set_bid(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
-    only_valid_price(deps.storage, &config, &collection, &details.price)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -511,9 +512,9 @@ pub fn execute_set_bid(
 
     let bid = Bid::new(
         info.sender.clone(),
-        collection,
+        collection.clone(),
         token_id,
-        details,
+        details.clone(),
         env.block.height,
         nonce,
     );
@@ -524,6 +525,14 @@ pub fn execute_set_bid(
 
     // bid could have a match with an existing ask without the need of buy_now
     if let Some(ask) = matching_ask {
+        // check against the original ask price denom
+        only_valid_price(
+            deps.storage,
+            &config,
+            &collection,
+            &details.price,
+            Some(&ask.details.price.denom),
+        )?;
         // If a matching ask is found perform the sale
         funds = funds
             .sub(ask.details.price.clone())
@@ -552,7 +561,8 @@ pub fn execute_set_bid(
         // If no match is found. Bid creation should:
         // * store the bid
         // * emit event
-
+        // * check against the collection denom
+        only_valid_price(deps.storage, &config, &collection, &details.price, None)?;
         funds = funds
             .sub(bid.details.price.clone())
             .map_err(|_| ContractError::InsufficientFunds)?;
@@ -609,7 +619,8 @@ pub fn execute_update_bid(
         )
     );
 
-    only_valid_price(deps.storage, &config, &bid.collection, &details.price)?;
+    // check against collection denom
+    only_valid_price(deps.storage, &config, &bid.collection, &details.price, None)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -775,7 +786,8 @@ pub fn execute_set_collection_bid(
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
-    only_valid_price(deps.storage, &config, &collection, &details.price)?;
+    // check agains collection denom
+    only_valid_price(deps.storage, &config, &collection, &details.price, None)?;
 
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
@@ -878,11 +890,13 @@ pub fn execute_update_collection_bid(
         )
     );
 
+    // check agains collection denom
     only_valid_price(
         deps.storage,
         &config,
         &collection_bid.collection,
         &details.price,
+        None,
     )?;
 
     let mut funds = NativeBalance(info.funds.clone());
