@@ -32,6 +32,8 @@ pub fn instantiate(
         halt_duration_threshold: msg.halt_duration_threshold,
         halt_buffer_duration: msg.halt_buffer_duration,
         halt_postpone_duration: msg.halt_postpone_duration,
+        royalty_registry: deps.api.addr_validate(&msg.royalty_registry)?,
+        max_royalty_fee_bps: msg.max_royalty_fee_bps,
     };
 
     config.save(deps.storage)?;

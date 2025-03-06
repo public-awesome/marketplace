@@ -1,12 +1,17 @@
-use cosmwasm_std::{coin, ensure, Addr, Coin, Deps, DepsMut, Event, Storage, Timestamp};
-use sg_marketplace_common::{
-    nft::{load_collection_royalties, transfer_nft},
-    sale::payout_nft_sale_fees,
-};
-use sg_std::Response;
-
 use crate::state::{auctions, Auction, Config, HaltManager, MIN_RESERVE_PRICES};
 use crate::ContractError;
+use cosmwasm_std::{
+    coin, ensure, Addr, Coin, Decimal, Deps, DepsMut, Env, Event, StdError, StdResult, Storage,
+};
+use sg721::RoyaltyInfo;
+use sg721_base::msg::CollectionInfoResponse;
+use sg721_base::msg::QueryMsg as Sg721QueryMsg;
+use sg_marketplace_common::{nft::transfer_nft, sale::payout_nft_sale_fees};
+use sg_std::Response;
+use stargaze_royalty_registry::fetch_royalty_entry;
+use stargaze_royalty_registry::state::RoyaltyEntry;
+use std::cmp::min;
+use std::str::FromStr;
 
 pub fn only_no_auction(deps: Deps, collection: &Addr, token_id: &str) -> Result<(), ContractError> {
     if auctions()
@@ -47,7 +52,7 @@ pub fn validate_reserve_price(
 
 pub fn settle_auction(
     deps: DepsMut,
-    block_time: Timestamp,
+    env: Env,
     mut auction: Auction,
     config: &Config,
     halt_manager: &HaltManager,
@@ -55,14 +60,14 @@ pub fn settle_auction(
 ) -> Result<Response, ContractError> {
     // Ensure auction has ended
     ensure!(
-        auction.end_time.is_some() && auction.end_time.unwrap() <= block_time,
+        auction.end_time.is_some() && auction.end_time.unwrap() <= env.block.time,
         ContractError::AuctionNotEnded {}
     );
 
     // If auction is set to end within a halt window, then postpone it instead
     let auction_end_time = auction.end_time.unwrap();
     if halt_manager.is_within_halt_window(auction_end_time.seconds()) {
-        let new_auction_end_time = block_time.plus_seconds(config.halt_postpone_duration);
+        let new_auction_end_time = env.block.time.plus_seconds(config.halt_postpone_duration);
         auction.end_time = Some(new_auction_end_time);
         auctions().save(
             deps.storage,
@@ -87,7 +92,12 @@ pub fn settle_auction(
     // High bid must exist if end time exists
     let high_bid = auction.high_bid.as_ref().unwrap();
 
-    let royalty_info = load_collection_royalties(&deps.querier, deps.api, &auction.collection)?;
+    let royalty_entry_option = fetch_royalties(
+        deps.as_ref(),
+        &config.royalty_registry,
+        &auction.collection,
+        Some(&env.contract.address),
+    )?;
 
     (_, response) = payout_nft_sale_fees(
         &high_bid.coin,
@@ -97,7 +107,13 @@ pub fn settle_auction(
         None,
         config.trading_fee_percent,
         None,
-        royalty_info,
+        royalty_entry_option.map(|royalty_entry| RoyaltyInfo {
+            payment_address: royalty_entry.recipient,
+            share: min(
+                royalty_entry.share,
+                Decimal::bps(config.max_royalty_fee_bps),
+            ),
+        }),
         response,
     )?;
 
@@ -119,4 +135,40 @@ pub fn settle_auction(
     );
 
     Ok(response)
+}
+
+pub fn fetch_royalties(
+    deps: Deps,
+    royalty_registry: &Addr,
+    collection: &Addr,
+    protocol: Option<&Addr>,
+) -> StdResult<Option<RoyaltyEntry>> {
+    let royalty_entry = fetch_royalty_entry(&deps.querier, royalty_registry, collection, protocol)
+        .map_err(|_| StdError::generic_err("Failed to fetch royalty entry"))?;
+    if let Some(royalty_entry) = royalty_entry {
+        return Ok(Some(royalty_entry));
+    }
+
+    let collection_info = deps
+        .querier
+        .query_wasm_smart::<CollectionInfoResponse>(collection, &Sg721QueryMsg::CollectionInfo {});
+
+    match collection_info {
+        Ok(collection_info) => {
+            if collection_info.royalty_info.is_none() {
+                return Ok(None);
+            }
+
+            let royalty_info_response = collection_info.royalty_info.unwrap();
+            let royalty_entry = RoyaltyEntry {
+                recipient: deps
+                    .api
+                    .addr_validate(&royalty_info_response.payment_address)?,
+                share: Decimal::from_str(&royalty_info_response.share.to_string())?,
+                updated: None,
+            };
+            Ok(Some(royalty_entry))
+        }
+        Err(_) => Ok(None),
+    }
 }

@@ -21,6 +21,7 @@ pub fn setup_reserve_auction(
     router: &mut StargazeApp,
     auction_admin: Addr,
     fair_burn: Addr,
+    royalty_registry: Addr,
 ) -> Result<Addr, ContractError> {
     let reserve_auction_id = router.store_code(contract_reserve_auction());
     let msg = InstantiateMsg {
@@ -39,6 +40,8 @@ pub fn setup_reserve_auction(
             coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
             coin(MIN_RESERVE_PRICE, DUMMY_DENOM),
         ],
+        royalty_registry: royalty_registry.to_string(),
+        max_royalty_fee_bps: 1000,
     };
     let auction = router
         .instantiate_contract(

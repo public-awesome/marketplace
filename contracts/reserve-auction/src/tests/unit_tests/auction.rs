@@ -23,6 +23,8 @@ use crate::tests::{
 };
 use crate::ContractError;
 
+use crate::tests::setup::setup_minters::minter_template_no_royalties;
+use crate::tests::setup::setup_royalty_registry::setup_royalty_registry;
 use cosmwasm_std::{coin, Addr, Decimal, StdError, Uint128};
 use cw_multi_test::Executor;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
@@ -51,6 +53,8 @@ fn try_instantiate() {
         halt_buffer_duration: HALT_BUFFER_DURATION,
         halt_postpone_duration: HALT_POSTPONE_DURATION,
         min_reserve_prices: vec![coin(MIN_RESERVE_PRICE, NATIVE_DENOM)],
+        royalty_registry: "royalty_registry".to_string(),
+        max_royalty_fee_bps: 1000,
     };
     let auction_addr = instantiate_auction(&mut app, auction_id, msg.clone());
 
@@ -74,7 +78,9 @@ fn try_create_auction() {
     let vt = standard_minter_template(1);
     let (mut router, creator, _) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -302,7 +308,9 @@ fn try_update_reserve_price() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -405,7 +413,9 @@ fn try_cancel_auction() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -510,7 +520,9 @@ fn try_place_bid() {
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let second_bidder = setup_addtl_account(&mut router, "second_bidder", INITIAL_BALANCE).unwrap();
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -706,7 +718,9 @@ fn try_settle_auction_with_bids() {
     let vt = standard_minter_template(1);
     let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -892,7 +906,9 @@ fn try_settle_auction_with_no_bids() {
     let vt = standard_minter_template(1);
     let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
     let fair_burn = setup_fair_burn(&mut router, creator.clone());
-    let auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
     let minter = vt.collection_response_vec[0].minter.clone().unwrap();
     let token_id: u32 = 1;
     let collection = vt.collection_response_vec[0].collection.clone().unwrap();
@@ -940,4 +956,182 @@ fn try_settle_auction_with_no_bids() {
     };
     let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
     assert_error(res, ContractError::AuctionNotEnded {}.to_string());
+}
+
+#[test]
+fn try_settle_auction_with_bids_no_royalties() {
+    let vt = minter_template_no_royalties(1);
+    let (mut router, creator, bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let royalty_registry = setup_royalty_registry(&mut router, creator.clone());
+    let auction =
+        setup_reserve_auction(&mut router, creator.clone(), fair_burn, royalty_registry).unwrap();
+    let minter = vt.collection_response_vec[0].minter.clone().unwrap();
+    let token_id: u32 = 1;
+    let collection = vt.collection_response_vec[0].collection.clone().unwrap();
+
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+    let block_time = router.block_info().time;
+
+    let auction_creator =
+        setup_addtl_account(&mut router, "auction_creator", INITIAL_BALANCE).unwrap();
+    let second_bidder = setup_addtl_account(&mut router, "second_bidder", INITIAL_BALANCE).unwrap();
+    let seller_funds_recipient = Addr::unchecked("seller_funds_recipient");
+
+    // mint nft for creator
+    mint(&mut router, &minter, &creator, &auction_creator);
+    approve(
+        &mut router,
+        &auction_creator,
+        &collection,
+        &auction,
+        token_id,
+    );
+
+    // creating valid auction succeeds
+    let res = create_standard_auction(
+        &mut router,
+        &auction_creator,
+        &auction,
+        collection.as_ref(),
+        &token_id.to_string(),
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+        DEFAULT_DURATION,
+        Some(seller_funds_recipient.to_string()),
+        coin(CREATE_AUCTION_FEE.u128(), NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    // settle auction before auction end fails
+    let msg = ExecuteMsg::SettleAuction {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+    };
+    let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
+    assert_error(res, ContractError::AuctionNotEnded {}.to_string());
+
+    // place bid above reserve succeeds
+    let res = place_bid(
+        &mut router,
+        &auction,
+        &bidder,
+        collection.as_ref(),
+        &token_id.to_string(),
+        coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    let high_bid_amount = calc_min_bid_increment(
+        MIN_RESERVE_PRICE,
+        Decimal::from_str(MIN_BID_INCREMENT_PCT).unwrap(),
+        1,
+    )
+    .u128();
+
+    // place bid above next valid bid succeeds
+    let res = place_bid(
+        &mut router,
+        &auction,
+        &second_bidder,
+        collection.as_ref(),
+        &token_id.to_string(),
+        coin(high_bid_amount, NATIVE_DENOM),
+    );
+    assert!(res.is_ok());
+
+    setup_block_time(
+        &mut router,
+        block_time.plus_seconds(DEFAULT_DURATION).nanos(),
+        None,
+    );
+
+    let msg = ExecuteMsg::SettleAuction {
+        collection: collection.to_string(),
+        token_id: token_id.to_string(),
+    };
+    let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
+    assert!(res.is_ok());
+
+    // check that fair burn was paid
+    let fair_burn_event = res
+        .unwrap()
+        .events
+        .iter()
+        .find(|&e| e.ty == "wasm-fair-burn")
+        .unwrap()
+        .clone();
+
+    let burn_amount = fair_burn_event
+        .attributes
+        .iter()
+        .find(|attr| attr.key == "burn_amount")
+        .unwrap()
+        .value
+        .parse::<u64>()
+        .unwrap();
+
+    let dist_amount = fair_burn_event
+        .attributes
+        .iter()
+        .find(|attr| attr.key == "dist_amount")
+        .unwrap()
+        .value
+        .parse::<u64>()
+        .unwrap();
+
+    let protocol_fee = Uint128::from(burn_amount + dist_amount);
+    assert_eq!(
+        Uint128::from(high_bid_amount) * Decimal::from_str(TRADING_FEE_PCT).unwrap(),
+        protocol_fee
+    );
+
+    // check that no royalty is paid
+    let new_creator_balance = router
+        .wrap()
+        .query_balance(&creator, NATIVE_DENOM)
+        .unwrap()
+        .amount;
+    assert_eq!(new_creator_balance, Uint128::from(INITIAL_BALANCE));
+
+    // check that seller funds recipient was paid
+    let seller_payment = Uint128::from(high_bid_amount) - protocol_fee;
+    let new_auction_creator_balance = router
+        .wrap()
+        .query_balance(&auction_creator, NATIVE_DENOM)
+        .unwrap()
+        .amount;
+    assert_eq!(
+        new_auction_creator_balance,
+        Uint128::from(INITIAL_BALANCE) - CREATE_AUCTION_FEE
+    );
+
+    let new_seller_funds_recipient_balance = router
+        .wrap()
+        .query_balance(&seller_funds_recipient, NATIVE_DENOM)
+        .unwrap()
+        .amount;
+    assert_eq!(new_seller_funds_recipient_balance, seller_payment);
+
+    // check that first bidder was fully refunded
+    let first_bidder_balance = router
+        .wrap()
+        .query_balance(&bidder, NATIVE_DENOM)
+        .unwrap()
+        .amount;
+    assert_eq!(first_bidder_balance, Uint128::from(INITIAL_BALANCE));
+
+    // check that second bidder debited and was given NFT
+    let second_bidder_balance = router
+        .wrap()
+        .query_balance(&second_bidder, NATIVE_DENOM)
+        .unwrap()
+        .amount;
+    assert_eq!(
+        second_bidder_balance,
+        Uint128::from(INITIAL_BALANCE - high_bid_amount)
+    );
+    assert_eq!(
+        query_owner_of(&router, &collection, &token_id.to_string()),
+        second_bidder.to_string()
+    );
 }

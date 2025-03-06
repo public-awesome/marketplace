@@ -37,6 +37,8 @@ pub struct InstantiateMsg {
     /// The minimum reserve prices for the various denoms. Denoms
     /// no defined are not supported.
     pub min_reserve_prices: Vec<Coin>,
+    pub royalty_registry: String,
+    pub max_royalty_fee_bps: u64,
 }
 
 #[cw_serde]
@@ -124,6 +126,8 @@ pub enum SudoMsg {
         halt_duration_threshold: Option<u64>,
         halt_buffer_duration: Option<u64>,
         halt_postpone_duration: Option<u64>,
+        royalty_registry: Option<String>,
+        max_royalty_fee_bps: Option<u64>,
     },
     SetMinReservePrices {
         min_reserve_prices: Vec<Coin>,
