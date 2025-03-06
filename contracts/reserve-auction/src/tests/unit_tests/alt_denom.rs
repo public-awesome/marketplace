@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::msg::ExecuteMsg;
+use crate::msg::{ExecuteMsg, QueryMsg};
 use crate::tests::helpers::constants::{
     CREATE_AUCTION_FEE, DEFAULT_DURATION, EXTEND_DURATION, MAX_DURATION, MIN_BID_INCREMENT_PCT,
     MIN_DURATION, MIN_RESERVE_PRICE,
@@ -21,6 +21,7 @@ use crate::tests::{
 };
 use crate::ContractError;
 
+use crate::tests::setup::setup_auctions::DUMMY_MIN_RESERVE_PRICE_MANAGER;
 use cosmwasm_std::{coin, Coin, Decimal, StdError, Uint128};
 use cw_multi_test::Executor;
 use regex::Regex;
@@ -904,4 +905,193 @@ fn try_settle_auction_with_no_bids() {
     };
     let res = router.execute_contract(creator.clone(), auction.clone(), &msg, &[]);
     assert_error(res, ContractError::AuctionNotEnded {}.to_string());
+}
+
+#[test]
+fn try_update_min_reserve_prices() {
+    let vt = standard_minter_template(1);
+    let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+
+    let min_reserve_price_manager = setup_addtl_account(
+        &mut router,
+        DUMMY_MIN_RESERVE_PRICE_MANAGER,
+        INITIAL_BALANCE,
+    )
+    .unwrap();
+
+    let wrong_min_reserve_price_manager = setup_addtl_account(
+        &mut router,
+        "false_min_reserve_price_manager",
+        INITIAL_BALANCE,
+    )
+    .unwrap();
+
+    let coins_response: Vec<Coin> = router
+        .wrap()
+        .query_wasm_smart(
+            reserve_auction.clone(),
+            &QueryMsg::MinReservePrices {
+                query_options: None,
+            },
+        )
+        .unwrap();
+
+    // Duplicate denom throws error
+    let set_min_reserve_prices_msg = ExecuteMsg::SetMinReservePrices {
+        min_reserve_prices: vec![coins_response[0].clone()],
+    };
+    let response = router.execute_contract(
+        min_reserve_price_manager.clone(),
+        reserve_auction.clone(),
+        &set_min_reserve_prices_msg,
+        &[],
+    );
+    assert_eq!(
+        response.unwrap_err().root_cause().to_string(),
+        "InvalidInput: found duplicate denom"
+    );
+
+    // New denoms can only be added by the manager
+    let new_coins = vec![coin(3000000, "uosmo"), coin(4000000, "ujuno")];
+    let set_min_reserve_prices_msg = ExecuteMsg::SetMinReservePrices {
+        min_reserve_prices: new_coins.clone(),
+    };
+    let response = router.execute_contract(
+        wrong_min_reserve_price_manager.clone(),
+        reserve_auction.clone(),
+        &set_min_reserve_prices_msg,
+        &[],
+    );
+    assert_error(response, ContractError::Unauthorized {}.to_string());
+
+    let new_coins = vec![coin(3000000, "uosmo"), coin(4000000, "ujuno")];
+    let set_min_reserve_prices_msg = ExecuteMsg::SetMinReservePrices {
+        min_reserve_prices: new_coins.clone(),
+    };
+    let response = router.execute_contract(
+        min_reserve_price_manager.clone(),
+        reserve_auction.clone(),
+        &set_min_reserve_prices_msg,
+        &[],
+    );
+    assert!(response.is_ok());
+
+    let next_coins_response: Vec<Coin> = router
+        .wrap()
+        .query_wasm_smart(
+            reserve_auction.clone(),
+            &QueryMsg::MinReservePrices {
+                query_options: None,
+            },
+        )
+        .unwrap();
+
+    let mut expected_coins = coins_response.clone();
+    expected_coins.extend(new_coins);
+    assert_eq!(next_coins_response.len(), expected_coins.len());
+
+    // Removing non-existent denoms throws error
+    let unset_min_reserve_prices_msg = ExecuteMsg::UnsetMinReservePrices {
+        denoms: vec!["uusd".to_string()],
+    };
+    let response = router.execute_contract(
+        min_reserve_price_manager.clone(),
+        reserve_auction.clone(),
+        &unset_min_reserve_prices_msg,
+        &[],
+    );
+    assert_eq!(
+        response.unwrap_err().root_cause().to_string(),
+        "InvalidInput: denom not found"
+    );
+
+    // Removing existent denoms can only be done by the manager
+    let remove_coins = vec!["uosmo".to_string(), "ujuno".to_string()];
+    let unset_min_reserve_prices_msg = ExecuteMsg::UnsetMinReservePrices {
+        denoms: remove_coins,
+    };
+    let response = router.execute_contract(
+        wrong_min_reserve_price_manager.clone(),
+        reserve_auction.clone(),
+        &unset_min_reserve_prices_msg,
+        &[],
+    );
+    assert_error(response, ContractError::Unauthorized {}.to_string());
+
+    let response = router.execute_contract(
+        min_reserve_price_manager.clone(),
+        reserve_auction.clone(),
+        &unset_min_reserve_prices_msg,
+        &[],
+    );
+    assert!(response.is_ok());
+
+    let next_coins_response: Vec<Coin> = router
+        .wrap()
+        .query_wasm_smart(
+            reserve_auction,
+            &QueryMsg::MinReservePrices {
+                query_options: None,
+            },
+        )
+        .unwrap();
+
+    assert_eq!(next_coins_response.len(), coins_response.len());
+}
+
+#[test]
+fn try_update_min_reserve_price_manager() {
+    let vt = standard_minter_template(1);
+    let (mut router, creator, _bidder) = (vt.router, vt.accts.creator, vt.accts.bidder);
+    let fair_burn = setup_fair_burn(&mut router, creator.clone());
+    let reserve_auction = setup_reserve_auction(&mut router, creator.clone(), fair_burn).unwrap();
+
+    setup_block_time(&mut router, GENESIS_MINT_START_TIME, None);
+
+    let min_reserve_price_manager = setup_addtl_account(
+        &mut router,
+        DUMMY_MIN_RESERVE_PRICE_MANAGER,
+        INITIAL_BALANCE,
+    )
+    .unwrap();
+
+    let wrong_min_reserve_price_manager = setup_addtl_account(
+        &mut router,
+        "false_min_reserve_price_manager",
+        INITIAL_BALANCE,
+    )
+    .unwrap();
+
+    let update_min_reserve_price_manager_msg = ExecuteMsg::UpdateMinReservePriceManager {
+        manager: "new_manager".to_string(),
+    };
+
+    let response = router.execute_contract(
+        wrong_min_reserve_price_manager.clone(),
+        reserve_auction.clone(),
+        &update_min_reserve_price_manager_msg,
+        &[],
+    );
+    assert_error(response, ContractError::Unauthorized {}.to_string());
+
+    let response = router.execute_contract(
+        min_reserve_price_manager.clone(),
+        reserve_auction.clone(),
+        &update_min_reserve_price_manager_msg,
+        &[],
+    );
+    assert!(response.is_ok());
+
+    let new_manager: String = router
+        .wrap()
+        .query_wasm_smart(
+            reserve_auction.clone(),
+            &QueryMsg::MinReservePriceManager {},
+        )
+        .unwrap();
+    assert_eq!(new_manager, "new_manager".to_string());
 }

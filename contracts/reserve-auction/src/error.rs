@@ -41,6 +41,9 @@ pub enum ContractError {
     #[error("InvalidReservePrice: {min}")]
     InvalidReservePrice { min: Coin },
 
+    #[error("InvalidMinReservePriceManagerAddress")]
+    InvalidMinReservePriceManagerAddress {},
+
     #[error("BidTooLow: {0}")]
     BidTooLow(Uint128),
 

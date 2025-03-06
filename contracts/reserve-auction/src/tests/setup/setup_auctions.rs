@@ -16,6 +16,7 @@ use super::setup_contracts::*;
 
 pub const DUMMY_DENOM: &str =
     "ibc/773B5B5E24EC48005205A2EB35E6C0743EE47C9147E94BD5A4E0CBB63082314D";
+pub const DUMMY_MIN_RESERVE_PRICE_MANAGER: &str = "min-reserve-price-manager";
 
 pub fn setup_reserve_auction(
     router: &mut StargazeApp,
@@ -39,6 +40,7 @@ pub fn setup_reserve_auction(
             coin(MIN_RESERVE_PRICE, NATIVE_DENOM),
             coin(MIN_RESERVE_PRICE, DUMMY_DENOM),
         ],
+        min_reserve_price_manager: DUMMY_MIN_RESERVE_PRICE_MANAGER.to_string(),
     };
     let auction = router
         .instantiate_contract(
