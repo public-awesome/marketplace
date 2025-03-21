@@ -33,7 +33,7 @@ cw-utils        = "1.0.3"
 cw721           = "0.18.0"
 cw721-base      = { version = "0.18.0", features = ["library"] }
 
-stargaze-royalty-registry = { version = "0.3.0", features = ["library"] }
+stargaze-royalty-registry = { git = "https://github.com/public-awesome/core.git", branch = "initia", features = ["library"] }
 
 serde     = "1.0.196"
 thiserror = "1.0.56"

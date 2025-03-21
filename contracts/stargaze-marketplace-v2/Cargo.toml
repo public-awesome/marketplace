@@ -29,26 +29,21 @@ library    = []
 
 [dependencies]
 blake2          = "0.10.6"
-cosmwasm-schema = "1.5.3"
+cosmwasm-schema = "1.5.10"
 cosmwasm-std    = { version = "1.5.4" }
 cw-address-like = "1.0.4"
 cw-storage-plus = "1.2.0"
 cw-utils        = "1.0.3"
 cw2             = "1.1.2"
-cw721           = "0.18.0"
 
 sg-marketplace-common = { path = "../../packages/sg-marketplace-common" }
 sg-index-query        = "0.1.1"
 
 serde     = "1.0.196"
-semver    = "1.0.21"
 thiserror = "1.0.56"
 
 [dev-dependencies]
 cw-multi-test = "0.20.0"
 cw721-base = { version = "0.18.0", features = ["library"] }
-stargaze-royalty-registry = { git = "https://github.com/public-awesome/core.git", rev = "1b154821c6d3fe33573a673f33129765e55ce281", package = "stargaze-royalty-registry", features = [
-  "library",
-] }
-cute = "0.3.0"
+stargaze-royalty-registry = { git = "https://github.com/public-awesome/core.git", branch = "initia", features = ["library"] }
 anyhow = "1.0.79"
