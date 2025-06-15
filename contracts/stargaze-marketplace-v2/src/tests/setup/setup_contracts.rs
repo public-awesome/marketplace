@@ -94,6 +94,7 @@ pub fn setup_marketplace(
             fee_manager: fee_manager.to_string(),
             royalty_registry: royalty_registry.to_string(),
             protocol_fee_bps: 200,
+            non_native_protocol_fee_bps: 400,
             max_royalty_fee_bps: 1000,
             maker_reward_bps: 4000,
             taker_reward_bps: 1000,

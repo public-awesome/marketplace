@@ -19,7 +19,7 @@ workflows:
 jobs:
   contract_marketplace:
     docker:
-      - image: rust:1.81.0
+      - image: rust:1.82.0
     working_directory: ~/project/contracts/marketplace
     steps:
       - checkout:
@@ -29,7 +29,7 @@ jobs:
           command: rustc --version; cargo --version; rustup --version
       - restore_cache:
           keys:
-            - cargocache-marketplace-rust:1.81.0-{{ checksum "~/project/Cargo.lock" }}
+            - cargocache-marketplace-rust:1.82.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Unit Tests
           environment:
@@ -43,10 +43,10 @@ jobs:
           paths:
             - /usr/local/cargo/registry
             - target
-          key: cargocache-marketplace-rust:1.81.0-{{ checksum "~/project/Cargo.lock" }}
+          key: cargocache-marketplace-rust:1.82.0-{{ checksum "~/project/Cargo.lock" }}
   contract_marketplace_v2:
     docker:
-      - image: rust:1.81.0
+      - image: rust:1.82.0
     working_directory: ~/project/contracts/stargaze-marketplace-v2
     steps:
       - checkout:
@@ -56,7 +56,7 @@ jobs:
           command: rustc --version; cargo --version; rustup --version
       - restore_cache:
           keys:
-            - cargocache-marketplace-v2-rust:1.81.0-{{ checksum "~/project/Cargo.lock" }}
+            - cargocache-marketplace-v2-rust:1.82.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Unit Tests
           environment:
@@ -70,10 +70,10 @@ jobs:
           paths:
             - /usr/local/cargo/registry
             - target
-          key: cargocache-marketplace-v2-rust:1.81.0-{{ checksum "~/project/Cargo.lock" }}
+          key: cargocache-marketplace-v2-rust:1.82.0-{{ checksum "~/project/Cargo.lock" }}
   lint:
     docker:
-      - image: rust:1.81.0
+      - image: rust:1.82.0
     steps:
       - checkout
       - run:
@@ -81,7 +81,7 @@ jobs:
           command: rustc --version; cargo --version; rustup --version; rustup target list --installed
       - restore_cache:
           keys:
-            - cargocache-v2-lint-rust:1.81.0-{{ checksum "Cargo.lock" }}
+            - cargocache-v2-lint-rust:1.82.0-{{ checksum "Cargo.lock" }}
       - run:
           name: Add rustfmt component
           command: rustup component add rustfmt
@@ -100,7 +100,7 @@ jobs:
             - target/debug/.fingerprint
             - target/debug/build
             - target/debug/deps
-          key: cargocache-v2-lint-rust:1.81.0-{{ checksum "Cargo.lock" }}
+          key: cargocache-v2-lint-rust:1.82.0-{{ checksum "Cargo.lock" }}
 
   # This runs one time on the top level to ensure all contracts compile properly into wasm.
   # We don't run the wasm build per contract build, and then reuse a lot of the same dependencies, so this speeds up CI time
@@ -108,7 +108,7 @@ jobs:
   # We also sanity-check the resultant wasm files.
   wasm-build:
     docker:
-      - image: rust:1.81.0
+      - image: rust:1.82.0
     steps:
       - checkout:
           path: ~/project
@@ -117,13 +117,14 @@ jobs:
           command: rustc --version; cargo --version; rustup --version
       - restore_cache:
           keys:
-            - cargocache-wasm-rust:1.81.0-{{ checksum "~/project/Cargo.lock" }}
+            - cargocache-wasm-rust:1.82.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Add wasm32 target
           command: rustup target add wasm32-unknown-unknown
       - run:
           name: Build Wasm Release
           command: |
+            export RUSTFLAGS='-C target-feature=-reference-types'
             for C in ./contracts/*/
             do
               echo "Compiling `basename $C`..."
@@ -137,7 +138,7 @@ jobs:
           paths:
             - /usr/local/cargo/registry
             - target
-          key: cargocache-wasm-rust:1.81.0-{{ checksum "~/project/Cargo.lock" }}
+          key: cargocache-wasm-rust:1.82.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Check wasm contracts
           command: |
