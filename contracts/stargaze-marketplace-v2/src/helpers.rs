@@ -9,6 +9,7 @@ use cosmwasm_std::{
     ensure, ensure_eq, Addr, Coin, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper,
     Response, Storage, Uint128,
 };
+use sg_marketplace_common::constants::NATIVE_DENOM;
 use sg_marketplace_common::{
     nft::transfer_nft, royalties::fetch_or_set_royalties, sale::NftSaleProcessor,
     MarketplaceStdError,
@@ -95,9 +96,16 @@ pub fn divide_protocol_fees(
     config: &Config<Addr>,
     maker_exists: bool,
     taker_exists: bool,
+    is_native: bool,
 ) -> Result<ProtocolFees, ContractError> {
+    let fee_bps = if is_native {
+        config.protocol_fee_bps
+    } else {
+        config.non_native_protocol_fee_bps
+    };
+
     let mut protocol_fees = ProtocolFees {
-        protocol_fee: Decimal::bps(config.protocol_fee_bps),
+        protocol_fee: Decimal::bps(fee_bps),
         maker_reward: Decimal::zero(),
         taker_reward: Decimal::zero(),
     };
@@ -149,7 +157,8 @@ pub fn finalize_sale(
     let mut nft_sale_processor =
         NftSaleProcessor::new(sale_price.clone(), seller_recipient.clone());
 
-    let protocol_fees = divide_protocol_fees(config, maker.is_some(), taker.is_some())?;
+    let is_native = sale_price.denom == NATIVE_DENOM;
+    let protocol_fees = divide_protocol_fees(config, maker.is_some(), taker.is_some(), is_native)?;
 
     if protocol_fees.protocol_fee > Decimal::zero() {
         nft_sale_processor.add_fee(
@@ -249,15 +258,22 @@ mod tests {
             fee_manager: Addr::unchecked("fee_manager"),
             royalty_registry: Addr::unchecked("royalty_registry"),
             protocol_fee_bps: 200,
+            non_native_protocol_fee_bps: 400,
             max_royalty_fee_bps: 500,
             maker_reward_bps: 4000,
             taker_reward_bps: 1000,
             default_denom: "ustars".to_string(),
         };
 
-        let result = divide_protocol_fees(&config, true, true).unwrap();
+        let result = divide_protocol_fees(&config, true, true, true).unwrap();
 
         assert_eq!(result.protocol_fee, Decimal::from_str("0.01").unwrap());
+        assert_eq!(result.maker_reward, Decimal::from_str("0.008").unwrap());
+        assert_eq!(result.taker_reward, Decimal::from_str("0.002").unwrap());
+
+        let result = divide_protocol_fees(&config, true, true, false).unwrap();
+
+        assert_eq!(result.protocol_fee, Decimal::from_str("0.03").unwrap());
         assert_eq!(result.maker_reward, Decimal::from_str("0.008").unwrap());
         assert_eq!(result.taker_reward, Decimal::from_str("0.002").unwrap());
     }

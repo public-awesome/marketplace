@@ -20,6 +20,8 @@ pub struct Config<T: AddressLike> {
     pub royalty_registry: T,
     /// Protocol fee
     pub protocol_fee_bps: u64,
+    /// Protocol fee for trades in non-native denoms
+    pub non_native_protocol_fee_bps: u64,
     /// Max value for the royalty fee
     pub max_royalty_fee_bps: u64,
     /// The reward paid out to the market maker. Reward is a percentage of the protocol fee
@@ -36,6 +38,7 @@ impl Config<String> {
             fee_manager: api.addr_validate(&self.fee_manager)?,
             royalty_registry: api.addr_validate(&self.royalty_registry)?,
             protocol_fee_bps: self.protocol_fee_bps,
+            non_native_protocol_fee_bps: self.non_native_protocol_fee_bps,
             max_royalty_fee_bps: self.max_royalty_fee_bps,
             maker_reward_bps: self.maker_reward_bps,
             taker_reward_bps: self.taker_reward_bps,
@@ -49,6 +52,10 @@ impl Config<Addr> {
         ensure!(
             self.protocol_fee_bps < MAX_BASIS_POINTS,
             ContractError::InvalidInput("trade_fee_bps must be less than 1".to_string())
+        );
+        ensure!(
+            self.non_native_protocol_fee_bps < MAX_BASIS_POINTS,
+            ContractError::InvalidInput("non_native_trade_fee_bps must be less than 1".to_string())
         );
         ensure!(
             (self.maker_reward_bps + self.taker_reward_bps) < MAX_BASIS_POINTS,

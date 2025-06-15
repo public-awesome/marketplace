@@ -37,6 +37,7 @@ fn try_admin_update_config() {
     let fee_manager = "fee_manager_test".to_string();
     let royalty_registry = "royalty_registry_test".to_string();
     let protocol_fee_bps = config.protocol_fee_bps + delta;
+    let non_native_protocol_fee_bps = config.non_native_protocol_fee_bps + delta;
     let max_royalty_fee_bps = config.max_royalty_fee_bps + delta;
     let maker_reward_bps = config.maker_reward_bps + delta;
     let taker_reward_bps = config.taker_reward_bps + delta;
@@ -46,6 +47,7 @@ fn try_admin_update_config() {
             fee_manager: fee_manager.clone(),
             royalty_registry: royalty_registry.clone(),
             protocol_fee_bps,
+            non_native_protocol_fee_bps,
             max_royalty_fee_bps,
             maker_reward_bps,
             taker_reward_bps,
@@ -68,6 +70,7 @@ fn try_admin_update_config() {
             fee_manager: fee_manager.clone(),
             royalty_registry: royalty_registry.clone(),
             protocol_fee_bps,
+            non_native_protocol_fee_bps,
             max_royalty_fee_bps,
             maker_reward_bps: 5000,
             taker_reward_bps: 6000,
