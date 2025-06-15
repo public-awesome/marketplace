@@ -124,6 +124,7 @@ jobs:
       - run:
           name: Build Wasm Release
           command: |
+            export RUSTFLAGS='-C target-feature=-reference-types'
             for C in ./contracts/*/
             do
               echo "Compiling `basename $C`..."
