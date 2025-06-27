@@ -17,7 +17,7 @@ pub struct SudoParams {
     /// Valid time range for Bids
     /// (min, max) in seconds
     pub bid_expiry: ExpiryRange,
-    /// Operators are entites that are responsible for maintaining the active state of Asks
+    /// Operators are entities that are responsible for maintaining the active state of Asks
     /// They listen to NFT transfer events, and update the active state of Asks
     pub operators: Vec<Addr>,
     /// Max value for the finders fee

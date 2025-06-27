@@ -405,7 +405,7 @@ fn try_zero_royalties() {
         bidder_native_balances,
         coins(INITIAL_BALANCE - 100, NATIVE_DENOM)
     );
-    // seller should recive full amount minus fairburn (2%)
+    // seller should receive full amount minus fairburn (2%)
     let minter_balance = router.wrap().query_all_balances(minter.clone()).unwrap();
     assert_eq!(
         minter_balance,
