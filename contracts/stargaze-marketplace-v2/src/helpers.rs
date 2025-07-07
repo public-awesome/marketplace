@@ -6,16 +6,18 @@ use crate::{
 
 use blake2::{Blake2s256, Digest};
 use cosmwasm_std::{
-    ensure, ensure_eq, Addr, Coin, Decimal, DepsMut, Env, Event, MessageInfo, QuerierWrapper,
-    Response, Storage, Uint128,
+    ensure, ensure_eq, to_json_binary, Addr, Coin, Decimal, Deps, DepsMut, Env, Event, MessageInfo,
+    QuerierWrapper, Response, StdError, StdResult, Storage, Uint128, WasmMsg,
 };
 use sg_marketplace_common::constants::NATIVE_DENOM;
 use sg_marketplace_common::{
     nft::transfer_nft, royalties::fetch_or_set_royalties, sale::NftSaleProcessor,
     MarketplaceStdError,
 };
+use stargaze_vip_minter::msg::ExecuteMsg as LoyaltyProgramExecuteMsg;
+use stargaze_vip_minter::msg::QueryMsg as LoyaltyProgramQueryMsg;
+use stargaze_vip_minter::msg::TierResponse;
 use std::{cmp::min, ops::Sub};
-
 pub fn build_collection_token_index_str(collection: &str, token_id: &TokenId) -> String {
     let string_list = [collection.to_string(), token_id.clone()];
     string_list.join("/")
@@ -129,6 +131,72 @@ pub fn divide_protocol_fees(
     Ok(protocol_fees)
 }
 
+pub fn calculate_loyalty_bonus_bps(
+    deps: Deps,
+    env: &Env,
+    participant: String,
+    config: &Config<Addr>,
+    mut response: Response,
+) -> StdResult<(Decimal, Response)> {
+    let loyalty_registry = match &config.loyalty_registry {
+        Some(addr) => addr,
+        None => return Ok((Decimal::zero(), response)),
+    };
+
+    let loyalty_bonuses_bps = match &config.loyalty_bonuses_bps {
+        Some(bonuses) => bonuses,
+        None => return Ok((Decimal::zero(), response)),
+    };
+
+    let participant_info: TierResponse = deps.querier.query_wasm_smart(
+        loyalty_registry,
+        &LoyaltyProgramQueryMsg::Tier {
+            address: participant.clone(),
+        },
+    )?;
+
+    if let (Some(threshold), Some(last_update)) = (
+        config.loyalty_update_threshold_secs,
+        participant_info.last_update_time,
+    ) {
+        // participant_info.tier can't be None while last_update is Some, checking just for safety
+        if participant_info.tier.is_some() && env
+            .block
+            .time
+            .seconds()
+            .saturating_sub(last_update.seconds())
+            > threshold
+        {
+            response = response.add_message(WasmMsg::Execute {
+                contract_addr: loyalty_registry.to_string(),
+                msg: to_json_binary(&LoyaltyProgramExecuteMsg::Update {
+                    address: participant,
+                })?,
+                funds: vec![],
+            });
+        }
+    }
+
+    let tier = match participant_info.tier {
+        Some(tier) => {
+            if tier == 0 {
+                return Ok((Decimal::zero(), response));
+            }
+            let max_tier = loyalty_bonuses_bps.len() as u64;
+            min(tier, max_tier)
+        }
+        None => return Ok((Decimal::zero(), response)),
+    };
+
+    let bonus_bps = loyalty_bonuses_bps
+        .get((tier - 1) as usize)
+        .copied()
+        .unwrap_or(0);
+
+    let bonus_decimal = Decimal::bps(bonus_bps);
+    Ok((bonus_decimal, response))
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn finalize_sale(
     deps: DepsMut,
@@ -138,7 +206,7 @@ pub fn finalize_sale(
     matching_bid: &MatchingBid,
     ask_before_bid: bool,
     action: &str,
-    response: Response,
+    mut response: Response,
 ) -> Result<Response, ContractError> {
     let (nft_recipient, bid_details) = match &matching_bid {
         MatchingBid::Bid(bid) => (bid.asset_recipient(), &bid.details),
@@ -160,10 +228,35 @@ pub fn finalize_sale(
     let is_native = sale_price.denom == NATIVE_DENOM;
     let protocol_fees = divide_protocol_fees(config, maker.is_some(), taker.is_some(), is_native)?;
 
+    let (loyalty_bonus_bps, updated_response) = calculate_loyalty_bonus_bps(
+        deps.as_ref(),
+        env,
+        seller_recipient.to_string(),
+        config,
+        response,
+    )?;
+    response = updated_response;
+
+    // Loyalty bonus is deducted from the protocol fee and is sent to the seller
+    let mut protocol_fee = protocol_fees.protocol_fee;
+    if loyalty_bonus_bps > Decimal::zero() {
+        let loyalty_fee = protocol_fee
+            .checked_mul(loyalty_bonus_bps)
+            .map_err(|_| StdError::generic_err("Loyalty bonus calculation failed".to_string()))?;
+        protocol_fee = protocol_fee
+            .checked_sub(loyalty_fee)
+            .map_err(|_| StdError::generic_err("Loyalty bonus exceeds protocol fee"))?;
+        nft_sale_processor.add_fee(
+            "loyalty_bonus".to_string(),
+            loyalty_fee,
+            seller_recipient.clone(),
+        );
+    }
+
     if protocol_fees.protocol_fee > Decimal::zero() {
         nft_sale_processor.add_fee(
             "protocol".to_string(),
-            protocol_fees.protocol_fee,
+            protocol_fee,
             config.fee_manager.clone(),
         );
     }
@@ -257,6 +350,9 @@ mod tests {
         let config = Config {
             fee_manager: Addr::unchecked("fee_manager"),
             royalty_registry: Addr::unchecked("royalty_registry"),
+            loyalty_registry: None,
+            loyalty_bonuses_bps: None,
+            loyalty_update_threshold_secs: None,
             protocol_fee_bps: 200,
             non_native_protocol_fee_bps: 400,
             max_royalty_fee_bps: 500,

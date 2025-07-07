@@ -93,6 +93,9 @@ pub fn setup_marketplace(
         config: Config {
             fee_manager: fee_manager.to_string(),
             royalty_registry: royalty_registry.to_string(),
+            loyalty_registry: None,
+            loyalty_bonuses_bps: None,
+            loyalty_update_threshold_secs: None,
             protocol_fee_bps: 200,
             non_native_protocol_fee_bps: 400,
             max_royalty_fee_bps: 1000,

@@ -59,7 +59,7 @@ dependencies = [
  "cw2 0.16.0",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg1",
  "sg2",
  "thiserror",
@@ -81,7 +81,7 @@ dependencies = [
  "cw721-base 0.16.0",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg1",
  "sg2",
  "sg4",
@@ -1579,7 +1579,7 @@ dependencies = [
  "cw-utils 0.16.0",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "thiserror",
 ]
 
@@ -1599,7 +1599,7 @@ dependencies = [
  "rust_decimal",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg-whitelist",
  "sg1",
  "sha2 0.10.8",
@@ -1641,7 +1641,7 @@ dependencies = [
  "serde",
  "sg-controllers",
  "sg-multi-test",
- "sg-std",
+ "sg-std 2.4.0",
  "sg1",
  "sg2",
  "sg721",
@@ -1669,7 +1669,7 @@ dependencies = [
  "cw721-base 0.16.0",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg1",
  "sg721",
  "sg721-base",
@@ -1705,7 +1705,7 @@ dependencies = [
  "cw-multi-test 0.16.5",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
 ]
 
 [[package]]
@@ -1724,7 +1724,7 @@ dependencies = [
  "schemars",
  "serde",
  "sg-controllers",
- "sg-std",
+ "sg-std 2.4.0",
  "thiserror",
 ]
 
@@ -1744,6 +1744,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "sg-std"
+version = "3.1.0"
+source = "git+https://github.com/public-awesome/core.git?branch=serkan%2Fvip#e461ad9b204ea1e9f398a2181819125d5b863652"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cw-utils 1.0.3",
+ "cw721 0.18.0",
+ "schemars",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
 name = "sg-whitelist"
 version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1757,7 +1771,7 @@ dependencies = [
  "rust_decimal",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg1",
  "thiserror",
 ]
@@ -1771,7 +1785,7 @@ dependencies = [
  "cosmwasm-std",
  "cw-utils 0.16.0",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "thiserror",
 ]
 
@@ -1832,7 +1846,7 @@ dependencies = [
  "cw721 0.16.0",
  "cw721-base 0.16.0",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg721",
  "thiserror",
  "url",
@@ -1852,7 +1866,7 @@ dependencies = [
  "cw721-base 0.16.0",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg721",
  "sg721-base",
 ]
@@ -1873,7 +1887,7 @@ dependencies = [
  "schemars",
  "semver",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg1",
  "sg721",
  "sg721-base",
@@ -1984,7 +1998,7 @@ dependencies = [
  "cw2 0.16.0",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "thiserror",
 ]
 
@@ -2009,6 +2023,7 @@ dependencies = [
  "sg-index-query",
  "sg-marketplace-common 1.3.0",
  "stargaze-royalty-registry 0.4.0",
+ "stargaze-vip-minter",
  "thiserror",
 ]
 
@@ -2031,7 +2046,7 @@ dependencies = [
  "serde",
  "sg-marketplace-common 1.1.0",
  "sg-multi-test",
- "sg-std",
+ "sg-std 2.4.0",
  "sg1",
  "sg2",
  "sg721",
@@ -2056,7 +2071,7 @@ dependencies = [
  "schemars",
  "serde",
  "sg-index-query",
- "sg-std",
+ "sg-std 2.4.0",
  "sg721",
  "sg721-base",
  "thiserror",
@@ -2078,6 +2093,45 @@ dependencies = [
  "sg-index-query",
  "sg721",
  "sg721-base",
+ "thiserror",
+]
+
+[[package]]
+name = "stargaze-vip-collection"
+version = "0.1.0"
+source = "git+https://github.com/public-awesome/core.git?branch=serkan%2Fvip#e461ad9b204ea1e9f398a2181819125d5b863652"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw2 1.1.2",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
+ "schemars",
+ "serde",
+ "sg-std 3.1.0",
+ "thiserror",
+]
+
+[[package]]
+name = "stargaze-vip-minter"
+version = "0.1.0"
+source = "git+https://github.com/public-awesome/core.git?branch=serkan%2Fvip#e461ad9b204ea1e9f398a2181819125d5b863652"
+dependencies = [
+ "cosmwasm-schema",
+ "cosmwasm-std",
+ "cosmwasm-storage",
+ "cw-ownable",
+ "cw-storage-plus 1.2.0",
+ "cw2 1.1.2",
+ "cw721 0.18.0",
+ "cw721-base 0.18.0",
+ "schemars",
+ "serde",
+ "sg-std 3.1.0",
+ "stargaze-vip-collection",
  "thiserror",
 ]
 
@@ -2159,7 +2213,7 @@ dependencies = [
  "sg-eth-airdrop",
  "sg-multi-test",
  "sg-splits",
- "sg-std",
+ "sg-std 2.4.0",
  "sg-whitelist",
  "sg2",
  "sg721",
@@ -2281,7 +2335,7 @@ dependencies = [
  "cw2 0.16.0",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg1",
  "sg2",
  "sg721",
@@ -2306,7 +2360,7 @@ dependencies = [
  "schemars",
  "semver",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg-whitelist",
  "sg1",
  "sg2",
@@ -2345,7 +2399,7 @@ dependencies = [
  "cw2 0.16.0",
  "schemars",
  "serde",
- "sg-std",
+ "sg-std 2.4.0",
  "sg-whitelist",
  "thiserror",
 ]

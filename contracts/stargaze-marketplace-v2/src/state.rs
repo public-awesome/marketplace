@@ -18,6 +18,13 @@ pub struct Config<T: AddressLike> {
     pub fee_manager: T,
     /// The address of the royalty registry contract
     pub royalty_registry: T,
+    /// The address of the loyalty program contract
+    pub loyalty_registry: Option<T>,
+    /// Fee reduction bonuses that correspond to loyalty program tiers
+    pub loyalty_bonuses_bps: Option<Vec<u64>>,
+    /// Loyalty update time threshold in seconds
+    /// If the time since the last loyalty update is greater than this value, the loyalty tier will be updated
+    pub loyalty_update_threshold_secs: Option<u64>,
     /// Protocol fee
     pub protocol_fee_bps: u64,
     /// Protocol fee for trades in non-native denoms
@@ -37,6 +44,12 @@ impl Config<String> {
         Ok(Config {
             fee_manager: api.addr_validate(&self.fee_manager)?,
             royalty_registry: api.addr_validate(&self.royalty_registry)?,
+            loyalty_registry: self
+                .loyalty_registry
+                .map(|addr| api.addr_validate(&addr))
+                .transpose()?,
+            loyalty_bonuses_bps: self.loyalty_bonuses_bps,
+            loyalty_update_threshold_secs: self.loyalty_update_threshold_secs,
             protocol_fee_bps: self.protocol_fee_bps,
             non_native_protocol_fee_bps: self.non_native_protocol_fee_bps,
             max_royalty_fee_bps: self.max_royalty_fee_bps,

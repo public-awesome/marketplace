@@ -46,6 +46,9 @@ fn try_admin_update_config() {
         config: Config {
             fee_manager: fee_manager.clone(),
             royalty_registry: royalty_registry.clone(),
+            loyalty_registry: None,
+            loyalty_bonuses_bps: None,
+            loyalty_update_threshold_secs: None,
             protocol_fee_bps,
             non_native_protocol_fee_bps,
             max_royalty_fee_bps,
@@ -69,6 +72,9 @@ fn try_admin_update_config() {
         config: Config {
             fee_manager: fee_manager.clone(),
             royalty_registry: royalty_registry.clone(),
+            loyalty_registry: None,
+            loyalty_bonuses_bps: None,
+            loyalty_update_threshold_secs: None,
             protocol_fee_bps,
             non_native_protocol_fee_bps,
             max_royalty_fee_bps,
