@@ -160,12 +160,13 @@ pub fn calculate_loyalty_bonus_bps(
         participant_info.last_update_time,
     ) {
         // participant_info.tier can't be None while last_update is Some, checking just for safety
-        if participant_info.tier.is_some() && env
-            .block
-            .time
-            .seconds()
-            .saturating_sub(last_update.seconds())
-            > threshold
+        if participant_info.tier.is_some()
+            && env
+                .block
+                .time
+                .seconds()
+                .saturating_sub(last_update.seconds())
+                > threshold
         {
             response = response.add_message(WasmMsg::Execute {
                 contract_addr: loyalty_registry.to_string(),
@@ -179,19 +180,13 @@ pub fn calculate_loyalty_bonus_bps(
 
     let tier = match participant_info.tier {
         Some(tier) => {
-            if tier == 0 {
-                return Ok((Decimal::zero(), response));
-            }
             let max_tier = loyalty_bonuses_bps.len() as u64;
             min(tier, max_tier)
         }
         None => return Ok((Decimal::zero(), response)),
     };
 
-    let bonus_bps = loyalty_bonuses_bps
-        .get((tier - 1) as usize)
-        .copied()
-        .unwrap_or(0);
+    let bonus_bps = loyalty_bonuses_bps.get(tier as usize).copied().unwrap_or(0);
 
     let bonus_decimal = Decimal::bps(bonus_bps);
     Ok((bonus_decimal, response))
