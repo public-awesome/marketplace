@@ -2,7 +2,9 @@ use crate::{
     helpers::build_collection_token_index_str,
     msg::{PriceOffset, QueryMsg},
     orders::{Ask, Bid, CollectionBid},
-    state::{asks, bids, collection_bids, Config, Denom, OrderId, COLLECTION_DENOMS, CONFIG},
+    state::{
+        asks, bids, collection_bids, Config, Denom, OrderId, COLLECTION_DENOMS, CONFIG, IS_PAUSED,
+    },
 };
 
 use cosmwasm_std::{to_json_binary, Addr, Binary, Deps, Env, StdResult};
@@ -91,6 +93,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&collection)?,
             query_options.unwrap_or(QueryOptions::default()),
         )?),
+        QueryMsg::Paused {} => to_json_binary(&query_paused(deps)?),
     }
 }
 
@@ -293,4 +296,8 @@ pub fn query_collection_bids_by_creator_collection(
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(results)
+}
+
+pub fn query_paused(deps: Deps) -> StdResult<bool> {
+    IS_PAUSED.may_load(deps.storage).map(|v| v.unwrap_or(false))
 }

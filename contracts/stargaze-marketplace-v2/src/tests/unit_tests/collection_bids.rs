@@ -160,7 +160,13 @@ pub fn try_update_collection_bid() {
                 collection,
                 ..
             },
-        accounts: TestAccounts { owner, bidder, .. },
+        accounts:
+            TestAccounts {
+                owner,
+                bidder,
+                creator: _,
+                ..
+            },
     } = test_context();
 
     let recipient = setup_additional_account(&mut app, "recipient").unwrap();
@@ -254,7 +260,13 @@ pub fn try_remove_bid() {
                 collection,
                 ..
             },
-        accounts: TestAccounts { owner, bidder, .. },
+        accounts:
+            TestAccounts {
+                owner,
+                bidder,
+                creator,
+                ..
+            },
     } = test_context();
 
     let price = coin(1000000u128, NATIVE_DENOM);
@@ -294,11 +306,50 @@ pub fn try_remove_bid() {
         .to_string(),
     );
 
-    // Removing collection_bid as creator succeeds
+    // Admin can remove collection bid
+    let response = app.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &remove_collection_bid,
+        &[],
+    );
+    assert!(response.is_ok());
+
+    let collection_bid = app
+        .wrap()
+        .query_wasm_smart::<Option<CollectionBid>>(
+            &marketplace,
+            &QueryMsg::CollectionBid(collection_bid_id),
+        )
+        .unwrap();
+    assert!(collection_bid.is_none());
+
+    // Removing collection_bid as creator still succeeds
+    let price = coin(1000000u128, NATIVE_DENOM);
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
-        &remove_collection_bid,
+        &ExecuteMsg::SetCollectionBid {
+            collection: collection.to_string(),
+            details: OrderDetails {
+                price: price.clone(),
+                recipient: None,
+                finder: None,
+            },
+        },
+        &[price],
+    );
+
+    let collection_bid_id = find_attrs(response.unwrap(), "wasm-set-collection-bid", "id")
+        .pop()
+        .unwrap();
+
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &ExecuteMsg::RemoveCollectionBid {
+            id: collection_bid_id.clone(),
+        },
         &[],
     );
     assert!(response.is_ok());

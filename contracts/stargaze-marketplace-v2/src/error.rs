@@ -26,6 +26,9 @@ pub enum ContractError {
     #[error("InsufficientFunds")]
     InsufficientFunds,
 
+    #[error("ContractPaused")]
+    ContractPaused,
+
     #[error("InternalError: {0}")]
     InternalError(String),
 }

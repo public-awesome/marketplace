@@ -9,7 +9,7 @@ use crate::{
         },
         setup::{
             setup_accounts::TestAccounts,
-            setup_contracts::{ATOM_DENOM, NATIVE_DENOM},
+            setup_contracts::{ATOM_DENOM, LISTING_FEE, NATIVE_DENOM},
             templates::{test_context, TestContext, TestContracts},
         },
     },
@@ -224,6 +224,112 @@ fn try_admin_update_collection_denom() {
         marketplace.clone(),
         &set_bid,
         &[bid_price.clone()],
+    );
+    assert!(response.is_ok());
+}
+
+#[test]
+fn admin_can_pause_and_resume_orders() {
+    let TestContext {
+        mut app,
+        contracts:
+            TestContracts {
+                marketplace,
+                collection,
+                ..
+            },
+        accounts:
+            TestAccounts {
+                creator,
+                owner,
+                bidder,
+                ..
+            },
+    } = test_context();
+
+    let token_id = "1".to_string();
+
+    mint(&mut app, &creator, &owner, &collection, &token_id);
+    approve(
+        &mut app,
+        &owner,
+        &collection,
+        &marketplace,
+        token_id.as_str(),
+    );
+
+    let pause = ExecuteMsg::Pause {};
+    let response = app.execute_contract(owner.clone(), marketplace.clone(), &pause, &[]);
+    assert_error(
+        response,
+        MarketplaceStdError::Unauthorized(
+            "only the admin of contract can perform this action".to_string(),
+        )
+        .to_string(),
+    );
+
+    let response = app.execute_contract(creator.clone(), marketplace.clone(), &pause, &[]);
+    assert!(response.is_ok());
+
+    let paused: bool = app
+        .wrap()
+        .query_wasm_smart(&marketplace, &QueryMsg::Paused {})
+        .unwrap();
+    assert!(paused);
+
+    let set_ask = ExecuteMsg::SetAsk {
+        collection: collection.to_string(),
+        token_id: token_id.clone(),
+        details: OrderDetails {
+            price: coin(1_000_000, NATIVE_DENOM),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
+    );
+    assert_error(response, ContractError::ContractPaused.to_string());
+
+    let set_bid = ExecuteMsg::SetBid {
+        collection: collection.to_string(),
+        token_id: token_id.clone(),
+        details: OrderDetails {
+            price: coin(1_000_000, NATIVE_DENOM),
+            recipient: None,
+            finder: None,
+        },
+    };
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &set_bid,
+        &[coin(1_000_000, NATIVE_DENOM)],
+    );
+    assert_error(response, ContractError::ContractPaused.to_string());
+
+    let response = app.execute_contract(
+        creator.clone(),
+        marketplace.clone(),
+        &ExecuteMsg::Resume {},
+        &[],
+    );
+    assert!(response.is_ok());
+
+    let paused: bool = app
+        .wrap()
+        .query_wasm_smart(&marketplace, &QueryMsg::Paused {})
+        .unwrap();
+    assert!(!paused);
+
+    let response = app.execute_contract(
+        owner.clone(),
+        marketplace.clone(),
+        &set_ask,
+        &[coin(LISTING_FEE, NATIVE_DENOM)],
     );
     assert!(response.is_ok());
 }

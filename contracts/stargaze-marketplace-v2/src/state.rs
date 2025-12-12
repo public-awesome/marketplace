@@ -70,6 +70,8 @@ pub const LISTING_FEES: Map<Denom, Uint128> = Map::new("L");
 
 pub const NONCE: Item<u64> = Item::new("N");
 
+pub const IS_PAUSED: Item<bool> = Item::new("P");
+
 /// Defines indices for accessing Asks
 pub struct AskIndices<'a> {
     // Index Asks by collection and denom price

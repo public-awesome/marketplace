@@ -12,8 +12,7 @@ use crate::{
     ContractError,
 };
 
-use cosmwasm_std::coin;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{coin, Addr};
 use cw_multi_test::Executor;
 use cw_utils::NativeBalance;
 use sg_marketplace_common::MarketplaceStdError;
@@ -245,13 +244,19 @@ pub fn try_remove_bid() {
                 collection,
                 ..
             },
-        accounts: TestAccounts { bidder, .. },
+        accounts: TestAccounts {
+            bidder, creator, ..
+        },
     } = test_context();
 
     let bidder2 = setup_additional_account(&mut app, "bidder2").unwrap();
 
     let token_id = "1";
     let price = coin(1000000u128, NATIVE_DENOM);
+    let bidder_native_balance_before = app
+        .wrap()
+        .query_balance(bidder.clone(), NATIVE_DENOM)
+        .unwrap();
     let response = app.execute_contract(
         bidder.clone(),
         marketplace.clone(),
@@ -264,7 +269,16 @@ pub fn try_remove_bid() {
                 finder: None,
             },
         },
-        &[price],
+        &[price.clone()],
+    );
+
+    let bidder_native_balance_after_bid = app
+        .wrap()
+        .query_balance(bidder.clone(), NATIVE_DENOM)
+        .unwrap();
+    assert_eq!(
+        bidder_native_balance_before.amount - price.amount,
+        bidder_native_balance_after_bid.amount
     );
 
     let bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")
@@ -282,13 +296,57 @@ pub fn try_remove_bid() {
         .to_string(),
     );
 
-    // Removing bid as creator succeeds
-    let response = app.execute_contract(bidder.clone(), marketplace.clone(), &remove_bid, &[]);
+    // Admin can remove bid and refund bidder
+    let response = app.execute_contract(creator.clone(), marketplace.clone(), &remove_bid, &[]);
+    assert!(response.is_ok());
+    let bidder_native_balance_after_remove = app
+        .wrap()
+        .query_balance(bidder.clone(), NATIVE_DENOM)
+        .unwrap();
+    assert_eq!(
+        bidder_native_balance_before.amount,
+        bidder_native_balance_after_remove.amount
+    );
+
+    let bid = app
+        .wrap()
+        .query_wasm_smart::<Option<Bid>>(&marketplace, &QueryMsg::Bid(bid_id.clone()))
+        .unwrap();
+    assert!(bid.is_none());
+
+    // Removing bid as creator still succeeds
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &ExecuteMsg::SetBid {
+            collection: collection.to_string(),
+            token_id: token_id.to_string(),
+            details: OrderDetails {
+                price: price.clone(),
+                recipient: None,
+                finder: None,
+            },
+        },
+        &[price.clone()],
+    );
+
+    let second_bid_id = find_attrs(response.unwrap(), "wasm-set-bid", "id")
+        .pop()
+        .unwrap();
+
+    let response = app.execute_contract(
+        bidder.clone(),
+        marketplace.clone(),
+        &ExecuteMsg::RemoveBid {
+            id: second_bid_id.clone(),
+        },
+        &[],
+    );
     assert!(response.is_ok());
 
     let bid = app
         .wrap()
-        .query_wasm_smart::<Option<Bid>>(&marketplace, &QueryMsg::Bid(bid_id))
+        .query_wasm_smart::<Option<Bid>>(&marketplace, &QueryMsg::Bid(second_bid_id))
         .unwrap();
     assert!(bid.is_none());
 }
