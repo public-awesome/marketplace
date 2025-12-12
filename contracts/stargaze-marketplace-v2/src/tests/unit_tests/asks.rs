@@ -337,13 +337,27 @@ pub fn try_remove_ask() {
         .to_string(),
     );
 
-    // Removing ask as creator succeeds
-    let response = app.execute_contract(owner.clone(), marketplace.clone(), &remove_ask, &[]);
+    // Admin can remove ask
+    let response = app.execute_contract(creator.clone(), marketplace.clone(), &remove_ask, &[]);
     assert!(response.is_ok());
 
     let ask = app
         .wrap()
         .query_wasm_smart::<Option<Ask>>(&marketplace, &QueryMsg::Ask(ask_id))
+        .unwrap();
+    assert!(ask.is_none());
+
+    // Removing ask as creator succeeds
+    let second_ask_id = generate_id(vec![collection.as_bytes(), token_ids[1_usize].as_bytes()]);
+    let remove_ask = ExecuteMsg::RemoveAsk {
+        id: second_ask_id.clone(),
+    };
+    let response = app.execute_contract(owner.clone(), marketplace.clone(), &remove_ask, &[]);
+    assert!(response.is_ok());
+
+    let ask = app
+        .wrap()
+        .query_wasm_smart::<Option<Ask>>(&marketplace, &QueryMsg::Ask(second_ask_id))
         .unwrap();
     assert!(ask.is_none());
 }

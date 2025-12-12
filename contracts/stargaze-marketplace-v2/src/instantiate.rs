@@ -3,7 +3,7 @@ use crate::{
     error::ContractError,
     events::ConfigEvent,
     msg::InstantiateMsg,
-    state::NONCE,
+    state::{IS_PAUSED, NONCE},
 };
 
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo, Response};
@@ -26,6 +26,7 @@ pub fn instantiate(
     config.save(deps.storage)?;
 
     NONCE.save(deps.storage, &0)?;
+    IS_PAUSED.save(deps.storage, &false)?;
 
     let response = Response::new()
         .add_event(

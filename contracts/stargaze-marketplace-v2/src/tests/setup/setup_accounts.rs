@@ -32,7 +32,7 @@ pub fn setup_accounts(app: &mut App) -> Result<TestAccounts, ContractError> {
             amount: funds.clone(),
         }
     }))
-    .map_err(|err| println!("{:?}", err))
+    .map_err(|err| println!("{err:?}"))
     .ok();
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -40,7 +40,7 @@ pub fn setup_accounts(app: &mut App) -> Result<TestAccounts, ContractError> {
             amount: funds.clone(),
         }
     }))
-    .map_err(|err| println!("{:?}", err))
+    .map_err(|err| println!("{err:?}"))
     .ok();
     app.sudo(SudoMsg::Bank({
         BankSudo::Mint {
@@ -48,7 +48,7 @@ pub fn setup_accounts(app: &mut App) -> Result<TestAccounts, ContractError> {
             amount: funds.clone(),
         }
     }))
-    .map_err(|err| println!("{:?}", err))
+    .map_err(|err| println!("{err:?}"))
     .ok();
 
     // Check native balances
@@ -76,7 +76,7 @@ pub fn setup_additional_account(app: &mut App, addr_input: &str) -> Result<Addr,
             amount: funds.clone(),
         }
     }))
-    .map_err(|err| println!("{:?}", err))
+    .map_err(|err| println!("{err:?}"))
     .ok();
 
     let addr_native_balances = app.wrap().query_all_balances(addr.clone()).unwrap();

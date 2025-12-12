@@ -12,12 +12,15 @@ use crate::{
     events::{
         AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent, ListingFeeEvent,
     },
-    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_price},
+    helpers::{
+        ensure_not_paused, finalize_sale, generate_id, is_contract_admin, only_contract_admin,
+        only_valid_price,
+    },
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
         asks, bids, collection_bids, Config, Denom, OrderId, TokenId, COLLECTION_DENOMS, CONFIG,
-        LISTING_FEES, NONCE,
+        IS_PAUSED, LISTING_FEES, NONCE,
     },
 };
 
@@ -44,6 +47,8 @@ pub fn execute(
         ExecuteMsg::RemoveListingFee { denom } => {
             execute_remove_listing_fee(deps, env, info, denom)
         }
+        ExecuteMsg::Pause {} => execute_set_paused(deps, env, info, true),
+        ExecuteMsg::Resume {} => execute_set_paused(deps, env, info, false),
         ExecuteMsg::SetAsk {
             collection,
             token_id,
@@ -235,6 +240,23 @@ pub fn execute_remove_listing_fee(
     Ok(response)
 }
 
+pub fn execute_set_paused(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    paused: bool,
+) -> Result<Response, ContractError> {
+    only_contract_admin(&deps.querier, &env, &info)?;
+
+    IS_PAUSED.save(deps.storage, &paused)?;
+
+    let response = Response::new()
+        .add_attribute("action", "set-paused")
+        .add_attribute("paused", paused.to_string());
+
+    Ok(response)
+}
+
 pub fn execute_set_ask(
     deps: DepsMut,
     env: Env,
@@ -246,6 +268,8 @@ pub fn execute_set_ask(
 ) -> Result<Response, ContractError> {
     only_owner(&deps.querier, &info, &collection, &token_id)?;
     only_tradable(&deps.querier, &env.block, &collection)?;
+
+    ensure_not_paused(deps.storage)?;
 
     let config = CONFIG.load(deps.storage)?;
     // check agains collection denom
@@ -340,7 +364,7 @@ pub fn execute_update_ask(
 
     let mut ask = asks()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{id}]")))?;
 
     ensure_eq!(
         info.sender,
@@ -397,7 +421,7 @@ pub fn execute_update_ask(
 
 pub fn execute_remove_ask(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     id: OrderId,
 ) -> Result<Response, ContractError> {
@@ -405,15 +429,18 @@ pub fn execute_remove_ask(
 
     let ask = asks()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{id}]")))?;
 
-    ensure_eq!(
-        info.sender,
-        ask.creator,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of ask can perform this action".to_string()
-        )
-    );
+    let is_admin = is_contract_admin(&deps.querier, &env, &info.sender)?;
+    if !is_admin {
+        ensure_eq!(
+            info.sender,
+            ask.creator,
+            MarketplaceStdError::Unauthorized(
+                "only the creator of ask can perform this action".to_string()
+            )
+        );
+    }
 
     let mut response = transfer_nft(
         &ask.collection,
@@ -448,7 +475,7 @@ pub fn execute_accept_ask(
 
     let ask = asks()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{id}]")))?;
 
     ensure!(
         has_coins(&[details.price.clone()], &ask.details.price),
@@ -501,6 +528,8 @@ pub fn execute_set_bid(
     buy_now: bool,
 ) -> Result<Response, ContractError> {
     only_tradable(&deps.querier, &env.block, &collection)?;
+
+    ensure_not_paused(deps.storage)?;
 
     let config = CONFIG.load(deps.storage)?;
 
@@ -609,7 +638,7 @@ pub fn execute_update_bid(
 
     let mut bid = bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{id}]")))?;
 
     ensure_eq!(
         info.sender,
@@ -687,7 +716,7 @@ pub fn execute_update_bid(
 
 pub fn execute_remove_bid(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     id: OrderId,
 ) -> Result<Response, ContractError> {
@@ -695,21 +724,24 @@ pub fn execute_remove_bid(
 
     let bid = bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{id}]")))?;
 
-    ensure_eq!(
-        info.sender,
-        bid.creator,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of bid can perform this action".to_string()
-        )
-    );
+    let is_admin = is_contract_admin(&deps.querier, &env, &info.sender)?;
+    if !is_admin {
+        ensure_eq!(
+            info.sender,
+            bid.creator,
+            MarketplaceStdError::Unauthorized(
+                "only the creator of bid can perform this action".to_string()
+            )
+        );
+    }
 
     let refund = bid.details.price.clone();
 
     bid.remove(deps.storage)?;
 
-    let mut response = transfer_coin(refund, &info.sender, Response::new());
+    let mut response = transfer_coin(refund, &bid.creator, Response::new());
 
     response = response.add_event(
         BidEvent {
@@ -730,9 +762,11 @@ pub fn execute_accept_bid(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    let is_paused = IS_PAUSED.may_load(deps.storage)?.unwrap_or(false);
+
     let bid: Bid = bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{id}]")))?;
 
     ensure!(
         has_coins(&[bid.details.price.clone()], &details.price),
@@ -751,6 +785,7 @@ pub fn execute_accept_bid(
         }
         ask
     } else {
+        ensure!(!is_paused, ContractError::ContractPaused);
         only_owner(&deps.querier, &info, &bid.collection, &bid.token_id)?;
         Ask::new(
             info.sender.clone(),
@@ -784,6 +819,8 @@ pub fn execute_set_collection_bid(
     buy_now: bool,
 ) -> Result<Response, ContractError> {
     only_tradable(&deps.querier, &env.block, &collection)?;
+
+    ensure_not_paused(deps.storage)?;
 
     let config = CONFIG.load(deps.storage)?;
     // check agains collection denom
@@ -880,7 +917,7 @@ pub fn execute_update_collection_bid(
 
     let mut collection_bid = collection_bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{id}]")))?;
 
     ensure_eq!(
         info.sender,
@@ -963,7 +1000,7 @@ pub fn execute_update_collection_bid(
 
 pub fn execute_remove_collection_bid(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     info: MessageInfo,
     id: OrderId,
 ) -> Result<Response, ContractError> {
@@ -971,21 +1008,24 @@ pub fn execute_remove_collection_bid(
 
     let collection_bid = collection_bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{id}]")))?;
 
-    ensure_eq!(
-        info.sender,
-        collection_bid.creator,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of collection bid can perform this action".to_string()
-        )
-    );
+    let is_admin = is_contract_admin(&deps.querier, &env, &info.sender)?;
+    if !is_admin {
+        ensure_eq!(
+            info.sender,
+            collection_bid.creator,
+            MarketplaceStdError::Unauthorized(
+                "only the creator of collection bid can perform this action".to_string()
+            )
+        );
+    }
 
     let refund = collection_bid.details.price.clone();
 
     collection_bid.remove(deps.storage)?;
 
-    let mut response = transfer_coin(refund, &info.sender, Response::new());
+    let mut response = transfer_coin(refund, &collection_bid.creator, Response::new());
 
     response = response.add_event(
         CollectionBidEvent {
@@ -1007,9 +1047,11 @@ pub fn execute_accept_collection_bid(
     token_id: TokenId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    let is_paused = IS_PAUSED.may_load(deps.storage)?.unwrap_or(false);
+
     let collection_bid = collection_bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{id}]")))?;
 
     ensure!(
         has_coins(&[collection_bid.details.price.clone()], &details.price),
@@ -1031,6 +1073,7 @@ pub fn execute_accept_collection_bid(
         }
         ask
     } else {
+        ensure!(!is_paused, ContractError::ContractPaused);
         only_owner(&deps.querier, &info, &collection_bid.collection, &token_id)?;
         Ask::new(
             info.sender.clone(),

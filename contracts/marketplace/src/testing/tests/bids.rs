@@ -276,7 +276,7 @@ fn auto_accept_bid() {
                 amount: coins(1000, "random"),
             }
         }))
-        .map_err(|err| println!("{:?}", err))
+        .map_err(|err| println!("{err:?}"))
         .ok();
     let set_bid_msg = ExecuteMsg::SetBid {
         sale_type: SaleType::FixedPrice,
@@ -899,7 +899,7 @@ fn try_set_accept_bid_high_fees() {
                 amount: creator_funds,
             }
         }))
-        .map_err(|err| println!("{:?}", err))
+        .map_err(|err| println!("{err:?}"))
         .ok();
     // Mint NFT for creator
     mint(&mut router, &creator, &minter_addr);
@@ -1096,7 +1096,7 @@ fn try_query_sorted_bids() {
                 amount: funds,
             }
         }))
-        .map_err(|err| println!("{:?}", err))
+        .map_err(|err| println!("{err:?}"))
         .ok();
 
     // Bidder makes bid

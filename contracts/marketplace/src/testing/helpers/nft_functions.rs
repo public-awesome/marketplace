@@ -41,7 +41,7 @@ pub fn mint_for(
         &mint_for_creator_msg,
         &[],
     );
-    println!("res is {:?}", res);
+    println!("res is {res:?}");
     assert!(res.is_ok());
 }
 

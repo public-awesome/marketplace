@@ -29,6 +29,8 @@ pub enum ExecuteMsg {
     RemoveListingFee {
         denom: Denom,
     },
+    Pause {},
+    Resume {},
     // Marketplace messages
     SetAsk {
         collection: String,
@@ -150,6 +152,8 @@ pub enum QueryMsg {
         collection: String,
         query_options: Option<QueryOptions<String>>,
     },
+    #[returns(bool)]
+    Paused {},
 }
 
 #[cw_serde]

@@ -1,6 +1,6 @@
 use crate::{
     orders::{Ask, MatchingBid},
-    state::{Config, TokenId, COLLECTION_DENOMS},
+    state::{Config, TokenId, COLLECTION_DENOMS, IS_PAUSED},
     ContractError,
 };
 
@@ -41,14 +41,44 @@ pub fn only_contract_admin(
         ))?;
     }
 
+    ensure_contract_admin_matches(&contract_info_resp.admin, &info.sender)?;
+
+    Ok(())
+}
+
+pub fn is_contract_admin(
+    querier: &QuerierWrapper,
+    env: &Env,
+    sender: &Addr,
+) -> Result<bool, ContractError> {
+    let contract_info_resp = querier.query_wasm_contract_info(&env.contract.address)?;
+    Ok(contract_info_resp
+        .admin
+        .map(|admin| admin == sender.as_str())
+        .unwrap_or(false))
+}
+
+fn ensure_contract_admin_matches(
+    admin: &Option<String>,
+    sender: &Addr,
+) -> Result<(), ContractError> {
+    ensure!(
+        admin.is_some(),
+        MarketplaceStdError::Unauthorized("contract admin unset".to_string())
+    );
     ensure_eq!(
-        info.sender,
-        contract_info_resp.admin.unwrap(),
+        sender.as_str(),
+        admin.as_ref().unwrap(),
         MarketplaceStdError::Unauthorized(
             "only the admin of contract can perform this action".to_string(),
         )
     );
+    Ok(())
+}
 
+pub fn ensure_not_paused(storage: &dyn Storage) -> Result<(), ContractError> {
+    let paused = IS_PAUSED.may_load(storage)?.unwrap_or(false);
+    ensure!(!paused, ContractError::ContractPaused);
     Ok(())
 }
 
