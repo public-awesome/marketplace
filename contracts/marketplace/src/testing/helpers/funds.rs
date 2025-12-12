@@ -22,7 +22,7 @@ pub fn add_funds_for_incremental_fee(
                 amount: fee_funds,
             }
         }))
-        .map_err(|err| println!("{:?}", err))
+        .map_err(|err| println!("{err:?}"))
         .ok();
     Ok(())
 }

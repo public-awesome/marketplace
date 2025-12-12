@@ -33,7 +33,7 @@ fn try_query_collection_bids_by_collection() {
     let mut collection_bid_ids: Vec<String> = vec![];
     for idx in 1..(num_collection_bids + 1) {
         let collection_bidder =
-            setup_additional_account(&mut app, &format!("collection-bidder-{}", idx)).unwrap();
+            setup_additional_account(&mut app, &format!("collection-bidder-{idx}")).unwrap();
 
         let collection_bid_price = coin(1000000u128 + idx as u128, NATIVE_DENOM);
         let set_collection_bid = ExecuteMsg::SetCollectionBid {
@@ -87,7 +87,7 @@ fn try_query_collection_bids_by_token_price() {
     let num_collection_bids: u8 = 4;
     for idx in 1..(num_collection_bids + 1) {
         let collection_bidder =
-            setup_additional_account(&mut app, &format!("collection-bidder-{}", idx)).unwrap();
+            setup_additional_account(&mut app, &format!("collection-bidder-{idx}")).unwrap();
         let collection_bid_price = coin(1000000u128 + idx as u128, NATIVE_DENOM);
         let set_collection_bid = ExecuteMsg::SetCollectionBid {
             collection: collection.to_string(),

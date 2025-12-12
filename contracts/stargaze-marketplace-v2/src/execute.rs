@@ -364,7 +364,7 @@ pub fn execute_update_ask(
 
     let mut ask = asks()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{id}]")))?;
 
     ensure_eq!(
         info.sender,
@@ -429,7 +429,7 @@ pub fn execute_remove_ask(
 
     let ask = asks()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{id}]")))?;
 
     let is_admin = is_contract_admin(&deps.querier, &env, &info.sender)?;
     if !is_admin {
@@ -475,7 +475,7 @@ pub fn execute_accept_ask(
 
     let ask = asks()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("ask not found [{id}]")))?;
 
     ensure!(
         has_coins(&[details.price.clone()], &ask.details.price),
@@ -638,7 +638,7 @@ pub fn execute_update_bid(
 
     let mut bid = bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{id}]")))?;
 
     ensure_eq!(
         info.sender,
@@ -724,7 +724,7 @@ pub fn execute_remove_bid(
 
     let bid = bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{id}]")))?;
 
     let is_admin = is_contract_admin(&deps.querier, &env, &info.sender)?;
     if !is_admin {
@@ -766,7 +766,7 @@ pub fn execute_accept_bid(
 
     let bid: Bid = bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("bid not found [{id}]")))?;
 
     ensure!(
         has_coins(&[bid.details.price.clone()], &details.price),
@@ -917,7 +917,7 @@ pub fn execute_update_collection_bid(
 
     let mut collection_bid = collection_bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{id}]")))?;
 
     ensure_eq!(
         info.sender,
@@ -1008,7 +1008,7 @@ pub fn execute_remove_collection_bid(
 
     let collection_bid = collection_bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{id}]")))?;
 
     let is_admin = is_contract_admin(&deps.querier, &env, &info.sender)?;
     if !is_admin {
@@ -1051,7 +1051,7 @@ pub fn execute_accept_collection_bid(
 
     let collection_bid = collection_bids()
         .load(deps.storage, id.clone())
-        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
+        .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{id}]")))?;
 
     ensure!(
         has_coins(&[collection_bid.details.price.clone()], &details.price),

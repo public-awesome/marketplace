@@ -137,7 +137,7 @@ pub fn sudo_update_params(
 
 pub fn sudo_add_operator(deps: DepsMut, operator: Addr) -> Result<Response, ContractError> {
     let mut params = SUDO_PARAMS.load(deps.storage)?;
-    if !params.operators.iter().any(|o| o == operator) {
+    if !params.operators.contains(&operator) {
         params.operators.push(operator.clone());
     } else {
         return Err(ContractError::OperatorAlreadyRegistered {});

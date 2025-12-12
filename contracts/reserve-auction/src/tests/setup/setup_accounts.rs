@@ -24,7 +24,7 @@ pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Co
                 amount: funds.clone(),
             }
         }))
-        .map_err(|err| println!("{:?}", err))
+        .map_err(|err| println!("{err:?}"))
         .ok();
     router
         .sudo(SudoMsg::Bank({
@@ -33,7 +33,7 @@ pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Co
                 amount: funds.clone(),
             }
         }))
-        .map_err(|err| println!("{:?}", err))
+        .map_err(|err| println!("{err:?}"))
         .ok();
     router
         .sudo(SudoMsg::Bank({
@@ -42,7 +42,7 @@ pub fn setup_accounts(router: &mut StargazeApp) -> Result<(Addr, Addr, Addr), Co
                 amount: creator_funds.clone(),
             }
         }))
-        .map_err(|err| println!("{:?}", err))
+        .map_err(|err| println!("{err:?}"))
         .ok();
 
     // Check native balances
@@ -70,7 +70,7 @@ pub fn setup_addtl_account(
                 amount: funds.clone(),
             }
         }))
-        .map_err(|err| println!("{:?}", err))
+        .map_err(|err| println!("{err:?}"))
         .ok();
 
     // Check native balances
