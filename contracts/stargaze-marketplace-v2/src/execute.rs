@@ -163,9 +163,12 @@ pub fn execute(
         ExecuteMsg::BatchRemoveFromBlacklist {
             collection,
             token_ids,
-        } => {
-            execute_batch_remove_from_blacklist(deps, info, api.addr_validate(&collection)?, token_ids)
-        }
+        } => execute_batch_remove_from_blacklist(
+            deps,
+            info,
+            api.addr_validate(&collection)?,
+            token_ids,
+        ),
     }
 }
 
