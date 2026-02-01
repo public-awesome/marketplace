@@ -2,7 +2,10 @@ use crate::{
     helpers::build_collection_token_index_str,
     msg::{PriceOffset, QueryMsg},
     orders::{Ask, Bid, CollectionBid},
-    state::{asks, bids, collection_bids, Config, Denom, OrderId, COLLECTION_DENOMS, CONFIG},
+    state::{
+        asks, bids, collection_bids, Config, Denom, OrderId, TokenId, BLACKLIST, COLLECTION_DENOMS,
+        CONFIG,
+    },
 };
 
 use cosmwasm_std::{to_json_binary, Addr, Binary, Deps, Env, StdResult};
@@ -90,6 +93,14 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&creator)?,
             api.addr_validate(&collection)?,
             query_options.unwrap_or(QueryOptions::default()),
+        )?),
+        QueryMsg::IsBlacklisted {
+            collection,
+            token_id,
+        } => to_json_binary(&query_is_blacklisted(
+            deps,
+            api.addr_validate(&collection)?,
+            token_id,
         )?),
     }
 }
@@ -293,4 +304,9 @@ pub fn query_collection_bids_by_creator_collection(
         .collect::<StdResult<Vec<_>>>()?;
 
     Ok(results)
+}
+
+pub fn query_is_blacklisted(deps: Deps, collection: Addr, token_id: TokenId) -> StdResult<bool> {
+    let key = build_collection_token_index_str(collection.as_ref(), &token_id);
+    Ok(BLACKLIST.has(deps.storage, key))
 }

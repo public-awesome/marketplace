@@ -1,6 +1,7 @@
 use crate::{
+    constants::BLACKLIST_MANAGER,
     orders::{Ask, MatchingBid},
-    state::{Config, TokenId, COLLECTION_DENOMS},
+    state::{Config, TokenId, BLACKLIST, COLLECTION_DENOMS},
     ContractError,
 };
 
@@ -84,6 +85,34 @@ pub fn only_valid_price(
         );
     }
 
+    Ok(())
+}
+
+/// Validates that a token is not blacklisted
+pub fn only_not_blacklisted(
+    storage: &dyn Storage,
+    collection: &Addr,
+    token_id: &TokenId,
+) -> Result<(), ContractError> {
+    let key = build_collection_token_index_str(collection.as_ref(), token_id);
+    if BLACKLIST.has(storage, key) {
+        return Err(ContractError::TokenBlacklisted(
+            collection.to_string(),
+            token_id.clone(),
+        ));
+    }
+    Ok(())
+}
+
+/// Validates that the sender is the blacklist manager
+pub fn only_blacklist_manager(info: &MessageInfo) -> Result<(), ContractError> {
+    ensure_eq!(
+        info.sender.as_str(),
+        BLACKLIST_MANAGER,
+        MarketplaceStdError::Unauthorized(
+            "only the blacklist manager can perform this action".to_string()
+        )
+    );
     Ok(())
 }
 
@@ -203,6 +232,9 @@ pub fn finalize_sale(
     action: &str,
     mut response: Response,
 ) -> Result<Response, ContractError> {
+    // Check if token is blacklisted before proceeding with any sale
+    only_not_blacklisted(deps.storage, &ask.collection, &ask.token_id)?;
+
     let (nft_recipient, bid_details) = match &matching_bid {
         MatchingBid::Bid(bid) => (bid.asset_recipient(), &bid.details),
         MatchingBid::CollectionBid(collection_bid) => {

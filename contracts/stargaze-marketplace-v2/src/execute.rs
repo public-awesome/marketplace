@@ -12,12 +12,15 @@ use crate::{
     events::{
         AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent, ListingFeeEvent,
     },
-    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_price},
+    helpers::{
+        build_collection_token_index_str, finalize_sale, generate_id, only_blacklist_manager,
+        only_contract_admin, only_valid_price,
+    },
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
-        asks, bids, collection_bids, Config, Denom, OrderId, TokenId, COLLECTION_DENOMS, CONFIG,
-        LISTING_FEES, NONCE,
+        asks, bids, collection_bids, Config, Denom, OrderId, TokenId, BLACKLIST, COLLECTION_DENOMS,
+        CONFIG, LISTING_FEES, NONCE,
     },
 };
 
@@ -145,6 +148,24 @@ pub fn execute(
             details.str_to_addr(api)?,
             true,
         ),
+        ExecuteMsg::AddToBlacklist {
+            collection,
+            token_id,
+        } => execute_add_to_blacklist(deps, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::RemoveFromBlacklist {
+            collection,
+            token_id,
+        } => execute_remove_from_blacklist(deps, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::BatchAddToBlacklist {
+            collection,
+            token_ids,
+        } => execute_batch_add_to_blacklist(deps, info, api.addr_validate(&collection)?, token_ids),
+        ExecuteMsg::BatchRemoveFromBlacklist {
+            collection,
+            token_ids,
+        } => {
+            execute_batch_remove_from_blacklist(deps, info, api.addr_validate(&collection)?, token_ids)
+        }
     }
 }
 
@@ -1051,6 +1072,86 @@ pub fn execute_accept_collection_bid(
         "accept-collection-bid",
         Response::new(),
     )?;
+
+    Ok(response)
+}
+
+pub fn execute_add_to_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info)?;
+
+    let key = build_collection_token_index_str(collection.as_ref(), &token_id);
+    BLACKLIST.save(deps.storage, key, &())?;
+
+    let response = Response::new()
+        .add_attribute("action", "add-to-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id);
+
+    Ok(response)
+}
+
+pub fn execute_remove_from_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info)?;
+
+    let key = build_collection_token_index_str(collection.as_ref(), &token_id);
+    BLACKLIST.remove(deps.storage, key);
+
+    let response = Response::new()
+        .add_attribute("action", "remove-from-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id);
+
+    Ok(response)
+}
+
+pub fn execute_batch_add_to_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_ids: Vec<TokenId>,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info)?;
+
+    for token_id in &token_ids {
+        let key = build_collection_token_index_str(collection.as_ref(), token_id);
+        BLACKLIST.save(deps.storage, key, &())?;
+    }
+
+    let response = Response::new()
+        .add_attribute("action", "batch-add-to-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("count", token_ids.len().to_string());
+
+    Ok(response)
+}
+
+pub fn execute_batch_remove_from_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_ids: Vec<TokenId>,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info)?;
+
+    for token_id in &token_ids {
+        let key = build_collection_token_index_str(collection.as_ref(), token_id);
+        BLACKLIST.remove(deps.storage, key);
+    }
+
+    let response = Response::new()
+        .add_attribute("action", "batch-remove-from-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("count", token_ids.len().to_string());
 
     Ok(response)
 }
