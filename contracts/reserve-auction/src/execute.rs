@@ -2,11 +2,14 @@ use std::vec;
 
 use crate::error::ContractError;
 use crate::helpers::{
-    only_min_reserve_price_manager, only_no_auction, settle_auction, validate_reserve_price,
+    build_blacklist_key, only_blacklist_manager, only_min_reserve_price_manager, only_no_auction,
+    only_not_blacklisted, settle_auction, validate_reserve_price,
 };
 use crate::msg::ExecuteMsg;
-use crate::state::{auctions, Auction, HighBid, MIN_RESERVE_PRICES, MIN_RESERVE_PRICE_MANAGER};
-use crate::state::{CONFIG, HALT_MANAGER};
+use crate::state::{
+    auctions, Auction, HighBid, BLACKLIST, CONFIG, HALT_MANAGER, MIN_RESERVE_PRICES,
+    MIN_RESERVE_PRICE_MANAGER,
+};
 use cosmwasm_std::{
     attr, coin, ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo,
     Timestamp,
@@ -87,6 +90,24 @@ pub fn execute(
         ExecuteMsg::UpdateMinReservePriceManager { manager } => {
             execute_update_min_reserve_price_manager(deps, info, manager)
         }
+        ExecuteMsg::AddToBlacklist {
+            collection,
+            token_id,
+        } => execute_add_to_blacklist(deps, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::RemoveFromBlacklist {
+            collection,
+            token_id,
+        } => execute_remove_from_blacklist(deps, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::BatchAddToBlacklist {
+            collection,
+            token_ids,
+        } => execute_batch_add_to_blacklist(deps, info, api.addr_validate(&collection)?, token_ids),
+        ExecuteMsg::BatchRemoveFromBlacklist {
+            collection,
+            token_ids,
+        } => {
+            execute_batch_remove_from_blacklist(deps, info, api.addr_validate(&collection)?, token_ids)
+        }
     }
 }
 
@@ -119,6 +140,9 @@ pub fn execute_create_auction(
     only_no_auction(deps.as_ref(), &collection, token_id)?;
 
     only_tradable(&deps.querier, &env.block, &collection)?;
+
+    // Check if token is blacklisted
+    only_not_blacklisted(deps.as_ref().storage, &collection, token_id)?;
 
     let mut response = Response::new();
 
@@ -445,4 +469,84 @@ pub fn execute_update_min_reserve_price_manager(
     MIN_RESERVE_PRICE_MANAGER.save(deps.storage, &deps.api.addr_validate(&manager)?)?;
 
     Ok(Response::new().add_attribute("action", "update-min-reserve-price-manager"))
+}
+
+pub fn execute_add_to_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info.sender)?;
+
+    let key = build_blacklist_key(collection.as_ref(), &token_id);
+    BLACKLIST.save(deps.storage, key, &())?;
+
+    let response = Response::new()
+        .add_attribute("action", "add-to-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id);
+
+    Ok(response)
+}
+
+pub fn execute_remove_from_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: String,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info.sender)?;
+
+    let key = build_blacklist_key(collection.as_ref(), &token_id);
+    BLACKLIST.remove(deps.storage, key);
+
+    let response = Response::new()
+        .add_attribute("action", "remove-from-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id);
+
+    Ok(response)
+}
+
+pub fn execute_batch_add_to_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_ids: Vec<String>,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info.sender)?;
+
+    for token_id in &token_ids {
+        let key = build_blacklist_key(collection.as_ref(), token_id);
+        BLACKLIST.save(deps.storage, key, &())?;
+    }
+
+    let response = Response::new()
+        .add_attribute("action", "batch-add-to-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("count", token_ids.len().to_string());
+
+    Ok(response)
+}
+
+pub fn execute_batch_remove_from_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_ids: Vec<String>,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info.sender)?;
+
+    for token_id in &token_ids {
+        let key = build_blacklist_key(collection.as_ref(), token_id);
+        BLACKLIST.remove(deps.storage, key);
+    }
+
+    let response = Response::new()
+        .add_attribute("action", "batch-remove-from-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("count", token_ids.len().to_string());
+
+    Ok(response)
 }

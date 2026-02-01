@@ -75,6 +75,23 @@ pub enum ExecuteMsg {
     UpdateMinReservePriceManager {
         manager: String,
     },
+    // Blacklist management (manager only)
+    AddToBlacklist {
+        collection: String,
+        token_id: String,
+    },
+    RemoveFromBlacklist {
+        collection: String,
+        token_id: String,
+    },
+    BatchAddToBlacklist {
+        collection: String,
+        token_ids: Vec<String>,
+    },
+    BatchRemoveFromBlacklist {
+        collection: String,
+        token_ids: Vec<String>,
+    },
 }
 
 #[cw_serde]
@@ -118,6 +135,11 @@ pub enum QueryMsg {
     },
     #[returns(String)]
     MinReservePriceManager {},
+    #[returns(bool)]
+    IsBlacklisted {
+        collection: String,
+        token_id: String,
+    },
 }
 
 #[allow(clippy::large_enum_variant)]
