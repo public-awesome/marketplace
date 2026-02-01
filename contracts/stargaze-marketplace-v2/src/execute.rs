@@ -14,7 +14,7 @@ use crate::{
     },
     helpers::{
         build_collection_token_index_str, finalize_sale, generate_id, only_blacklist_manager,
-        only_contract_admin, only_valid_price,
+        only_contract_admin, only_not_blacklisted, only_valid_price,
     },
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
@@ -270,6 +270,7 @@ pub fn execute_set_ask(
 ) -> Result<Response, ContractError> {
     only_owner(&deps.querier, &info, &collection, &token_id)?;
     only_tradable(&deps.querier, &env.block, &collection)?;
+    only_not_blacklisted(deps.storage, &collection, &token_id)?;
 
     let config = CONFIG.load(deps.storage)?;
     // check agains collection denom
