@@ -375,6 +375,9 @@ pub fn execute_update_ask(
         )
     );
 
+    // Check if token is blacklisted
+    only_not_blacklisted(deps.storage, &ask.collection, &ask.token_id)?;
+
     // check agains collection denom
     only_valid_price(deps.storage, &config, &ask.collection, &details.price, None)?;
 
@@ -439,6 +442,9 @@ pub fn execute_remove_ask(
             "only the creator of ask can perform this action".to_string()
         )
     );
+
+    // Check if token is blacklisted
+    only_not_blacklisted(deps.storage, &ask.collection, &ask.token_id)?;
 
     let mut response = transfer_nft(
         &ask.collection,
