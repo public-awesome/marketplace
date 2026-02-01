@@ -6,7 +6,8 @@ use sg_marketplace_common::{
 use sg_std::Response;
 
 use crate::state::{
-    auctions, Auction, Config, HaltManager, BLACKLIST, MIN_RESERVE_PRICES, MIN_RESERVE_PRICE_MANAGER,
+    auctions, Auction, Config, HaltManager, BLACKLIST, MIN_RESERVE_PRICES,
+    MIN_RESERVE_PRICE_MANAGER,
 };
 use crate::ContractError;
 
