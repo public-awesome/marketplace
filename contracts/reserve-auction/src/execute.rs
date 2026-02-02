@@ -273,23 +273,13 @@ pub fn execute_cancel_auction(
     if !is_blacklist_manager {
         // Ensure caller is the seller
         ensure_eq!(auction.seller, info.sender, ContractError::Unauthorized {});
-
-        // Ensure auction hasn't started
-        ensure!(
-            auction.first_bid_time.is_none(),
-            ContractError::AuctionStarted {}
-        );
     }
 
-    let mut response = Response::new();
-
-    // Refund high bidder if exists
-    if let Some(high_bid) = &auction.high_bid {
-        response = response.add_submessage(checked_transfer_coin(
-            high_bid.coin.clone(),
-            &high_bid.bidder,
-        )?);
-    }
+    // Ensure auction hasn't started
+    ensure!(
+        auction.first_bid_time.is_none(),
+        ContractError::AuctionStarted {}
+    );
 
     // Remove auction from storage
     auctions().remove(
@@ -301,7 +291,7 @@ pub fn execute_cancel_auction(
         .add_attribute("collection", auction.collection.to_string())
         .add_attribute("token_id", auction.token_id.to_string());
 
-    response = response
+    let response = Response::new()
         .add_event(event)
         .add_submessage(transfer_nft(&collection, token_id, &auction.seller));
 
