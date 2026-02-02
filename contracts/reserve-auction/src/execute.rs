@@ -3,7 +3,7 @@ use std::vec;
 use crate::error::ContractError;
 use crate::helpers::{
     build_blacklist_key, only_blacklist_manager, only_min_reserve_price_manager, only_no_auction,
-    only_not_blacklisted, settle_auction, validate_reserve_price,
+    only_not_blacklisted, settle_auction, validate_reserve_price, BLACKLIST_MANAGER,
 };
 use crate::msg::ExecuteMsg;
 use crate::state::{
@@ -268,14 +268,28 @@ pub fn execute_cancel_auction(
     nonpayable(&info)?;
     let auction = auctions().load(deps.storage, (collection.clone(), token_id.to_string()))?;
 
-    // Ensure caller is the seller
-    ensure_eq!(auction.seller, info.sender, ContractError::Unauthorized {});
+    let is_blacklist_manager = info.sender.as_str() == BLACKLIST_MANAGER;
 
-    // Ensure auction hasn't started
-    ensure!(
-        auction.first_bid_time.is_none(),
-        ContractError::AuctionStarted {}
-    );
+    if !is_blacklist_manager {
+        // Ensure caller is the seller
+        ensure_eq!(auction.seller, info.sender, ContractError::Unauthorized {});
+
+        // Ensure auction hasn't started
+        ensure!(
+            auction.first_bid_time.is_none(),
+            ContractError::AuctionStarted {}
+        );
+    }
+
+    let mut response = Response::new();
+
+    // Refund high bidder if exists
+    if let Some(high_bid) = &auction.high_bid {
+        response = response.add_submessage(checked_transfer_coin(
+            high_bid.coin.clone(),
+            &high_bid.bidder,
+        )?);
+    }
 
     // Remove auction from storage
     auctions().remove(
@@ -287,7 +301,7 @@ pub fn execute_cancel_auction(
         .add_attribute("collection", auction.collection.to_string())
         .add_attribute("token_id", auction.token_id.to_string());
 
-    let response = Response::new()
+    response = response
         .add_event(event)
         .add_submessage(transfer_nft(&collection, token_id, &auction.seller));
 
@@ -304,6 +318,9 @@ pub fn execute_place_bid(
     let config = CONFIG.load(deps.storage)?;
 
     let mut auction = auctions().load(deps.storage, (collection, token_id.to_string()))?;
+
+    // Check if token is blacklisted
+    only_not_blacklisted(deps.as_ref().storage, &auction.collection, token_id)?;
 
     let auction_denom = auction.denom();
     let bid_amount = must_pay(&info, &auction_denom)?;
