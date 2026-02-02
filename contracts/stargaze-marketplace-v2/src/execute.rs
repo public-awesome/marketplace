@@ -14,7 +14,7 @@ use crate::{
     },
     helpers::{
         build_collection_token_index_str, finalize_sale, generate_id, only_blacklist_manager,
-        only_contract_admin, only_not_blacklisted, only_valid_price,
+        only_blacklisted, only_contract_admin, only_not_blacklisted, only_valid_price,
     },
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
@@ -169,6 +169,10 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_ids,
         ),
+        ExecuteMsg::CancelBlacklistedAsk {
+            collection,
+            token_id,
+        } => execute_cancel_blacklisted_ask(deps, info, api.addr_validate(&collection)?, token_id),
     }
 }
 
@@ -1162,6 +1166,52 @@ pub fn execute_batch_remove_from_blacklist(
         .add_attribute("action", "batch-remove-from-blacklist")
         .add_attribute("collection", collection.to_string())
         .add_attribute("count", token_ids.len().to_string());
+
+    Ok(response)
+}
+
+pub fn execute_cancel_blacklisted_ask(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_blacklist_manager(&info)?;
+
+    // Ensure token IS blacklisted
+    only_blacklisted(deps.storage, &collection, &token_id)?;
+
+    // Generate the ask ID from collection and token_id
+    let id = generate_id(vec![collection.as_bytes(), token_id.as_bytes()]);
+
+    let ask = asks()
+        .load(deps.storage, id.clone())
+        .map_err(|_| {
+            ContractError::InvalidInput(format!(
+                "ask not found for collection={}, token_id={}",
+                collection, token_id
+            ))
+        })?;
+
+    // Return NFT to original creator
+    let mut response = transfer_nft(
+        &ask.collection,
+        &ask.token_id,
+        &ask.asset_recipient(),
+        Response::new(),
+    );
+
+    ask.remove(deps.storage)?;
+
+    response = response.add_event(
+        AskEvent {
+            ty: "cancel-blacklisted-ask",
+            ask: &ask,
+            attr_keys: vec!["id", "collection", "token_id"],
+        }
+        .into(),
+    );
 
     Ok(response)
 }

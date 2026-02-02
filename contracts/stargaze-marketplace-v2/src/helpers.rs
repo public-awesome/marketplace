@@ -104,6 +104,21 @@ pub fn only_not_blacklisted(
     Ok(())
 }
 
+/// Validates that a token IS blacklisted
+pub fn only_blacklisted(
+    storage: &dyn Storage,
+    collection: &Addr,
+    token_id: &TokenId,
+) -> Result<(), ContractError> {
+    let key = build_collection_token_index_str(collection.as_ref(), token_id);
+    if !BLACKLIST.has(storage, key) {
+        return Err(ContractError::InvalidInput(
+            "token is not blacklisted".to_string(),
+        ));
+    }
+    Ok(())
+}
+
 /// Validates that the sender is the blacklist manager
 pub fn only_blacklist_manager(info: &MessageInfo) -> Result<(), ContractError> {
     ensure_eq!(
