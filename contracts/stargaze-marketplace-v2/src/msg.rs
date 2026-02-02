@@ -109,7 +109,7 @@ pub enum ExecuteMsg {
         collection: String,
         token_ids: Vec<TokenId>,
     },
-    CancelBlacklistedAsk {
+    CancelAsk {
         collection: String,
         token_id: TokenId,
     },
