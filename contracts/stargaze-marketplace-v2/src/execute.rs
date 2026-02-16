@@ -1293,17 +1293,20 @@ pub fn execute_bulk_remove_bids(
         .collect::<Result<Vec<_>, _>>()?;
 
     let mut response = Response::new();
-    let count = items.len();
 
     for (_, bid) in items {
         let refund = bid.details.price.clone();
         bid.remove(deps.storage)?;
         response = transfer_coin(refund, &bid.creator, response);
+        response = response.add_event(
+            BidEvent {
+                ty: "remove-bid",
+                bid: &bid,
+                attr_keys: vec!["id", "collection", "token_id"],
+            }
+            .into(),
+        );
     }
-
-    response = response.add_event(
-        Event::new("bulk-remove-bids").add_attribute("count", count.to_string()),
-    );
 
     Ok(response)
 }
@@ -1330,17 +1333,20 @@ pub fn execute_bulk_remove_collection_bids(
         .collect::<Result<Vec<_>, _>>()?;
 
     let mut response = Response::new();
-    let count = items.len();
 
     for (_, collection_bid) in items {
         let refund = collection_bid.details.price.clone();
         collection_bid.remove(deps.storage)?;
         response = transfer_coin(refund, &collection_bid.creator, response);
+        response = response.add_event(
+            CollectionBidEvent {
+                ty: "remove-collection-bid",
+                collection_bid: &collection_bid,
+                attr_keys: vec!["id", "collection"],
+            }
+            .into(),
+        );
     }
-
-    response = response.add_event(
-        Event::new("bulk-remove-collection-bids").add_attribute("count", count.to_string()),
-    );
 
     Ok(response)
 }
@@ -1354,7 +1360,6 @@ pub fn execute_bulk_remove_asks_by_ids(
     only_blacklist_manager(&info)?;
 
     let mut response = Response::new();
-    let mut count = 0u32;
 
     for id in ids {
         let ask = asks()
@@ -1370,12 +1375,15 @@ pub fn execute_bulk_remove_asks_by_ids(
             response,
         );
 
-        count += 1;
+        response = response.add_event(
+            AskEvent {
+                ty: "remove-ask",
+                ask: &ask,
+                attr_keys: vec!["id", "collection", "token_id"],
+            }
+            .into(),
+        );
     }
-
-    response = response.add_event(
-        Event::new("bulk-remove-asks").add_attribute("count", count.to_string()),
-    );
 
     Ok(response)
 }
@@ -1389,7 +1397,6 @@ pub fn execute_bulk_remove_bids_by_ids(
     only_blacklist_manager(&info)?;
 
     let mut response = Response::new();
-    let mut count = 0u32;
 
     for id in ids {
         let bid = bids()
@@ -1400,12 +1407,15 @@ pub fn execute_bulk_remove_bids_by_ids(
         bid.remove(deps.storage)?;
         response = transfer_coin(refund, &bid.creator, response);
 
-        count += 1;
+        response = response.add_event(
+            BidEvent {
+                ty: "remove-bid",
+                bid: &bid,
+                attr_keys: vec!["id", "collection", "token_id"],
+            }
+            .into(),
+        );
     }
-
-    response = response.add_event(
-        Event::new("bulk-remove-bids").add_attribute("count", count.to_string()),
-    );
 
     Ok(response)
 }
@@ -1419,7 +1429,6 @@ pub fn execute_bulk_remove_collection_bids_by_ids(
     only_blacklist_manager(&info)?;
 
     let mut response = Response::new();
-    let mut count = 0u32;
 
     for id in ids {
         let collection_bid = collection_bids()
@@ -1430,12 +1439,15 @@ pub fn execute_bulk_remove_collection_bids_by_ids(
         collection_bid.remove(deps.storage)?;
         response = transfer_coin(refund, &collection_bid.creator, response);
 
-        count += 1;
+        response = response.add_event(
+            CollectionBidEvent {
+                ty: "remove-collection-bid",
+                collection_bid: &collection_bid,
+                attr_keys: vec!["id", "collection"],
+            }
+            .into(),
+        );
     }
-
-    response = response.add_event(
-        Event::new("bulk-remove-collection-bids").add_attribute("count", count.to_string()),
-    );
 
     Ok(response)
 }
