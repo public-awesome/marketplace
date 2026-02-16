@@ -6,9 +6,13 @@ use sg_marketplace_common::{
 use sg_std::Response;
 
 use crate::state::{
-    auctions, Auction, Config, HaltManager, MIN_RESERVE_PRICES, MIN_RESERVE_PRICE_MANAGER,
+    auctions, Auction, Config, HaltManager, BLACKLIST, MIN_RESERVE_PRICES,
+    MIN_RESERVE_PRICE_MANAGER,
 };
 use crate::ContractError;
+
+pub const BLACKLIST_MANAGER: &str =
+    "stars14ay8uhnnacg79dvygpf5rh9wz2m7tj8jnw60w233xja4akax4mrs54770s";
 
 pub fn only_no_auction(deps: Deps, collection: &Addr, token_id: &str) -> Result<(), ContractError> {
     if auctions()
@@ -28,6 +32,34 @@ pub fn only_min_reserve_price_manager(deps: Deps, sender: &Addr) -> Result<(), C
     ensure_eq!(
         sender,
         min_reserve_price_manager,
+        ContractError::Unauthorized {}
+    );
+    Ok(())
+}
+
+pub fn build_blacklist_key(collection: &str, token_id: &str) -> String {
+    format!("{}/{}", collection, token_id)
+}
+
+pub fn only_not_blacklisted(
+    storage: &dyn Storage,
+    collection: &Addr,
+    token_id: &str,
+) -> Result<(), ContractError> {
+    let key = build_blacklist_key(collection.as_ref(), token_id);
+    if BLACKLIST.has(storage, key) {
+        return Err(ContractError::TokenBlacklisted(
+            collection.to_string(),
+            token_id.to_string(),
+        ));
+    }
+    Ok(())
+}
+
+pub fn only_blacklist_manager(sender: &Addr) -> Result<(), ContractError> {
+    ensure_eq!(
+        sender.as_str(),
+        BLACKLIST_MANAGER,
         ContractError::Unauthorized {}
     );
     Ok(())
@@ -70,6 +102,9 @@ pub fn settle_auction(
         auction.end_time.is_some() && auction.end_time.unwrap() <= block_time,
         ContractError::AuctionNotEnded {}
     );
+
+    // Check if token is blacklisted before settling
+    only_not_blacklisted(deps.storage, &auction.collection, &auction.token_id)?;
 
     // If auction is set to end within a halt window, then postpone it instead
     let auction_end_time = auction.end_time.unwrap();

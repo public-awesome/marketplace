@@ -58,4 +58,7 @@ pub enum ContractError {
 
     #[error("Auction within halt window: a halt has occurred and the auction cannot be settled")]
     AuctionWithinHaltWindow,
+
+    #[error("Token is blacklisted: collection={0}, token_id={1}")]
+    TokenBlacklisted(String, String),
 }

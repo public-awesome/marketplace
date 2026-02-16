@@ -60,6 +60,10 @@ pub const CONFIG: Item<Config> = Item::new("cfg");
 pub const MIN_RESERVE_PRICES: Map<String, Uint128> = Map::new("mrp");
 pub const MIN_RESERVE_PRICE_MANAGER: Item<Addr> = Item::new("mrpm");
 
+/// Blacklist of tokens that cannot be auctioned
+/// Key: "{collection}/{token_id}"
+pub const BLACKLIST: Map<String, ()> = Map::new("bl");
+
 #[cw_serde]
 pub struct HighBid {
     pub coin: Coin,
