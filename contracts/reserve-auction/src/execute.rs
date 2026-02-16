@@ -2,12 +2,13 @@ use std::vec;
 
 use crate::error::ContractError;
 use crate::helpers::{
-    build_blacklist_key, only_blacklist_manager, only_min_reserve_price_manager, only_no_auction,
-    only_not_blacklisted, settle_auction, validate_reserve_price, BLACKLIST_MANAGER,
+    build_blacklist_key, ensure_not_paused, only_blacklist_manager,
+    only_min_reserve_price_manager, only_no_auction, only_not_blacklisted, settle_auction,
+    validate_reserve_price, BLACKLIST_MANAGER,
 };
 use crate::msg::ExecuteMsg;
 use crate::state::{
-    auctions, Auction, HighBid, BLACKLIST, CONFIG, HALT_MANAGER, MIN_RESERVE_PRICES,
+    auctions, Auction, HighBid, BLACKLIST, CONFIG, HALT_MANAGER, IS_PAUSED, MIN_RESERVE_PRICES,
     MIN_RESERVE_PRICE_MANAGER,
 };
 use cosmwasm_std::{
@@ -111,6 +112,8 @@ pub fn execute(
             api.addr_validate(&collection)?,
             token_ids,
         ),
+        ExecuteMsg::Pause {} => execute_set_paused(deps, info, true),
+        ExecuteMsg::Resume {} => execute_set_paused(deps, info, false),
     }
 }
 
@@ -125,6 +128,7 @@ pub fn execute_create_auction(
     reserve_price: Coin,
     seller_funds_recipient: Option<Addr>,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
 
     // Only NFT owner can create auction for an NFT
@@ -229,6 +233,7 @@ pub fn execute_update_reserve_price(
     token_id: String,
     reserve_price: Coin,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     nonpayable(&info)?;
     let mut auction = auctions().load(deps.storage, (collection, token_id))?;
 
@@ -305,6 +310,7 @@ pub fn execute_place_bid(
     collection: Addr,
     token_id: &str,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
 
     let mut auction = auctions().load(deps.storage, (collection, token_id.to_string()))?;
@@ -557,6 +563,23 @@ pub fn execute_batch_remove_from_blacklist(
         .add_attribute("action", "batch-remove-from-blacklist")
         .add_attribute("collection", collection.to_string())
         .add_attribute("count", token_ids.len().to_string());
+
+    Ok(response)
+}
+
+pub fn execute_set_paused(
+    deps: DepsMut,
+    info: MessageInfo,
+    paused: bool,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_blacklist_manager(&info.sender)?;
+
+    IS_PAUSED.save(deps.storage, &paused)?;
+
+    let response = Response::new().add_event(
+        Event::new("set-paused").add_attribute("paused", paused.to_string()),
+    );
 
     Ok(response)
 }

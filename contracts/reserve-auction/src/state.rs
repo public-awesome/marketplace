@@ -64,6 +64,9 @@ pub const MIN_RESERVE_PRICE_MANAGER: Item<Addr> = Item::new("mrpm");
 /// Key: "{collection}/{token_id}"
 pub const BLACKLIST: Map<String, ()> = Map::new("bl");
 
+/// Whether the contract is paused (all new trades blocked)
+pub const IS_PAUSED: Item<bool> = Item::new("ip");
+
 #[cw_serde]
 pub struct HighBid {
     pub coin: Coin,

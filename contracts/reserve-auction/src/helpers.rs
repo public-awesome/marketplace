@@ -6,7 +6,7 @@ use sg_marketplace_common::{
 use sg_std::Response;
 
 use crate::state::{
-    auctions, Auction, Config, HaltManager, BLACKLIST, MIN_RESERVE_PRICES,
+    auctions, Auction, Config, HaltManager, BLACKLIST, IS_PAUSED, MIN_RESERVE_PRICES,
     MIN_RESERVE_PRICE_MANAGER,
 };
 use crate::ContractError;
@@ -52,6 +52,14 @@ pub fn only_not_blacklisted(
             collection.to_string(),
             token_id.to_string(),
         ));
+    }
+    Ok(())
+}
+
+pub fn ensure_not_paused(storage: &dyn Storage) -> Result<(), ContractError> {
+    let paused = IS_PAUSED.may_load(storage)?.unwrap_or(false);
+    if paused {
+        return Err(ContractError::ContractPaused {});
     }
     Ok(())
 }

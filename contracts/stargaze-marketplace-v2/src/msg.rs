@@ -29,6 +29,8 @@ pub enum ExecuteMsg {
     RemoveListingFee {
         denom: Denom,
     },
+    Pause {},
+    Resume {},
     // Marketplace messages
     SetAsk {
         collection: String,
@@ -113,6 +115,23 @@ pub enum ExecuteMsg {
         collection: String,
         token_id: TokenId,
     },
+    BulkRemoveBids {
+        start_after: Option<OrderId>,
+        limit: Option<u32>,
+    },
+    BulkRemoveCollectionBids {
+        start_after: Option<OrderId>,
+        limit: Option<u32>,
+    },
+    BulkRemoveAsksByIds {
+        ids: Vec<OrderId>,
+    },
+    BulkRemoveBidsByIds {
+        ids: Vec<OrderId>,
+    },
+    BulkRemoveCollectionBidsByIds {
+        ids: Vec<OrderId>,
+    },
 }
 
 #[cw_serde]
@@ -176,6 +195,8 @@ pub enum QueryMsg {
         collection: String,
         token_id: TokenId,
     },
+    #[returns(bool)]
+    Paused {},
 }
 
 #[cw_serde]

@@ -4,7 +4,7 @@ use crate::{
     orders::{Ask, Bid, CollectionBid},
     state::{
         asks, bids, collection_bids, Config, Denom, OrderId, TokenId, BLACKLIST, COLLECTION_DENOMS,
-        CONFIG,
+        CONFIG, IS_PAUSED,
     },
 };
 
@@ -102,6 +102,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             api.addr_validate(&collection)?,
             token_id,
         )?),
+        QueryMsg::Paused {} => to_json_binary(&query_paused(deps)?),
     }
 }
 
@@ -309,4 +310,8 @@ pub fn query_collection_bids_by_creator_collection(
 pub fn query_is_blacklisted(deps: Deps, collection: Addr, token_id: TokenId) -> StdResult<bool> {
     let key = build_collection_token_index_str(collection.as_ref(), &token_id);
     Ok(BLACKLIST.has(deps.storage, key))
+}
+
+pub fn query_paused(deps: Deps) -> StdResult<bool> {
+    Ok(IS_PAUSED.may_load(deps.storage)?.unwrap_or(false))
 }

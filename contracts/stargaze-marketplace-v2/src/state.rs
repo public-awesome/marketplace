@@ -94,6 +94,9 @@ pub const NONCE: Item<u64> = Item::new("N");
 /// Key: "{collection}/{token_id}"
 pub const BLACKLIST: Map<String, ()> = Map::new("B");
 
+/// Whether the contract is paused (all trades blocked)
+pub const IS_PAUSED: Item<bool> = Item::new("P");
+
 /// Defines indices for accessing Asks
 pub struct AskIndices<'a> {
     // Index Asks by collection and denom price

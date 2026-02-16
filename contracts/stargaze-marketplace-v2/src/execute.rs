@@ -1,4 +1,6 @@
-use cosmwasm_std::{ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, MessageInfo, Response};
+use cosmwasm_std::{
+    ensure, ensure_eq, has_coins, Addr, Coin, DepsMut, Env, Event, MessageInfo, Order, Response,
+};
 use cw_utils::{nonpayable, one_coin, NativeBalance};
 use sg_marketplace_common::{
     coin::{transfer_coin, transfer_coins},
@@ -13,14 +15,14 @@ use crate::{
         AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent, ListingFeeEvent,
     },
     helpers::{
-        build_collection_token_index_str, finalize_sale, generate_id, only_blacklist_manager,
-        only_contract_admin, only_not_blacklisted, only_valid_price,
+        build_collection_token_index_str, ensure_not_paused, finalize_sale, generate_id,
+        only_blacklist_manager, only_contract_admin, only_not_blacklisted, only_valid_price,
     },
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
         asks, bids, collection_bids, Config, Denom, OrderId, TokenId, BLACKLIST, COLLECTION_DENOMS,
-        CONFIG, LISTING_FEES, NONCE,
+        CONFIG, IS_PAUSED, LISTING_FEES, NONCE,
     },
 };
 
@@ -173,6 +175,21 @@ pub fn execute(
             collection,
             token_id,
         } => execute_cancel_ask(deps, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::Pause {} => execute_set_paused(deps, info, true),
+        ExecuteMsg::Resume {} => execute_set_paused(deps, info, false),
+        ExecuteMsg::BulkRemoveBids {
+            start_after,
+            limit,
+        } => execute_bulk_remove_bids(deps, info, start_after, limit),
+        ExecuteMsg::BulkRemoveCollectionBids {
+            start_after,
+            limit,
+        } => execute_bulk_remove_collection_bids(deps, info, start_after, limit),
+        ExecuteMsg::BulkRemoveAsksByIds { ids } => execute_bulk_remove_asks_by_ids(deps, info, ids),
+        ExecuteMsg::BulkRemoveBidsByIds { ids } => execute_bulk_remove_bids_by_ids(deps, info, ids),
+        ExecuteMsg::BulkRemoveCollectionBidsByIds { ids } => {
+            execute_bulk_remove_collection_bids_by_ids(deps, info, ids)
+        }
     }
 }
 
@@ -272,6 +289,7 @@ pub fn execute_set_ask(
     details: OrderDetails<Addr>,
     sell_now: bool,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     only_owner(&deps.querier, &info, &collection, &token_id)?;
     only_tradable(&deps.querier, &env.block, &collection)?;
     only_not_blacklisted(deps.storage, &collection, &token_id)?;
@@ -363,6 +381,7 @@ pub fn execute_update_ask(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     nonpayable(&info)?;
 
     let config = CONFIG.load(deps.storage)?;
@@ -439,17 +458,21 @@ pub fn execute_remove_ask(
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
 
-    ensure_eq!(
-        info.sender,
-        ask.creator,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of ask can perform this action".to_string()
-        )
-    );
+    let is_manager = only_blacklist_manager(&info).is_ok();
+    if !is_manager {
+        ensure_eq!(
+            info.sender,
+            ask.creator,
+            MarketplaceStdError::Unauthorized(
+                "only the creator of ask can perform this action".to_string()
+            )
+        );
 
-    // Check if token is blacklisted
-    only_not_blacklisted(deps.storage, &ask.collection, &ask.token_id)?;
+        // Check if token is blacklisted
+        only_not_blacklisted(deps.storage, &ask.collection, &ask.token_id)?;
+    }
 
+    // Always return NFT to original creator/recipient
     let mut response = transfer_nft(
         &ask.collection,
         &ask.token_id,
@@ -478,6 +501,7 @@ pub fn execute_accept_ask(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     let mut funds = NativeBalance(info.funds.clone());
     funds.normalize();
 
@@ -535,6 +559,7 @@ pub fn execute_set_bid(
     details: OrderDetails<Addr>,
     buy_now: bool,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
@@ -640,6 +665,7 @@ pub fn execute_update_bid(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
 
     let mut bid = bids()
@@ -732,19 +758,23 @@ pub fn execute_remove_bid(
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
 
-    ensure_eq!(
-        info.sender,
-        bid.creator,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of bid can perform this action".to_string()
-        )
-    );
+    let is_manager = only_blacklist_manager(&info).is_ok();
+    if !is_manager {
+        ensure_eq!(
+            info.sender,
+            bid.creator,
+            MarketplaceStdError::Unauthorized(
+                "only the creator of bid can perform this action".to_string()
+            )
+        );
+    }
 
     let refund = bid.details.price.clone();
 
     bid.remove(deps.storage)?;
 
-    let mut response = transfer_coin(refund, &info.sender, Response::new());
+    // Always refund to original creator
+    let mut response = transfer_coin(refund, &bid.creator, Response::new());
 
     response = response.add_event(
         BidEvent {
@@ -765,6 +795,7 @@ pub fn execute_accept_bid(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     let bid: Bid = bids()
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
@@ -818,6 +849,7 @@ pub fn execute_set_collection_bid(
     details: OrderDetails<Addr>,
     buy_now: bool,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     only_tradable(&deps.querier, &env.block, &collection)?;
 
     let config = CONFIG.load(deps.storage)?;
@@ -911,6 +943,7 @@ pub fn execute_update_collection_bid(
     id: OrderId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     let config = CONFIG.load(deps.storage)?;
 
     let mut collection_bid = collection_bids()
@@ -1008,19 +1041,23 @@ pub fn execute_remove_collection_bid(
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
 
-    ensure_eq!(
-        info.sender,
-        collection_bid.creator,
-        MarketplaceStdError::Unauthorized(
-            "only the creator of collection bid can perform this action".to_string()
-        )
-    );
+    let is_manager = only_blacklist_manager(&info).is_ok();
+    if !is_manager {
+        ensure_eq!(
+            info.sender,
+            collection_bid.creator,
+            MarketplaceStdError::Unauthorized(
+                "only the creator of collection bid can perform this action".to_string()
+            )
+        );
+    }
 
     let refund = collection_bid.details.price.clone();
 
     collection_bid.remove(deps.storage)?;
 
-    let mut response = transfer_coin(refund, &info.sender, Response::new());
+    // Always refund to original creator
+    let mut response = transfer_coin(refund, &collection_bid.creator, Response::new());
 
     response = response.add_event(
         CollectionBidEvent {
@@ -1042,6 +1079,7 @@ pub fn execute_accept_collection_bid(
     token_id: TokenId,
     details: OrderDetails<Addr>,
 ) -> Result<Response, ContractError> {
+    ensure_not_paused(deps.storage)?;
     let collection_bid = collection_bids()
         .load(deps.storage, id.clone())
         .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
@@ -1208,6 +1246,195 @@ pub fn execute_cancel_ask(
             attr_keys: vec!["id", "collection", "token_id"],
         }
         .into(),
+    );
+
+    Ok(response)
+}
+
+pub fn execute_set_paused(
+    deps: DepsMut,
+    info: MessageInfo,
+    paused: bool,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_blacklist_manager(&info)?;
+
+    IS_PAUSED.save(deps.storage, &paused)?;
+
+    let response = Response::new().add_event(
+        Event::new("set-paused").add_attribute("paused", paused.to_string()),
+    );
+
+    Ok(response)
+}
+
+const DEFAULT_BULK_LIMIT: u32 = 50;
+const MAX_BULK_LIMIT: u32 = 100;
+
+pub fn execute_bulk_remove_bids(
+    deps: DepsMut,
+    info: MessageInfo,
+    start_after: Option<OrderId>,
+    limit: Option<u32>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_blacklist_manager(&info)?;
+    ensure_not_paused(deps.storage)?;
+
+    let limit = limit.unwrap_or(DEFAULT_BULK_LIMIT).min(MAX_BULK_LIMIT) as usize;
+
+    let start = start_after
+        .as_ref()
+        .map(|s| cw_storage_plus::Bound::exclusive(s.as_str()));
+
+    let items: Vec<(OrderId, Bid)> = bids()
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut response = Response::new();
+    let count = items.len();
+
+    for (_, bid) in items {
+        let refund = bid.details.price.clone();
+        bid.remove(deps.storage)?;
+        response = transfer_coin(refund, &bid.creator, response);
+    }
+
+    response = response.add_event(
+        Event::new("bulk-remove-bids").add_attribute("count", count.to_string()),
+    );
+
+    Ok(response)
+}
+
+pub fn execute_bulk_remove_collection_bids(
+    deps: DepsMut,
+    info: MessageInfo,
+    start_after: Option<OrderId>,
+    limit: Option<u32>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_blacklist_manager(&info)?;
+    ensure_not_paused(deps.storage)?;
+
+    let limit = limit.unwrap_or(DEFAULT_BULK_LIMIT).min(MAX_BULK_LIMIT) as usize;
+
+    let start = start_after
+        .as_ref()
+        .map(|s| cw_storage_plus::Bound::exclusive(s.as_str()));
+
+    let items: Vec<(OrderId, CollectionBid)> = collection_bids()
+        .range(deps.storage, start, None, Order::Ascending)
+        .take(limit)
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut response = Response::new();
+    let count = items.len();
+
+    for (_, collection_bid) in items {
+        let refund = collection_bid.details.price.clone();
+        collection_bid.remove(deps.storage)?;
+        response = transfer_coin(refund, &collection_bid.creator, response);
+    }
+
+    response = response.add_event(
+        Event::new("bulk-remove-collection-bids").add_attribute("count", count.to_string()),
+    );
+
+    Ok(response)
+}
+
+pub fn execute_bulk_remove_asks_by_ids(
+    deps: DepsMut,
+    info: MessageInfo,
+    ids: Vec<OrderId>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_blacklist_manager(&info)?;
+
+    let mut response = Response::new();
+    let mut count = 0u32;
+
+    for id in ids {
+        let ask = asks()
+            .load(deps.storage, id.clone())
+            .map_err(|_| ContractError::InvalidInput(format!("ask not found [{}]", id)))?;
+
+        ask.remove(deps.storage)?;
+
+        response = transfer_nft(
+            &ask.collection,
+            &ask.token_id,
+            &ask.asset_recipient(),
+            response,
+        );
+
+        count += 1;
+    }
+
+    response = response.add_event(
+        Event::new("bulk-remove-asks").add_attribute("count", count.to_string()),
+    );
+
+    Ok(response)
+}
+
+pub fn execute_bulk_remove_bids_by_ids(
+    deps: DepsMut,
+    info: MessageInfo,
+    ids: Vec<OrderId>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_blacklist_manager(&info)?;
+
+    let mut response = Response::new();
+    let mut count = 0u32;
+
+    for id in ids {
+        let bid = bids()
+            .load(deps.storage, id.clone())
+            .map_err(|_| ContractError::InvalidInput(format!("bid not found [{}]", id)))?;
+
+        let refund = bid.details.price.clone();
+        bid.remove(deps.storage)?;
+        response = transfer_coin(refund, &bid.creator, response);
+
+        count += 1;
+    }
+
+    response = response.add_event(
+        Event::new("bulk-remove-bids").add_attribute("count", count.to_string()),
+    );
+
+    Ok(response)
+}
+
+pub fn execute_bulk_remove_collection_bids_by_ids(
+    deps: DepsMut,
+    info: MessageInfo,
+    ids: Vec<OrderId>,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_blacklist_manager(&info)?;
+
+    let mut response = Response::new();
+    let mut count = 0u32;
+
+    for id in ids {
+        let collection_bid = collection_bids()
+            .load(deps.storage, id.clone())
+            .map_err(|_| ContractError::InvalidInput(format!("collection bid not found [{}]", id)))?;
+
+        let refund = collection_bid.details.price.clone();
+        collection_bid.remove(deps.storage)?;
+        response = transfer_coin(refund, &collection_bid.creator, response);
+
+        count += 1;
+    }
+
+    response = response.add_event(
+        Event::new("bulk-remove-collection-bids").add_attribute("count", count.to_string()),
     );
 
     Ok(response)

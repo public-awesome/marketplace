@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::msg::InstantiateMsg;
-use crate::state::{Config, HaltManager, HALT_MANAGER, MIN_RESERVE_PRICE_MANAGER};
+use crate::state::{Config, HaltManager, HALT_MANAGER, IS_PAUSED, MIN_RESERVE_PRICE_MANAGER};
 use crate::{error::ContractError, state::MIN_RESERVE_PRICES};
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo};
 use cw2::set_contract_version;
@@ -100,6 +100,8 @@ pub fn instantiate(
             halt_windows: vec![],
         },
     )?;
+
+    IS_PAUSED.save(deps.storage, &false)?;
 
     Ok(response)
 }

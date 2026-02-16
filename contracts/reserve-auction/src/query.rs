@@ -1,8 +1,8 @@
 use crate::helpers::build_blacklist_key;
 use crate::msg::{AuctionKeyOffset, MinReservePriceOffset, QueryMsg};
 use crate::state::{
-    auctions, Auction, Config, HaltManager, BLACKLIST, CONFIG, HALT_MANAGER, MIN_RESERVE_PRICES,
-    MIN_RESERVE_PRICE_MANAGER,
+    auctions, Auction, Config, HaltManager, BLACKLIST, CONFIG, HALT_MANAGER, IS_PAUSED,
+    MIN_RESERVE_PRICES, MIN_RESERVE_PRICE_MANAGER,
 };
 
 use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Coin, Deps, Env, StdResult};
@@ -56,6 +56,7 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             deps.api.addr_validate(&collection)?,
             token_id,
         )?),
+        QueryMsg::Paused {} => to_json_binary(&query_paused(deps)?),
     }
 }
 
@@ -173,4 +174,8 @@ pub fn query_auctions_by_end_time(
 pub fn query_is_blacklisted(deps: Deps, collection: Addr, token_id: String) -> StdResult<bool> {
     let key = build_blacklist_key(collection.as_ref(), &token_id);
     Ok(BLACKLIST.has(deps.storage, key))
+}
+
+pub fn query_paused(deps: Deps) -> StdResult<bool> {
+    Ok(IS_PAUSED.may_load(deps.storage)?.unwrap_or(false))
 }
