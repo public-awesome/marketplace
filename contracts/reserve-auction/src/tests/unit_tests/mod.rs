@@ -12,3 +12,6 @@ mod sudo;
 
 #[cfg(test)]
 mod halt_manager;
+
+#[cfg(test)]
+mod pause;
