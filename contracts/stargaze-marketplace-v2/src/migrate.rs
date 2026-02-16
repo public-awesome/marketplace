@@ -1,4 +1,4 @@
-use crate::state::Config;
+use crate::state::{Config, IS_PAUSED};
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{DepsMut, Env, Response};
 use cw2::set_contract_version;
@@ -20,6 +20,11 @@ use cosmwasm_std::entry_point;
 pub fn migrate(deps: DepsMut, _env: Env, msg: MigrateMsg) -> Result<Response, ContractError> {
     // Set new contract version
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    // Initialize IS_PAUSED if not already set (for existing deployments)
+    if IS_PAUSED.may_load(deps.storage)?.is_none() {
+        IS_PAUSED.save(deps.storage, &false)?;
+    }
 
     let response = Response::new().add_attribute("action", "migrate");
 

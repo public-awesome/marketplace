@@ -1,7 +1,7 @@
 use crate::{
     constants::BLACKLIST_MANAGER,
     orders::{Ask, MatchingBid},
-    state::{Config, TokenId, BLACKLIST, COLLECTION_DENOMS},
+    state::{Config, TokenId, BLACKLIST, COLLECTION_DENOMS, IS_PAUSED},
     ContractError,
 };
 
@@ -100,6 +100,15 @@ pub fn only_not_blacklisted(
             collection.to_string(),
             token_id.clone(),
         ));
+    }
+    Ok(())
+}
+
+/// Ensures the contract is not paused
+pub fn ensure_not_paused(storage: &dyn Storage) -> Result<(), ContractError> {
+    let paused = IS_PAUSED.may_load(storage)?.unwrap_or(false);
+    if paused {
+        return Err(ContractError::ContractPaused);
     }
     Ok(())
 }

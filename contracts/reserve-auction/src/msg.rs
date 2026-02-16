@@ -92,6 +92,8 @@ pub enum ExecuteMsg {
         collection: String,
         token_ids: Vec<String>,
     },
+    Pause {},
+    Resume {},
 }
 
 #[cw_serde]
@@ -140,6 +142,8 @@ pub enum QueryMsg {
         collection: String,
         token_id: String,
     },
+    #[returns(bool)]
+    Paused {},
 }
 
 #[allow(clippy::large_enum_variant)]

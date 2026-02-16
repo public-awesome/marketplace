@@ -31,4 +31,7 @@ pub enum ContractError {
 
     #[error("Token is blacklisted: collection={0}, token_id={1}")]
     TokenBlacklisted(String, String),
+
+    #[error("ContractPaused")]
+    ContractPaused,
 }

@@ -13,4 +13,6 @@ mod collection_bid_queries;
 #[cfg(test)]
 mod collection_bids;
 #[cfg(test)]
+mod pause;
+#[cfg(test)]
 mod sales;
