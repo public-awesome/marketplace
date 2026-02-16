@@ -90,6 +90,10 @@ pub const LISTING_FEES: Map<Denom, Uint128> = Map::new("L");
 
 pub const NONCE: Item<u64> = Item::new("N");
 
+/// Blacklist of tokens that cannot be traded
+/// Key: "{collection}/{token_id}"
+pub const BLACKLIST: Map<String, ()> = Map::new("B");
+
 /// Defines indices for accessing Asks
 pub struct AskIndices<'a> {
     // Index Asks by collection and denom price

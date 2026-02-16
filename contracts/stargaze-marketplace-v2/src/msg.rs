@@ -92,6 +92,27 @@ pub enum ExecuteMsg {
         collection: String,
         details: OrderDetails<String>,
     },
+    // Blacklist management (manager only)
+    AddToBlacklist {
+        collection: String,
+        token_id: TokenId,
+    },
+    RemoveFromBlacklist {
+        collection: String,
+        token_id: TokenId,
+    },
+    BatchAddToBlacklist {
+        collection: String,
+        token_ids: Vec<TokenId>,
+    },
+    BatchRemoveFromBlacklist {
+        collection: String,
+        token_ids: Vec<TokenId>,
+    },
+    CancelAsk {
+        collection: String,
+        token_id: TokenId,
+    },
 }
 
 #[cw_serde]
@@ -149,6 +170,11 @@ pub enum QueryMsg {
         creator: String,
         collection: String,
         query_options: Option<QueryOptions<String>>,
+    },
+    #[returns(bool)]
+    IsBlacklisted {
+        collection: String,
+        token_id: TokenId,
     },
 }
 

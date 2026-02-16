@@ -37,6 +37,7 @@ pub struct InstantiateMsg {
     /// The minimum reserve prices for the various denoms. Denoms
     /// no defined are not supported.
     pub min_reserve_prices: Vec<Coin>,
+    pub min_reserve_price_manager: String,
 }
 
 #[cw_serde]
@@ -64,6 +65,32 @@ pub enum ExecuteMsg {
     SettleAuction {
         collection: String,
         token_id: String,
+    },
+    SetMinReservePrices {
+        min_reserve_prices: Vec<Coin>,
+    },
+    UnsetMinReservePrices {
+        denoms: Vec<String>,
+    },
+    UpdateMinReservePriceManager {
+        manager: String,
+    },
+    // Blacklist management (manager only)
+    AddToBlacklist {
+        collection: String,
+        token_id: String,
+    },
+    RemoveFromBlacklist {
+        collection: String,
+        token_id: String,
+    },
+    BatchAddToBlacklist {
+        collection: String,
+        token_ids: Vec<String>,
+    },
+    BatchRemoveFromBlacklist {
+        collection: String,
+        token_ids: Vec<String>,
     },
 }
 
@@ -106,6 +133,13 @@ pub enum QueryMsg {
         end_time: u64,
         query_options: Option<QueryOptions<AuctionKeyOffset>>,
     },
+    #[returns(String)]
+    MinReservePriceManager {},
+    #[returns(bool)]
+    IsBlacklisted {
+        collection: String,
+        token_id: String,
+    },
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -124,11 +158,5 @@ pub enum SudoMsg {
         halt_duration_threshold: Option<u64>,
         halt_buffer_duration: Option<u64>,
         halt_postpone_duration: Option<u64>,
-    },
-    SetMinReservePrices {
-        min_reserve_prices: Vec<Coin>,
-    },
-    UnsetMinReservePrices {
-        denoms: Vec<String>,
     },
 }

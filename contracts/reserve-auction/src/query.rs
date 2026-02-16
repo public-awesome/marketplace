@@ -1,6 +1,9 @@
+use crate::helpers::build_blacklist_key;
 use crate::msg::{AuctionKeyOffset, MinReservePriceOffset, QueryMsg};
-use crate::state::{auctions, Auction, Config, HaltManager, HALT_MANAGER};
-use crate::state::{CONFIG, MIN_RESERVE_PRICES};
+use crate::state::{
+    auctions, Auction, Config, HaltManager, BLACKLIST, CONFIG, HALT_MANAGER, MIN_RESERVE_PRICES,
+    MIN_RESERVE_PRICE_MANAGER,
+};
 
 use cosmwasm_std::{coin, to_json_binary, Addr, Binary, Coin, Deps, Env, StdResult};
 use cw_storage_plus::Bound;
@@ -42,6 +45,17 @@ pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
             end_time,
             query_options.unwrap_or_default(),
         )?),
+        QueryMsg::MinReservePriceManager {} => {
+            to_json_binary(&query_min_reserve_price_manager(deps)?)
+        }
+        QueryMsg::IsBlacklisted {
+            collection,
+            token_id,
+        } => to_json_binary(&query_is_blacklisted(
+            deps,
+            deps.api.addr_validate(&collection)?,
+            token_id,
+        )?),
     }
 }
 
@@ -73,6 +87,11 @@ pub fn query_min_reserve_prices(
         .collect::<StdResult<_>>()?;
 
     Ok(coins)
+}
+
+pub fn query_min_reserve_price_manager(deps: Deps) -> StdResult<String> {
+    let manager = MIN_RESERVE_PRICE_MANAGER.load(deps.storage)?;
+    Ok(manager.to_string())
 }
 
 pub fn query_auction(
@@ -149,4 +168,9 @@ pub fn query_auctions_by_end_time(
         .collect::<StdResult<_>>()?;
 
     Ok(auctions_result)
+}
+
+pub fn query_is_blacklisted(deps: Deps, collection: Addr, token_id: String) -> StdResult<bool> {
+    let key = build_blacklist_key(collection.as_ref(), &token_id);
+    Ok(BLACKLIST.has(deps.storage, key))
 }

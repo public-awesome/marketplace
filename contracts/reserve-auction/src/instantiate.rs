@@ -2,7 +2,7 @@
 use cosmwasm_std::entry_point;
 
 use crate::msg::InstantiateMsg;
-use crate::state::{Config, HaltManager, HALT_MANAGER};
+use crate::state::{Config, HaltManager, HALT_MANAGER, MIN_RESERVE_PRICE_MANAGER};
 use crate::{error::ContractError, state::MIN_RESERVE_PRICES};
 use cosmwasm_std::{DepsMut, Env, Event, MessageInfo};
 use cw2::set_contract_version;
@@ -20,6 +20,12 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+
+    MIN_RESERVE_PRICE_MANAGER.save(
+        deps.storage,
+        &deps.api.addr_validate(&msg.min_reserve_price_manager)?,
+    )?;
+
     let config = Config {
         fair_burn: deps.api.addr_validate(&msg.fair_burn)?,
         trading_fee_percent: msg.trading_fee_percent,

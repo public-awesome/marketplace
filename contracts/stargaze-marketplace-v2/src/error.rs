@@ -28,4 +28,7 @@ pub enum ContractError {
 
     #[error("InternalError: {0}")]
     InternalError(String),
+
+    #[error("Token is blacklisted: collection={0}, token_id={1}")]
+    TokenBlacklisted(String, String),
 }

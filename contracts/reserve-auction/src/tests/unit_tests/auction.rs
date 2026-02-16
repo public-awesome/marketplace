@@ -23,6 +23,7 @@ use crate::tests::{
 };
 use crate::ContractError;
 
+use crate::tests::setup::setup_auctions::DUMMY_MIN_RESERVE_PRICE_MANAGER;
 use cosmwasm_std::{coin, Addr, Decimal, StdError, Uint128};
 use cw_multi_test::Executor;
 use sg721_base::msg::{CollectionInfoResponse, QueryMsg as Sg721QueryMsg};
@@ -51,6 +52,7 @@ fn try_instantiate() {
         halt_buffer_duration: HALT_BUFFER_DURATION,
         halt_postpone_duration: HALT_POSTPONE_DURATION,
         min_reserve_prices: vec![coin(MIN_RESERVE_PRICE, NATIVE_DENOM)],
+        min_reserve_price_manager: DUMMY_MIN_RESERVE_PRICE_MANAGER.to_string(),
     };
     let auction_addr = instantiate_auction(&mut app, auction_id, msg.clone());
 

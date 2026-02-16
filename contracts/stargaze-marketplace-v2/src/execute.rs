@@ -12,12 +12,15 @@ use crate::{
     events::{
         AskEvent, BidEvent, CollectionBidEvent, CollectionDenomEvent, ConfigEvent, ListingFeeEvent,
     },
-    helpers::{finalize_sale, generate_id, only_contract_admin, only_valid_price},
+    helpers::{
+        build_collection_token_index_str, finalize_sale, generate_id, only_blacklist_manager,
+        only_contract_admin, only_not_blacklisted, only_valid_price,
+    },
     msg::ExecuteMsg,
     orders::{Ask, Bid, CollectionBid, MatchingBid, OrderDetails},
     state::{
-        asks, bids, collection_bids, Config, Denom, OrderId, TokenId, COLLECTION_DENOMS, CONFIG,
-        LISTING_FEES, NONCE,
+        asks, bids, collection_bids, Config, Denom, OrderId, TokenId, BLACKLIST, COLLECTION_DENOMS,
+        CONFIG, LISTING_FEES, NONCE,
     },
 };
 
@@ -145,6 +148,31 @@ pub fn execute(
             details.str_to_addr(api)?,
             true,
         ),
+        ExecuteMsg::AddToBlacklist {
+            collection,
+            token_id,
+        } => execute_add_to_blacklist(deps, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::RemoveFromBlacklist {
+            collection,
+            token_id,
+        } => execute_remove_from_blacklist(deps, info, api.addr_validate(&collection)?, token_id),
+        ExecuteMsg::BatchAddToBlacklist {
+            collection,
+            token_ids,
+        } => execute_batch_add_to_blacklist(deps, info, api.addr_validate(&collection)?, token_ids),
+        ExecuteMsg::BatchRemoveFromBlacklist {
+            collection,
+            token_ids,
+        } => execute_batch_remove_from_blacklist(
+            deps,
+            info,
+            api.addr_validate(&collection)?,
+            token_ids,
+        ),
+        ExecuteMsg::CancelAsk {
+            collection,
+            token_id,
+        } => execute_cancel_ask(deps, info, api.addr_validate(&collection)?, token_id),
     }
 }
 
@@ -246,6 +274,7 @@ pub fn execute_set_ask(
 ) -> Result<Response, ContractError> {
     only_owner(&deps.querier, &info, &collection, &token_id)?;
     only_tradable(&deps.querier, &env.block, &collection)?;
+    only_not_blacklisted(deps.storage, &collection, &token_id)?;
 
     let config = CONFIG.load(deps.storage)?;
     // check agains collection denom
@@ -350,6 +379,9 @@ pub fn execute_update_ask(
         )
     );
 
+    // Check if token is blacklisted
+    only_not_blacklisted(deps.storage, &ask.collection, &ask.token_id)?;
+
     // check agains collection denom
     only_valid_price(deps.storage, &config, &ask.collection, &details.price, None)?;
 
@@ -414,6 +446,9 @@ pub fn execute_remove_ask(
             "only the creator of ask can perform this action".to_string()
         )
     );
+
+    // Check if token is blacklisted
+    only_not_blacklisted(deps.storage, &ask.collection, &ask.token_id)?;
 
     let mut response = transfer_nft(
         &ask.collection,
@@ -1051,6 +1086,129 @@ pub fn execute_accept_collection_bid(
         "accept-collection-bid",
         Response::new(),
     )?;
+
+    Ok(response)
+}
+
+pub fn execute_add_to_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info)?;
+
+    let key = build_collection_token_index_str(collection.as_ref(), &token_id);
+    BLACKLIST.save(deps.storage, key, &())?;
+
+    let response = Response::new()
+        .add_attribute("action", "add-to-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id);
+
+    Ok(response)
+}
+
+pub fn execute_remove_from_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info)?;
+
+    let key = build_collection_token_index_str(collection.as_ref(), &token_id);
+    BLACKLIST.remove(deps.storage, key);
+
+    let response = Response::new()
+        .add_attribute("action", "remove-from-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("token_id", token_id);
+
+    Ok(response)
+}
+
+pub fn execute_batch_add_to_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_ids: Vec<TokenId>,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info)?;
+
+    for token_id in &token_ids {
+        let key = build_collection_token_index_str(collection.as_ref(), token_id);
+        BLACKLIST.save(deps.storage, key, &())?;
+    }
+
+    let response = Response::new()
+        .add_attribute("action", "batch-add-to-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("count", token_ids.len().to_string());
+
+    Ok(response)
+}
+
+pub fn execute_batch_remove_from_blacklist(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_ids: Vec<TokenId>,
+) -> Result<Response, ContractError> {
+    only_blacklist_manager(&info)?;
+
+    for token_id in &token_ids {
+        let key = build_collection_token_index_str(collection.as_ref(), token_id);
+        BLACKLIST.remove(deps.storage, key);
+    }
+
+    let response = Response::new()
+        .add_attribute("action", "batch-remove-from-blacklist")
+        .add_attribute("collection", collection.to_string())
+        .add_attribute("count", token_ids.len().to_string());
+
+    Ok(response)
+}
+
+pub fn execute_cancel_ask(
+    deps: DepsMut,
+    info: MessageInfo,
+    collection: Addr,
+    token_id: TokenId,
+) -> Result<Response, ContractError> {
+    nonpayable(&info)?;
+    only_blacklist_manager(&info)?;
+
+    // Generate the ask ID from collection and token_id
+    let id = generate_id(vec![collection.as_bytes(), token_id.as_bytes()]);
+
+    let ask = asks()
+        .load(deps.storage, id.clone())
+        .map_err(|_| {
+            ContractError::InvalidInput(format!(
+                "ask not found for collection={}, token_id={}",
+                collection, token_id
+            ))
+        })?;
+
+    // Return NFT to original creator
+    let mut response = transfer_nft(
+        &ask.collection,
+        &ask.token_id,
+        &ask.asset_recipient(),
+        Response::new(),
+    );
+
+    ask.remove(deps.storage)?;
+
+    response = response.add_event(
+        AskEvent {
+            ty: "remove-ask",
+            ask: &ask,
+            attr_keys: vec!["id", "collection", "token_id"],
+        }
+        .into(),
+    );
 
     Ok(response)
 }
